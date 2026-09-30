@@ -45,21 +45,14 @@ import {
   getCoverageGradientStyle,
   getMemberAllocationGradientStyle,
 } from "./utils/helpers";
+import { useProjectTimelineRangeEditing } from "./hooks/useProjectTimelineRangeEditing";
+import { useEscapeKey } from "./hooks/useEscapeKey";
+import { useProjectReordering } from "./hooks/useProjectReordering";
+import { useAppViewState } from "./hooks/useAppViewState";
 
 // ============================================================
 // 1. CONSTANTS, SYSTEM DEFAULTS & THEMES
 // ============================================================
-function useEscapeKey(onClose, isEnabled = true) {
-  useEffect(() => {
-    if (!isEnabled || !onClose) return;
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, isEnabled]);
-}
-
 const GlobeIcon = memo(({ size = 16, className = "" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
@@ -3082,14 +3075,27 @@ function ProjectTimelineModal({
   const [globalSupportCollapsed, setGlobalSupportCollapsed] = useState(true);
   const [customCollapsedWPs, setCustomCollapsedWPs] = useState({});
 
-  // Direct In-Chart Selection & Editing state
-  const [rangeSelection, setRangeSelection] = useState(null);
-  const [cellInputValue, setCellInputValue] = useState("");
-  const inputRef = useRef(null);
-  const justFinishedSelectingRef = useRef(false);
-
-  // Drag-to-reposition state for "Other" workpackage execution blocks
-  const [activityDrag, setActivityDrag] = useState(null);
+  const {
+    rangeSelection,
+    setRangeSelection,
+    activityDrag,
+    setActivityDrag,
+    cellInputValue,
+    setCellInputValue,
+    inputRef,
+    justFinishedSelectingRef,
+    selectedMonthIndices,
+    handleCellMouseDown,
+    handleCommitRangeEdit,
+    handleResetRange,
+  } = useProjectTimelineRangeEditing({
+    duration,
+    isManualEditEnabled,
+    isBasicMode,
+    setLocalProject,
+    setLocalCards,
+    setIsDirty,
+  });
 
   const toggleWPSupport = useCallback((cardId) => {
     setCustomCollapsedWPs((prev) => {
@@ -3194,239 +3200,6 @@ function ProjectTimelineModal({
       window.removeEventListener("mouseup", handleDragMouseUp);
     };
   }, [activityDrag, duration, handleLocalUpdateCardStartMonth]);
-
-  useEffect(() => {
-    if (!rangeSelection?.isSelecting) return;
-
-    const handleGlobalMouseMove = (e) => {
-      const rowEl = document.querySelector(`[data-timeline-row="${rangeSelection.rowKey}"]`);
-      if (rowEl) {
-        const rect = rowEl.getBoundingClientRect();
-        if (rect.width > 0) {
-          const colWidth = rect.width / duration;
-          const rawIdx = Math.floor((e.clientX - rect.left) / colWidth);
-          const mIdx = Math.max(0, Math.min(duration - 1, rawIdx));
-          if (mIdx !== rangeSelection.endMonthIdx) {
-            setRangeSelection((prev) => (prev ? { ...prev, endMonthIdx: mIdx } : prev));
-          }
-        }
-      }
-    };
-
-    window.addEventListener("mousemove", handleGlobalMouseMove);
-    return () => window.removeEventListener("mousemove", handleGlobalMouseMove);
-  }, [rangeSelection?.isSelecting, rangeSelection?.rowKey, rangeSelection?.endMonthIdx, duration]);
-
-  useEffect(() => {
-    const handleGlobalMouseUp = (e) => {
-      setRangeSelection((prev) => {
-        if (!prev || !prev.isSelecting) return prev;
-
-        let targetMonth = prev.endMonthIdx;
-        const rowEl = document.querySelector(`[data-timeline-row="${prev.rowKey}"]`);
-        if (rowEl) {
-          const rect = rowEl.getBoundingClientRect();
-          if (rect.width > 0) {
-            const colWidth = rect.width / duration;
-            const rawIdx = Math.floor((e.clientX - rect.left) / colWidth);
-            targetMonth = Math.max(0, Math.min(duration - 1, rawIdx));
-          }
-        }
-
-        const monthData = prev.getMonthData ? prev.getMonthData(targetMonth) : null;
-        const initialVal = monthData?.currentVal !== undefined ? monthData.currentVal : (monthData?.defaultVal ?? 0);
-        setCellInputValue(String(initialVal));
-
-        justFinishedSelectingRef.current = true;
-        setTimeout(() => {
-          justFinishedSelectingRef.current = false;
-        }, 150);
-
-        return {
-          ...prev,
-          endMonthIdx: targetMonth,
-          isSelecting: false,
-          isEditing: true,
-        };
-      });
-    };
-    window.addEventListener("mouseup", handleGlobalMouseUp);
-    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
-  }, [duration]);
-
-  useEffect(() => {
-    if (rangeSelection?.isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [rangeSelection?.isEditing, rangeSelection?.endMonthIdx]);
-
-  const selectedMonthIndices = useMemo(() => {
-    if (!rangeSelection) return [];
-    const minM = Math.min(rangeSelection.startMonthIdx, rangeSelection.endMonthIdx);
-    const maxM = Math.max(rangeSelection.startMonthIdx, rangeSelection.endMonthIdx);
-    const indices = [];
-    for (let i = minM; i <= maxM; i++) indices.push(i);
-    return indices;
-  }, [rangeSelection?.startMonthIdx, rangeSelection?.endMonthIdx]);
-
-  const handleCellMouseDown = useCallback((e, rowKey, context, monthIdx) => {
-    if (e.button !== 0 || !isManualEditEnabled || isBasicMode || activityDrag) return;
-
-    const monthData = context.getMonthData ? context.getMonthData(monthIdx) : null;
-    const isCellEditable = (monthData?.defaultVal > 0) || Boolean(monthData?.isOverridden);
-    if (!isCellEditable) return;
-
-    e.preventDefault();
-
-    const initialVal = monthData?.currentVal;
-    setCellInputValue(String(initialVal ?? 0));
-
-    setRangeSelection({
-      rowKey,
-      startMonthIdx: monthIdx,
-      endMonthIdx: monthIdx,
-      isSelecting: true,
-      isEditing: false,
-      ...context,
-    });
-  }, [isManualEditEnabled, isBasicMode, activityDrag]);
-
-  const handleCommitRangeEdit = useCallback(() => {
-    if (!rangeSelection || selectedMonthIndices.length === 0) {
-      setRangeSelection(null);
-      return;
-    }
-
-    const parsed = parseFloat(cellInputValue);
-    const isClear = isNaN(parsed) || cellInputValue.trim() === "";
-    const targetVal = isClear ? null : Math.max(0, parsed);
-
-    const { type, cardId, toolName, isCollapsed, getMonthData } = rangeSelection;
-
-    const updates = selectedMonthIndices
-      .filter((mIdx) => {
-        const monthData = getMonthData ? getMonthData(mIdx) : null;
-        return (monthData?.defaultVal > 0) || Boolean(monthData?.isOverridden);
-      })
-      .map((mIdx) => {
-        const monthData = getMonthData ? getMonthData(mIdx) : null;
-        const defaultVal = monthData?.defaultVal ?? 0;
-        let valToApply = targetVal;
-
-        if (type === "core" && isCollapsed && targetVal !== null) {
-          const effDev = monthData?.effDevRate ?? 0;
-          const effMeet = monthData?.effMeetingsRate ?? 0;
-          valToApply = Math.max(0, round2(targetVal - effDev - effMeet));
-        }
-
-        return {
-          monthIdx: mIdx,
-          value: valToApply,
-          defaultVal,
-        };
-      });
-
-    if (updates.length > 0) {
-      if (type === "mgmt") {
-        setLocalProject((prev) => {
-          const currentMgmt = { ...(prev.customMgmtMonthlyFTE || {}) };
-          const toolMap = { ...(currentMgmt[toolName] || {}) };
-          for (let i = 0; i < updates.length; i++) {
-            const { monthIdx, value, defaultVal } = updates[i];
-            if (value === null || value === undefined || isNaN(value) || Math.abs(value - defaultVal) < 0.001) {
-              delete toolMap[monthIdx];
-            } else {
-              toolMap[monthIdx] = round2(value);
-            }
-          }
-          if (Object.keys(toolMap).length === 0) {
-            delete currentMgmt[toolName];
-          } else {
-            currentMgmt[toolName] = toolMap;
-          }
-          return { ...prev, customMgmtMonthlyFTE: currentMgmt };
-        });
-        setIsDirty(true);
-      } else {
-        setLocalCards((prev) =>
-          prev.map((f) => {
-            if (f.id !== cardId) return f;
-            const key = type === "devSupport" ? "customDevSupportFTE" : type === "meetings" ? "customMeetingsFTE" : "customCoreFTE";
-            const current = { ...(f[key] || {}) };
-            for (let i = 0; i < updates.length; i++) {
-              const { monthIdx, value, defaultVal } = updates[i];
-              if (value === null || value === undefined || isNaN(value) || Math.abs(value - defaultVal) < 0.001) {
-                delete current[monthIdx];
-              } else {
-                current[monthIdx] = round2(value);
-              }
-            }
-            return { ...f, [key]: current };
-          })
-        );
-        setIsDirty(true);
-      }
-    }
-
-    setRangeSelection(null);
-    setCellInputValue("");
-  }, [rangeSelection, selectedMonthIndices, cellInputValue]);
-
-  const handleResetRange = useCallback(() => {
-    if (!rangeSelection || selectedMonthIndices.length === 0) return;
-    const { type, cardId, toolName, getMonthData } = rangeSelection;
-
-    const updates = selectedMonthIndices
-      .filter((mIdx) => {
-        const monthData = getMonthData ? getMonthData(mIdx) : null;
-        return (monthData?.defaultVal > 0) || Boolean(monthData?.isOverridden);
-      })
-      .map((mIdx) => {
-        const monthData = getMonthData ? getMonthData(mIdx) : null;
-        return {
-          monthIdx: mIdx,
-          value: null,
-          defaultVal: monthData?.defaultVal ?? 0,
-        };
-      });
-
-    if (updates.length > 0) {
-      if (type === "mgmt") {
-        setLocalProject((prev) => {
-          const currentMgmt = { ...(prev.customMgmtMonthlyFTE || {}) };
-          const toolMap = { ...(currentMgmt[toolName] || {}) };
-          for (let i = 0; i < updates.length; i++) {
-            const { monthIdx, defaultVal } = updates[i];
-            delete toolMap[monthIdx];
-          }
-          if (Object.keys(toolMap).length === 0) {
-            delete currentMgmt[toolName];
-          } else {
-            currentMgmt[toolName] = toolMap;
-          }
-          return { ...prev, customMgmtMonthlyFTE: currentMgmt };
-        });
-        setIsDirty(true);
-      } else {
-        setLocalCards((prev) =>
-          prev.map((f) => {
-            if (f.id !== cardId) return f;
-            const key = type === "devSupport" ? "customDevSupportFTE" : type === "meetings" ? "customMeetingsFTE" : "customCoreFTE";
-            const current = { ...(f[key] || {}) };
-            for (let i = 0; i < updates.length; i++) {
-              delete current[updates[i].monthIdx];
-            }
-            return { ...f, [key]: current };
-          })
-        );
-        setIsDirty(true);
-      }
-    }
-
-    setRangeSelection(null);
-    setCellInputValue("");
-  }, [rangeSelection, selectedMonthIndices]);
 
   const monthLabels = useMemo(() => {
     const list = [];
@@ -10499,49 +10272,23 @@ function AssignOtherWPModal({ card, project, onConfirm, onCancel }) {
 }
 
 export default function App() {
-  const [theme, setTheme] = useState("vibrant");
-  const [appMode, setAppMode] = useState("extended");
-  const [activeToolView, setActiveToolView] = useState("all");
-  const [showTeamTimeline, setShowTeamTimeline] = useState(false);
-  const [isTeamBucketCompact, setIsTeamBucketCompact] = useState(() => {
-    try {
-      return localStorage.getItem("scan_team_bucket_compact") === "true";
-    } catch {
-      return false;
-    }
-  });
-
-  const handleToggleTeamBucketCompact = useCallback(() => {
-    setIsTeamBucketCompact((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("scan_team_bucket_compact", String(next));
-      } catch {}
-      return next;
-    });
-  }, []);
-
-  const [isWorkpackagePoolCompact, setIsWorkpackagePoolCompact] = useState(() => {
-    try {
-      return localStorage.getItem("scan_wp_pool_compact") === "true";
-    } catch {
-      return false;
-    }
-  });
-
-  const handleToggleWorkpackagePoolCompact = useCallback(() => {
-    setIsWorkpackagePoolCompact((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("scan_wp_pool_compact", String(next));
-      } catch {}
-      return next;
-    });
-  }, []);
-
-  const isBasic = theme === "basic";
-  const isRetro = theme === "retro";
-  const isBasicMode = appMode === "basic";
+  const {
+    theme,
+    setTheme,
+    appMode,
+    setAppMode,
+    activeToolView,
+    setActiveToolView,
+    showTeamTimeline,
+    setShowTeamTimeline,
+    isTeamBucketCompact,
+    handleToggleTeamBucketCompact,
+    isWorkpackagePoolCompact,
+    handleToggleWorkpackagePoolCompact,
+    isBasic,
+    isRetro,
+    isBasicMode,
+  } = useAppViewState();
   const [functions, setFunctions] = useState(() =>
     INITIAL_FUNCTIONS.map((f) => ({
       ...f,
@@ -10624,151 +10371,21 @@ export default function App() {
   const [draggedProjectIndex, setDraggedProjectIndex] = useState(null);
   const [targetProjectIndex, setTargetProjectIndex] = useState(null);
   const [assignmentWarning, setAssignmentWarning] = useState(null);
-  const slotRefs = useRef([]);
-  const projectContainerRef = useRef(null);
-  const autoScrollRafRef = useRef(null);
-  const autoScrollSpeedRef = useRef(0);
-  const lastMouseXRef = useRef(0);
-  const draggedProjectIndexRef = useRef(null);
-  const projectsCountRef = useRef(projects.length);
-
-  useEffect(() => {
-    draggedProjectIndexRef.current = draggedProjectIndex;
-  }, [draggedProjectIndex]);
-
-  useEffect(() => {
-    projectsCountRef.current = projects.length;
-  }, [projects.length]);
-
-  const updateTargetIndexFromX = useCallback((mouseX) => {
-    const slots = slotRefs.current;
-    if (!slots || slots.length === 0) return;
-
-    let closestIndex = draggedProjectIndexRef.current;
-    let minDistance = Infinity;
-
-    for (let i = 0; i < projectsCountRef.current; i++) {
-      const el = slots[i];
-      if (!el) continue;
-      const rect = el.getBoundingClientRect();
-      const midX = rect.left + rect.width / 2;
-
-      if (mouseX >= rect.left && mouseX <= rect.right) {
-        closestIndex = i;
-        minDistance = 0;
-        break;
-      }
-
-      const dist = Math.abs(mouseX - midX);
-      if (dist < minDistance) {
-        minDistance = dist;
-        closestIndex = i;
-      }
-    }
-
-    setTargetProjectIndex((prev) => (prev !== closestIndex ? closestIndex : prev));
-  }, []);
-
-  const stopAutoScroll = useCallback(() => {
-    if (autoScrollRafRef.current) {
-      cancelAnimationFrame(autoScrollRafRef.current);
-      autoScrollRafRef.current = null;
-    }
-    autoScrollSpeedRef.current = 0;
-  }, []);
-
-  const startAutoScroll = useCallback(() => {
-    if (autoScrollRafRef.current) return;
-    const scrollLoop = () => {
-      if (projectContainerRef.current && autoScrollSpeedRef.current !== 0) {
-        projectContainerRef.current.scrollLeft += autoScrollSpeedRef.current;
-        if (lastMouseXRef.current > 0) {
-          updateTargetIndexFromX(lastMouseXRef.current);
-        }
-      }
-      autoScrollRafRef.current = requestAnimationFrame(scrollLoop);
-    };
-    autoScrollRafRef.current = requestAnimationFrame(scrollLoop);
-  }, [updateTargetIndexFromX]);
-
-  useEffect(() => {
-    if (draggedProjectIndex === null) {
-      stopAutoScroll();
-      return;
-    }
-
-    const handleWindowDragOver = (e) => {
-      lastMouseXRef.current = e.clientX;
-      const container = projectContainerRef.current;
-      if (!container) return;
-
-      const containerRect = container.getBoundingClientRect();
-      const edgeThreshold = 140;
-
-      if (e.clientX < containerRect.left + edgeThreshold) {
-        if (e.clientX >= containerRect.left) {
-          const ratio = (containerRect.left + edgeThreshold - e.clientX) / edgeThreshold;
-          autoScrollSpeedRef.current = -Math.round(14 + ratio * 22);
-        } else {
-          const overDistance = containerRect.left - e.clientX;
-          const outsideBoost = Math.min(60, overDistance * 0.35);
-          autoScrollSpeedRef.current = -Math.round(36 + outsideBoost);
-        }
-        startAutoScroll();
-      } else if (e.clientX > containerRect.right - edgeThreshold) {
-        if (e.clientX <= containerRect.right) {
-          const ratio = (e.clientX - (containerRect.right - edgeThreshold)) / edgeThreshold;
-          autoScrollSpeedRef.current = Math.round(14 + ratio * 22);
-        } else {
-          const overDistance = e.clientX - containerRect.right;
-          const outsideBoost = Math.min(60, overDistance * 0.35);
-          autoScrollSpeedRef.current = Math.round(36 + outsideBoost);
-        }
-        startAutoScroll();
-      } else {
-        autoScrollSpeedRef.current = 0;
-      }
-    };
-
-    window.addEventListener("dragover", handleWindowDragOver);
-    return () => {
-      window.removeEventListener("dragover", handleWindowDragOver);
-    };
-  }, [draggedProjectIndex, startAutoScroll, stopAutoScroll]);
-
-  const handleProjectDragStart = useCallback((index) => {
-    setDraggedProjectIndex(index);
-    setTargetProjectIndex(index);
-  }, []);
-
-  const handleProjectDragEnd = useCallback(() => {
-    setDraggedProjectIndex(null);
-    setTargetProjectIndex(null);
-    stopAutoScroll();
-  }, [stopAutoScroll]);
-
-  const handleProjectContainerDragOver = useCallback((e) => {
-    if (draggedProjectIndex === null) return;
-    e.preventDefault();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = "move";
-    }
-    lastMouseXRef.current = e.clientX;
-    updateTargetIndexFromX(e.clientX);
-  }, [draggedProjectIndex, updateTargetIndexFromX]);
-
-  const handleProjectDrop = useCallback((fromIndex, toIndex) => {
-    setDraggedProjectIndex(null);
-    setTargetProjectIndex(null);
-    stopAutoScroll();
-    if (fromIndex === null || toIndex === null || fromIndex === toIndex) return;
-    setProjects((prev) => {
-      const next = [...prev];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return next;
-    });
-  }, [stopAutoScroll]);
+  const {
+    slotRefs,
+    projectContainerRef,
+    stopAutoScroll,
+    handleProjectDragStart,
+    handleProjectDragEnd,
+    handleProjectContainerDragOver,
+    handleProjectDrop,
+  } = useProjectReordering({
+    projects,
+    setProjects,
+    draggedProjectIndex,
+    setDraggedProjectIndex,
+    setTargetProjectIndex,
+  });
 
   const [config, setConfig] = useState({
     fteRates: deepClone(DEFAULT_FTE_RATES),
