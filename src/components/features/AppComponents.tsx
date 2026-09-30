@@ -3,5 +3,7 @@ export { EditCardContent, FunctionCard, ManagementOverheads, ToolRow, Unassigned
 export { TeamMembersPool, AddTeamMemberModal } from './TeamComponents';
 export { AddFunctionModal } from './AddFunctionModal';
 export { ProjectTimelineModal } from './ProjectTimelineModal';
-export { AssignMemberToWPModal, AdjustMemberAllocationModal, TeamTimelineModal } from './TeamTimelineModal';
+export { AssignMemberToWPModal } from './AssignMemberToWPModal';
+export { AdjustMemberAllocationModal } from './AdjustMemberAllocationModal';
+export { TeamTimelineModal } from './TeamTimelineModal';
 export { SubcategoryManagerModal, AddProjectModal, ProjectBasket, AssignOtherWPModal } from './ProjectComponents';
