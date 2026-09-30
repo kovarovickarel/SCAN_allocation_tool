@@ -40,15 +40,16 @@ import {
   calculateProjectEffort,
   getFTEGradientStyle,
   computeWorkpackageLifecycleTimeline,
-  formatFTEPerMille,
   computeActivitySegments,
-  getCoverageGradientStyle,
   getMemberAllocationGradientStyle,
 } from "./utils/helpers";
 import { useProjectTimelineRangeEditing } from "./hooks/useProjectTimelineRangeEditing";
 import { useEscapeKey } from "./hooks/useEscapeKey";
 import { useProjectReordering } from "./hooks/useProjectReordering";
 import { useAppViewState } from "./hooks/useAppViewState";
+import { MemberInitialsBadge } from "./components/ui/MemberInitialsBadge";
+import { PersonIcon } from "./components/ui/PersonIcon";
+import { TimelineGanttGrid } from "./components/ui/TimelineGanttGrid";
 
 // ============================================================
 // 1. CONSTANTS, SYSTEM DEFAULTS & THEMES
@@ -323,87 +324,6 @@ const ToolIcon = memo(({ toolName, size = 13, className = "" }) => {
         </svg>
       );
   }
-});
-
-const PersonIcon = memo(({
-  role = "engineering",
-  toolName = "KPI",
-  size = 22,
-  className = "",
-  isCrossTeam = false,
-  starColor = "",
-}) => {
-  const { isBasic, isRetro } = React.useContext(ThemeContext);
-  const toolFill = {
-    KPI: "#059669",
-    "Data Factory": "#0891b2",
-    "Vehicle Tooling": "#d97706",
-    Visualization: "#0d9488",
-    Reprocessing: "#ea580c",
-    "Range & Accuracy": "#db2777",
-    "SYS.4": "#6366f1",
-    "SYS.5": "#84cc16",
-    "SysVal Operations": "#c026d3",
-    Simulation: "#0284c7",
-    Other: "#475569",
-  }[toolName] || "#2563eb";
-
-  // App top bar (header containing the Add Project button) is bg-slate-900 (#0f172a)
-  const appTopBarBg = "#0f172a";
-  const retroFill = {
-    KPI: "#008000",
-    "Data Factory": "#008080",
-    "Vehicle Tooling": "#808000",
-    Visualization: "#000080",
-    Reprocessing: "#800000",
-    "Range & Accuracy": "#800080",
-    "SYS.4": "#000080",
-    "SYS.5": "#008000",
-    "SysVal Operations": "#800080",
-    Simulation: "#008080",
-    Other: "#000000",
-  }[toolName] || "#000080";
-
-  const baseFill = isRetro ? retroFill : isBasic ? appTopBarBg : toolFill;
-  const activeStarFill = isRetro ? "#ffff00" : isBasic ? appTopBarBg : (starColor || toolFill);
-  const mgmtColor = isRetro ? "#800080" : "#9333ea";
-
-  let headFill = baseFill;
-  let bodyFill = baseFill;
-  let title = "Engineering Workpackages Only";
-
-  if (role === "management") {
-    headFill = mgmtColor;
-    bodyFill = mgmtColor;
-    title = "Management Support Workpackages Only";
-  } else if (role === "both") {
-    headFill = mgmtColor;
-    bodyFill = baseFill;
-    title = "Engineering & Management Support (Both)";
-  }
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      className={`shrink-0 overflow-visible ${className}`}
-      title={title}
-      aria-label={title}
-    >
-      {isCrossTeam && (
-        <polygon
-          points="12.45,-3.6 13.39,-1.29 15.87,-1.11 13.97,0.49 14.57,2.91 12.45,1.6 10.33,2.91 10.93,0.49 9.03,-1.11 11.51,-1.29"
-          fill={activeStarFill}
-        />
-      )}
-      <circle cx="12" cy="8" r="4" fill={headFill} />
-      <path
-        d="M12 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"
-        fill={bodyFill}
-      />
-    </svg>
-  );
 });
 
 function EditCardContent({ card, onEdit, projectDuration, projectMilestones }) {
@@ -5584,135 +5504,6 @@ function AdjustMemberAllocationModal({
     </div>
   );
 }
-
-const MemberInitialsBadge = memo(function MemberInitialsBadge({ member, allocationFTE, onClick }) {
-  const { isRetro } = React.useContext(ThemeContext);
-  const cap = parseFloat(member?.fte) || 1.0;
-  const pct = cap > 0 ? Math.round((allocationFTE / cap) * 100) : 0;
-  const initials = member
-    ? `${member.firstName?.[0] || ""}${member.lastName?.[0] || ""}`.toUpperCase()
-    : "TM";
-
-  return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        onClick?.();
-      }}
-      className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 flex items-center gap-1 ${
-        isRetro
-          ? "bg-[#ffff80] text-black border-black font-mono hover:bg-[#ffffb0]"
-          : "bg-blue-100/90 text-blue-950 border-blue-300 hover:bg-blue-200 hover:border-blue-400"
-      }`}
-      title={`${member?.firstName} ${member?.lastName}: ${allocationFTE.toFixed(2)} FTE (${pct}% of personal capacity)\nClick to adjust dedicated allocation percentage`}
-    >
-      <span className="font-black">{initials}</span>
-      <span className="font-mono text-[7.5px] opacity-85">{pct}%</span>
-    </button>
-  );
-});
-
-const TimelineGanttGrid = memo(function TimelineGanttGrid({
-  totalMonths,
-  alignedCells = [],
-  dragOverCellKey,
-  draggedMember,
-  isNegated = false,
-  rowId,
-  onCellDragOver,
-  onCellDragLeave,
-  onCellDrop,
-}) {
-  const { isRetro } = React.useContext(ThemeContext);
-
-  return (
-    <div
-      className="grid h-full py-1 px-1.5 select-none relative items-center"
-      style={{ gridTemplateColumns: `repeat(${totalMonths}, minmax(52px, 1fr))` }}
-    >
-      {alignedCells.map((cell, gIdx) => {
-        if (!cell.isInside) {
-          return (
-            <div
-              key={gIdx}
-              className="h-full flex items-center justify-center p-0.5 text-center"
-            >
-              <span className={`${isRetro ? "text-black/40 font-mono" : "text-slate-300 font-mono"} text-[10px] select-none`}>
-                &middot;
-              </span>
-            </div>
-          );
-        }
-
-        const mData = cell.coreM;
-        const pRelIdx = cell.pMonthIdx - 1;
-        const isStart = mData.isPhaseStart;
-        const isEnd = mData.isPhaseEnd;
-        const roundedClasses = isRetro
-          ? "rounded-none"
-          : `${isStart ? "rounded-l-md" : "rounded-l-none"} ${isEnd ? "rounded-r-md" : "rounded-r-none"}`;
-        const paddingRight = isEnd && gIdx < totalMonths - 1 ? "pr-1" : "pr-0";
-
-        const displayFTE = cell.displayFTE ?? mData.coreFTE ?? 0;
-        const coveredFTE = cell.coveredFTE ?? 0;
-        const leftFTE = cell.leftFTE ?? Math.max(0, displayFTE - coveredFTE);
-        const cellCoveragePct = displayFTE > 0 ? Math.round((coveredFTE / displayFTE) * 100) : 0;
-        const formattedLeftFTE = formatFTEPerMille(leftFTE);
-        const cellStyle = getCoverageGradientStyle(coveredFTE, displayFTE, isNegated);
-
-        const cellKey = `${rowId}_m${pRelIdx}`;
-        const isCellDragOver = dragOverCellKey === cellKey;
-
-        return (
-          <div
-            key={gIdx}
-            onDragOver={(e) => onCellDragOver?.(e, cellKey, pRelIdx, displayFTE)}
-            onDragLeave={(e) => onCellDragLeave?.(e, cellKey)}
-            onDrop={(e) => onCellDrop?.(e, pRelIdx, displayFTE)}
-            className={`h-full flex items-center justify-center p-0.5 ${paddingRight} relative`}
-          >
-            <div
-              style={cellStyle}
-              className={`w-full h-8.5 ${roundedClasses} border relative flex flex-col items-center justify-center select-none shadow-2xs transition-all ${
-                isCellDragOver
-                  ? "!border-2 !border-emerald-500 ring-2 ring-emerald-400 scale-105 z-30 shadow-lg brightness-110"
-                  : ""
-              } ${!isStart ? "border-l-0" : ""} ${!isEnd ? "border-r border-dashed border-white/25" : ""}`}
-              title={cell.tooltip}
-            >
-              {isCellDragOver && (
-                <div className="absolute inset-0 bg-emerald-400/30 rounded pointer-events-none flex items-center justify-center">
-                  <span className="text-[7.5px] font-black font-mono bg-emerald-900 text-white px-1 py-0.2 rounded shadow">
-                    M{cell.pMonthIdx} ONLY
-                  </span>
-                </div>
-              )}
-
-              {mData.phaseSpan > 1 && !isNegated && (
-                <div
-                  className={`absolute top-0.5 left-0 right-0 h-[2px] bg-white/45 ${
-                    isStart ? "rounded-tl-full" : ""
-                  } ${isEnd ? "rounded-tr-full" : ""}`}
-                />
-              )}
-
-              {displayFTE > 0 && mData.shortPhase && (
-                <span className={`text-[7px] font-bold uppercase tracking-wider opacity-85 leading-none ${mData.phaseSpan > 1 ? "mt-0.5" : ""}`}>
-                  {mData.shortPhase}
-                </span>
-              )}
-
-              <span className="text-[9px] font-mono font-black leading-tight tracking-tight my-0.5 whitespace-nowrap">
-                {displayFTE > 0 ? `${cellCoveragePct}% - ${formattedLeftFTE}` : "-"}
-              </span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-});
 
 function TeamTimelineModal({
   toolName,
