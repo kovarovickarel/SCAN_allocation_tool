@@ -4,12 +4,12 @@ export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
   webServer: {
-    command: "pnpm run dev",
-    url: "http://localhost:5173",
+    command: "pnpm exec vite --configLoader native --host 127.0.0.1 --port 5174 --strictPort",
+    url: "http://127.0.0.1:5174",
     reuseExistingServer: !process.env.CI,
   },
   use: {
-    baseURL: "http://localhost:5173",
+    baseURL: "http://127.0.0.1:5174",
     trace: "on-first-retry",
   },
   projects: [
