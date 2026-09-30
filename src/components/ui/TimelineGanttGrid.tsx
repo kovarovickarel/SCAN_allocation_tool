@@ -31,7 +31,6 @@ interface TimelineGanttGridProps {
   totalMonths: number;
   alignedCells?: AlignedTimelineGanttCell[];
   dragOverCellKey: string | null;
-  draggedMember?: { role?: string } | null;
   isNegated?: boolean;
   rowId: string;
   onCellDragOver?: (
@@ -55,7 +54,6 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
   totalMonths,
   alignedCells = [],
   dragOverCellKey,
-  draggedMember,
   isNegated = false,
   rowId,
   onCellDragOver,

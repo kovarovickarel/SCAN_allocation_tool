@@ -237,14 +237,7 @@ export function useProjectTimelineRangeEditing({
         const monthData = getMonthData ? getMonthData(mIdx) : null;
         return (monthData?.defaultVal > 0) || Boolean(monthData?.isOverridden);
       })
-      .map((mIdx) => {
-        const monthData = getMonthData ? getMonthData(mIdx) : null;
-        return {
-          monthIdx: mIdx,
-          value: null,
-          defaultVal: monthData?.defaultVal ?? 0,
-        };
-      });
+      .map((monthIdx) => ({ monthIdx }));
 
     if (updates.length > 0) {
       if (type === "mgmt") {
@@ -252,7 +245,7 @@ export function useProjectTimelineRangeEditing({
           const currentMgmt = { ...(prev.customMgmtMonthlyFTE || {}) };
           const toolMap = { ...(currentMgmt[toolName] || {}) };
           for (let i = 0; i < updates.length; i++) {
-            const { monthIdx, defaultVal } = updates[i];
+            const { monthIdx } = updates[i];
             delete toolMap[monthIdx];
           }
           if (Object.keys(toolMap).length === 0) {

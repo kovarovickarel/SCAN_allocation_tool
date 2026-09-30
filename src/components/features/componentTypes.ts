@@ -1,6 +1,6 @@
 import type React from 'react';
 import type { AllocationProject, FactorMap, ManagementOverhead, MilestoneMap, MonthlyNumericMap, NumericMap, NumericInput, TeamMemberRecord, ToolDefinition, WorkpackageCard } from '../../types';
-import type { DEFAULT_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_OTHER_SETTINGS, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, DEFAULT_TOOL_FTE_RATES } from '../../constants';
+import type { DEFAULT_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_OTHER_SETTINGS, DEFAULT_TOOL_FTE_RATES } from '../../constants';
 
 export interface SvgIconProps {
   size?: number;

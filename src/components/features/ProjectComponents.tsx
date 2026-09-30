@@ -487,7 +487,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   fteRates,
   activeToolView = "all",
 }: ProjectBasketProps) {
-  const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
+  const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [isDragOverBasket, setIsDragOverBasket] = useState(false);
   const [showSubcatModal, setShowSubcatModal] = useState(false);
@@ -1300,8 +1300,6 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel }) {
   const previewGridRef = useRef(null);
 
   const startMonth = parseInt(startMonthInput, 10);
-  const endMonth = !isNaN(startMonth) ? startMonth + duration - 1 : null;
-
   useEscapeKey(onCancel);
 
   const handleMilestoneTargetChange = (msKey) => {

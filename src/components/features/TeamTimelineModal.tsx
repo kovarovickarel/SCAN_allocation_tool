@@ -18,7 +18,7 @@ export function AssignMemberToWPModal({
   onSave,
   onClose,
 }: AssignMemberToWPModalProps) {
-  const { isBasic, isRetro } = React.useContext(ThemeContext);
+  const { isRetro } = React.useContext(ThemeContext);
   useEscapeKey(onClose);
 
   const isMgmt = Boolean(card?._isMgmt);
@@ -738,15 +738,12 @@ export function TeamTimelineModal({
   const tool = TOOL_MAP[toolName] || TOOLS[0];
   useEscapeKey(onClose);
 
-  const [globalSupportCollapsed, setGlobalSupportCollapsed] = useState(true);
-  const [customCollapsedWPs, setCustomCollapsedWPs] = useState({});
   const [collapsedProjects, setCollapsedProjects] = useState({});
   const [collapsedPersonalCapacity, setCollapsedPersonalCapacity] = useState(false);
   const [selectedWPForAssign, setSelectedWPForAssign] = useState(null);
   const [selectedAdjustMember, setSelectedAdjustMember] = useState(null);
   const [showOtherWPs, setShowOtherWPs] = useState(false);
   const [draggedMember, setDraggedMember] = useState(null);
-  const [dragOverWPId, setDragOverWPId] = useState(null);
   const [dragOverCellKey, setDragOverCellKey] = useState(null);
   const [expandedWPMembers, setExpandedWPMembers] = useState({});
   const [roleWarning, setRoleWarning] = useState(null);
@@ -863,7 +860,7 @@ export function TeamTimelineModal({
                 coveredFTE += Math.min(maxAllowed, displayFTE * share);
               }
             }
-            for (const [mId, mObj] of Object.entries(monthlyAssignments)) {
+            for (const mObj of Object.values(monthlyAssignments)) {
               if (mObj?.[pRelIdx] !== undefined) {
                 coveredFTE += (parseFloat(mObj[pRelIdx]) || 0);
               }
@@ -938,7 +935,7 @@ export function TeamTimelineModal({
                   coveredFTE += Math.min(cap, displayFTE * share);
                 }
               }
-              for (const [mId, mObj] of Object.entries(mgmtMonthly)) {
+              for (const mObj of Object.values(mgmtMonthly)) {
                 if (mObj?.[pRelIdx] !== undefined) {
                   coveredFTE += (parseFloat(mObj[pRelIdx]) || 0);
                 }
@@ -1296,20 +1293,6 @@ export function TeamTimelineModal({
     setRangeSelection(null);
     setCellInputValue("");
   }, [rangeSelection, selectedMonthIndices, projects, cards, toolName, onSaveMgmtMonthlyAssignments, onSaveMonthlyAssignments]);
-
-  const handleResetMemberWP = useCallback((cardId, memberId) => {
-    const targetCard = cards.find((c) => c.id === cardId);
-    const currentMonthly = deepClone(targetCard?.memberMonthlyAssignments || {});
-    delete currentMonthly[memberId];
-    onSaveMonthlyAssignments?.(cardId, currentMonthly);
-  }, [cards, onSaveMonthlyAssignments]);
-
-  const handleResetMemberMgmt = useCallback((projectId, memberId) => {
-    const targetProject = projects.find((p) => p.id === projectId);
-    const currentMonthly = deepClone(targetProject?.mgmtMemberMonthlyAssignments?.[toolName] || {});
-    delete currentMonthly[memberId];
-    onSaveMgmtMonthlyAssignments?.(projectId, toolName, currentMonthly);
-  }, [projects, toolName, onSaveMgmtMonthlyAssignments]);
 
   const handleDropMemberOnTarget = useCallback((member, target, singleMonthIdx = null, displayFTE = null) => {
     const isMgmt = Boolean(target._isMgmt);
@@ -1826,7 +1809,6 @@ export function TeamTimelineModal({
                                         return;
                                       }
                                       e.preventDefault(); e.dataTransfer.dropEffect = "copy";
-                                      setDragOverWPId(rowId);
                                     }
                                   }}
                                   onDrop={(e) => {
@@ -1837,11 +1819,11 @@ export function TeamTimelineModal({
                                           memberName: `${draggedMember.firstName} ${draggedMember.lastName}`,
                                           memberRole: draggedMember.role,
                                         });
-                                        setDraggedMember(null); setDragOverWPId(null);
+                                        setDraggedMember(null);
                                         return;
                                       }
                                       handleDropMemberOnTarget(draggedMember, { _isMgmt: true, project, mgmtRow, syntheticCard: mgmtRow.syntheticCard });
-                                      setDraggedMember(null); setDragOverWPId(null);
+                                      setDraggedMember(null);
                                     }
                                   }}
                                   className="p-2 pl-7 border-r border-slate-200 flex flex-col justify-center h-full min-w-0 cursor-pointer"
@@ -1894,7 +1876,6 @@ export function TeamTimelineModal({
                                   totalMonths={totalMonths}
                                   alignedCells={mgmtRow.alignedMgmtCells}
                                   dragOverCellKey={dragOverCellKey}
-                                  draggedMember={draggedMember}
                                   onCellDragOver={(e, cellKey) => {
                                     if (draggedMember && draggedMember.role === "engineering") {
                                       e.dataTransfer.dropEffect = "none";
@@ -2186,7 +2167,6 @@ export function TeamTimelineModal({
                                         return;
                                       }
                                       e.preventDefault(); e.dataTransfer.dropEffect = "copy";
-                                      setDragOverWPId(card.id);
                                     }
                                   }}
                                   onDrop={(e) => {
@@ -2198,11 +2178,11 @@ export function TeamTimelineModal({
                                           memberRole: draggedMember.role,
                                           targetType: "engineering",
                                         });
-                                        setDraggedMember(null); setDragOverWPId(null);
+                                        setDraggedMember(null);
                                         return;
                                       }
                                       handleDropMemberOnTarget(draggedMember, { card, project });
-                                      setDraggedMember(null); setDragOverWPId(null);
+                                      setDraggedMember(null);
                                     }
                                   }}
                                   className="p-2 pl-7 border-r border-slate-200 flex flex-col justify-center h-full min-w-0 cursor-pointer"
@@ -2253,7 +2233,6 @@ export function TeamTimelineModal({
                                   totalMonths={totalMonths}
                                   alignedCells={alignedTimelineCells}
                                   dragOverCellKey={dragOverCellKey}
-                                  draggedMember={draggedMember}
                                   isNegated={isNegated}
                                   onCellDragOver={(e, cellKey) => {
                                     if (draggedMember && draggedMember.role === "management") {
@@ -2628,7 +2607,7 @@ export function TeamTimelineModal({
                             setTimeout(() => { if (ghost.parentNode) ghost.parentNode.removeChild(ghost); }, 0);
                           }}
                           onDragEnd={() => {
-                            setDraggedMember(null); setDragOverWPId(null); setDragOverCellKey(null);
+                            setDraggedMember(null); setDragOverCellKey(null);
                           }}
                           className={`p-2 pl-4 border-r ${isRetro ? "border-black font-mono" : "border-slate-200"} flex flex-col justify-center h-full min-w-0 cursor-grab active:cursor-grabbing hover:bg-slate-100/70 transition-colors select-none`}
                           title={`Drag and drop ${member.firstName} ${member.lastName} onto any activity above to allocate`}

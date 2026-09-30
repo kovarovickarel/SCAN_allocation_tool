@@ -806,7 +806,7 @@ export function ProjectTimelineModal({
             {/* Domain Categories and Workpackages */}
             <div className={`divide-y ${isRetro ? "divide-black" : "divide-slate-200"}`}>
               {toolTimelineData.map((categoryRow) => {
-                const { tool, isToolUnused, totalEngFTE, mgmtFTE, totalToolFTE, mgmtRow, workpackages, monthlyToolFTE } = categoryRow;
+                const { tool, isToolUnused, totalToolFTE, mgmtRow, workpackages, monthlyToolFTE } = categoryRow;
                 const isCollapsed = Boolean(collapsedCategories[tool.name]);
                 const hasCards = workpackages.length > 0;
                 const hasContent = hasCards || Boolean(mgmtRow);

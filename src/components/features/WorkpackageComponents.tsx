@@ -20,7 +20,6 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
   });
 
   const selectedTool = TOOL_MAP[draft.tool] || TOOLS[0];
-  const complexityColor = draft.complexity ? COMPLEXITY_COLORS[draft.complexity] : null;
   const isKPI = draft.tool === "KPI";
   const isOther = draft.tool === "Other";
 
