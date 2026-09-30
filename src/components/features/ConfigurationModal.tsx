@@ -563,7 +563,7 @@ export function ConfigurationModal({
                 <span className="font-bold">Scope Notice: </span>
                 Reusability factors apply <strong>exclusively to Development Phases</strong>. The <strong>Maintenance Phase</strong> and <strong>Support Phase</strong> remain constant.
               </div>
-              {Object.entries(draft.reusabilityFactors).map(([factorName, factorVal]) => (
+              {Object.entries(draft.reusabilityFactors as Record<string, number>).map(([factorName, factorVal]) => (
                 <div key={factorName} className={`flex items-center justify-between p-3 ${
                   isRetro
                     ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]"
@@ -595,7 +595,7 @@ export function ConfigurationModal({
 
           {activeTab === "stability" && (
             <div className="flex flex-col gap-3">
-              {Object.entries(draft.stabilityFactors).map(([factorName, factorVal]) => (
+              {Object.entries(draft.stabilityFactors as Record<string, number>).map(([factorName, factorVal]) => (
                 <div key={factorName} className={`flex items-center justify-between p-3 ${
                   isRetro
                     ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]"

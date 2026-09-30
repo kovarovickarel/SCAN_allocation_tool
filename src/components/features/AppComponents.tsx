@@ -50,11 +50,35 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
+import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
+import type {
+  AllocationProject,
+  FactorMap,
+  FteMap,
+  ManagementOverhead,
+  MilestoneMap,
+  MonthlyNumericMap,
+  NumericMap,
+  NumericInput,
+  TeamMemberRecord,
+  TeamMemberRole,
+  ToolDefinition,
+  WorkpackageCard,
+} from "../../types";
+
+interface SvgIconProps {
+  size?: number;
+  className?: string;
+}
+
+interface ToolIconProps extends SvgIconProps {
+  toolName: string;
+}
 
 // ============================================================
 // 1. CONSTANTS, SYSTEM DEFAULTS & THEMES
 // ============================================================
-export const GlobeIcon = memo(({ size = 16, className = "" }) => (
+export const GlobeIcon = memo(({ size = 16, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
     <line x1="2" y1="12" x2="22" y2="12" />
@@ -62,7 +86,7 @@ export const GlobeIcon = memo(({ size = 16, className = "" }) => (
   </svg>
 ));
 
-export const PaletteIcon = memo(({ size = 14, className = "" }) => (
+export const PaletteIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
     <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
@@ -72,14 +96,14 @@ export const PaletteIcon = memo(({ size = 14, className = "" }) => (
   </svg>
 ));
 
-export const PencilIcon = memo(({ size = 14 }) => (
+export const PencilIcon = memo(({ size = 14 }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
   </svg>
 ));
 
-export const CalendarGanttIcon = memo(({ size = 14, className = "" }) => (
+export const CalendarGanttIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
     <line x1="16" y1="2" x2="16" y2="6" />
@@ -90,7 +114,7 @@ export const CalendarGanttIcon = memo(({ size = 14, className = "" }) => (
   </svg>
 ));
 
-export const TrashIcon = memo(({ size = 14 }) => (
+export const TrashIcon = memo(({ size = 14 }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <polyline points="3 6 5 6 21 6" />
     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
@@ -99,28 +123,28 @@ export const TrashIcon = memo(({ size = 14 }) => (
   </svg>
 ));
 
-export const PlusIcon = memo(({ size = 14 }) => (
+export const PlusIcon = memo(({ size = 14 }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <line x1="12" y1="5" x2="12" y2="19" />
     <line x1="5" y1="12" x2="19" y2="12" />
   </svg>
 ));
 
-export const SettingsIcon = memo(({ size = 14, className = "" }) => (
+export const SettingsIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <circle cx="12" cy="12" r="3" />
     <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
   </svg>
 ));
 
-export const RotateCcwIcon = memo(({ size = 14 }) => (
+export const RotateCcwIcon = memo(({ size = 14 }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M1 4v6h6" />
     <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
   </svg>
 ));
 
-export const HelpCircleIcon = memo(({ size = 14, className = "" }) => (
+export const HelpCircleIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <circle cx="12" cy="12" r="10" />
     <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
@@ -128,33 +152,33 @@ export const HelpCircleIcon = memo(({ size = 14, className = "" }) => (
   </svg>
 ));
 
-export const EyeIcon = memo(({ size = 14, className = "" }) => (
+export const EyeIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
     <circle cx="12" cy="12" r="3" />
   </svg>
 ));
 
-export const EyeOffIcon = memo(({ size = 14, className = "" }) => (
+export const EyeOffIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
     <line x1="1" y1="1" x2="23" y2="23" />
   </svg>
 ));
 
-export const ChevronRightIcon = memo(({ size = 14, className = "" }) => (
+export const ChevronRightIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <polyline points="9 18 15 12 9 6" />
   </svg>
 ));
 
-export const ChevronDownIcon = memo(({ size = 14, className = "" }) => (
+export const ChevronDownIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <polyline points="6 9 12 15 18 9" />
   </svg>
 ));
 
-export const SlidersIcon = memo(({ size = 14, className = "" }) => (
+export const SlidersIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <line x1="4" y1="21" x2="4" y2="14" />
     <line x1="4" y1="10" x2="4" y2="3" />
@@ -168,7 +192,7 @@ export const SlidersIcon = memo(({ size = 14, className = "" }) => (
   </svg>
 ));
 
-export const GripHorizontalIcon = memo(({ size = 14, className = "" }) => (
+export const GripHorizontalIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <circle cx="5" cy="9" r="1" fill="currentColor" />
     <circle cx="12" cy="9" r="1" fill="currentColor" />
@@ -179,7 +203,7 @@ export const GripHorizontalIcon = memo(({ size = 14, className = "" }) => (
   </svg>
 ));
 
-export const Minimize2Icon = memo(({ size = 12, className = "" }) => (
+export const Minimize2Icon = memo(({ size = 12, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <polyline points="4 14 10 14 10 20" />
     <polyline points="20 10 14 10 14 4" />
@@ -188,7 +212,7 @@ export const Minimize2Icon = memo(({ size = 12, className = "" }) => (
   </svg>
 ));
 
-export const Maximize2Icon = memo(({ size = 12, className = "" }) => (
+export const Maximize2Icon = memo(({ size = 12, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <polyline points="15 3 21 3 21 9" />
     <polyline points="9 21 3 21 3 15" />
@@ -197,21 +221,21 @@ export const Maximize2Icon = memo(({ size = 12, className = "" }) => (
   </svg>
 ));
 
-export const LockIcon = memo(({ size = 13, className = "" }) => (
+export const LockIcon = memo(({ size = 13, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
     <path d="M7 11V7a5 5 0 0 1 10 0v4" />
   </svg>
 ));
 
-export const UnlockIcon = memo(({ size = 13, className = "" }) => (
+export const UnlockIcon = memo(({ size = 13, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
     <path d="M7 11V7a5 5 0 0 1 9.9-1" />
   </svg>
 ));
 
-export const ManagementIcon = memo(({ size = 13, className = "" }) => (
+export const ManagementIcon = memo(({ size = 13, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
     <circle cx="9" cy="7" r="4" />
@@ -220,7 +244,7 @@ export const ManagementIcon = memo(({ size = 13, className = "" }) => (
   </svg>
 ));
 
-export const ToolIcon = memo(({ toolName, size = 13, className = "" }) => {
+export const ToolIcon = memo(({ toolName, size = 13, className = "" }: ToolIconProps) => {
   switch (toolName) {
     case "KPI":
       return (
@@ -326,7 +350,220 @@ export const ToolIcon = memo(({ toolName, size = 13, className = "" }) => {
   }
 });
 
-export function EditCardContent({ card, onEdit, projectDuration, projectMilestones }) {
+type CardEditHandler = (
+  cardId: string,
+  startEditing?: boolean,
+  draft?: Partial<WorkpackageCard> | null
+) => void;
+
+interface EditCardContentProps {
+  card: WorkpackageCard;
+  onEdit: CardEditHandler;
+  projectDuration?: number;
+  projectMilestones?: MilestoneMap;
+}
+
+interface FunctionCardProps {
+  card: WorkpackageCard;
+  projectId?: string | null;
+  projectDuration?: number;
+  projectMilestones?: MilestoneMap;
+  isCompact?: boolean;
+  onEdit?: CardEditHandler;
+  onDelete?: (cardId: string) => void;
+  onDragStart?: (card: WorkpackageCard) => void;
+  onDragEnd?: (event?: React.DragEvent<HTMLElement>) => void;
+  draggedCard?: WorkpackageCard | null;
+}
+
+interface ManagementOverheadsProps {
+  overheads: ManagementOverhead[];
+}
+
+interface ToolRowProps {
+  tool: ToolDefinition;
+  toolCards?: WorkpackageCard[];
+  projectId: string;
+  projectDuration: number;
+  projectMilestones: MilestoneMap;
+  isCompact?: boolean;
+  onEdit?: CardEditHandler;
+  onDelete?: (cardId: string) => void;
+  onDrop?: (cardId: string, projectId: string) => void;
+  onDragStart?: (card: WorkpackageCard) => void;
+  onDragEnd?: (event?: React.DragEvent<HTMLElement>) => void;
+  draggedCard?: WorkpackageCard | null;
+  hiddenSubcategories?: string[];
+  onToggleSubcategory?: (projectId: string, subcategory: string) => void;
+  onToggleTool?: (projectId: string, toolName: string) => void;
+}
+
+interface SubcategoryManagerModalProps {
+  project: AllocationProject;
+  onClose: () => void;
+  onToggleSubcategory: (projectId: string, subcategory: string) => void;
+  onToggleTool: (projectId: string, toolName: string) => void;
+  onResetSubcategories: (projectId: string) => void;
+  activeToolView?: string;
+}
+
+interface UnassignedPoolProps {
+  cards: WorkpackageCard[];
+  onEdit: CardEditHandler;
+  onDelete: (cardId: string) => void;
+  onDrop: (cardId: string, projectId: string) => void;
+  onDragStart: (card: WorkpackageCard) => void;
+  onDragEnd: (event?: React.DragEvent<HTMLElement>) => void;
+  draggedCard: WorkpackageCard | null;
+  onAddClick: () => void;
+  activeToolView?: string;
+  isSplitView?: boolean;
+  isCompact?: boolean;
+  onToggleCompact: () => void;
+}
+
+interface TeamMembersPoolProps {
+  toolName: string;
+  members: TeamMemberRecord[];
+  allMembers: TeamMemberRecord[];
+  onAddClick: () => void;
+  onEditMember: (member: TeamMemberRecord) => void;
+  onDeleteMember: (memberId: string) => void;
+  isCompact?: boolean;
+  onToggleCompact: () => void;
+  onOpenTimeline: () => void;
+}
+
+interface AddTeamMemberModalProps {
+  toolName: string;
+  initialMember?: TeamMemberRecord | null;
+  allMembers?: TeamMemberRecord[];
+  onClose: () => void;
+  onSave: (member: TeamMemberRecord) => void;
+}
+
+interface AddFunctionModalProps {
+  onClose: () => void;
+  onAdd: (card: WorkpackageCard) => void;
+  otherDefaults?: typeof DEFAULT_OTHER_SETTINGS;
+  activeToolView?: string;
+}
+
+interface AddFunctionDraft {
+  name: string;
+  tool: string;
+  complexity: string | null;
+  reusability: string;
+  subcategory: string | null;
+  otherEffort: NumericInput;
+  otherDuration: NumericInput;
+  otherFinishMilestone: string | null;
+  otherHasMaintenance: boolean;
+  otherMaintenanceEffort: NumericInput;
+}
+
+interface AddProjectModalProps {
+  onClose: () => void;
+  onAdd: (project: AllocationProject) => void;
+  stabilityFactors?: FactorMap;
+}
+
+interface AddProjectDraft {
+  name: string;
+  type: string;
+  duration: NumericInput;
+  stability: string;
+  startDate: string;
+  milestones: MilestoneMap;
+}
+
+interface ProjectTimelineModalProps {
+  project: AllocationProject;
+  cards: WorkpackageCard[];
+  toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
+  fteRates: typeof DEFAULT_FTE_RATES;
+  mgmtSettings?: typeof DEFAULT_MGMT_SETTINGS;
+  reusabilityFactors?: FactorMap;
+  stabilityFactors?: FactorMap;
+  onSaveTimeline: (
+    projectId: string,
+    customMgmtMonthlyFTE: Record<string, NumericMap>,
+    updatedCards: WorkpackageCard[]
+  ) => void;
+  onClose: () => void;
+  activeToolView?: string;
+}
+
+interface AssignMemberToWPModalProps {
+  card: WorkpackageCard;
+  project: AllocationProject;
+  members?: TeamMemberRecord[];
+  allCards?: WorkpackageCard[];
+  onSave: (cardId: string, assignments: NumericMap) => void;
+  onClose: () => void;
+}
+
+interface AdjustMemberAllocationModalProps {
+  card: WorkpackageCard;
+  member: TeamMemberRecord;
+  project: AllocationProject;
+  allCards?: WorkpackageCard[];
+  allProjects?: AllocationProject[];
+  onSave: (fte: number) => void;
+  onClose: () => void;
+}
+
+interface TeamTimelineModalProps {
+  toolName: string;
+  members?: TeamMemberRecord[];
+  projects?: AllocationProject[];
+  cards?: WorkpackageCard[];
+  toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
+  fteRates: typeof DEFAULT_FTE_RATES;
+  mgmtSettings?: typeof DEFAULT_MGMT_SETTINGS;
+  reusabilityFactors?: FactorMap;
+  stabilityFactors?: FactorMap;
+  onClose: () => void;
+  onSaveAssignments?: (cardId: string, assignments: NumericMap) => void;
+  onSaveMonthlyAssignments?: (cardId: string, assignments: MonthlyNumericMap) => void;
+  onSaveMgmtAssignments?: (projectId: string, toolName: string, assignments: NumericMap) => void;
+  onSaveMgmtMonthlyAssignments?: (
+    projectId: string,
+    toolName: string,
+    assignments: MonthlyNumericMap
+  ) => void;
+}
+
+interface ProjectBasketProps {
+  project: AllocationProject;
+  cards: WorkpackageCard[];
+  index: number;
+  onEdit: CardEditHandler;
+  onDelete: (cardId: string) => void;
+  onDrop: (cardId: string, projectId: string) => void;
+  onDragStart: (card: WorkpackageCard) => void;
+  onDragEnd: (event?: React.DragEvent<HTMLElement>) => void;
+  draggedCard: WorkpackageCard | null;
+  draggedProjectIndex: number | null;
+  targetProjectIndex: number | null;
+  onProjectDragStart: (index: number) => void;
+  onProjectDragEnd: () => void;
+  onProjectDrop: (draggedIndex: number, targetIndex: number) => void;
+  onUpdateProject: (projectId: string, updates: Partial<AllocationProject>) => void;
+  onDeleteProject: (projectId: string) => void;
+  onToggleSubcategory: (projectId: string, subcategory: string) => void;
+  onToggleTool: (projectId: string, toolName: string) => void;
+  onResetSubcategories: (projectId: string) => void;
+  onSaveTimeline: ProjectTimelineModalProps["onSaveTimeline"];
+  stabilityFactors?: FactorMap;
+  reusabilityFactors?: FactorMap;
+  mgmtSettings?: typeof DEFAULT_MGMT_SETTINGS;
+  toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
+  fteRates: typeof DEFAULT_FTE_RATES;
+  activeToolView?: string;
+}
+
+export function EditCardContent({ card, onEdit, projectDuration, projectMilestones }: EditCardContentProps) {
   const { isBasic, isRetro } = React.useContext(ThemeContext);
   const [draft, setDraft] = useState({
     name: card.name,
@@ -657,7 +894,7 @@ export const FunctionCard = memo(function FunctionCard({
   onDragStart,
   onDragEnd,
   draggedCard,
-}) {
+}: FunctionCardProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[card.tool] || TOOLS[0];
   const toolTheme = TOOL_CARD_THEMES[card.tool] || TOOL_CARD_THEMES.Other;
@@ -997,7 +1234,7 @@ export const FunctionCard = memo(function FunctionCard({
   );
 });
 
-export const ManagementOverheads = memo(function ManagementOverheads({ overheads }) {
+export const ManagementOverheads = memo(function ManagementOverheads({ overheads }: ManagementOverheadsProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   if (!overheads || overheads.length === 0) return null;
   const totalMgmtFTE = overheads.reduce((sum, o) => sum + (o.fte ?? 0), 0);
@@ -1061,7 +1298,7 @@ export const ToolRow = memo(function ToolRow({
   hiddenSubcategories = [],
   onToggleSubcategory,
   onToggleTool,
-}) {
+}: ToolRowProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   const toolTheme = TOOL_CARD_THEMES[tool.name] || TOOL_CARD_THEMES.Other;
   const isMatch = useCallback(
@@ -1344,7 +1581,7 @@ export const ToolRow = memo(function ToolRow({
   );
 });
 
-export function SubcategoryManagerModal({ project, onClose, onToggleSubcategory, onToggleTool, onResetSubcategories, activeToolView = "all" }) {
+export function SubcategoryManagerModal({ project, onClose, onToggleSubcategory, onToggleTool, onResetSubcategories, activeToolView = "all" }: SubcategoryManagerModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
   const hiddenSubs = useMemo(() => new Set(project.hiddenSubcategories || []), [project.hiddenSubcategories]);
   const hiddenTools = useMemo(() => new Set(project.hiddenTools || []), [project.hiddenTools]);
@@ -1519,7 +1756,7 @@ export const UnassignedPool = memo(function UnassignedPool({
   isSplitView = false,
   isCompact = false,
   onToggleCompact,
-}) {
+}: UnassignedPoolProps) {
   const { isRetro } = React.useContext(ThemeContext);
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -1647,7 +1884,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
   isCompact = false,
   onToggleCompact,
   onOpenTimeline,
-}) {
+}: TeamMembersPoolProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
 
@@ -1929,12 +2166,12 @@ export const TeamMembersPool = memo(function TeamMembersPool({
   );
 });
 
-export function AddTeamMemberModal({ toolName, initialMember = null, allMembers = [], onClose, onSave }) {
+export function AddTeamMemberModal({ toolName, initialMember = null, allMembers = [], onClose, onSave }: AddTeamMemberModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
   const [firstName, setFirstName] = useState(initialMember ? initialMember.firstName : "");
   const [lastName, setLastName] = useState(initialMember ? initialMember.lastName : "");
   const [fte, setFte] = useState(initialMember ? String(initialMember.fte) : "1.00");
-  const [role, setRole] = useState(initialMember ? initialMember.role : "engineering");
+  const [role, setRole] = useState<TeamMemberRole>(initialMember ? initialMember.role : "engineering");
   const [footprint, setFootprint] = useState(initialMember ? (initialMember.footprint || "PRA") : "PRA");
 
   useEscapeKey(onClose);
@@ -2350,10 +2587,10 @@ export function AddTeamMemberModal({ toolName, initialMember = null, allMembers 
   );
 }
 
-export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER_SETTINGS, activeToolView = "all" }) {
+export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER_SETTINGS, activeToolView = "all" }: AddFunctionModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
   const defaultTool = activeToolView !== "all" ? activeToolView : "KPI";
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<AddFunctionDraft>({
     name: "",
     tool: defaultTool,
     complexity: defaultTool === "KPI" ? "Supporting" : null,
@@ -2670,9 +2907,9 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
   );
 }
 
-export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STABILITY_FACTORS }) {
+export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STABILITY_FACTORS }: AddProjectModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<AddProjectDraft>({
     name: "",
     type: "Lidar",
     duration: 12,
@@ -2971,7 +3208,7 @@ export function ProjectTimelineModal({
   onSaveTimeline,
   onClose,
   activeToolView = "all",
-}) {
+}: ProjectTimelineModalProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   useEscapeKey(onClose);
 
@@ -3460,7 +3697,7 @@ export function ProjectTimelineModal({
         onClick={(e) => {
           e.stopPropagation();
           if (justFinishedSelectingRef.current) return;
-          if (rangeSelection && !rangeSelection.isSelecting && !e.target.closest('[data-timeline-row]')) {
+          if (rangeSelection && !rangeSelection.isSelecting && !(e.target as Element).closest('[data-timeline-row]')) {
             setRangeSelection(null);
           }
         }}
@@ -4804,7 +5041,7 @@ export function AssignMemberToWPModal({
   allCards = [],
   onSave,
   onClose,
-}) {
+}: AssignMemberToWPModalProps) {
   const { isBasic, isRetro } = React.useContext(ThemeContext);
   useEscapeKey(onClose);
 
@@ -5300,7 +5537,7 @@ export function AdjustMemberAllocationModal({
   allProjects = [],
   onSave,
   onClose,
-}) {
+}: AdjustMemberAllocationModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
   useEscapeKey(onClose);
 
@@ -5520,7 +5757,7 @@ export function TeamTimelineModal({
   onSaveMonthlyAssignments,
   onSaveMgmtAssignments,
   onSaveMgmtMonthlyAssignments,
-}) {
+}: TeamTimelineModalProps) {
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
   useEscapeKey(onClose);
@@ -5631,7 +5868,7 @@ export function TeamTimelineModal({
         const totalStaffedWP = Object.values(assignments).reduce((s, v) => s + (parseFloat(v) || 0), 0);
         const wpDurMonths = card.tool === "Other" ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : pDur;
 
-        const alignedTimelineCells = Array.from({ length: totalMonths }, (_, gIdx) => {
+        const alignedTimelineCells = Array.from({ length: totalMonths }, (_, gIdx): AlignedTimelineGanttCell => {
           const pRelIdx = gIdx - pOffset;
           const isInside = pRelIdx >= 0 && pRelIdx < pDur;
           if (!isInside) return { isInside: false };
@@ -5709,7 +5946,7 @@ export function TeamTimelineModal({
           const mgmtMonthly = p.mgmtMemberMonthlyAssignments?.[toolName] || {};
           const totalStaffedMgmt = Object.values(mgmtAssignments).reduce((s, v) => s + (parseFloat(v) || 0), 0);
 
-          const alignedMgmtCells = Array.from({ length: totalMonths }, (_, gIdx) => {
+          const alignedMgmtCells = Array.from({ length: totalMonths }, (_, gIdx): AlignedTimelineGanttCell => {
             const pRelIdx = gIdx - pOffset;
             const isInside = pRelIdx >= 0 && pRelIdx < pDur;
             if (!isInside) return { isInside: false };
@@ -6160,7 +6397,7 @@ export function TeamTimelineModal({
         onSaveMonthlyAssignments?.(target.card.id, currentMonthly);
       }
     } else {
-      const currentAssignments = {
+      const currentAssignments: NumericMap = {
         ...(isMgmt
           ? target.project.mgmtMemberAssignments?.[toolName] || {}
           : target.card.memberAssignments || {}),
@@ -6299,7 +6536,7 @@ export function TeamTimelineModal({
         onClick={(e) => {
           e.stopPropagation();
           if (justFinishedSelectingRef.current) return;
-          if (rangeSelection && !rangeSelection.isSelecting && !e.target.closest('[data-timeline-row]')) {
+          if (rangeSelection && !rangeSelection.isSelecting && !(e.target as Element).closest('[data-timeline-row]')) {
             setRangeSelection(null);
           }
         }}
@@ -7657,7 +7894,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   toolFteRates,
   fteRates,
   activeToolView = "all",
-}) {
+}: ProjectBasketProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   const [isEditingHeader, setIsEditingHeader] = useState(false);
   const [isDragOverBasket, setIsDragOverBasket] = useState(false);

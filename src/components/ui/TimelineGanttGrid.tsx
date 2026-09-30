@@ -2,15 +2,17 @@ import React, { memo } from "react";
 import { ThemeContext } from "../../constants";
 import { formatFTEPerMille, getCoverageGradientStyle } from "../../utils/helpers";
 
-interface TimelineGanttCellCore {
+export interface TimelineGanttCellCore {
   isPhaseStart?: boolean;
   isPhaseEnd?: boolean;
   coreFTE?: number;
+  totalFTE?: number;
+  totalWPMonthlyFTE?: number;
   phaseSpan?: number;
   shortPhase?: string;
 }
 
-type AlignedTimelineGanttCell =
+export type AlignedTimelineGanttCell =
   | {
       isInside: false;
       tooltip?: string;

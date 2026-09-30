@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import type { AllocationProject, TeamMemberRecord, WorkpackageCard } from "./types";
 import {
   ThemeContext,
   DEFAULT_STABILITY_FACTORS,
@@ -66,7 +67,7 @@ export default function App() {
     isRetro,
     isBasicMode,
   } = useAppViewState();
-  const [functions, setFunctions] = useState(() =>
+  const [functions, setFunctions] = useState<WorkpackageCard[]>(() =>
     INITIAL_FUNCTIONS.map((f) => ({
       ...f,
       projectId: null,
@@ -77,7 +78,7 @@ export default function App() {
     }))
   );
 
-  const [teamMembers, setTeamMembers] = useState([
+  const [teamMembers, setTeamMembers] = useState<TeamMemberRecord[]>([
     { id: "tm_1", firstName: "Alex", lastName: "Novak", tool: "KPI", fte: 0.6, role: "both", footprint: "PRA" },
     { id: "tm_1_df", firstName: "Alex", lastName: "Novak", tool: "Data Factory", fte: 0.4, role: "both", footprint: "PRA" },
     { id: "tm_2", firstName: "Elena", lastName: "Russo", tool: "KPI", fte: 1.0, role: "engineering", footprint: "BIE" },
@@ -96,7 +97,7 @@ export default function App() {
   ]);
 
   const [showAddMember, setShowAddMember] = useState(false);
-  const [editingMember, setEditingMember] = useState(null);
+  const [editingMember, setEditingMember] = useState<TeamMemberRecord | null>(null);
 
   const handleAddMember = useCallback((newMember) => {
     setTeamMembers((prev) => [...prev, newMember]);
@@ -112,7 +113,7 @@ export default function App() {
     setTeamMembers((prev) => prev.filter((m) => m.id !== memberId));
   }, []);
 
-  const [projects, setProjects] = useState([
+  const [projects, setProjects] = useState<AllocationProject[]>([
     {
       id: genId(),
       name: "GM",
