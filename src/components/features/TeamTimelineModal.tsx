@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2 } from "../../constants";
 import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, getMemberAllocationGradientStyle } from "../../utils/helpers";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
@@ -6,6 +6,7 @@ import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
 import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
+import { useTimelineRangeSelection } from "../../hooks/useTimelineRangeSelection";
 import type { NumericMap } from "../../types";
 import type { AssignMemberToWPModalProps, AdjustMemberAllocationModalProps, TeamTimelineModalProps } from './componentTypes';
 import { ChevronRightIcon, ChevronDownIcon, LockIcon, UnlockIcon, ManagementIcon, ToolIcon } from '../ui/icons';
@@ -750,11 +751,6 @@ export function TeamTimelineModal({
 
   // Direct In-Chart Selection & Editing state for team member cells
   const [isManualEditEnabled, setIsManualEditEnabled] = useState(true);
-  const [rangeSelection, setRangeSelection] = useState(null);
-  const [cellInputValue, setCellInputValue] = useState("");
-  const inputRef = useRef(null);
-  const justFinishedSelectingRef = useRef(false);
-
   const toggleWPMembers = useCallback((rowKey) => {
     setExpandedWPMembers((prev) => ({
       ...prev,
@@ -1005,101 +1001,21 @@ export function TeamTimelineModal({
     });
   }, [projects, cards, toolName, showOtherWPs, minStartAbs, totalMonths, toolFteRates, fteRates, reusabilityFactors, stabilityFactors, mgmtSettings, members]);
 
-  // Global mousemove and mouseup listeners for range selection on member rows
-  useEffect(() => {
-    if (!rangeSelection?.isSelecting) return;
-
-    const handleGlobalMouseMove = (e) => {
-      const rowEl = document.querySelector(`[data-timeline-row="${rangeSelection.rowKey}"]`);
-      if (rowEl) {
-        const rect = rowEl.getBoundingClientRect();
-        if (rect.width > 0) {
-          const colWidth = rect.width / totalMonths;
-          const rawIdx = Math.floor((e.clientX - rect.left) / colWidth);
-          const mIdx = Math.max(0, Math.min(totalMonths - 1, rawIdx));
-          if (mIdx !== rangeSelection.endMonthIdx) {
-            setRangeSelection((prev) => (prev ? { ...prev, endMonthIdx: mIdx } : prev));
-          }
-        }
-      }
-    };
-
-    window.addEventListener("mousemove", handleGlobalMouseMove);
-    return () => window.removeEventListener("mousemove", handleGlobalMouseMove);
-  }, [rangeSelection?.isSelecting, rangeSelection?.rowKey, rangeSelection?.endMonthIdx, totalMonths]);
-
-  useEffect(() => {
-    const handleGlobalMouseUp = (e) => {
-      setRangeSelection((prev) => {
-        if (!prev || !prev.isSelecting) return prev;
-
-        let targetMonth = prev.endMonthIdx;
-        const rowEl = document.querySelector(`[data-timeline-row="${prev.rowKey}"]`);
-        if (rowEl) {
-          const rect = rowEl.getBoundingClientRect();
-          if (rect.width > 0) {
-            const colWidth = rect.width / totalMonths;
-            const rawIdx = Math.floor((e.clientX - rect.left) / colWidth);
-            targetMonth = Math.max(0, Math.min(totalMonths - 1, rawIdx));
-          }
-        }
-
-        const monthData = prev.getMonthData ? prev.getMonthData(targetMonth) : null;
-        const initialVal = monthData?.currentVal !== undefined ? monthData.currentVal : (monthData?.defaultVal ?? 0);
-        setCellInputValue(String(initialVal));
-
-        justFinishedSelectingRef.current = true;
-        setTimeout(() => {
-          justFinishedSelectingRef.current = false;
-        }, 150);
-
-        return {
-          ...prev,
-          endMonthIdx: targetMonth,
-          isSelecting: false,
-          isEditing: true,
-        };
-      });
-    };
-    window.addEventListener("mouseup", handleGlobalMouseUp);
-    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
-  }, [totalMonths]);
-
-  useEffect(() => {
-    if (rangeSelection?.isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [rangeSelection?.isEditing, rangeSelection?.endMonthIdx]);
-
-  const selectedMonthIndices = useMemo(() => {
-    if (!rangeSelection) return [];
-    const minM = Math.min(rangeSelection.startMonthIdx, rangeSelection.endMonthIdx);
-    const maxM = Math.max(rangeSelection.startMonthIdx, rangeSelection.endMonthIdx);
-    const indices = [];
-    for (let i = minM; i <= maxM; i++) indices.push(i);
-    return indices;
-  }, [rangeSelection?.startMonthIdx, rangeSelection?.endMonthIdx]);
-
-  const handleCellMouseDown = useCallback((e, rowKey, context, monthIdx) => {
-    if (e.button !== 0 || !isManualEditEnabled || isBasicMode) return;
-
-    const monthData = context.getMonthData ? context.getMonthData(monthIdx) : null;
-    if (!monthData) return;
-
-    e.preventDefault();
-    const initialVal = monthData.currentVal ?? 0;
-    setCellInputValue(String(initialVal));
-
-    setRangeSelection({
-      rowKey,
-      startMonthIdx: monthIdx,
-      endMonthIdx: monthIdx,
-      isSelecting: true,
-      isEditing: false,
-      ...context,
-    });
-  }, [isManualEditEnabled, isBasicMode]);
+  const canStartRangeSelection = useCallback((monthData) => Boolean(monthData), []);
+  const {
+    rangeSelection,
+    setRangeSelection,
+    cellInputValue,
+    setCellInputValue,
+    inputRef,
+    justFinishedSelectingRef,
+    selectedMonthIndices,
+    handleCellMouseDown,
+  } = useTimelineRangeSelection({
+    duration: totalMonths,
+    isEnabled: isManualEditEnabled && !isBasicMode,
+    canStartSelection: canStartRangeSelection,
+  });
 
   const getMemberMaxAllowedInMonth = useCallback(
     (memberId, gIdx, type, excludeId) => {

@@ -1,29 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type MouseEvent, type SetStateAction } from "react";
+import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
 import { round2 } from "../constants";
-
-type TimelineRangeMonthData = {
-  currentVal?: number;
-  defaultVal?: number;
-  isOverridden?: boolean;
-  effDevRate?: number;
-  effMeetingsRate?: number;
-};
-
-type TimelineRangeSelectionContext = {
-  type: string;
-  cardId: string | null;
-  toolName: any;
-  isCollapsed?: boolean;
-  getMonthData?: (idx: number) => TimelineRangeMonthData | null | undefined;
-};
-
-type TimelineRangeSelection = TimelineRangeSelectionContext & {
-  rowKey: string;
-  startMonthIdx: number;
-  endMonthIdx: number;
-  isSelecting: boolean;
-  isEditing: boolean;
-};
+import { useTimelineRangeSelection, type TimelineRangeMonthData } from "./useTimelineRangeSelection";
 
 type ProjectTimelineRangeEditingOptions = {
   duration: number;
@@ -42,110 +19,25 @@ export function useProjectTimelineRangeEditing({
   setLocalCards,
   setIsDirty,
 }: ProjectTimelineRangeEditingOptions) {
-  // Direct In-Chart Selection & Editing state
-  const [rangeSelection, setRangeSelection] = useState<TimelineRangeSelection | null>(null);
-  const [cellInputValue, setCellInputValue] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const justFinishedSelectingRef = useRef(false);
   // Drag-to-reposition state for "Other" workpackage execution blocks
   const [activityDrag, setActivityDrag] = useState(null);
-
-  useEffect(() => {
-    if (!rangeSelection?.isSelecting) return;
-
-    const handleGlobalMouseMove = (e) => {
-      const rowEl = document.querySelector(`[data-timeline-row="${rangeSelection.rowKey}"]`);
-      if (rowEl) {
-        const rect = rowEl.getBoundingClientRect();
-        if (rect.width > 0) {
-          const colWidth = rect.width / duration;
-          const rawIdx = Math.floor((e.clientX - rect.left) / colWidth);
-          const mIdx = Math.max(0, Math.min(duration - 1, rawIdx));
-          if (mIdx !== rangeSelection.endMonthIdx) {
-            setRangeSelection((prev) => (prev ? { ...prev, endMonthIdx: mIdx } : prev));
-          }
-        }
-      }
-    };
-
-    window.addEventListener("mousemove", handleGlobalMouseMove);
-    return () => window.removeEventListener("mousemove", handleGlobalMouseMove);
-  }, [rangeSelection?.isSelecting, rangeSelection?.rowKey, rangeSelection?.endMonthIdx, duration]);
-
-  useEffect(() => {
-    const handleGlobalMouseUp = (e) => {
-      setRangeSelection((prev) => {
-        if (!prev || !prev.isSelecting) return prev;
-
-        let targetMonth = prev.endMonthIdx;
-        const rowEl = document.querySelector(`[data-timeline-row="${prev.rowKey}"]`);
-        if (rowEl) {
-          const rect = rowEl.getBoundingClientRect();
-          if (rect.width > 0) {
-            const colWidth = rect.width / duration;
-            const rawIdx = Math.floor((e.clientX - rect.left) / colWidth);
-            targetMonth = Math.max(0, Math.min(duration - 1, rawIdx));
-          }
-        }
-
-        const monthData = prev.getMonthData ? prev.getMonthData(targetMonth) : null;
-        const initialVal = monthData?.currentVal !== undefined ? monthData.currentVal : (monthData?.defaultVal ?? 0);
-        setCellInputValue(String(initialVal));
-
-        justFinishedSelectingRef.current = true;
-        setTimeout(() => {
-          justFinishedSelectingRef.current = false;
-        }, 150);
-
-        return {
-          ...prev,
-          endMonthIdx: targetMonth,
-          isSelecting: false,
-          isEditing: true,
-        };
-      });
-    };
-    window.addEventListener("mouseup", handleGlobalMouseUp);
-    return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
-  }, [duration]);
-
-  useEffect(() => {
-    if (rangeSelection?.isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [rangeSelection?.isEditing, rangeSelection?.endMonthIdx]);
-
-  const selectedMonthIndices = useMemo(() => {
-    if (!rangeSelection) return [];
-    const minM = Math.min(rangeSelection.startMonthIdx, rangeSelection.endMonthIdx);
-    const maxM = Math.max(rangeSelection.startMonthIdx, rangeSelection.endMonthIdx);
-    const indices = [];
-    for (let i = minM; i <= maxM; i++) indices.push(i);
-    return indices;
-  }, [rangeSelection?.startMonthIdx, rangeSelection?.endMonthIdx]);
-
-  const handleCellMouseDown = useCallback((e: MouseEvent<HTMLElement>, rowKey: string, context: TimelineRangeSelectionContext, monthIdx: number) => {
-    if (e.button !== 0 || !isManualEditEnabled || isBasicMode || activityDrag) return;
-
-    const monthData = context.getMonthData ? context.getMonthData(monthIdx) : null;
-    const isCellEditable = (monthData?.defaultVal > 0) || Boolean(monthData?.isOverridden);
-    if (!isCellEditable) return;
-
-    e.preventDefault();
-
-    const initialVal = monthData?.currentVal;
-    setCellInputValue(String(initialVal ?? 0));
-
-    setRangeSelection({
-      rowKey,
-      startMonthIdx: monthIdx,
-      endMonthIdx: monthIdx,
-      isSelecting: true,
-      isEditing: false,
-      ...context,
-    });
-  }, [isManualEditEnabled, isBasicMode, activityDrag]);
+  const canStartRangeSelection = useCallback((monthData: TimelineRangeMonthData | null | undefined) =>
+    (monthData?.defaultVal > 0) || Boolean(monthData?.isOverridden),
+  []);
+  const {
+    rangeSelection,
+    setRangeSelection,
+    cellInputValue,
+    setCellInputValue,
+    inputRef,
+    justFinishedSelectingRef,
+    selectedMonthIndices,
+    handleCellMouseDown,
+  } = useTimelineRangeSelection({
+    duration,
+    isEnabled: isManualEditEnabled && !isBasicMode && !activityDrag,
+    canStartSelection: canStartRangeSelection,
+  });
 
   const handleCommitRangeEdit = useCallback(() => {
     if (!rangeSelection || selectedMonthIndices.length === 0) {
