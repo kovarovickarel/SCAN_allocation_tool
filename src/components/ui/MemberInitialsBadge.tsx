@@ -14,12 +14,14 @@ interface MemberInitialsBadgeMember {
 interface MemberInitialsBadgeProps {
   member?: MemberInitialsBadgeMember | null;
   allocationFTE: number;
+  isCrossTeam?: boolean;
   onClick?: () => void;
 }
 
 export const MemberInitialsBadge = memo(function MemberInitialsBadge({
   member,
   allocationFTE,
+  isCrossTeam = false,
   onClick,
 }: MemberInitialsBadgeProps) {
   const { isRetro } = React.useContext(ThemeContext);
@@ -41,7 +43,7 @@ export const MemberInitialsBadge = memo(function MemberInitialsBadge({
       }`}
       title={`${member?.firstName} ${member?.lastName}: ${allocationFTE.toFixed(2)} FTE\nClick to adjust dedicated allocation`}
     >
-      <PersonIcon role={member?.role} toolName={member?.tool} size={12} />
+      <PersonIcon role={member?.role} toolName={member?.tool} size={12} isCrossTeam={isCrossTeam} />
       <span className="font-black">{initials}</span>
     </button>
   );

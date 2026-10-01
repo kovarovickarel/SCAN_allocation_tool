@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, round2 } from "../../constants";
-import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, getMemberAllocationGradientStyle } from "../../utils/helpers";
+import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, getMemberAllocationGradientStyle, getCrossTeamMemberIds } from "../../utils/helpers";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
@@ -18,6 +18,7 @@ import { AdjustMemberAllocationModal } from "./AdjustMemberAllocationModal";
 export function TeamTimelineModal({
   toolName,
   members = [],
+  allMembers = members,
   projects: sourceProjects = [],
   cards: sourceCards = [],
   toolFteRates,
@@ -33,6 +34,7 @@ export function TeamTimelineModal({
 }: TeamTimelineModalProps) {
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
+  const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(allMembers), [allMembers]);
   useEscapeKey(onClose);
 
   // Allocation editors update the local draft until Save & Close is selected.
@@ -183,10 +185,8 @@ export function TeamTimelineModal({
           return { ...m, coreFTE, totalWPMonthlyFTE };
         });
 
-        const assignments = card.memberAssignments || {};
-        const monthlyAssignments = card.memberMonthlyAssignments || {};
-        const totalStaffedWP = Object.values(assignments).reduce((s, v) => s + (parseFloat(v) || 0), 0);
-        const wpDurMonths = card.tool === "Other" ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : pDur;
+        const { coveragePct, isMaintenanceOnlyUncovered, monthlyCoverage } =
+          calculateWorkpackageCoverage(card, pDur, mergedMonthsInProject, members, isNegated);
 
         const alignedTimelineCells = Array.from({ length: totalMonths }, (_, gIdx): AlignedTimelineGanttCell => {
           const pRelIdx = gIdx - pOffset;
@@ -194,26 +194,7 @@ export function TeamTimelineModal({
           if (!isInside) return { isInside: false };
 
           const coreM = mergedMonthsInProject[pRelIdx];
-          const displayFTE = coreM.totalWPMonthlyFTE;
-          let coveredFTE = 0;
-
-          if (!isNegated && displayFTE > 0) {
-            for (const [mId, fteVal] of Object.entries(assignments)) {
-              if (monthlyAssignments[mId]?.[pRelIdx] === undefined) {
-                const mObj = members.find((m) => m.id === mId);
-                const cap = parseFloat(mObj?.fte) || 1.0;
-                const share = totalStaffedWP > 0 ? parseFloat(fteVal) / totalStaffedWP : 1;
-                const maxAllowed = Math.min(cap, Math.max(parseFloat(fteVal), parseFloat(fteVal) * (pDur / wpDurMonths)));
-                coveredFTE += Math.min(maxAllowed, displayFTE * share);
-              }
-            }
-            for (const mObj of Object.values(monthlyAssignments)) {
-              if (mObj?.[pRelIdx] !== undefined) {
-                coveredFTE += (parseFloat(mObj[pRelIdx]) || 0);
-              }
-            }
-            coveredFTE = Math.min(displayFTE, coveredFTE);
-          }
+          const { displayFTE, coveredFTE, leftFTE } = monthlyCoverage[pRelIdx];
 
           return {
             isInside: true,
@@ -221,38 +202,13 @@ export function TeamTimelineModal({
             coreM,
             displayFTE,
             coveredFTE,
-            leftFTE: Math.max(0, displayFTE - coveredFTE),
+            leftFTE,
           };
         });
 
         let totalEffortSum = 0;
         for (let m = 0; m < pDur; m++) totalEffortSum += mergedMonthsInProject[m]?.totalWPMonthlyFTE ?? 0;
         const activeCardFTE = isNegated ? 0 : round2(totalEffortSum / pDur);
-
-        let totalRequiredSum = 0;
-        let totalCoveredSum = 0;
-        alignedTimelineCells.forEach((c) => {
-          if (c.isInside) {
-            totalRequiredSum += (c.displayFTE || 0);
-            totalCoveredSum += (c.coveredFTE || 0);
-          }
-        });
-        const coveragePct = isNegated
-          ? 0
-          : totalRequiredSum > 0
-          ? Math.min(100, Math.round((totalCoveredSum / totalRequiredSum) * 100))
-          : (totalStaffedWP > 0 ? 100 : 0);
-
-        const nonMaintenanceCells = alignedTimelineCells.filter(
-          (cell): cell is Extract<AlignedTimelineGanttCell, { isInside: true }> =>
-            cell.isInside && cell.displayFTE > 0 &&
-            cell.coreM.shortPhase !== "Maint" && cell.coreM.shortPhase !== "ResMaint"
-        );
-        const isMaintenanceOnlyUncovered = !isNegated && nonMaintenanceCells.length > 0 &&
-          nonMaintenanceCells.every((cell) => (cell.leftFTE || 0) <= 0.000001) &&
-          alignedTimelineCells.some((cell) => cell.isInside &&
-            (cell.coreM.shortPhase === "Maint" || cell.coreM.shortPhase === "ResMaint") &&
-            (cell.leftFTE || 0) > 0.000001);
 
         return { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells, mergedMonthsInProject };
       });
@@ -275,29 +231,15 @@ export function TeamTimelineModal({
 
           const mgmtAssignments = p.mgmtMemberAssignments?.[toolName] || {};
           const mgmtMonthly = p.mgmtMemberMonthlyAssignments?.[toolName] || {};
-          const totalStaffedMgmt = Object.values(mgmtAssignments).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+          const { coveragePct: mgmtCoveragePct, monthlyCoverage: mgmtMonthlyCoverage } =
+            calculateManagementCoverage(mgmtAssignments, mgmtMonthly, monthEffort.map((month) => month.totalFTE));
 
           const alignedMgmtCells = Array.from({ length: totalMonths }, (_, gIdx): AlignedTimelineGanttCell => {
             const pRelIdx = gIdx - pOffset;
             const isInside = pRelIdx >= 0 && pRelIdx < pDur;
             if (!isInside) return { isInside: false };
 
-            const displayFTE = monthEffort[pRelIdx]?.totalFTE || 0;
-            let coveredFTE = 0;
-            if (displayFTE > 0) {
-              for (const [mId, fteVal] of Object.entries(mgmtAssignments)) {
-                if (mgmtMonthly[mId]?.[pRelIdx] === undefined) {
-                  const share = totalStaffedMgmt > 0 ? parseFloat(fteVal) / totalStaffedMgmt : 1;
-                  coveredFTE += Math.min(parseFloat(fteVal) || 0, displayFTE * share);
-                }
-              }
-              for (const mObj of Object.values(mgmtMonthly)) {
-                if (mObj?.[pRelIdx] !== undefined) {
-                  coveredFTE += (parseFloat(mObj[pRelIdx]) || 0);
-                }
-              }
-              coveredFTE = Math.min(displayFTE, coveredFTE);
-            }
+            const { displayFTE, coveredFTE, leftFTE } = mgmtMonthlyCoverage[pRelIdx];
 
             return {
               isInside: true,
@@ -305,21 +247,9 @@ export function TeamTimelineModal({
               coreM: monthEffort[pRelIdx],
               displayFTE,
               coveredFTE,
-              leftFTE: Math.max(0, displayFTE - coveredFTE),
+              leftFTE,
             };
           });
-
-          let mgmtRequiredSum = 0;
-          let mgmtCoveredSum = 0;
-          alignedMgmtCells.forEach((c) => {
-            if (c.isInside) {
-              mgmtRequiredSum += (c.displayFTE || 0);
-              mgmtCoveredSum += (c.coveredFTE || 0);
-            }
-          });
-          const mgmtCoveragePct = mgmtRequiredSum > 0
-            ? Math.min(100, Math.round((mgmtCoveredSum / mgmtRequiredSum) * 100))
-            : (totalStaffedMgmt > 0 ? 100 : 0);
 
           mgmtRow = {
             toolName,
@@ -1261,9 +1191,14 @@ export function TeamTimelineModal({
                                   className="p-2 pl-7 border-r border-slate-200 flex flex-col justify-center h-full min-w-0 cursor-pointer"
                                 >
                                   <div className="flex items-center justify-between gap-1">
-                                    <div className="flex items-center gap-1.5 min-w-0">
-                                      <WorkpackageCoverageBadge coveragePct={mgmtRow.coveragePct} />
-                                      <ManagementIcon size={13} className="text-purple-700 shrink-0" />
+                                    <div className="flex items-baseline gap-1.5 min-w-0">
+                                      <span className={`-ml-7 -mr-1.5 w-7 pr-px shrink-0 text-right whitespace-nowrap text-[11px] leading-normal font-bold ${isRetro ? "text-black" : "text-slate-700"}`}>
+                                        {mgmtRow.coveragePct}%
+                                      </span>
+                                      <span className="inline-flex items-center self-center shrink-0">
+                                        <WorkpackageCoverageBadge coveragePct={mgmtRow.coveragePct} />
+                                      </span>
+                                      <ManagementIcon size={13} className="text-purple-700 self-center shrink-0" />
                                       <span className="text-[11px] font-bold text-slate-800 truncate">Management Support Overhead</span>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
@@ -1299,6 +1234,7 @@ export function TeamTimelineModal({
                                         key={member?.id}
                                         member={member}
                                         allocationFTE={fte}
+                                        isCrossTeam={crossTeamMemberIds.has(member.id)}
                                         onClick={() => setSelectedAdjustMember({ card: mgmtRow.syntheticCard, member, project })}
                                       />
                                     ))}
@@ -1382,7 +1318,7 @@ export function TeamTimelineModal({
                                           <div className="flex items-center justify-between gap-1.5 min-w-0">
                                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                               <span className={`text-[10px] ${isRetro ? "text-black" : "text-purple-400"} font-mono font-bold shrink-0`}>↳</span>
-                                              <PersonIcon role={member.role} toolName={member.tool} size={18} />
+                                              <PersonIcon role={member.role} toolName={member.tool} size={18} isCrossTeam={crossTeamMemberIds.has(member.id)} />
                                               <span className={`text-[10.5px] font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-900"} truncate`}>
                                                 {member.firstName} {member.lastName}
                                               </span>
@@ -1631,8 +1567,13 @@ export function TeamTimelineModal({
                                   className="p-2 pl-7 border-r border-slate-200 flex flex-col justify-center h-full min-w-0 cursor-pointer"
                                 >
                                   <div className="flex items-center justify-between gap-1">
-                                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                      <WorkpackageCoverageBadge coveragePct={coveragePct} isMaintenanceOnlyUncovered={isMaintenanceOnlyUncovered} />
+                                    <div className="flex items-baseline gap-1.5 min-w-0 flex-1">
+                                      <span className={`-ml-7 -mr-1.5 w-7 pr-px shrink-0 text-right whitespace-nowrap text-[11px] leading-normal font-bold ${isRetro ? "text-black" : "text-slate-700"}`}>
+                                        {coveragePct}%
+                                      </span>
+                                      <span className="inline-flex items-center self-center shrink-0">
+                                        <WorkpackageCoverageBadge coveragePct={coveragePct} isMaintenanceOnlyUncovered={isMaintenanceOnlyUncovered} />
+                                      </span>
                                       <span className={`text-[11px] font-bold text-slate-800 truncate ${isNegated ? "line-through text-slate-400" : ""}`}>
                                         {card.name}
                                       </span>
@@ -1668,6 +1609,7 @@ export function TeamTimelineModal({
                                         key={member?.id}
                                         member={member}
                                         allocationFTE={fte}
+                                        isCrossTeam={crossTeamMemberIds.has(member.id)}
                                         onClick={() => setSelectedAdjustMember({ card, member, project })}
                                       />
                                     ))}
@@ -1755,7 +1697,7 @@ export function TeamTimelineModal({
                                           <div className="flex items-center justify-between gap-1.5 min-w-0">
                                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                               <span className={`text-[10px] ${isRetro ? "text-black" : "text-blue-400"} font-mono font-bold shrink-0`}>↳</span>
-                                              <PersonIcon role={member.role} toolName={member.tool} size={18} />
+                                              <PersonIcon role={member.role} toolName={member.tool} size={18} isCrossTeam={crossTeamMemberIds.has(member.id)} />
                                               <span className={`text-[10.5px] font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-900"} truncate`}>
                                                 {member.firstName} {member.lastName}
                                               </span>
@@ -2071,7 +2013,7 @@ export function TeamTimelineModal({
                         >
                           <div className="flex items-center justify-between gap-1.5 min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                              <PersonIcon role={member.role} toolName={member.tool} size={20} />
+                              <PersonIcon role={member.role} toolName={member.tool} size={20} isCrossTeam={crossTeamMemberIds.has(member.id)} />
                               <span className={`text-[11px] font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-900"} truncate`}>
                                 {member.firstName} {member.lastName}
                               </span>
@@ -2200,6 +2142,7 @@ export function TeamTimelineModal({
           card={selectedWPForAssign.card}
           project={selectedWPForAssign.project}
           members={members}
+          crossTeamMemberIds={crossTeamMemberIds}
           allCards={cards}
           onClose={() => setSelectedWPForAssign(null)}
           onSave={(cardId, newAssignments) => {
@@ -2218,6 +2161,7 @@ export function TeamTimelineModal({
         <AdjustMemberAllocationModal
           card={selectedAdjustMember.card}
           member={selectedAdjustMember.member}
+          isCrossTeam={crossTeamMemberIds.has(selectedAdjustMember.member.id)}
           project={selectedAdjustMember.project}
           allCards={cards}
           allProjects={projects}

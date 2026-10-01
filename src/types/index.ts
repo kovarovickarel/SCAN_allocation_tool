@@ -37,6 +37,8 @@ export interface WorkpackageCard {
   _isNegated?: boolean;
   _nominalFte?: number;
   _fte?: number;
+  _coveragePct?: number;
+  _isMaintenanceOnlyUncovered?: boolean;
 }
 
 export interface AllocationProject {

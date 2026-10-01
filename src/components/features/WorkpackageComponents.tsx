@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
 import type { EditCardContentProps, FunctionCardProps, ManagementOverheadsProps, ToolRowProps, UnassignedPoolProps } from './componentTypes';
 import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon } from '../ui/icons';
+import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
+import { PersonIcon } from "../ui/PersonIcon";
+import { getCrossTeamMemberIds, calculateManagementCoverage } from "../../utils/helpers";
 
 export function EditCardContent({ card, onEdit, projectDuration, projectMilestones }: EditCardContentProps) {
   const { isBasic, isRetro } = React.useContext(ThemeContext);
@@ -326,6 +329,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
 
 export const FunctionCard = memo(function FunctionCard({
   card,
+  teamMembers = [],
   projectId,
   projectDuration,
   projectMilestones,
@@ -369,11 +373,26 @@ export const FunctionCard = memo(function FunctionCard({
     : toolTheme.dragging;
 
   const isAssigned = projectId !== "pool" && Boolean(card.projectId);
+  const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
+  const allocatedMembers = isAssigned && !isCompact ? teamMembers.filter((member) =>
+    Number(card.memberAssignments?.[member.id]) > 0 ||
+    Object.values(card.memberMonthlyAssignments?.[member.id] || {}).some((value) => Number(value) > 0)
+  ) : [];
   const fte = isAssigned ? (card._fte ?? 0) : null;
   const nominalFTE = card._nominalFte ?? 0.35;
   const isNegated = Boolean(card._isNegated);
   const isAltered = Boolean(card._isAltered);
   const finishMsDef = card.otherFinishMilestone ? MILESTONE_MAP[card.otherFinishMilestone] : null;
+  const coverageIndicator = isAssigned ? (
+    <span className={`inline-flex items-center justify-center gap-1 shrink-0 ${isCompact ? "p-0.5" : ""}`} title={`Overall workpackage coverage: ${card._coveragePct ?? 0}%`}>
+      {!isCompact && (
+        <span className={`text-[11px] font-mono font-bold ${isRetro ? "text-black" : "text-slate-700"}`}>
+          {card._coveragePct ?? 0}%
+        </span>
+      )}
+      <WorkpackageCoverageBadge coveragePct={card._coveragePct ?? 0} isMaintenanceOnlyUncovered={card._isMaintenanceOnlyUncovered} size={isCompact ? 11 : 16} />
+    </span>
+  ) : null;
 
   const cardEffortDot = useMemo(() => {
     if (isNegated) return "bg-gray-400";
@@ -410,6 +429,10 @@ export const FunctionCard = memo(function FunctionCard({
     const rawCategory = card.subcategory || card.tool;
     const compactCategoryLabel = (() => {
       switch (rawCategory) {
+        case "Simulation":
+          return "SIMUL";
+        case "SysVal Operations":
+          return "SYV OPS";
         case "Range & Accuracy":
           return "R & A";
         case "Vehicle Tooling":
@@ -483,6 +506,17 @@ export const FunctionCard = memo(function FunctionCard({
             <span className={`font-mono font-bold text-[8px] px-1 py-0.2 rounded border shrink-0 whitespace-nowrap shadow-2xs ${fteBadgeStyle}`}>
               {displayFTEText}
             </span>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(card.id);
+              }}
+              className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded opacity-60 group-hover:opacity-100 transition-opacity cursor-pointer shrink-0"
+              title="Delete Workpackage"
+            >
+              <TrashIcon size={11} />
+            </button>
           </div>
         </div>
 
@@ -493,17 +527,7 @@ export const FunctionCard = memo(function FunctionCard({
           >
             {card.name}
           </span>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(card.id);
-            }}
-            className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded opacity-60 group-hover:opacity-100 transition-opacity cursor-pointer shrink-0"
-            title="Delete Workpackage"
-          >
-            <TrashIcon size={11} />
-          </button>
+          {coverageIndicator}
         </div>
       </div>
     );
@@ -589,6 +613,7 @@ export const FunctionCard = memo(function FunctionCard({
             <span>{finishMsDef.label}</span>
           </span>
         )}
+        {coverageIndicator}
       </div>
 
       <div className="flex flex-wrap items-center gap-1 mb-1">
@@ -649,6 +674,20 @@ export const FunctionCard = memo(function FunctionCard({
             Unused (0 FTE)
           </span>
         )}
+        {allocatedMembers.length > 0 && (
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-0.5 min-w-0 max-w-full">
+            {allocatedMembers.map((member) => (
+              <span
+                key={member.id}
+                className={`inline-flex items-center gap-0.5 px-0.5 py-0.5 text-[10.5px] font-bold tracking-tight shrink-0 ${isRetro ? "text-black font-mono" : "text-slate-700"}`}
+                title={`${member.firstName} ${member.lastName}`}
+              >
+                <PersonIcon role={member.role} toolName={member.tool} size={14} isCrossTeam={crossTeamMemberIds.has(member.id)} />
+                <span>{`${member.firstName?.[0] || ""}${member.lastName?.[0] || ""}`.toUpperCase()}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="mt-1 pt-1 border-t border-black/10 flex items-center justify-between text-xs min-w-0 gap-1">
@@ -675,8 +714,9 @@ export const FunctionCard = memo(function FunctionCard({
   );
 });
 
-export const ManagementOverheads = memo(function ManagementOverheads({ overheads }: ManagementOverheadsProps) {
+export const ManagementOverheads = memo(function ManagementOverheads({ overheads, project, teamMembers = [], isCompact = false }: ManagementOverheadsProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
+  const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
   if (!overheads || overheads.length === 0) return null;
   const totalMgmtFTE = overheads.reduce((sum, o) => sum + (o.fte ?? 0), 0);
   const anyAltered = overheads.some((o) => o.isAltered);
@@ -707,17 +747,46 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
         </span>
       </div>
       <div className="flex flex-col gap-1">
-        {overheads.map((o) => (
-          <div key={o.tool} className={`flex items-center justify-between text-xs bg-white/70 px-2 py-1 rounded border ${rowBorder}`}>
-            <span className={`${rowTextColor} font-medium flex items-center gap-1.5`}>
-              {!isBasicMode && <ToolIcon toolName={o.tool} size={11} className={`shrink-0 opacity-75 ${iconColor}`} />}
-              <span>
-                {o.tool}{o.isAltered ? "*" : ""} ({o.engFTE.toFixed(2)} ENG FTE)
-              </span>
-            </span>
-            <span className={`font-mono ${fteTextColor}`}>+{o.fte.toFixed(2)} FTE/yr</span>
-          </div>
-        ))}
+        {overheads.map((o) => {
+          const assignments = project.mgmtMemberAssignments?.[o.tool] || {};
+          const monthlyAssignments = project.mgmtMemberMonthlyAssignments?.[o.tool] || {};
+          const monthlyEffort = Array.from({ length: project.duration }, (_, monthIdx) =>
+            project.customMgmtMonthlyFTE?.[o.tool]?.[monthIdx] ?? o.fte);
+          const { coveragePct } = calculateManagementCoverage(assignments, monthlyAssignments, monthlyEffort);
+          const allocatedMembers = !isCompact ? teamMembers.filter((member) =>
+            Number(assignments[member.id]) > 0 ||
+            Object.values(monthlyAssignments[member.id] || {}).some((value) => Number(value) > 0)
+          ) : [];
+          return (
+            <div key={o.tool} className={`flex flex-col text-xs bg-white/70 px-2 py-1 rounded border ${rowBorder}`}>
+              <div className="flex items-center justify-between gap-1.5 min-w-0">
+                <span className={`${rowTextColor} font-medium flex items-center gap-1.5`}>
+                  {!isBasicMode && <ToolIcon toolName={o.tool} size={11} className={`shrink-0 opacity-75 ${iconColor}`} />}
+                  <span>
+                    {o.tool}{o.isAltered ? "*" : ""}
+                  </span>
+                  <span className={`font-mono whitespace-nowrap ${fteTextColor}`}>+{o.fte.toFixed(2)} FTE/yr</span>
+                </span>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="inline-flex items-center gap-1 shrink-0" title={`Overall management support coverage: ${coveragePct}%`}>
+                    <span className={`text-[11px] font-mono font-bold ${fteTextColor}`}>{coveragePct}%</span>
+                    <WorkpackageCoverageBadge coveragePct={coveragePct} />
+                  </span>
+                </div>
+              </div>
+              {allocatedMembers.length > 0 && (
+                <div className="flex flex-wrap items-center justify-end gap-0.5 mt-1 min-w-0">
+                  {allocatedMembers.map((member) => (
+                    <span key={member.id} className={`inline-flex items-center gap-0.5 px-0.5 py-0.5 text-[10.5px] font-bold tracking-tight shrink-0 ${rowTextColor}`} title={`${member.firstName} ${member.lastName}`}>
+                      <PersonIcon role={member.role} toolName={member.tool} size={14} isCrossTeam={crossTeamMemberIds.has(member.id)} />
+                      <span>{`${member.firstName?.[0] || ""}${member.lastName?.[0] || ""}`.toUpperCase()}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -726,6 +795,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
 export const ToolRow = memo(function ToolRow({
   tool,
   toolCards = [],
+  teamMembers = [],
   projectId,
   projectDuration,
   projectMilestones,
@@ -966,6 +1036,7 @@ export const ToolRow = memo(function ToolRow({
                     <FunctionCard
                       key={c.id}
                       card={c}
+                      teamMembers={teamMembers}
                       projectId={projectId}
                       projectDuration={projectDuration}
                       projectMilestones={projectMilestones}

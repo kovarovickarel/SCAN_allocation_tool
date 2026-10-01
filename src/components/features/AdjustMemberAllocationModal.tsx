@@ -6,6 +6,7 @@ import type { AdjustMemberAllocationModalProps } from "./componentTypes";
 export function AdjustMemberAllocationModal({
   card,
   member,
+  isCrossTeam = false,
   project,
   allCards = [],
   allProjects = [],
@@ -86,7 +87,7 @@ export function AdjustMemberAllocationModal({
             : "border-b border-slate-200"
         }`}>
           <div className="flex items-center gap-2 min-w-0">
-            <PersonIcon role={member?.role} toolName={member?.tool} size={22} />
+            <PersonIcon role={member?.role} toolName={member?.tool} size={22} isCrossTeam={isCrossTeam} />
             <div className="min-w-0">
               <h2 className={`text-sm font-bold truncate ${isRetro ? "text-white font-mono" : "text-slate-900"}`}>
                 {member?.firstName} {member?.lastName}

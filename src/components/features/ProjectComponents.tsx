@@ -462,6 +462,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
 export const ProjectBasket = memo(function ProjectBasket({
   project,
   cards,
+  teamMembers = [],
   index,
   onEdit,
   onDelete,
@@ -1110,13 +1111,14 @@ export const ProjectBasket = memo(function ProjectBasket({
       </div>
 
       <div className="flex flex-col gap-3 p-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-        <ManagementOverheads overheads={effortSummary.overheads} />
+        <ManagementOverheads overheads={effortSummary.overheads} project={project} teamMembers={teamMembers} isCompact={isCompact} />
 
         {visibleTools.map((tool) => (
           <ToolRow
             key={tool.name}
             tool={tool}
             toolCards={projectCardsByTool.get(tool.name) || []}
+            teamMembers={teamMembers}
             projectId={project.id}
             projectDuration={project.duration}
             projectMilestones={project.milestones}

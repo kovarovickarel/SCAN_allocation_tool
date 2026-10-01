@@ -1,9 +1,10 @@
 interface WorkpackageCoverageBadgeProps {
   coveragePct: number;
   isMaintenanceOnlyUncovered?: boolean;
+  size?: number;
 }
 
-export function WorkpackageCoverageBadge({ coveragePct, isMaintenanceOnlyUncovered = false }: WorkpackageCoverageBadgeProps) {
+export function WorkpackageCoverageBadge({ coveragePct, isMaintenanceOnlyUncovered = false, size = 16 }: WorkpackageCoverageBadgeProps) {
   const band = isMaintenanceOnlyUncovered
     ? { label: "Only maintenance coverage is incomplete", classes: "text-blue-600", progress: 100 }
     : coveragePct <= 50
@@ -24,7 +25,7 @@ export function WorkpackageCoverageBadge({ coveragePct, isMaintenanceOnlyUncover
       role="img"
       aria-label={description}
     >
-      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+      <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true">
         {band.progress === 0 ? (
           <>
             <circle cx="8" cy="8" r="7" fill="currentColor" />

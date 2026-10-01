@@ -30,6 +30,7 @@ export interface EditCardContentProps {
 
 export interface FunctionCardProps {
   card: WorkpackageCard;
+  teamMembers?: TeamMemberRecord[];
   projectId?: string | null;
   projectDuration?: number;
   projectMilestones?: MilestoneMap;
@@ -43,10 +44,14 @@ export interface FunctionCardProps {
 
 export interface ManagementOverheadsProps {
   overheads: ManagementOverhead[];
+  project: AllocationProject;
+  teamMembers?: TeamMemberRecord[];
+  isCompact?: boolean;
 }
 
 export interface ToolRowProps {
   tool: ToolDefinition;
+  teamMembers?: TeamMemberRecord[];
   toolCards?: WorkpackageCard[];
   projectId: string;
   projectDuration: number;
@@ -163,6 +168,7 @@ export interface AssignMemberToWPModalProps {
   card: WorkpackageCard;
   project: AllocationProject;
   members?: TeamMemberRecord[];
+  crossTeamMemberIds?: ReadonlySet<string>;
   allCards?: WorkpackageCard[];
   onSave: (cardId: string, assignments: NumericMap) => void;
   onClose: () => void;
@@ -171,6 +177,7 @@ export interface AssignMemberToWPModalProps {
 export interface AdjustMemberAllocationModalProps {
   card: WorkpackageCard;
   member: TeamMemberRecord;
+  isCrossTeam?: boolean;
   project: AllocationProject;
   allCards?: WorkpackageCard[];
   allProjects?: AllocationProject[];
@@ -183,6 +190,7 @@ export interface AdjustMemberAllocationModalProps {
 export interface TeamTimelineModalProps {
   toolName: string;
   members?: TeamMemberRecord[];
+  allMembers?: TeamMemberRecord[];
   projects?: AllocationProject[];
   cards?: WorkpackageCard[];
   toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
@@ -204,6 +212,7 @@ export interface TeamTimelineModalProps {
 export interface ProjectBasketProps {
   project: AllocationProject;
   cards: WorkpackageCard[];
+  teamMembers?: TeamMemberRecord[];
   index: number;
   onEdit: CardEditHandler;
   onDelete: (cardId: string) => void;

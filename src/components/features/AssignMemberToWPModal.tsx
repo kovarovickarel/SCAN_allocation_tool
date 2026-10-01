@@ -8,6 +8,7 @@ export function AssignMemberToWPModal({
   card,
   project,
   members = [],
+  crossTeamMemberIds,
   allCards = [],
   onSave,
   onClose,
@@ -341,7 +342,7 @@ export function AssignMemberToWPModal({
               >
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <div className="flex items-center gap-2 min-w-0">
-                    <PersonIcon role={member.role} toolName={member.tool} size={20} />
+                    <PersonIcon role={member.role} toolName={member.tool} size={20} isCrossTeam={crossTeamMemberIds?.has(member.id)} />
                     <span className="font-bold text-xs text-slate-900 truncate">
                       {member.firstName} {member.lastName}
                     </span>

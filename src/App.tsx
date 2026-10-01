@@ -25,6 +25,7 @@ import {
   normalizeMilestones,
   calcCardFTE,
   computeWorkpackageLifecycleTimeline,
+  calculateWorkpackageCoverage,
 } from "./utils/helpers";
 import { ConfigurationModal } from "./components/features/ConfigurationModal";
 import { HelpGuideModal } from "./components/features/HelpGuideModal";
@@ -231,7 +232,7 @@ export default function App() {
       const isSubcategoryHidden = f.subcategory && project.subSet.has(f.subcategory);
 
       if (isToolHidden || isSubcategoryHidden) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: true, _isAltered: false };
+        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: true, _isAltered: false, _coveragePct: 0, _isMaintenanceOnlyUncovered: false };
       }
 
       const defaultFte = calcCardFTE(
@@ -266,6 +267,7 @@ export default function App() {
 
       let isAltered = false;
       let totalEffortMonths = 0;
+      const coverageMonths: { shortPhase?: string; totalWPMonthlyFTE: number }[] = [];
 
       for (let m = 0; m < project.duration; m++) {
         const defCore = defaultMonths[m]?.totalFTE || 0;
@@ -282,9 +284,13 @@ export default function App() {
         const effMeetings = !isOther && customMeetings !== undefined ? customMeetings : defaultMeetingsRate;
 
         totalEffortMonths += (effCore + effDev + effMeetings);
+        const coverageSupport = round2((f.customDevSupportFTE?.[m] ?? defaultDevRate) +
+          (f.customMeetingsFTE?.[m] ?? defaultMeetingsRate));
+        coverageMonths.push({ shortPhase: defaultMonths[m]?.shortPhase, totalWPMonthlyFTE: round2(effCore + coverageSupport) });
       }
 
       const finalFTE = isAltered ? round2(totalEffortMonths / project.duration) : defaultFte;
+      const coverage = calculateWorkpackageCoverage(f, project.duration, coverageMonths, teamMembers);
 
       return {
         ...f,
@@ -292,9 +298,11 @@ export default function App() {
         _isNegated: false,
         _isAltered: isAltered,
         _fte: finalFTE,
+        _coveragePct: coverage.coveragePct,
+        _isMaintenanceOnlyUncovered: coverage.isMaintenanceOnlyUncovered,
       };
     });
-  }, [functions, projectIndex, config]);
+  }, [functions, projectIndex, config, teamMembers]);
 
   const handleSaveTimelineEdits = useCallback((projectId, customMgmtMonthlyFTE, updatedCards) => {
     setProjects((prev) =>
@@ -808,6 +816,7 @@ export default function App() {
                     <ProjectBasket
                       project={project}
                       cards={functionsWithFTE}
+                      teamMembers={teamMembers}
                       index={idx}
                       onEdit={handleEdit}
                       onDelete={handleDelete}
@@ -911,6 +920,7 @@ export default function App() {
           <TeamTimelineModal
             toolName={activeToolView}
             members={teamMembers.filter((m) => m.tool === activeToolView)}
+            allMembers={teamMembers}
             projects={projects}
             cards={functionsWithFTE}
             toolFteRates={config.toolFteRates}
