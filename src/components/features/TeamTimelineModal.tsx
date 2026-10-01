@@ -7,7 +7,7 @@ import { PersonIcon } from "../ui/PersonIcon";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
 import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
 import { useTimelineRangeSelection } from "../../hooks/useTimelineRangeSelection";
-import type { NumericMap } from "../../types";
+import type { NumericMap, MonthlyNumericMap } from "../../types";
 import type { TeamTimelineModalProps } from './componentTypes';
 import { ChevronRightIcon, ChevronDownIcon, LockIcon, UnlockIcon, ManagementIcon, ToolIcon } from '../ui/icons';
 import { AssignMemberToWPModal } from "./AssignMemberToWPModal";
@@ -375,17 +375,73 @@ export function TeamTimelineModal({
     [members, projectRows, toolName]
   );
 
+  const getMemberCellMaxAllowedInMonth = useCallback((memberId, gIdx, type, excludeId) => {
+    const isMgmt = type === "mgmtMember";
+    const projectRow = projectRows.find((row) => isMgmt
+      ? row.project.id === excludeId
+      : row.workpackages.some((wp) => wp.card.id === excludeId));
+    if (!projectRow) return 0;
+    const monthIdx = gIdx - projectRow.pOffset;
+    if (monthIdx < 0 || monthIdx >= projectRow.pDur) return 0;
+    const workpackage = isMgmt ? null : projectRow.workpackages.find((wp) => wp.card.id === excludeId);
+    if ((isMgmt && !projectRow.mgmtRow) || (!isMgmt && workpackage.isNegated)) return 0;
+
+    const assignments: NumericMap = isMgmt
+      ? projectRow.project.mgmtMemberAssignments?.[toolName] || {}
+      : workpackage.card.memberAssignments || {};
+    const monthly: MonthlyNumericMap = isMgmt
+      ? projectRow.project.mgmtMemberMonthlyAssignments?.[toolName] || {}
+      : workpackage.card.memberMonthlyAssignments || {};
+    const requiredFTE = isMgmt
+      ? projectRow.mgmtRow.monthEffort[monthIdx]?.totalFTE || 0
+      : workpackage.mergedMonthsInProject[monthIdx]?.totalWPMonthlyFTE || 0;
+    const totalStaffed = Object.values(assignments).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+    const otherMemberIds = new Set([...Object.keys(assignments), ...Object.keys(monthly)]);
+    otherMemberIds.delete(memberId);
+
+    // The edited member's existing contribution can be replaced; everyone else's is reserved.
+    let otherCoverage = 0;
+    for (const otherMemberId of otherMemberIds) {
+      const monthlyValue = monthly[otherMemberId]?.[monthIdx];
+      if (monthlyValue !== undefined) {
+        otherCoverage += parseFloat(monthlyValue) || 0;
+      } else {
+        const assignedFTE = parseFloat(assignments[otherMemberId]) || 0;
+        const share = totalStaffed > 0 ? assignedFTE / totalStaffed : 0;
+        const otherMember = members.find((m) => m.id === otherMemberId);
+        const otherCap = parseFloat(otherMember?.fte) || 1.0;
+        const wpDuration = !isMgmt && workpackage.card.tool === "Other"
+          ? Math.max(1, parseInt(workpackage.card.otherDuration, 10) || 6)
+          : projectRow.pDur;
+        const maxAllowed = isMgmt ? assignedFTE
+          : Math.min(otherCap, Math.max(assignedFTE, assignedFTE * (projectRow.pDur / wpDuration)));
+        otherCoverage += round2(Math.min(maxAllowed, requiredFTE * share));
+      }
+    }
+    const memberAvailable = getMemberMaxAllowedInMonth(memberId, gIdx, type, excludeId);
+    return Math.min(memberAvailable, Math.max(0, round2(requiredFTE - otherCoverage)));
+  }, [projectRows, toolName, members, getMemberMaxAllowedInMonth]);
+
+  const resetMemberMonth = useCallback((memberMonths: NumericMap, pRelIdx: number, gIdx: number) => {
+    const { memberId, type, cardId, projectId } = rangeSelection;
+    const excludeId = type === "mgmtMember" ? projectId : cardId;
+    const maxAllowed = getMemberCellMaxAllowedInMonth(memberId, gIdx, type, excludeId);
+    const defaultFTE = rangeSelection.getMonthData?.(gIdx)?.defaultVal ?? 0;
+    if (defaultFTE > maxAllowed) memberMonths[pRelIdx] = maxAllowed;
+    else delete memberMonths[pRelIdx];
+  }, [rangeSelection, getMemberCellMaxAllowedInMonth]);
+
   const currentMaxAllowed = useMemo(() => {
     if (!rangeSelection || selectedMonthIndices.length === 0) return 1.0;
     const { memberId, type, cardId, projectId } = rangeSelection;
     const excludeId = type === "mgmtMember" ? projectId : cardId;
     let minAvail = Infinity;
     for (const gIdx of selectedMonthIndices) {
-      const avail = getMemberMaxAllowedInMonth(memberId, gIdx, type, excludeId);
+      const avail = getMemberCellMaxAllowedInMonth(memberId, gIdx, type, excludeId);
       if (avail < minAvail) minAvail = avail;
     }
     return minAvail === Infinity ? 1.0 : minAvail;
-  }, [rangeSelection, selectedMonthIndices, getMemberMaxAllowedInMonth]);
+  }, [rangeSelection, selectedMonthIndices, getMemberCellMaxAllowedInMonth]);
 
   const parsedCurrentInput = parseFloat(cellInputValue);
   const isInputOverMax = !isNaN(parsedCurrentInput) && parsedCurrentInput > currentMaxAllowed + 0.0001;
@@ -412,9 +468,9 @@ export function TeamTimelineModal({
         const pRelIdx = gIdx - pOffset;
         if (pRelIdx >= 0 && pRelIdx < pDur) {
           if (targetVal === null) {
-            delete memberMonths[pRelIdx];
+            resetMemberMonth(memberMonths, pRelIdx, gIdx);
           } else {
-            const maxAllowedForMonth = getMemberMaxAllowedInMonth(memberId, gIdx, type, excludeId);
+            const maxAllowedForMonth = getMemberCellMaxAllowedInMonth(memberId, gIdx, type, excludeId);
             memberMonths[pRelIdx] = Math.min(targetVal, maxAllowedForMonth);
           }
         }
@@ -436,9 +492,9 @@ export function TeamTimelineModal({
         const pRelIdx = gIdx - pOffset;
         if (pRelIdx >= 0 && pRelIdx < pDur) {
           if (targetVal === null) {
-            delete memberMonths[pRelIdx];
+            resetMemberMonth(memberMonths, pRelIdx, gIdx);
           } else {
-            const maxAllowedForMonth = getMemberMaxAllowedInMonth(memberId, gIdx, type, excludeId);
+            const maxAllowedForMonth = getMemberCellMaxAllowedInMonth(memberId, gIdx, type, excludeId);
             memberMonths[pRelIdx] = Math.min(targetVal, maxAllowedForMonth);
           }
         }
@@ -455,7 +511,7 @@ export function TeamTimelineModal({
 
     setRangeSelection(null);
     setCellInputValue("");
-  }, [rangeSelection, selectedMonthIndices, cellInputValue, projects, cards, toolName, getMemberMaxAllowedInMonth, onSaveMgmtMonthlyAssignments, onSaveMonthlyAssignments]);
+  }, [rangeSelection, selectedMonthIndices, cellInputValue, projects, cards, toolName, getMemberCellMaxAllowedInMonth, resetMemberMonth, onSaveMgmtMonthlyAssignments, onSaveMonthlyAssignments]);
 
   const handleResetRange = useCallback(() => {
     if (!rangeSelection || selectedMonthIndices.length === 0) return;
@@ -469,7 +525,7 @@ export function TeamTimelineModal({
       for (const gIdx of selectedMonthIndices) {
         const pRelIdx = gIdx - pOffset;
         if (pRelIdx >= 0 && pRelIdx < pDur) {
-          delete memberMonths[pRelIdx];
+          resetMemberMonth(memberMonths, pRelIdx, gIdx);
         }
       }
 
@@ -488,7 +544,7 @@ export function TeamTimelineModal({
       for (const gIdx of selectedMonthIndices) {
         const pRelIdx = gIdx - pOffset;
         if (pRelIdx >= 0 && pRelIdx < pDur) {
-          delete memberMonths[pRelIdx];
+          resetMemberMonth(memberMonths, pRelIdx, gIdx);
         }
       }
 
@@ -503,9 +559,10 @@ export function TeamTimelineModal({
 
     setRangeSelection(null);
     setCellInputValue("");
-  }, [rangeSelection, selectedMonthIndices, projects, cards, toolName, onSaveMgmtMonthlyAssignments, onSaveMonthlyAssignments]);
+  }, [rangeSelection, selectedMonthIndices, projects, cards, toolName, resetMemberMonth, onSaveMgmtMonthlyAssignments, onSaveMonthlyAssignments]);
 
-  const handleDropMemberOnTarget = useCallback((member, target, singleMonthIdx = null, displayFTE = null) => {
+  const handleDropMemberOnTarget = useCallback((member, target, singleMonthIdx = null, displayFTE = null, activityMonths: number[] | null = null) => {
+    if (!member) return;
     const isMgmt = Boolean(target._isMgmt);
     if (isMgmt && member.role !== "management" && member.role !== "both") {
       setRoleWarning({
@@ -523,92 +580,33 @@ export function TeamTimelineModal({
       });
       return;
     }
-    const memberCap = parseFloat(member.fte) || 1.0;
+    const projectRow = projectRows.find((row) => row.project.id === target.project.id);
+    if (!projectRow) return;
+    const type = isMgmt ? "mgmtMember" : "wpMember";
+    const excludeId = isMgmt ? target.project.id : target.card.id;
 
-    if (singleMonthIdx !== null) {
-      const currentMonthly = deepClone(
-        isMgmt
-          ? target.project.mgmtMemberMonthlyAssignments?.[toolName] || {}
-          : target.card.memberMonthlyAssignments || {}
-      );
-      const memberMonths = currentMonthly[member.id] || {};
+    const currentMonthly: MonthlyNumericMap = deepClone(isMgmt
+      ? target.project.mgmtMemberMonthlyAssignments?.[toolName] || {}
+      : target.card.memberMonthlyAssignments || {});
+    const memberMonths = { ...(currentMonthly[member.id] || {}) };
+    const monthIndices = activityMonths ?? (singleMonthIdx !== null
+      ? [singleMonthIdx]
+      : Array.from({ length: projectRow.pDur }, (_, monthIdx) => monthIdx));
 
-      let currentMonthUsage = 0;
-      for (const c of cards) {
-        if (c.memberMonthlyAssignments?.[member.id]?.[singleMonthIdx] !== undefined) {
-          currentMonthUsage = round2(currentMonthUsage + (parseFloat(c.memberMonthlyAssignments[member.id][singleMonthIdx]) || 0));
-        } else if (c.memberAssignments?.[member.id]) {
-          currentMonthUsage = round2(currentMonthUsage + (parseFloat(c.memberAssignments[member.id]) || 0));
-        }
-      }
-      for (const p of projects) {
-        if (p.mgmtMemberMonthlyAssignments?.[toolName]?.[member.id]?.[singleMonthIdx] !== undefined) {
-          currentMonthUsage = round2(currentMonthUsage + (parseFloat(p.mgmtMemberMonthlyAssignments[toolName][member.id][singleMonthIdx]) || 0));
-        } else if (p.mgmtMemberAssignments?.[toolName]?.[member.id]) {
-          currentMonthUsage = round2(currentMonthUsage + (parseFloat(p.mgmtMemberAssignments[toolName][member.id]) || 0));
-        }
-      }
-
-      const availableHeadroom = Math.max(0, round2(memberCap - currentMonthUsage));
-      if (availableHeadroom <= 0.0005) {
-        setSelectedWPForAssign({ card: isMgmt ? target.syntheticCard : target.card, project: target.project });
-        return;
-      }
-
-      const currentAlloc = parseFloat(memberMonths[singleMonthIdx]) || 0;
-      const requiredEffort = displayFTE > 0 ? displayFTE : 0.2;
-      const allocToAdd = Math.min(requiredEffort, availableHeadroom);
-      memberMonths[singleMonthIdx] = round2(currentAlloc + allocToAdd);
-      currentMonthly[member.id] = memberMonths;
-
-      if (isMgmt) {
-        onSaveMgmtMonthlyAssignments?.(target.project.id, toolName, currentMonthly);
-      } else {
-        onSaveMonthlyAssignments?.(target.card.id, currentMonthly);
-      }
-    } else {
-      const currentAssignments: NumericMap = {
-        ...(isMgmt
-          ? target.project.mgmtMemberAssignments?.[toolName] || {}
-          : target.card.memberAssignments || {}),
-      };
-      const totalStaffed = Object.values(currentAssignments).reduce((s, v) => s + (parseFloat(v) || 0), 0);
-      const totalEffort = isMgmt ? target.mgmtRow.fte : (target.card._fte ?? 0);
-      const neededFTE = Math.max(0, round2(totalEffort - totalStaffed));
-
-      let otherCommitments = 0;
-      for (const c of cards) {
-        if (!isMgmt && c.id === target.card.id) continue;
-        if (c.memberAssignments?.[member.id]) {
-          otherCommitments = round2(otherCommitments + (parseFloat(c.memberAssignments[member.id]) || 0));
-        }
-      }
-      for (const p of projects) {
-        for (const [tName, tMap] of Object.entries(p.mgmtMemberAssignments || {})) {
-          if (isMgmt && p.id === target.project.id && tName === toolName) continue;
-          if (tMap?.[member.id]) {
-            otherCommitments = round2(otherCommitments + (parseFloat(tMap[member.id]) || 0));
-          }
-        }
-      }
-      const currentMemberAlloc = parseFloat(currentAssignments[member.id]) || 0;
-      const maxAvailable = Math.max(0, round2(memberCap - otherCommitments - currentMemberAlloc));
-
-      if (maxAvailable <= 0 || neededFTE <= 0.0005) {
-        setSelectedWPForAssign({ card: isMgmt ? target.syntheticCard : target.card, project: target.project });
-        return;
-      }
-
-      const allocToAdd = Math.min(neededFTE, maxAvailable);
-      currentAssignments[member.id] = round2(currentMemberAlloc + allocToAdd);
-
-      if (isMgmt) {
-        onSaveMgmtAssignments?.(target.project.id, toolName, currentAssignments);
-      } else {
-        onSaveAssignments?.(target.card.id, currentAssignments);
+    // Fill the selected cell, subactivity, or workpackage without changing other allocations.
+    for (const monthIdx of monthIndices) {
+      if (monthIdx >= 0 && monthIdx < projectRow.pDur) {
+        memberMonths[monthIdx] = getMemberCellMaxAllowedInMonth(member.id, projectRow.pOffset + monthIdx, type, excludeId);
       }
     }
-  }, [cards, projects, toolName, onSaveAssignments, onSaveMonthlyAssignments, onSaveMgmtAssignments, onSaveMgmtMonthlyAssignments]);
+    currentMonthly[member.id] = memberMonths;
+
+    if (isMgmt) {
+      onSaveMgmtMonthlyAssignments?.(target.project.id, toolName, currentMonthly);
+    } else {
+      onSaveMonthlyAssignments?.(target.card.id, currentMonthly);
+    }
+  }, [projectRows, toolName, getMemberCellMaxAllowedInMonth, onSaveMonthlyAssignments, onSaveMgmtMonthlyAssignments]);
 
   const memberTimelineRows = useMemo(() => {
     return members.map((member) => {

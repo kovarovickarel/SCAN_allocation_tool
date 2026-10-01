@@ -98,7 +98,7 @@ export function AssignMemberToWPModal({
     if (!member || !isMemberEligible(member)) return;
     const { maxAvailable } = getMemberCapacities(memberId);
     const desired = wpTotalFTE > 0 ? wpTotalFTE : 0.2;
-    const capped = round2(Math.min(desired, maxAvailable));
+    const capped = round2(desired >= maxAvailable - 0.01 ? maxAvailable : Math.min(desired, maxAvailable));
     setDraftAssignments((prev) => {
       const next = { ...prev };
       if (capped > 0) {
@@ -422,7 +422,7 @@ export function AssignMemberToWPModal({
                     >
                       100%
                     </button>
-                    {eligible && maxAvailable > 0 && Math.abs(currentAlloc - maxAvailable) > 0.01 && (
+                    {eligible && maxAvailable > 0 && currentAlloc < maxAvailable - 0.0001 && (
                       <button
                         type="button"
                         onClick={() => handleSetMemberFTE(member.id, maxAvailable)}
