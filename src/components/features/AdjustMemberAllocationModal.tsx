@@ -9,6 +9,8 @@ export function AdjustMemberAllocationModal({
   project,
   allCards = [],
   allProjects = [],
+  currentAllocationFTE,
+  otherCommitmentFTE,
   onSave,
   onClose,
 }: AdjustMemberAllocationModalProps) {
@@ -20,6 +22,7 @@ export function AdjustMemberAllocationModal({
 
   // Compute this member's commitment on other workpackages
   const otherCommitment = useMemo(() => {
+    if (otherCommitmentFTE !== undefined) return otherCommitmentFTE;
     let sum = 0;
     for (const c of allCards) {
       if (c.id === card?.id || !c.memberAssignments) continue;
@@ -36,23 +39,24 @@ export function AdjustMemberAllocationModal({
       }
     }
     return sum;
-  }, [allCards, allProjects, card?.id, member?.id, isMgmt, project?.id, card?.tool]);
+  }, [otherCommitmentFTE, allCards, allProjects, card?.id, member?.id, isMgmt, project?.id, card?.tool]);
 
   const maxAvailableFTE = Math.max(0, round2(cap - otherCommitment));
   const maxAvailablePct = cap > 0 ? Math.min(100, Math.round((maxAvailableFTE / cap) * 100)) : 0;
 
   const currentAssignedFTE = useMemo(() => {
+    if (currentAllocationFTE !== undefined) return currentAllocationFTE;
     if (isMgmt) {
       return parseFloat(project?.mgmtMemberAssignments?.[card?.tool]?.[member?.id]) || 0;
     }
     return parseFloat(card?.memberAssignments?.[member?.id]) || 0;
-  }, [isMgmt, project, card, member?.id]);
+  }, [currentAllocationFTE, isMgmt, project, card, member?.id]);
 
   const initialPct = cap > 0 ? clamp(Math.round((currentAssignedFTE / cap) * 100), 0, 100) : 0;
   const [percentage, setPercentage] = useState(initialPct);
 
   const currentFTE = round2((percentage / 100) * cap);
-  const isOverMax = percentage > maxAvailablePct + 0.1;
+  const isOverMax = currentFTE > maxAvailableFTE + 0.000001;
 
   const handleCommit = (e) => {
     e.preventDefault();

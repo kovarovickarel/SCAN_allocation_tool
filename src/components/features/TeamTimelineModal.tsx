@@ -435,6 +435,64 @@ export function TeamTimelineModal({
     return Math.min(memberAvailable, Math.max(0, round2(requiredFTE - otherCoverage)));
   }, [projectRows, toolName, members, getMemberMaxAllowedInMonth]);
 
+  const adjustmentData = useMemo(() => {
+    if (!selectedAdjustMember) return null;
+    const { card, member, project } = selectedAdjustMember;
+    const isMgmt = Boolean(card._isMgmt);
+    const projectRow = projectRows.find((row) => row.project.id === project.id);
+    if (!projectRow) return null;
+    const wp = isMgmt ? null : projectRow.workpackages.find((row) => row.card.id === card.id);
+    if ((isMgmt && !projectRow.mgmtRow) || (!isMgmt && !wp)) return null;
+    const assignments: NumericMap = isMgmt
+      ? projectRow.project.mgmtMemberAssignments?.[toolName] || {}
+      : wp.card.memberAssignments || {};
+    const monthly: MonthlyNumericMap = deepClone(isMgmt
+      ? projectRow.project.mgmtMemberMonthlyAssignments?.[toolName] || {}
+      : wp.card.memberMonthlyAssignments || {});
+    const totalStaffed = Object.values(assignments).reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
+    const memberIds = new Set([...Object.keys(assignments), ...Object.keys(monthly), member.id]);
+
+    // Resolve existing defaults before changing the assignment shares, preserving other members.
+    for (const memberId of memberIds) {
+      const memberCap = parseFloat(members.find((item) => item.id === memberId)?.fte) || 1.0;
+      const assignedFTE = parseFloat(assignments[memberId]) || 0;
+      const share = totalStaffed > 0 ? assignedFTE / totalStaffed : 1;
+      const wpDuration = !isMgmt && wp.card.tool === "Other"
+        ? Math.max(1, parseInt(wp.card.otherDuration, 10) || 6) : projectRow.pDur;
+      const maxAllowed = isMgmt ? assignedFTE
+        : Math.min(memberCap, Math.max(assignedFTE, assignedFTE * (projectRow.pDur / wpDuration)));
+      const memberMonths: NumericMap = { ...(monthly[memberId] || {}) };
+      for (let monthIdx = 0; monthIdx < projectRow.pDur; monthIdx++) {
+        if (memberMonths[monthIdx] !== undefined) continue;
+        const requiredFTE = isMgmt
+          ? projectRow.mgmtRow.monthEffort[monthIdx]?.totalFTE || 0
+          : wp.isNegated ? 0 : wp.mergedMonthsInProject[monthIdx]?.totalWPMonthlyFTE || 0;
+        memberMonths[monthIdx] = assignedFTE > 0 ? round2(Math.min(maxAllowed, requiredFTE * share)) : 0;
+      }
+      monthly[memberId] = memberMonths;
+    }
+
+    const activeValues = Array.from({ length: projectRow.pDur }, (_, idx) => Number(monthly[member.id][idx]) || 0)
+      .filter((value) => value > 0);
+    const currentAllocationFTE = activeValues.length > 0
+      ? round2(activeValues.reduce((sum, value) => sum + value, 0) / activeValues.length) : 0;
+    const type = isMgmt ? "mgmtMember" : "wpMember";
+    const excludeId = isMgmt ? project.id : card.id;
+    let maxAvailableFTE = 0;
+    for (let monthIdx = 0; monthIdx < projectRow.pDur; monthIdx++) {
+      const requiredFTE = isMgmt
+        ? projectRow.mgmtRow.monthEffort[monthIdx]?.totalFTE || 0
+        : wp.isNegated ? 0 : wp.mergedMonthsInProject[monthIdx]?.totalWPMonthlyFTE || 0;
+      if (requiredFTE > 0) {
+        maxAvailableFTE = Math.max(maxAvailableFTE,
+          getMemberMaxAllowedInMonth(member.id, projectRow.pOffset + monthIdx, type, excludeId));
+      }
+    }
+    const cap = parseFloat(member.fte) || 1.0;
+    return { projectRow, assignments, monthly, currentAllocationFTE,
+      otherCommitmentFTE: Math.max(0, round2(cap - maxAvailableFTE)), type, excludeId, isMgmt };
+  }, [selectedAdjustMember, projectRows, toolName, members, getMemberMaxAllowedInMonth]);
+
   const resetMemberMonth = useCallback((memberMonths: NumericMap, pRelIdx: number, gIdx: number) => {
     const { memberId, type, cardId, projectId } = rangeSelection;
     const excludeId = type === "mgmtMember" ? projectId : cardId;
@@ -2081,18 +2139,33 @@ export function TeamTimelineModal({
           project={selectedAdjustMember.project}
           allCards={cards}
           allProjects={projects}
+          currentAllocationFTE={adjustmentData?.currentAllocationFTE}
+          otherCommitmentFTE={adjustmentData?.otherCommitmentFTE}
           onClose={() => setSelectedAdjustMember(null)}
           onSave={(newAllocFTE) => {
-            if (selectedAdjustMember.card._isMgmt) {
-              const current = { ...(selectedAdjustMember.project.mgmtMemberAssignments?.[toolName] || {}) };
-              if (newAllocFTE <= 0) delete current[selectedAdjustMember.member.id];
-              else current[selectedAdjustMember.member.id] = newAllocFTE;
-              onSaveMgmtAssignments?.(selectedAdjustMember.project.id, toolName, current);
+            if (!adjustmentData) return;
+            const { projectRow, assignments, monthly, type, excludeId, isMgmt } = adjustmentData;
+            const memberId = selectedAdjustMember.member.id;
+            const current = { ...assignments };
+            const currentMonthly: MonthlyNumericMap = deepClone(monthly);
+            if (newAllocFTE <= 0) {
+              delete current[memberId];
+              delete currentMonthly[memberId];
             } else {
-              const current = { ...(selectedAdjustMember.card.memberAssignments || {}) };
-              if (newAllocFTE <= 0) delete current[selectedAdjustMember.member.id];
-              else current[selectedAdjustMember.member.id] = newAllocFTE;
+              current[memberId] = newAllocFTE;
+              const memberMonths: NumericMap = {};
+              for (let monthIdx = 0; monthIdx < projectRow.pDur; monthIdx++) {
+                memberMonths[monthIdx] = Math.min(newAllocFTE,
+                  getMemberCellMaxAllowedInMonth(memberId, projectRow.pOffset + monthIdx, type, excludeId));
+              }
+              currentMonthly[memberId] = memberMonths;
+            }
+            if (isMgmt) {
+              onSaveMgmtAssignments?.(projectRow.project.id, toolName, current);
+              onSaveMgmtMonthlyAssignments?.(projectRow.project.id, toolName, currentMonthly);
+            } else {
               onSaveAssignments?.(selectedAdjustMember.card.id, current);
+              onSaveMonthlyAssignments?.(selectedAdjustMember.card.id, currentMonthly);
             }
             setSelectedAdjustMember(null);
           }}

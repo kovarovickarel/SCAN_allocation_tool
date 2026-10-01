@@ -174,6 +174,8 @@ export interface AdjustMemberAllocationModalProps {
   project: AllocationProject;
   allCards?: WorkpackageCard[];
   allProjects?: AllocationProject[];
+  currentAllocationFTE?: number;
+  otherCommitmentFTE?: number;
   onSave: (fte: number) => void;
   onClose: () => void;
 }
