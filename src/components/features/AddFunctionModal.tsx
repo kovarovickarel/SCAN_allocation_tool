@@ -160,7 +160,8 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                     Effort (FTE/mo)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     step="0.05"
                     min="0.01"
                     max="5"
@@ -170,7 +171,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                         : "border border-gray-300 rounded bg-white"
                     }`}
                     value={draft.otherEffort}
-                    onChange={(e) => setDraft((d) => ({ ...d, otherEffort: e.target.value }))}
+                    onChange={(e) => setDraft((d) => ({ ...d, otherEffort: e.target.value.replace(",", ".") }))}
                   />
                 </div>
                 <div>
@@ -226,7 +227,8 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                       Maintenance Rate (FTE/mo until end of project)
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.01"
                       min="0"
                       max="2"
@@ -236,7 +238,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                           : "border border-gray-300 rounded bg-white"
                       }`}
                       value={draft.otherMaintenanceEffort}
-                      onChange={(e) => setDraft((d) => ({ ...d, otherMaintenanceEffort: e.target.value }))}
+                      onChange={(e) => setDraft((d) => ({ ...d, otherMaintenanceEffort: e.target.value.replace(",", ".") }))}
                     />
                   </div>
                 )}

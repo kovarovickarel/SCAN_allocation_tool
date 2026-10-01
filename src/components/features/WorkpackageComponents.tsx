@@ -183,13 +183,14 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
             <div>
               <label className="text-[9px] text-gray-600 font-bold block mb-0.5">Effort (FTE/mo)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 step="0.05"
                 min="0.01"
                 max="5"
                 className="text-xs bg-white border border-gray-300 rounded px-1.5 py-1 w-full font-mono font-medium shadow-2xs"
                 value={draft.otherEffort}
-                onChange={(e) => setDraft((d) => ({ ...d, otherEffort: e.target.value }))}
+                onChange={(e) => setDraft((d) => ({ ...d, otherEffort: e.target.value.replace(",", ".") }))}
               />
             </div>
             <div>
@@ -288,13 +289,14 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
                   Maintenance Rate (FTE/mo until project end)
                 </label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   step="0.01"
                   min="0"
                   max="2"
                   className="text-xs bg-white border border-gray-300 rounded px-1.5 py-0.5 w-full font-mono font-medium shadow-2xs"
                   value={draft.otherMaintenanceEffort}
-                  onChange={(e) => setDraft((d) => ({ ...d, otherMaintenanceEffort: e.target.value }))}
+                  onChange={(e) => setDraft((d) => ({ ...d, otherMaintenanceEffort: e.target.value.replace(",", ".") }))}
                 />
               </div>
             )}
