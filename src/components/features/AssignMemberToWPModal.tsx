@@ -390,14 +390,15 @@ export function AssignMemberToWPModal({
 
                   <div className="flex items-center gap-1 shrink-0">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.05"
                       min="0"
                       max={capacity}
                       disabled={!eligible}
                       value={eligible && currentAlloc > 0 ? currentAlloc : ""}
                       placeholder="0.00"
-                      onChange={(e) => handleSetMemberFTE(member.id, e.target.value)}
+                      onChange={(e) => handleSetMemberFTE(member.id, e.target.value.replace(",", "."))}
                       className={`w-20 px-2 py-1 text-xs font-mono font-bold text-right border rounded focus:outline-none ${
                         !eligible
                           ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"

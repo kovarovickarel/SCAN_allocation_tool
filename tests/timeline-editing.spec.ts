@@ -48,7 +48,7 @@ test.describe("timeline editing behavior", () => {
     await page.mouse.up();
 
     await expect(dialog.getByText(/\(2 cells\)/)).toBeVisible();
-    const editor = dialog.locator('[data-timeline-row] input[type="number"]:visible').last();
+    const editor = dialog.locator('[data-timeline-row] input[inputmode="decimal"]:visible').last();
     await editor.fill("0.25");
     await editor.press("Enter");
 
@@ -76,7 +76,7 @@ test.describe("timeline editing behavior", () => {
 
     const assignmentDialog = page.getByRole("dialog").last();
     const memberCard = assignmentDialog.getByText("Elena Russo", { exact: true }).locator("xpath=../../..");
-    await memberCard.locator('input[type="number"]').fill("0.5");
+    await memberCard.locator('input[inputmode="decimal"]').fill("0.5");
     await assignmentDialog.getByRole("button", { name: "Save Allocations" }).click();
 
     const expandMembers = timeline.getByRole("button", { name: /Expand .* allocated team member row/ }).first();
@@ -85,7 +85,7 @@ test.describe("timeline editing behavior", () => {
     const firstMonthCell = memberRow.locator(":scope > div").first();
     await firstMonthCell.click();
 
-    const editor = memberRow.locator('input[type="number"]:visible');
+    const editor = memberRow.locator('input[inputmode="decimal"]:visible');
     await expect(editor).toBeVisible();
     const maxAvailable = Number(await editor.getAttribute("max"));
     expect(maxAvailable).toBeGreaterThan(0);
@@ -115,7 +115,7 @@ test.describe("timeline editing behavior", () => {
       await timeline.getByText(workpackage, { exact: true }).click();
       const assignmentDialog = page.getByRole("dialog").last();
       const memberCard = assignmentDialog.getByText("Alex Novak", { exact: true }).locator("xpath=../../..");
-      await memberCard.locator('input[type="number"]').fill("0.3");
+      await memberCard.locator('input[inputmode="decimal"]').fill("0.3");
       await assignmentDialog.getByRole("button", { name: "Save Allocations" }).click();
     }
 

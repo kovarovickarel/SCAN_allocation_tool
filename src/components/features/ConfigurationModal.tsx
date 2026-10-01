@@ -259,12 +259,13 @@ export function ConfigurationModal({
                       <div>
                         <label className={`text-[10px] font-semibold block mb-0.5 ${isRetro ? "text-black" : "text-gray-500"}`}>Default Effort (FTE/mo)</label>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           step="0.05"
                           min="0.01"
                           max="5"
                           value={currentOtherDefaults.defaultEffort}
-                          onChange={(e) => updateOtherDefault("defaultEffort", Math.max(0.01, parseFloat(e.target.value) || 0.01))}
+                          onChange={(e) => updateOtherDefault("defaultEffort", Math.max(0.01, parseFloat(e.target.value.replace(",", ".")) || 0.01))}
                           className={`w-full text-xs px-2 py-1 font-mono font-medium focus:outline-none ${
                             isRetro
                               ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black font-bold"
@@ -290,12 +291,13 @@ export function ConfigurationModal({
                       <div>
                         <label className={`text-[10px] font-semibold block mb-0.5 ${isRetro ? "text-black" : "text-gray-500"}`}>Default Maintenance Effort (FTE/mo)</label>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           step="0.01"
                           min="0"
                           max="2"
                           value={currentOtherDefaults.defaultMaintenanceEffort}
-                          onChange={(e) => updateOtherDefault("defaultMaintenanceEffort", Math.max(0, parseFloat(e.target.value) || 0))}
+                          onChange={(e) => updateOtherDefault("defaultMaintenanceEffort", Math.max(0, parseFloat(e.target.value.replace(",", ".")) || 0))}
                           className={`w-full text-xs px-2 py-1 font-mono font-medium focus:outline-none ${
                             isRetro
                               ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black font-bold"
@@ -377,12 +379,13 @@ export function ConfigurationModal({
                             <div>
                               <label className={`text-[10px] font-semibold block mb-0.5 ${isRetro ? "text-black" : "text-gray-500"}`}>FTE Rate / Mo</label>
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 step="0.05"
                                 min="0"
                                 max="5"
                                 value={activeToolRates?.[phase] ?? 0.1}
-                                onChange={(e) => updateNestedToolRate(phase, e.target.value)}
+                                onChange={(e) => updateNestedToolRate(phase, e.target.value.replace(",", "."))}
                                 className={`w-full text-xs px-2 py-1 font-mono font-medium focus:outline-none ${
                                   isRetro
                                     ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black font-bold"
@@ -440,12 +443,13 @@ export function ConfigurationModal({
                           <div>
                             <label className={`text-[10px] font-semibold block mb-0.5 ${isRetro ? "text-black" : "text-gray-500"}`}>FTE Rate / Mo</label>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="decimal"
                               step="0.05"
                               min="0"
                               max="5"
                               value={activeToolRates?.[phase] ?? 0.1}
-                              onChange={(e) => updateNestedToolRate(phase, e.target.value)}
+                              onChange={(e) => updateNestedToolRate(phase, e.target.value.replace(",", "."))}
                               className={`w-full text-xs px-2 py-1 font-mono font-medium focus:outline-none ${
                                 isRetro
                                   ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black font-bold"
@@ -507,12 +511,13 @@ export function ConfigurationModal({
                   </div>
                   <div className="w-28">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.1"
                       min="0.1"
                       max="10.0"
                       value={draft.management?.threshold ?? 1.5}
-                      onChange={(e) => handleMgmtChange("threshold", e.target.value)}
+                      onChange={(e) => handleMgmtChange("threshold", e.target.value.replace(",", "."))}
                       className={`w-full text-xs px-2.5 py-1.5 font-mono font-bold text-right focus:outline-none ${
                         isRetro
                           ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black"
@@ -535,12 +540,13 @@ export function ConfigurationModal({
                   </div>
                   <div className="w-28">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.05"
                       min="0.0"
                       max="3.0"
                       value={draft.management?.ftePerCard ?? 0.2}
-                      onChange={(e) => handleMgmtChange("ftePerCard", e.target.value)}
+                      onChange={(e) => handleMgmtChange("ftePerCard", e.target.value.replace(",", "."))}
                       className={`w-full text-xs px-2.5 py-1.5 font-mono font-bold text-right focus:outline-none ${
                         isRetro
                           ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black"
@@ -575,12 +581,13 @@ export function ConfigurationModal({
                   </div>
                   <div className="w-28">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.05"
                       min="0.05"
                       max="3.0"
                       value={factorVal}
-                      onChange={(e) => handleFactorChange("reusabilityFactors", factorName, e.target.value)}
+                      onChange={(e) => handleFactorChange("reusabilityFactors", factorName, e.target.value.replace(",", "."))}
                       className={`w-full text-xs px-2.5 py-1.5 font-mono font-bold text-right focus:outline-none ${
                         isRetro
                           ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black"
@@ -607,12 +614,13 @@ export function ConfigurationModal({
                   </div>
                   <div className="w-28">
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       step="0.1"
                       min="0.5"
                       max="5.0"
                       value={factorVal}
-                      onChange={(e) => handleFactorChange("stabilityFactors", factorName, e.target.value)}
+                      onChange={(e) => handleFactorChange("stabilityFactors", factorName, e.target.value.replace(",", "."))}
                       className={`w-full text-xs px-2.5 py-1.5 font-mono font-bold text-right focus:outline-none ${
                         isRetro
                           ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black"

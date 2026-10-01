@@ -983,12 +983,13 @@ export function ProjectTimelineModal({
                                         >
                                           <input
                                             ref={inputRef}
-                                            type="number"
+                                            type="text"
+                                            inputMode="decimal"
                                             step="0.05"
                                             min="0"
                                             max="10"
                                             value={cellInputValue}
-                                            onChange={(e) => setCellInputValue(e.target.value)}
+                                            onChange={(e) => setCellInputValue(e.target.value.replace(",", "."))}
                                             onKeyDown={(e) => {
                                               if (e.key === "Enter") handleCommitRangeEdit();
                                               if (e.key === "Escape") setRangeSelection(null);
@@ -1405,12 +1406,13 @@ export function ProjectTimelineModal({
                                           >
                                             <input
                                               ref={inputRef}
-                                              type="number"
+                                              type="text"
+                                              inputMode="decimal"
                                               step="0.05"
                                               min="0"
                                               max="10"
                                               value={cellInputValue}
-                                              onChange={(e) => setCellInputValue(e.target.value)}
+                                              onChange={(e) => setCellInputValue(e.target.value.replace(",", "."))}
                                               onKeyDown={(e) => {
                                                 if (e.key === "Enter") handleCommitRangeEdit();
                                                 if (e.key === "Escape") setRangeSelection(null);
@@ -1599,12 +1601,13 @@ export function ProjectTimelineModal({
                                               >
                                                 <input
                                                   ref={inputRef}
-                                                  type="number"
+                                                  type="text"
+                                                  inputMode="decimal"
                                                   step="0.05"
                                                   min="0"
                                                   max="10"
                                                   value={cellInputValue}
-                                                  onChange={(e) => setCellInputValue(e.target.value)}
+                                                  onChange={(e) => setCellInputValue(e.target.value.replace(",", "."))}
                                                   onKeyDown={(e) => {
                                                     if (e.key === "Enter") handleCommitRangeEdit();
                                                     if (e.key === "Escape") setRangeSelection(null);
@@ -1730,12 +1733,13 @@ export function ProjectTimelineModal({
                                               >
                                                 <input
                                                   ref={inputRef}
-                                                  type="number"
+                                                  type="text"
+                                                  inputMode="decimal"
                                                   step="0.05"
                                                   min="0"
                                                   max="10"
                                                   value={cellInputValue}
-                                                  onChange={(e) => setCellInputValue(e.target.value)}
+                                                  onChange={(e) => setCellInputValue(e.target.value.replace(",", "."))}
                                                   onKeyDown={(e) => {
                                                     if (e.key === "Enter") handleCommitRangeEdit();
                                                     if (e.key === "Escape") setRangeSelection(null);

@@ -547,7 +547,8 @@ export function AddTeamMemberModal({ toolName, initialMember = null, allMembers 
               </span>
             </div>
             <input
-              type="number"
+              type="text"
+              inputMode="decimal"
               step="0.05"
               min="0"
               max={matchingOtherRecords.length > 0 ? maxAllowedFte : 1.00}
