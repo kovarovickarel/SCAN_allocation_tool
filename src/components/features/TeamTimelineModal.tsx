@@ -1047,6 +1047,10 @@ export function TeamTimelineModal({
                                 >
                                   <div className="flex items-center justify-between gap-1">
                                     <div className="flex items-center gap-1.5 min-w-0">
+                                      <ManagementIcon size={13} className="text-purple-700 shrink-0" />
+                                      <span className="text-[11px] font-bold text-slate-800 truncate">Management Support Overhead</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 shrink-0">
                                       {assignedList.length > 0 && (
                                         <button
                                           type="button"
@@ -1054,23 +1058,23 @@ export function TeamTimelineModal({
                                             e.stopPropagation();
                                             toggleWPMembers(rowId);
                                           }}
-                                          className={`p-0.5 rounded transition-colors cursor-pointer shrink-0 ${
+                                          className={`text-[9px] font-bold px-1.5 py-0.5 border transition-colors cursor-pointer shrink-0 ${
                                             isMgmtExpanded
-                                              ? isRetro ? "bg-[#000080] text-white" : "bg-purple-200 text-purple-900"
-                                              : isRetro ? "text-black hover:bg-[#d8d4cc]" : "text-purple-400 hover:text-purple-800 hover:bg-purple-100"
+                                              ? isRetro
+                                                ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
+                                                : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 rounded"
+                                              : isRetro
+                                                ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
+                                                : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 rounded"
                                           }`}
                                           title={isMgmtExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
                                           aria-label={isMgmtExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
+                                          aria-expanded={isMgmtExpanded}
                                         >
-                                          {isMgmtExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
+                                          {isMgmtExpanded ? "- Collapse Members" : "+ Expand Members"}
                                         </button>
                                       )}
-                                      <ManagementIcon size={13} className="text-purple-700 shrink-0" />
-                                      <span className="text-[11px] font-bold text-slate-800 truncate">Management Support Overhead</span>
                                     </div>
-                                    <span className="text-[8.5px] font-black uppercase px-1.5 py-0.2 rounded border bg-purple-100 text-purple-900 border-purple-200">
-                                      MGMT
-                                    </span>
                                   </div>
 
                                   <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0">
@@ -1407,28 +1411,33 @@ export function TeamTimelineModal({
                                 >
                                   <div className="flex items-center justify-between gap-1">
                                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                      {assignedList.length > 0 && (
-                                        <button
-                                          type="button"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            toggleWPMembers(card.id);
-                                          }}
-                                          className={`p-0.5 rounded transition-colors cursor-pointer shrink-0 ${
-                                            isWPExpanded
-                                              ? isRetro ? "bg-[#000080] text-white" : "bg-blue-100 text-blue-800"
-                                              : isRetro ? "text-black hover:bg-[#d8d4cc]" : "text-slate-400 hover:text-slate-700 hover:bg-slate-150"
-                                          }`}
-                                          title={isWPExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
-                                          aria-label={isWPExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
-                                        >
-                                          {isWPExpanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
-                                        </button>
-                                      )}
                                       <span className={`text-[11px] font-bold text-slate-800 truncate ${isNegated ? "line-through text-slate-400" : ""}`}>
                                         {card.name}
                                       </span>
                                     </div>
+                                    {assignedList.length > 0 && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleWPMembers(card.id);
+                                        }}
+                                        className={`text-[9px] font-bold px-1.5 py-0.5 border transition-colors cursor-pointer shrink-0 ${
+                                          isWPExpanded
+                                            ? isRetro
+                                              ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
+                                              : "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 rounded"
+                                            : isRetro
+                                              ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
+                                              : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 rounded"
+                                        }`}
+                                        title={isWPExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
+                                        aria-label={isWPExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
+                                        aria-expanded={isWPExpanded}
+                                      >
+                                        {isWPExpanded ? "- Collapse Members" : "+ Expand Members"}
+                                      </button>
+                                    )}
                                   </div>
 
                                   <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0">
