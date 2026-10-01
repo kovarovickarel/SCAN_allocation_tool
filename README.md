@@ -6,8 +6,18 @@ This repository is being refactored from a client-provided monolithic TSX file. 
 
 ## Requirements
 
-- Node.js
-- pnpm
+- Node.js 20.19+ or 22.12+ for manual setup
+- pnpm 10 for manual setup
+
+The Windows quick-start launcher can install Git for Windows and Node.js LTS when they are missing. It uses Windows Package Manager when available.
+
+## Windows 11 quick start
+
+After cloning the repository, double-click [`start-app.bat`](start-app.bat). It checks for Git Bash and Node.js, offers to install missing tools with Windows Package Manager, installs the locked project dependencies, starts the local server, and opens the app in your browser. Keep the terminal window open while using the app; press **Ctrl+C** there to stop the server.
+
+The setup needs an internet connection the first time it installs tools and dependencies. If Windows Package Manager is unavailable or an installation is blocked by your device settings, the script opens the official download page and explains what to do next. After installing a prerequisite, run `start-app.bat` again.
+
+The Bash setup script is [`scripts/setup-and-run.sh`](scripts/setup-and-run.sh). The `.bat` launcher lets Windows users start it by double-clicking, without opening a terminal first.
 
 ## Run locally
 
