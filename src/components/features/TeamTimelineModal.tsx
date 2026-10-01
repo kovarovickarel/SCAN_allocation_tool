@@ -1095,6 +1095,11 @@ export function TeamTimelineModal({
                                   totalMonths={totalMonths}
                                   alignedCells={mgmtRow.alignedMgmtCells}
                                   dragOverCellKey={dragOverCellKey}
+                                  isActivityDropEnabled={Boolean(draggedMember && (draggedMember.role === "management" || draggedMember.role === "both"))}
+                                  onActivityDrop={(e, monthIndices) => {
+                                    handleDropMemberOnTarget(draggedMember, { _isMgmt: true, project, mgmtRow, syntheticCard: mgmtRow.syntheticCard }, null, null, monthIndices);
+                                    setDraggedMember(null); setDragOverCellKey(null);
+                                  }}
                                   onCellDragOver={(e, cellKey) => {
                                     if (draggedMember && draggedMember.role === "engineering") {
                                       e.dataTransfer.dropEffect = "none";
@@ -1459,6 +1464,11 @@ export function TeamTimelineModal({
                                   alignedCells={alignedTimelineCells}
                                   dragOverCellKey={dragOverCellKey}
                                   isNegated={isNegated}
+                                  isActivityDropEnabled={Boolean(draggedMember && draggedMember.role !== "management" && !isNegated)}
+                                  onActivityDrop={(e, monthIndices) => {
+                                    handleDropMemberOnTarget(draggedMember, { card, project }, null, null, monthIndices);
+                                    setDraggedMember(null); setDragOverCellKey(null);
+                                  }}
                                   onCellDragOver={(e, cellKey) => {
                                     if (draggedMember && draggedMember.role === "management") {
                                       e.dataTransfer.dropEffect = "none";

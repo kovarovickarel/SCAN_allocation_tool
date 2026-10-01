@@ -1,6 +1,6 @@
-import React, { memo } from "react";
+import React, { memo, useMemo } from "react";
 import { ThemeContext } from "../../constants";
-import { formatFTEPerMille, getCoverageGradientStyle } from "../../utils/helpers";
+import { computeActivitySegments, formatFTEPerMille, getCoverageGradientStyle } from "../../utils/helpers";
 
 export interface TimelineGanttCellCore {
   isPhaseStart?: boolean;
@@ -10,6 +10,12 @@ export interface TimelineGanttCellCore {
   totalWPMonthlyFTE?: number;
   phaseSpan?: number;
   shortPhase?: string;
+  phaseName?: string;
+}
+
+interface ActivityDropTarget {
+  shortPhase: string;
+  monthIndices: number[];
 }
 
 export type AlignedTimelineGanttCell =
@@ -34,19 +40,24 @@ interface TimelineGanttGridProps {
   isNegated?: boolean;
   rowId: string;
   onCellDragOver?: (
-    event: React.DragEvent<HTMLDivElement>,
+    event: React.DragEvent<HTMLElement>,
     cellKey: string,
     pRelIdx: number,
     displayFTE: number
   ) => void;
   onCellDragLeave?: (
-    event: React.DragEvent<HTMLDivElement>,
+    event: React.DragEvent<HTMLElement>,
     cellKey: string
   ) => void;
   onCellDrop?: (
     event: React.DragEvent<HTMLDivElement>,
     pRelIdx: number,
     displayFTE: number
+  ) => void;
+  isActivityDropEnabled?: boolean;
+  onActivityDrop?: (
+    event: React.DragEvent<HTMLElement>,
+    monthIndices: number[]
   ) => void;
 }
 
@@ -59,8 +70,19 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
   onCellDragOver,
   onCellDragLeave,
   onCellDrop,
+  isActivityDropEnabled = false,
+  onActivityDrop,
 }: TimelineGanttGridProps) {
   const { isRetro } = React.useContext(ThemeContext);
+  const activityByMonth = useMemo(() => {
+    const map = new Map<number, ActivityDropTarget>();
+    for (const segment of computeActivitySegments(alignedCells)) {
+      if (segment.pRelIndices.length <= 1) continue;
+      const activity = { shortPhase: segment.shortPhase, monthIndices: segment.pRelIndices };
+      for (const gIdx of segment.gIndices) map.set(gIdx, activity);
+    }
+    return map;
+  }, [alignedCells]);
 
   return (
     <div
@@ -99,6 +121,30 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
 
         const cellKey = `${rowId}_m${pRelIdx}`;
         const isCellDragOver = dragOverCellKey === cellKey;
+        const activity = activityByMonth.get(gIdx);
+        const activityKey = activity ? `${rowId}_activity_${activity.monthIndices[0]}` : null;
+        const isActivityDragOver = activityKey !== null && dragOverCellKey === activityKey;
+        const isActivityStart = Boolean(onActivityDrop && !isNegated && activity?.monthIndices[0] === pRelIdx);
+        const activityRange = activity
+          ? `M${activity.monthIndices[0] + 1}–M${activity.monthIndices[activity.monthIndices.length - 1] + 1}`
+          : "";
+        const handleActivityDragOver = (e: React.DragEvent<HTMLElement>) => {
+          e.stopPropagation();
+          if (!isActivityDropEnabled) {
+            e.dataTransfer.dropEffect = "none";
+            return;
+          }
+          onCellDragOver?.(e, activityKey, pRelIdx, displayFTE);
+        };
+        const handleActivityDragLeave = (e: React.DragEvent<HTMLElement>) => {
+          e.stopPropagation();
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) onCellDragLeave?.(e, activityKey);
+        };
+        const handleActivityDrop = (e: React.DragEvent<HTMLElement>) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (isActivityDropEnabled && activity) onActivityDrop?.(e, activity.monthIndices);
+        };
 
         return (
           <div
@@ -108,10 +154,25 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
             onDrop={(e) => onCellDrop?.(e, pRelIdx, displayFTE)}
             className={`h-full flex items-center justify-center p-0.5 ${paddingRight} relative`}
           >
+            {isActivityStart && (
+              <div
+                onDragOver={handleActivityDragOver}
+                onDragLeave={handleActivityDragLeave}
+                onDrop={handleActivityDrop}
+                className="absolute -left-3.5 top-1/2 -translate-y-1/2 z-40 w-6 h-7 flex items-center justify-center"
+                title={`Drop member onto entire ${activity.shortPhase.toUpperCase()} subactivity (${activityRange})`}
+              >
+                {isActivityDragOver && (
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-emerald-900 text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow whitespace-nowrap pointer-events-none">
+                    {activity.shortPhase.toUpperCase()} · {activityRange}
+                  </div>
+                )}
+              </div>
+            )}
             <div
               style={cellStyle}
               className={`w-full h-8.5 ${roundedClasses} border relative flex flex-col items-center justify-center select-none shadow-2xs transition-all ${
-                isCellDragOver
+                isCellDragOver || isActivityDragOver
                   ? "!border-2 !border-emerald-500 ring-2 ring-emerald-400 scale-105 z-30 shadow-lg brightness-110"
                   : ""
               } ${!isStart ? "border-l-0" : ""} ${!isEnd ? "border-r border-dashed border-white/25" : ""}`}
@@ -134,7 +195,13 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
               )}
 
               {displayFTE > 0 && mData.shortPhase && (
-                <span className={`text-[7px] font-bold uppercase tracking-wider opacity-85 leading-none ${mData.phaseSpan > 1 ? "mt-0.5" : ""}`}>
+                <span
+                  onDragOver={isActivityStart ? handleActivityDragOver : undefined}
+                  onDragLeave={isActivityStart ? handleActivityDragLeave : undefined}
+                  onDrop={isActivityStart ? handleActivityDrop : undefined}
+                  title={isActivityStart ? `Drop member onto ${activity.shortPhase.toUpperCase()} phase label to allocate entire subactivity (${activityRange})` : undefined}
+                  className={`text-[7px] font-bold uppercase tracking-wider opacity-85 leading-none ${mData.phaseSpan > 1 ? "mt-0.5" : ""} ${isActivityStart ? "self-stretch text-center relative z-40" : ""}`}
+                >
                   {mData.shortPhase}
                 </span>
               )}

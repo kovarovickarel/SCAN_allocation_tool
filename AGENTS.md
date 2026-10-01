@@ -61,7 +61,7 @@ The project began as a client-provided monolithic TSX application. Its original 
 - A project has a start month, duration, stability factor, milestones, hidden tools/subcategories, and custom monthly management overrides.
 - A workpackage belongs to a tool, can be assigned to a project, and may have custom member assignments, monthly assignments, and monthly effort overrides.
 - A team member has an FTE capacity, tool, footprint, and role (`engineering`, `management`, or `both`).
-- In the team timeline, workpackage drops fill every month independently and cell drops fill one month. Allocations are capped by both the member's remaining capacity and the workpackage effort left after other members' coverage. Manual edits and resets use the same limits.
+- In the team timeline, dropping a member onto a workpackage label fills all its months, onto a month cell fills that month, and onto the invisible 24px-wide drop zone before a subactivity or its first phase label fills only that contiguous phase. Hovering during a member drag highlights the phase and shows its month range. These phase targets exist for phases spanning multiple months, including phases lasting the entire project duration such as management overhead. Each month's allocation is capped by the member's remaining capacity and the effort left after other members' coverage. Manual edits and resets use the same limits.
 - `Other` workpackages have custom monthly effort, duration, start/boundary information, and an optional maintenance phase.
 - Calculations and defaults should come from `src/utils/helpers.ts` and `src/constants/index.ts` where applicable. Avoid reimplementing existing effort or milestone math in a component.
 - Decimal entry for custom `Other` effort and maintenance uses text inputs with `inputMode="decimal"` so the displayed separator is a dot; comma keystrokes are normalized to a dot.
@@ -94,6 +94,6 @@ pnpm typecheck
 pnpm test:e2e
 ```
 
-Playwright is configured in `playwright.config.ts` to run Chromium against a Vite server on `127.0.0.1:5174`. `tests/visual.spec.ts` checks the original baseline; `tests/screens-and-interactions.spec.ts` covers screens, themes, sizes, and common dialogs; `tests/timeline-editing.spec.ts` covers timeline range editing and allocation capacity. `tests/workpackage-drop.spec.ts` also covers monthly filling and manual allocation limits. Chromium can be installed with `pnpm exec playwright install chromium` when needed.
+Playwright is configured in `playwright.config.ts` to run Chromium against a Vite server on `127.0.0.1:5174`. `tests/visual.spec.ts` checks the original baseline; `tests/screens-and-interactions.spec.ts` covers screens, themes, sizes, and common dialogs; `tests/timeline-editing.spec.ts` covers timeline range editing and allocation capacity; `tests/workpackage-drop.spec.ts` covers workpackage, subactivity, and cell drops plus manual allocation limits. Chromium can be installed with `pnpm exec playwright install chromium` when needed.
 
 The normal app dev server uses `127.0.0.1:5173`. The Playwright server uses port `5174` so it does not collide with the interactive app.
