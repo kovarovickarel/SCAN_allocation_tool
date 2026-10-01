@@ -9,7 +9,7 @@ import { CrossTeamBadge } from "../ui/CrossTeamBadge";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
 import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
 import { useTimelineRangeSelection } from "../../hooks/useTimelineRangeSelection";
-import type { AllocationProject, WorkpackageCard, NumericMap, MonthlyNumericMap } from "../../types";
+import type { AllocationProject, WorkpackageCard, NumericMap, MonthlyNumericMap, MemberMaintenancePreferences, WorkpackageAllocationMonth } from "../../types";
 import type { TeamTimelineModalProps } from './componentTypes';
 import { ChevronRightIcon, ChevronDownIcon, LockIcon, UnlockIcon, ManagementIcon, ToolIcon } from '../ui/icons';
 import { AssignMemberToWPModal } from "./AssignMemberToWPModal";
@@ -36,7 +36,6 @@ export function TeamTimelineModal({
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(allMembers), [allMembers]);
-  useEscapeKey(onClose);
 
   // Allocation editors update the local draft until Save & Close is selected.
   const [projects, setLocalProjects] = useState<AllocationProject[]>(() => deepClone(sourceProjects));
@@ -49,9 +48,13 @@ export function TeamTimelineModal({
     setIsDirty(true);
   }, []);
 
-  const onSaveMonthlyAssignments = useCallback((cardId: string, assignments: MonthlyNumericMap) => {
+  const onSaveMonthlyAssignments = useCallback((cardId: string, assignments: MonthlyNumericMap, maintenancePreferences?: MemberMaintenancePreferences) => {
     setLocalCards((prev) => prev.map((card) => card.id === cardId
-      ? { ...card, memberMonthlyAssignments: assignments } : card));
+      ? {
+        ...card,
+        memberMonthlyAssignments: assignments,
+        ...(maintenancePreferences !== undefined ? { memberMaintenancePreferences: maintenancePreferences } : {}),
+      } : card));
     setIsDirty(true);
   }, []);
 
@@ -61,9 +64,15 @@ export function TeamTimelineModal({
     setIsDirty(true);
   }, []);
 
-  const onSaveMgmtMonthlyAssignments = useCallback((projectId: string, tName: string, assignments: MonthlyNumericMap) => {
+  const onSaveMgmtMonthlyAssignments = useCallback((projectId: string, tName: string, assignments: MonthlyNumericMap, maintenancePreferences?: MemberMaintenancePreferences) => {
     setLocalProjects((prev) => prev.map((project) => project.id === projectId
-      ? { ...project, mgmtMemberMonthlyAssignments: { ...project.mgmtMemberMonthlyAssignments, [tName]: assignments } } : project));
+      ? {
+        ...project,
+        mgmtMemberMonthlyAssignments: { ...project.mgmtMemberMonthlyAssignments, [tName]: assignments },
+        ...(maintenancePreferences !== undefined ? {
+          mgmtMemberMaintenancePreferences: { ...project.mgmtMemberMaintenancePreferences, [tName]: maintenancePreferences },
+        } : {}),
+      } : project));
     setIsDirty(true);
   }, []);
 
@@ -73,19 +82,23 @@ export function TeamTimelineModal({
       if (JSON.stringify(card.memberAssignments || {}) !== JSON.stringify(original?.memberAssignments || {})) {
         persistAssignments?.(card.id, deepClone(card.memberAssignments || {}));
       }
-      if (JSON.stringify(card.memberMonthlyAssignments || {}) !== JSON.stringify(original?.memberMonthlyAssignments || {})) {
-        persistMonthlyAssignments?.(card.id, deepClone(card.memberMonthlyAssignments || {}));
+      if (JSON.stringify(card.memberMonthlyAssignments || {}) !== JSON.stringify(original?.memberMonthlyAssignments || {})
+        || JSON.stringify(card.memberMaintenancePreferences || {}) !== JSON.stringify(original?.memberMaintenancePreferences || {})) {
+        persistMonthlyAssignments?.(card.id, deepClone(card.memberMonthlyAssignments || {}),
+          deepClone(card.memberMaintenancePreferences || {}));
       }
     }
     for (const project of projects) {
       const original = sourceProjects.find((item) => item.id === project.id);
       const assignments = project.mgmtMemberAssignments?.[toolName] || {};
       const monthly = project.mgmtMemberMonthlyAssignments?.[toolName] || {};
+      const maintenancePreferences = project.mgmtMemberMaintenancePreferences?.[toolName] || {};
       if (JSON.stringify(assignments) !== JSON.stringify(original?.mgmtMemberAssignments?.[toolName] || {})) {
         persistMgmtAssignments?.(project.id, toolName, deepClone(assignments));
       }
-      if (JSON.stringify(monthly) !== JSON.stringify(original?.mgmtMemberMonthlyAssignments?.[toolName] || {})) {
-        persistMgmtMonthlyAssignments?.(project.id, toolName, deepClone(monthly));
+      if (JSON.stringify(monthly) !== JSON.stringify(original?.mgmtMemberMonthlyAssignments?.[toolName] || {})
+        || JSON.stringify(maintenancePreferences) !== JSON.stringify(original?.mgmtMemberMaintenancePreferences?.[toolName] || {})) {
+        persistMgmtMonthlyAssignments?.(project.id, toolName, deepClone(monthly), deepClone(maintenancePreferences));
       }
     }
     onClose();
@@ -102,6 +115,7 @@ export function TeamTimelineModal({
   const [expandedWPMembers, setExpandedWPMembers] = useState({});
   const [allMemberTracksExpanded, setAllMemberTracksExpanded] = useState(false);
   const [roleWarning, setRoleWarning] = useState(null);
+  useEscapeKey(onClose, !selectedWPForAssign && !selectedAdjustMember && !roleWarning);
 
   // Direct In-Chart Selection & Editing state for team member cells
   const [isManualEditEnabled, setIsManualEditEnabled] = useState(true);
@@ -158,7 +172,7 @@ export function TeamTimelineModal({
 
       const allProjectCards = cards.filter((c) => c.projectId === p.id);
       const pCards = allProjectCards.filter(
-        (c) => c.tool === toolName || ((toolName === "Other" || showOtherWPs) && c.tool === "Other")
+        (c) => c.tool === toolName || c.tool === "Other"
       );
 
       const stabilityMultiplier = stabilityFactors[p.stability] ?? 1.0;
@@ -271,11 +285,12 @@ export function TeamTimelineModal({
         }
       }
 
+      const visibleWorkpackages = workpackages.filter((wp) => wp.card.tool === toolName || showOtherWPs);
       const totalProjectTeamMonthlyFTE = Array.from({ length: totalMonths }, (_, gIdx) => {
         const pRelIdx = gIdx - pOffset;
         if (pRelIdx < 0 || pRelIdx >= pDur) return 0;
         let sum = 0;
-        for (const wp of workpackages) {
+        for (const wp of visibleWorkpackages) {
           if (!wp.isNegated) sum += (wp.mergedMonthsInProject[pRelIdx]?.totalWPMonthlyFTE || 0);
         }
         if (mgmtRow && mgmtRow.monthEffort[pRelIdx]) sum += (mgmtRow.monthEffort[pRelIdx].totalFTE || 0);
@@ -283,12 +298,13 @@ export function TeamTimelineModal({
       });
 
       const totalProjectTeamFTE = round2(
-        workpackages.reduce((s, wp) => (wp.isNegated ? s : s + wp.activeCardFTE), 0) + (mgmtRow ? mgmtRow.fte : 0)
+        visibleWorkpackages.reduce((s, wp) => (wp.isNegated ? s : s + wp.activeCardFTE), 0) + (mgmtRow ? mgmtRow.fte : 0)
       );
 
       const normMilestones = normalizeMilestones(p.milestones, pDur);
 
-      return { project: p, pDur, pOffset, normMilestones, workpackages, mgmtRow, totalProjectTeamMonthlyFTE, totalProjectTeamFTE };
+      return { project: p, pDur, pOffset, normMilestones, workpackages: visibleWorkpackages,
+        capacityWorkpackages: workpackages, mgmtRow, totalProjectTeamMonthlyFTE, totalProjectTeamFTE };
     });
   }, [projects, cards, toolName, showOtherWPs, minStartAbs, totalMonths, toolFteRates, fteRates, reusabilityFactors, stabilityFactors, mgmtSettings, members]);
 
@@ -311,7 +327,7 @@ export function TeamTimelineModal({
   const getMemberMaxAllowedInMonth = useCallback(
     (memberId, gIdx, type, excludeId) => {
       const memberObj = members.find((m) => m.id === memberId);
-      const memberCap = parseFloat(memberObj?.fte) || 1.0;
+      const memberCap = Math.max(0, parseFloat(memberObj?.fte) || 0);
 
       let otherUsageInMonth = 0;
 
@@ -319,7 +335,7 @@ export function TeamTimelineModal({
         const pRel = gIdx - pRow.pOffset;
         if (pRel < 0 || pRel >= pRow.pDur) continue;
 
-        for (const wp of pRow.workpackages) {
+        for (const wp of pRow.capacityWorkpackages) {
           if (wp.isNegated) continue;
           if (type === "wpMember" && wp.card.id === excludeId) continue;
 
@@ -372,6 +388,38 @@ export function TeamTimelineModal({
     },
     [members, projectRows, toolName]
   );
+
+  const assignmentMonths = useMemo((): WorkpackageAllocationMonth[] => {
+    if (!selectedWPForAssign) return [];
+    const { card, project } = selectedWPForAssign;
+    const row = projectRows.find((item) => item.project.id === project.id);
+    if (!row) return [];
+    const isMgmt = Boolean(card._isMgmt);
+    const wp = isMgmt ? null : row.workpackages.find((item) => item.card.id === card.id);
+    const assignments: NumericMap = isMgmt ? row.project.mgmtMemberAssignments?.[toolName] || {}
+      : wp?.card.memberAssignments || {};
+    const monthly: MonthlyNumericMap = isMgmt ? row.project.mgmtMemberMonthlyAssignments?.[toolName] || {}
+      : wp?.card.memberMonthlyAssignments || {};
+    const total = Object.values(assignments).reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
+    return Array.from({ length: row.pDur }, (_, month) => {
+      const requiredFTE = isMgmt ? row.mgmtRow?.monthEffort[month]?.totalFTE || 0
+        : wp?.mergedMonthsInProject[month]?.totalWPMonthlyFTE || 0;
+      const allocations: NumericMap = {};
+      const available: NumericMap = {};
+      for (const member of members) {
+        const assigned = parseFloat(assignments[member.id]) || 0;
+        const cap = parseFloat(member.fte) || 0;
+        const wpDuration = !isMgmt && card.tool === "Other"
+          ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : row.pDur;
+        const limit = isMgmt ? assigned : Math.min(cap, Math.max(assigned, assigned * row.pDur / wpDuration));
+        allocations[member.id] = monthly[member.id]?.[month] ?? round2(Math.min(limit,
+          requiredFTE * (total > 0 ? assigned / total : 0)));
+        available[member.id] = getMemberMaxAllowedInMonth(member.id, row.pOffset + month,
+          isMgmt ? "mgmtMember" : "wpMember", isMgmt ? project.id : card.id);
+      }
+      return { requiredFTE, allocations, available };
+    });
+  }, [selectedWPForAssign, projectRows, toolName, members, getMemberMaxAllowedInMonth]);
 
   const getMemberCellMaxAllowedInMonth = useCallback((memberId, gIdx, type, excludeId) => {
     const isMgmt = type === "mgmtMember";
@@ -457,12 +505,19 @@ export function TeamTimelineModal({
       monthly[memberId] = memberMonths;
     }
 
-    const activeValues = Array.from({ length: projectRow.pDur }, (_, idx) => Number(monthly[member.id][idx]) || 0)
-      .filter((value) => value > 0);
-    const currentAllocationFTE = activeValues.length > 0
-      ? round2(activeValues.reduce((sum, value) => sum + value, 0) / activeValues.length) : 0;
     const type = isMgmt ? "mgmtMember" : "wpMember";
     const excludeId = isMgmt ? project.id : card.id;
+    const allocationMonths = Array.from({ length: projectRow.pDur }, (_, monthIdx) => {
+      const phase = isMgmt ? "Mgmt" : wp.mergedMonthsInProject[monthIdx]?.shortPhase;
+      return {
+        maxFTE: getMemberCellMaxAllowedInMonth(member.id, projectRow.pOffset + monthIdx, type, excludeId),
+        isMaintenance: phase === "Maint" || phase === "ResMaint",
+        currentFTE: Number(monthly[member.id]?.[monthIdx]) || 0,
+        requiredFTE: isMgmt ? projectRow.mgmtRow.monthEffort[monthIdx]?.totalFTE || 0
+          : wp.isNegated ? 0 : wp.mergedMonthsInProject[monthIdx]?.totalWPMonthlyFTE || 0,
+        phaseLabel: (phase || "Activity").toUpperCase(),
+      };
+    });
     let maxAvailableFTE = 0;
     for (let monthIdx = 0; monthIdx < projectRow.pDur; monthIdx++) {
       const requiredFTE = isMgmt
@@ -474,9 +529,18 @@ export function TeamTimelineModal({
       }
     }
     const cap = parseFloat(member.fte) || 1.0;
-    return { projectRow, assignments, monthly, currentAllocationFTE,
+    const maintenancePreferences = isMgmt
+      ? projectRow.project.mgmtMemberMaintenancePreferences?.[toolName] || {}
+      : wp.card.memberMaintenancePreferences || {};
+    const includeMaintenance = maintenancePreferences[member.id] ?? true;
+    // The percentage controls a monthly ceiling, not the average of capped months.
+    const currentAllocationFTE = Math.max(0, ...allocationMonths
+      .filter((month) => includeMaintenance || !month.isMaintenance)
+      .map((month) => month.currentFTE));
+    return { projectRow, assignments, monthly, currentAllocationFTE, allocationMonths,
+      maintenancePreferences, includeMaintenance,
       otherCommitmentFTE: Math.max(0, round2(cap - maxAvailableFTE)), type, excludeId, isMgmt };
-  }, [selectedAdjustMember, projectRows, toolName, members, getMemberMaxAllowedInMonth]);
+  }, [selectedAdjustMember, projectRows, toolName, members, getMemberMaxAllowedInMonth, getMemberCellMaxAllowedInMonth]);
 
   const resetMemberMonth = useCallback((memberMonths: NumericMap, pRelIdx: number, gIdx: number) => {
     const { memberId, type, cardId, projectId } = rangeSelection;
@@ -666,11 +730,11 @@ export function TeamTimelineModal({
 
   const memberTimelineRows = useMemo(() => {
     return members.map((member) => {
-      const cap = parseFloat(member.fte) || 1.0;
+      const cap = Math.max(0, parseFloat(member.fte) || 0);
       const monthlyAllocations = Array.from({ length: totalMonths }, () => ({ total: 0 }));
 
       for (const pRow of projectRows) {
-        for (const wp of pRow.workpackages) {
+        for (const wp of pRow.capacityWorkpackages) {
           if (wp.isNegated) continue;
           const assignedFTE = parseFloat(wp.card.memberAssignments?.[member.id]) || 0;
           const monthlySpecific = wp.card.memberMonthlyAssignments?.[member.id] || {};
@@ -1319,10 +1383,29 @@ export function TeamTimelineModal({
                                           <div className="flex items-center justify-between gap-1.5 min-w-0">
                                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                               <span className={`text-[10px] ${isRetro ? "text-black" : "text-purple-400"} font-mono font-bold shrink-0`}>↳</span>
-                                              <PersonIcon role={member.role} toolName={member.tool} size={18} isCrossTeam={crossTeamMemberIds.has(member.id)} />
-                                              <span className={`text-[10.5px] font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-900"} truncate`}>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSelectedAdjustMember({ card: mgmtRow.syntheticCard, member, project });
+                                                }}
+                                                className="inline-flex items-center shrink-0 cursor-pointer"
+                                                aria-label={`Adjust allocation for ${member.firstName} ${member.lastName}`}
+                                                title="Adjust dedicated allocation"
+                                              >
+                                                <PersonIcon role={member.role} toolName={member.tool} size={18} isCrossTeam={crossTeamMemberIds.has(member.id)} />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSelectedAdjustMember({ card: mgmtRow.syntheticCard, member, project });
+                                                }}
+                                                className={`text-[10.5px] font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-900"} truncate text-left cursor-pointer`}
+                                                title="Adjust dedicated allocation"
+                                              >
                                                 {member.firstName} {member.lastName}
-                                              </span>
+                                              </button>
                                               <span className={`text-[8px] font-mono font-bold px-1.5 py-0.2 rounded border shrink-0 shadow-2xs ${
                                                 isRetro ? "bg-[#ffff80] text-black border-black font-mono" : "bg-amber-100 text-amber-900 border-amber-300"
                                               }`}>
@@ -1701,10 +1784,29 @@ export function TeamTimelineModal({
                                           <div className="flex items-center justify-between gap-1.5 min-w-0">
                                             <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                               <span className={`text-[10px] ${isRetro ? "text-black" : "text-blue-400"} font-mono font-bold shrink-0`}>↳</span>
-                                              <PersonIcon role={member.role} toolName={member.tool} size={18} isCrossTeam={crossTeamMemberIds.has(member.id)} />
-                                              <span className={`text-[10.5px] font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-900"} truncate`}>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSelectedAdjustMember({ card, member, project });
+                                                }}
+                                                className="inline-flex items-center shrink-0 cursor-pointer"
+                                                aria-label={`Adjust allocation for ${member.firstName} ${member.lastName}`}
+                                                title="Adjust dedicated allocation"
+                                              >
+                                                <PersonIcon role={member.role} toolName={member.tool} size={18} isCrossTeam={crossTeamMemberIds.has(member.id)} />
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSelectedAdjustMember({ card, member, project });
+                                                }}
+                                                className={`text-[10.5px] font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-900"} truncate text-left cursor-pointer`}
+                                                title="Adjust dedicated allocation"
+                                              >
                                                 {member.firstName} {member.lastName}
-                                              </span>
+                                              </button>
                                               <span className={`text-[8px] font-mono font-bold px-1.5 py-0.2 rounded border shrink-0 shadow-2xs ${
                                                 isRetro ? "bg-[#ffff80] text-black border-black font-mono" : "bg-amber-100 text-amber-900 border-amber-300"
                                               }`}>
@@ -2144,12 +2246,15 @@ export function TeamTimelineModal({
           members={members}
           crossTeamMemberIds={crossTeamMemberIds}
           allCards={cards}
+          allocationMonths={assignmentMonths}
           onClose={() => setSelectedWPForAssign(null)}
-          onSave={(cardId, newAssignments) => {
+          onSave={(cardId, newAssignments, newMonthlyAssignments) => {
             if (selectedWPForAssign.card._isMgmt) {
               onSaveMgmtAssignments?.(selectedWPForAssign.project.id, toolName, newAssignments);
+              onSaveMgmtMonthlyAssignments?.(selectedWPForAssign.project.id, toolName, newMonthlyAssignments);
             } else {
               onSaveAssignments?.(cardId, newAssignments);
+              onSaveMonthlyAssignments?.(cardId, newMonthlyAssignments);
             }
             setSelectedWPForAssign(null);
           }}
@@ -2167,13 +2272,16 @@ export function TeamTimelineModal({
           allProjects={projects}
           currentAllocationFTE={adjustmentData?.currentAllocationFTE}
           otherCommitmentFTE={adjustmentData?.otherCommitmentFTE}
+          allocationMonths={adjustmentData?.allocationMonths}
+          initialIncludeMaintenance={adjustmentData?.includeMaintenance}
           onClose={() => setSelectedAdjustMember(null)}
-          onSave={(newAllocFTE) => {
+          onSave={(newAllocFTE, includeMaintenance) => {
             if (!adjustmentData) return;
             const { projectRow, assignments, monthly, type, excludeId, isMgmt } = adjustmentData;
             const memberId = selectedAdjustMember.member.id;
             const current = { ...assignments };
             const currentMonthly: MonthlyNumericMap = deepClone(monthly);
+            const maintenancePreferences = { ...adjustmentData.maintenancePreferences, [memberId]: includeMaintenance };
             if (newAllocFTE <= 0) {
               delete current[memberId];
               delete currentMonthly[memberId];
@@ -2181,17 +2289,19 @@ export function TeamTimelineModal({
               current[memberId] = newAllocFTE;
               const memberMonths: NumericMap = {};
               for (let monthIdx = 0; monthIdx < projectRow.pDur; monthIdx++) {
-                memberMonths[monthIdx] = Math.min(newAllocFTE,
-                  getMemberCellMaxAllowedInMonth(memberId, projectRow.pOffset + monthIdx, type, excludeId));
+                const month = adjustmentData.allocationMonths[monthIdx];
+                memberMonths[monthIdx] = !includeMaintenance && month.isMaintenance ? 0
+                  : Math.min(newAllocFTE,
+                    getMemberCellMaxAllowedInMonth(memberId, projectRow.pOffset + monthIdx, type, excludeId));
               }
               currentMonthly[memberId] = memberMonths;
             }
             if (isMgmt) {
               onSaveMgmtAssignments?.(projectRow.project.id, toolName, current);
-              onSaveMgmtMonthlyAssignments?.(projectRow.project.id, toolName, currentMonthly);
+              onSaveMgmtMonthlyAssignments?.(projectRow.project.id, toolName, currentMonthly, maintenancePreferences);
             } else {
               onSaveAssignments?.(selectedAdjustMember.card.id, current);
-              onSaveMonthlyAssignments?.(selectedAdjustMember.card.id, currentMonthly);
+              onSaveMonthlyAssignments?.(selectedAdjustMember.card.id, currentMonthly, maintenancePreferences);
             }
             setSelectedAdjustMember(null);
           }}

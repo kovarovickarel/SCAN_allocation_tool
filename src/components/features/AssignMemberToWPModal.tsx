@@ -4,12 +4,13 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ToolIcon } from "../ui/icons";
 import type { AssignMemberToWPModalProps } from "./componentTypes";
+import type { MonthlyNumericMap, NumericMap } from "../../types";
 export function AssignMemberToWPModal({
   card,
   project,
   members = [],
   crossTeamMemberIds,
-  allCards = [],
+  allocationMonths,
   onSave,
   onClose,
 }: AssignMemberToWPModalProps) {
@@ -33,153 +34,110 @@ export function AssignMemberToWPModal({
     [members, isMemberEligible]
   );
 
-  // Local draft of assignments: { [memberId]: allocatedFTE }
-  const [draftAssignments, setDraftAssignments] = useState(() => {
-    return { ...(card.memberAssignments || {}) };
-  });
+  // Keep the actual monthly profile: saving an untouched member preserves cell/phase edits.
+  const [draftMonthly, setDraftMonthly] = useState<MonthlyNumericMap>(() => Object.fromEntries(
+    members.map((member) => [member.id, Object.fromEntries(allocationMonths.map((month, index) =>
+      [index, month.allocations[member.id] || 0]))])));
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const draftAssignments = useMemo(() => Object.fromEntries(members.map((member) =>
+    [member.id, Math.max(0, ...Object.values(draftMonthly[member.id] || {}))])), [members, draftMonthly]);
+  const wpTotalFTE = round2(allocationMonths.reduce((sum, month) => sum + month.requiredFTE, 0) / Math.max(1, allocationMonths.length));
+  const totalAssignedFTE = round2(Object.values(draftMonthly).reduce((sum, months) =>
+    sum + Object.values(months).reduce((subtotal, value) => subtotal + value, 0), 0) / Math.max(1, allocationMonths.length));
 
-  const wpTotalFTE = card._fte ?? 0;
+  const memberMonthLimit = (memberId: string, monthIndex: number, draft: MonthlyNumericMap) => {
+    const month = allocationMonths[monthIndex];
+    const capacity = Math.max(0, parseFloat(members.find((member) => member.id === memberId)?.fte) || 0);
+    const otherCoverage = Object.entries(draft).reduce((sum, [id, months]) =>
+      sum + (id === memberId ? 0 : months[monthIndex] || 0), 0);
+    return Math.max(0, round2(Math.min(capacity, month.available[memberId] || 0, month.requiredFTE - otherCoverage)));
+  };
+  const getMemberCapacities = (memberId: string) => {
+    const capacity = Math.max(0, parseFloat(members.find((member) => member.id === memberId)?.fte) || 0);
+    const active = allocationMonths.map((month, index) => ({ month, index })).filter(({ month }) => month.requiredFTE > 0);
+    const maxAvailable = Math.max(0, ...active.map(({ index }) => memberMonthLimit(memberId, index, draftMonthly)));
+    const totalProjected = Math.max(0, ...active.map(({ month, index }) =>
+      round2(capacity - (month.available[memberId] || 0) + (draftMonthly[memberId]?.[index] || 0))));
+    return { capacity, maxAvailable, totalProjected };
+  };
+  const overCapacityMembers = members.filter((member) => allocationMonths.some((month, index) =>
+    (draftMonthly[member.id]?.[index] || 0) > (month.available[member.id] || 0) + 0.000001));
+  const hasOverCapacity = overCapacityMembers.length > 0 || allocationMonths.some((month, index) =>
+    Object.values(draftMonthly).reduce((sum, months) => sum + (months[index] || 0), 0) > month.requiredFTE + 0.000001);
+  const hasInvalidInput = Object.values(inputValues).some((value) => !Number.isFinite(Number(value)));
 
-  // Calculate current commitments across ALL other workpackages in this tool
-  const otherCommitments = useMemo(() => {
-    const map = {};
-    for (const m of members) map[m.id] = 0;
-    for (const c of allCards) {
-      if (c.id === card.id || !c.memberAssignments) continue;
-      for (const [mId, val] of Object.entries(c.memberAssignments)) {
-        if (map[mId] !== undefined) {
-          map[mId] = round2(map[mId] + (parseFloat(val) || 0));
-        }
-      }
-    }
-    return map;
-  }, [members, allCards, card.id]);
-
-  const getMemberCapacities = useCallback((memberId) => {
-    const m = members.find((x) => x.id === memberId);
-    const capacity = parseFloat(m?.fte) || 1.0;
-    const otherFTE = otherCommitments[memberId] || 0;
-    const maxAvailable = Math.max(0, round2(capacity - otherFTE));
-    return { capacity, otherFTE, maxAvailable };
-  }, [members, otherCommitments]);
-
-  const totalAssignedFTE = useMemo(() => {
-    return round2(
-      Object.values(draftAssignments).reduce((sum, v) => sum + (parseFloat(v) || 0), 0)
-    );
-  }, [draftAssignments]);
-
-  // Identify any member whose combined allocations would exceed their dedicated team cap
-  const overCapacityMembers = useMemo(() => {
-    return members.filter((m) => {
-      const currentAlloc = draftAssignments[m.id] || 0;
-      const otherFTE = otherCommitments[m.id] || 0;
-      const capacity = parseFloat(m.fte) || 1.0;
-      return round2(otherFTE + currentAlloc) > capacity + 0.001;
-    });
-  }, [members, draftAssignments, otherCommitments]);
-
-  const handleSetMemberFTE = (memberId, fteVal) => {
-    const member = members.find((x) => x.id === memberId);
+  const handleSetMemberFTE = (memberId: string, fteVal: string | number) => {
+    const member = members.find((item) => item.id === memberId);
     if (!member || !isMemberEligible(member)) return;
-    const parsed = parseFloat(fteVal);
-    setDraftAssignments((prev) => {
-      const next = { ...prev };
-      if (isNaN(parsed) || parsed <= 0) {
-        delete next[memberId];
-      } else {
-        next[memberId] = round2(parsed);
-      }
-      return next;
-    });
+    const normalized = String(fteVal).replace(/,/g, ".");
+    setInputValues((prev) => ({ ...prev, [memberId]: normalized }));
+    const parsed = Number(normalized);
+    if (!Number.isFinite(parsed)) return;
+    setDraftMonthly((prev) => ({ ...prev, [memberId]: Object.fromEntries(allocationMonths.map((_, index) =>
+      [index, Math.min(Math.max(0, round2(parsed)), memberMonthLimit(memberId, index, prev))])) }));
   };
 
-  const handleAssign100Percent = (memberId) => {
-    const member = members.find((x) => x.id === memberId);
+  const handleAssign100Percent = (memberId: string) => {
+    const member = members.find((item) => item.id === memberId);
     if (!member || !isMemberEligible(member)) return;
-    const { maxAvailable } = getMemberCapacities(memberId);
-    const desired = wpTotalFTE > 0 ? wpTotalFTE : 0.2;
-    const capped = round2(desired >= maxAvailable - 0.01 ? maxAvailable : Math.min(desired, maxAvailable));
-    setDraftAssignments((prev) => {
-      const next = { ...prev };
-      if (capped > 0) {
-        next[memberId] = capped;
-      } else {
-        delete next[memberId];
-      }
-      return next;
-    });
+    setInputValues({});
+    setDraftMonthly((prev) => ({ ...prev, [memberId]: Object.fromEntries(allocationMonths.map((_, index) =>
+      [index, memberMonthLimit(memberId, index, prev)])) }));
   };
 
   const handleSplitEvenly = () => {
-    if (eligibleMembers.length === 0 || wpTotalFTE <= 0) return;
-    const next = {};
-    let remainingToDistribute = wpTotalFTE;
-
-    // Distribute equal shares strictly clamped to eligible members' available headroom
-    const equalShare = round2(wpTotalFTE / eligibleMembers.length);
-    eligibleMembers.forEach((m) => {
-      const { maxAvailable } = getMemberCapacities(m.id);
-      const alloc = Math.min(equalShare, maxAvailable);
-      if (alloc > 0) {
-        next[m.id] = round2(alloc);
-        remainingToDistribute = round2(remainingToDistribute - alloc);
-      }
-    });
-
-    // If effort remains, fill any remaining headroom on eligible members
-    if (remainingToDistribute > 0.001) {
-      for (const m of eligibleMembers) {
-        if (remainingToDistribute <= 0.001) break;
-        const { maxAvailable } = getMemberCapacities(m.id);
-        const current = next[m.id] || 0;
-        const extraRoom = Math.max(0, round2(maxAvailable - current));
-        if (extraRoom > 0) {
-          const add = Math.min(remainingToDistribute, extraRoom);
-          next[m.id] = round2(current + add);
-          remainingToDistribute = round2(remainingToDistribute - add);
+    const next: MonthlyNumericMap = {};
+    allocationMonths.forEach((month, index) => {
+      let remaining = month.requiredFTE;
+      let candidates = eligibleMembers.map((member) => ({ id: member.id,
+        limit: Math.min(Math.max(0, parseFloat(member.fte) || 0), month.available[member.id] || 0) }))
+        .filter((member) => member.limit > 0);
+      // Redistribute shares from capacity-limited members before rounding to hundredths.
+      while (candidates.length > 0 && remaining > 0) {
+        const share = remaining / candidates.length;
+        const limited = candidates.filter((member) => member.limit < share);
+        const allocated = limited.length > 0 ? limited : candidates;
+        for (const member of allocated) {
+          const value = Math.min(member.limit, round2(remaining), round2(limited.length > 0 ? member.limit : share));
+          next[member.id] = { ...next[member.id], [index]: value };
+          remaining = round2(remaining - value);
         }
+        candidates = limited.length > 0 ? candidates.filter((member) => !limited.includes(member)) : [];
       }
-    }
-
-    setDraftAssignments(next);
-  };
-
-  const handleAutoCapAll = () => {
-    setDraftAssignments((prev) => {
-      const next = {};
-      for (const [mId, val] of Object.entries(prev)) {
-        const { maxAvailable } = getMemberCapacities(mId);
-        const capped = Math.min(val, maxAvailable);
-        if (capped > 0) next[mId] = round2(capped);
+      // Distribute any hundredth left by rounding an equal share down.
+      for (const member of eligibleMembers) {
+        if (remaining <= 0) break;
+        const current = next[member.id]?.[index] || 0;
+        const limit = Math.min(Math.max(0, parseFloat(member.fte) || 0), month.available[member.id] || 0);
+        const extra = Math.max(0, Math.min(remaining, round2(limit - current)));
+        next[member.id] = { ...next[member.id], [index]: round2(current + extra) };
+        remaining = round2(remaining - extra);
       }
-      return next;
     });
+    setDraftMonthly(next);
+    setInputValues({});
   };
 
-  const handleClear = () => {
-    setDraftAssignments({});
-  };
-
-  const handleCommit = (e) => {
-    e.preventDefault();
-    if (overCapacityMembers.length > 0) return;
-
-    // Sanitize any floating point deviations against dedicated team caps and enforce role eligibility
-    const sanitized = {};
-    for (const [mId, val] of Object.entries(draftAssignments)) {
-      const member = members.find((x) => x.id === mId);
-      if (!member || !isMemberEligible(member)) continue;
-      const { maxAvailable } = getMemberCapacities(mId);
-      const capped = Math.min(val, maxAvailable);
-      if (capped > 0) sanitized[mId] = round2(capped);
+  const sanitize = (draft: MonthlyNumericMap) => {
+    const next: MonthlyNumericMap = {};
+    for (const member of eligibleMembers) {
+      const months = Object.fromEntries(allocationMonths.map((_, index) => [index,
+        Math.min(Math.max(0, draft[member.id]?.[index] || 0), memberMonthLimit(member.id, index, next))]));
+      if (Object.values(months).some((value) => value > 0)) next[member.id] = months;
     }
-
-    onSave(card.id, sanitized);
+    return next;
+  };
+  const handleAutoCapAll = () => { setDraftMonthly(sanitize(draftMonthly)); setInputValues({}); };
+  const handleClear = () => { setDraftMonthly({}); setInputValues({}); };
+  const handleCommit = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (hasOverCapacity || hasInvalidInput) return;
+    const monthly = sanitize(draftMonthly);
+    const assignments: NumericMap = Object.fromEntries(Object.entries(monthly).map(([id, months]) =>
+      [id, round2(Object.values(months).reduce((sum, value) => sum + value, 0) / Math.max(1, allocationMonths.length))]));
+    onSave(card.id, assignments, monthly);
     onClose();
   };
-
-  const hasOverCapacity = overCapacityMembers.length > 0;
 
   return (
     <div
@@ -291,7 +249,9 @@ export function AssignMemberToWPModal({
             <div className="flex items-center gap-1.5 min-w-0">
               <span className="text-sm">⚠️</span>
               <span className="truncate">
-                {overCapacityMembers.length} member(s) exceed their dedicated team FTE limit!
+                {overCapacityMembers.length > 0
+                  ? `${overCapacityMembers.length} member(s) exceed their dedicated team FTE limit!`
+                  : "Allocations exceed the workpackage's monthly required effort!"}
               </span>
             </div>
             <button
@@ -314,8 +274,7 @@ export function AssignMemberToWPModal({
           {members.map((member) => {
             const eligible = isMemberEligible(member);
             const currentAlloc = draftAssignments[member.id] || 0;
-            const { capacity, otherFTE, maxAvailable } = getMemberCapacities(member.id);
-            const totalProjected = round2(otherFTE + currentAlloc);
+            const { capacity, maxAvailable, totalProjected } = getMemberCapacities(member.id);
             const isOverCapacity = eligible && totalProjected > capacity + 0.001;
             const overAmount = round2(totalProjected - capacity);
 
@@ -369,9 +328,6 @@ export function AssignMemberToWPModal({
                     )}
                   </div>
 
-                  <span className="text-[10px] font-mono text-slate-500">
-                    Team Cap: <strong>{capacity.toFixed(2)}</strong> &middot; Other WPs: {otherFTE.toFixed(2)} &middot; Avail: <strong className={eligible && maxAvailable > 0 ? "text-emerald-700" : "text-slate-400"}>{eligible ? `${maxAvailable.toFixed(2)} FTE` : "0.00 FTE"}</strong>
-                  </span>
                 </div>
 
                 <div className="flex items-center justify-between gap-3">
@@ -381,7 +337,7 @@ export function AssignMemberToWPModal({
                         className={`h-full transition-all ${
                           !eligible ? "bg-slate-300" : isOverCapacity ? "bg-red-500" : totalProjected > 0.85 * capacity ? "bg-amber-400" : "bg-emerald-500"
                         }`}
-                        style={{ width: `${eligible ? Math.min(100, Math.round((totalProjected / capacity) * 100)) : 0}%` }}
+                        style={{ width: `${eligible && capacity > 0 ? Math.min(100, Math.round((totalProjected / capacity) * 100)) : 0}%` }}
                       />
                     </div>
                     <span className={`text-[9.5px] font-mono font-bold shrink-0 ${!eligible ? "text-slate-400" : isOverCapacity ? "text-red-600" : "text-slate-600"}`}>
@@ -395,11 +351,18 @@ export function AssignMemberToWPModal({
                       inputMode="decimal"
                       step="0.05"
                       min="0"
-                      max={capacity}
+                      max={maxAvailable}
                       disabled={!eligible}
-                      value={eligible && currentAlloc > 0 ? currentAlloc : ""}
+                      value={eligible ? inputValues[member.id] ?? (currentAlloc > 0 ? currentAlloc : "") : ""}
+                      title="Maximum monthly FTE for this member. Each month is capped by remaining member capacity and workpackage effort; the summary shows the project average."
                       placeholder="0.00"
                       onChange={(e) => handleSetMemberFTE(member.id, e.target.value.replace(",", "."))}
+                      onBlur={() => setInputValues((prev) => {
+                        if (!Number.isFinite(Number(prev[member.id] ?? ""))) return prev;
+                        const next = { ...prev };
+                        delete next[member.id];
+                        return next;
+                      })}
                       className={`w-20 px-2 py-1 text-xs font-mono font-bold text-right border rounded focus:outline-none ${
                         !eligible
                           ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed"
@@ -419,14 +382,14 @@ export function AssignMemberToWPModal({
                           ? "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
                           : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300"
                       }`}
-                      title={!eligible ? "Member role is ineligible for this workpackage" : maxAvailable > 0 ? `Assign up to ${Math.min(wpTotalFTE, maxAvailable).toFixed(2)} FTE (capped to team capacity)` : "No capacity remaining in this team"}
+                      title={!eligible ? "Member role is ineligible for this workpackage" : maxAvailable > 0 ? "Fill each month's remaining workpackage effort within this member's available capacity" : "No capacity or workpackage effort remaining"}
                     >
                       100%
                     </button>
                     {eligible && maxAvailable > 0 && currentAlloc < maxAvailable - 0.0001 && (
                       <button
                         type="button"
-                        onClick={() => handleSetMemberFTE(member.id, maxAvailable)}
+                        onClick={() => handleAssign100Percent(member.id)}
                         className={`text-[9.5px] font-bold px-1.5 py-1 rounded border transition-colors cursor-pointer ${
                           isRetro
                             ? "bg-[#ffff80] text-black border-black font-mono"
@@ -485,7 +448,7 @@ export function AssignMemberToWPModal({
           </button>
           <button
             type="button"
-            disabled={hasOverCapacity}
+            disabled={hasOverCapacity || hasInvalidInput}
             onClick={handleCommit}
             className={
               isRetro
@@ -493,7 +456,7 @@ export function AssignMemberToWPModal({
                 : "flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs py-2 rounded-lg font-bold transition-colors cursor-pointer shadow-xs"
             }
           >
-            {hasOverCapacity ? "Capacity Exceeded" : "Save Allocations"}
+            {hasOverCapacity ? "Capacity Exceeded" : hasInvalidInput ? "Invalid Allocation" : "Save Allocations"}
           </button>
         </div>
       </div>

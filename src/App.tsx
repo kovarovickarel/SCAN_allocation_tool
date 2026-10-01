@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { AllocationProject, TeamMemberRecord, WorkpackageCard } from "./types";
+import type { AllocationProject, MemberMaintenancePreferences, TeamMemberRecord, WorkpackageCard } from "./types";
 import {
   ThemeContext,
   DEFAULT_STABILITY_FACTORS,
@@ -27,6 +27,7 @@ import {
   computeWorkpackageLifecycleTimeline,
   calculateWorkpackageCoverage,
 } from "./utils/helpers";
+import { reconcileProjectTimelineAllocations } from "./utils/timelineAllocations";
 import { ConfigurationModal } from "./components/features/ConfigurationModal";
 import { HelpGuideModal } from "./components/features/HelpGuideModal";
 import {
@@ -305,23 +306,40 @@ export default function App() {
   }, [functions, projectIndex, config, teamMembers]);
 
   const handleSaveTimelineEdits = useCallback((projectId, customMgmtMonthlyFTE, updatedCards) => {
+    const project = projects.find((p) => p.id === projectId);
+    if (!project) return;
+    const editedCards = functions.map((f) => {
+      const updated = updatedCards.find((c) => c.id === f.id);
+      if (!updated || f.projectId !== projectId) return f;
+      return {
+        ...f,
+        otherStartMonth: updated.otherStartMonth,
+        customCoreFTE: updated.customCoreFTE,
+        customDevSupportFTE: updated.customDevSupportFTE,
+        customMeetingsFTE: updated.customMeetingsFTE,
+      };
+    });
+    const reconciled = reconcileProjectTimelineAllocations(project, { ...project, customMgmtMonthlyFTE },
+      functions, editedCards, teamMembers, config);
     setProjects((prev) =>
-      prev.map((p) => (p.id === projectId ? { ...p, customMgmtMonthlyFTE } : p))
+      prev.map((p) => (p.id === projectId ? { ...p, customMgmtMonthlyFTE,
+        mgmtMemberMonthlyAssignments: reconciled.project.mgmtMemberMonthlyAssignments } : p))
     );
     setFunctions((prev) =>
       prev.map((f) => {
-        const updated = updatedCards.find((c) => c.id === f.id);
-        if (!updated) return f;
+        const updated = reconciled.cards.find((c) => c.id === f.id);
+        if (!updated || f.projectId !== projectId) return f;
         return {
           ...f,
           otherStartMonth: updated.otherStartMonth,
           customCoreFTE: updated.customCoreFTE,
           customDevSupportFTE: updated.customDevSupportFTE,
           customMeetingsFTE: updated.customMeetingsFTE,
+          memberMonthlyAssignments: updated.memberMonthlyAssignments,
         };
       })
     );
-  }, []);
+  }, [projects, functions, teamMembers, config]);
 
   const handleDrop = useCallback((cardId, targetProjectId) => {
     setDraggedCard(null);
@@ -454,9 +472,13 @@ export default function App() {
     );
   }, []);
 
-  const handleUpdateCardMonthlyAssignments = useCallback((cardId, newMonthlyAssignments) => {
+  const handleUpdateCardMonthlyAssignments = useCallback((cardId, newMonthlyAssignments, maintenancePreferences?: MemberMaintenancePreferences) => {
     setFunctions((prev) =>
-      prev.map((f) => (f.id === cardId ? { ...f, memberMonthlyAssignments: newMonthlyAssignments } : f))
+      prev.map((f) => (f.id === cardId ? {
+        ...f,
+        memberMonthlyAssignments: newMonthlyAssignments,
+        ...(maintenancePreferences !== undefined ? { memberMaintenancePreferences: maintenancePreferences } : {}),
+      } : f))
     );
   }, []);
 
@@ -471,13 +493,19 @@ export default function App() {
     );
   }, []);
 
-  const handleUpdateProjectMgmtMonthlyAssignments = useCallback((projectId, tName, newMonthlyAssignments) => {
+  const handleUpdateProjectMgmtMonthlyAssignments = useCallback((projectId, tName, newMonthlyAssignments, maintenancePreferences?: MemberMaintenancePreferences) => {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
         const current = { ...(p.mgmtMemberMonthlyAssignments || {}) };
         current[tName] = newMonthlyAssignments;
-        return { ...p, mgmtMemberMonthlyAssignments: current };
+        return {
+          ...p,
+          mgmtMemberMonthlyAssignments: current,
+          ...(maintenancePreferences !== undefined ? {
+            mgmtMemberMaintenancePreferences: { ...p.mgmtMemberMaintenancePreferences, [tName]: maintenancePreferences },
+          } : {}),
+        };
       })
     );
   }, []);

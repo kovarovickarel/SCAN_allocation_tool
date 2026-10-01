@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { AllocationProject, FactorMap, ManagementOverhead, MilestoneMap, MonthlyNumericMap, NumericMap, NumericInput, TeamMemberRecord, ToolDefinition, WorkpackageCard } from '../../types';
+import type { AllocationProject, FactorMap, ManagementOverhead, MemberMaintenancePreferences, MilestoneMap, MonthlyNumericMap, NumericMap, NumericInput, TeamMemberRecord, ToolDefinition, WorkpackageCard, WorkpackageAllocationMonth } from '../../types';
 import type { DEFAULT_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_OTHER_SETTINGS, DEFAULT_TOOL_FTE_RATES } from '../../constants';
 
 export interface SvgIconProps {
@@ -170,7 +170,8 @@ export interface AssignMemberToWPModalProps {
   members?: TeamMemberRecord[];
   crossTeamMemberIds?: ReadonlySet<string>;
   allCards?: WorkpackageCard[];
-  onSave: (cardId: string, assignments: NumericMap) => void;
+  allocationMonths: readonly WorkpackageAllocationMonth[];
+  onSave: (cardId: string, assignments: NumericMap, monthlyAssignments: MonthlyNumericMap) => void;
   onClose: () => void;
 }
 
@@ -183,7 +184,15 @@ export interface AdjustMemberAllocationModalProps {
   allProjects?: AllocationProject[];
   currentAllocationFTE?: number;
   otherCommitmentFTE?: number;
-  onSave: (fte: number) => void;
+  initialIncludeMaintenance?: boolean;
+  allocationMonths?: readonly {
+    maxFTE: number;
+    isMaintenance: boolean;
+    currentFTE: number;
+    requiredFTE: number;
+    phaseLabel: string;
+  }[];
+  onSave: (fte: number, includeMaintenance: boolean) => void;
   onClose: () => void;
 }
 
@@ -200,12 +209,17 @@ export interface TeamTimelineModalProps {
   stabilityFactors?: FactorMap;
   onClose: () => void;
   onSaveAssignments?: (cardId: string, assignments: NumericMap) => void;
-  onSaveMonthlyAssignments?: (cardId: string, assignments: MonthlyNumericMap) => void;
+  onSaveMonthlyAssignments?: (
+    cardId: string,
+    assignments: MonthlyNumericMap,
+    maintenancePreferences?: MemberMaintenancePreferences
+  ) => void;
   onSaveMgmtAssignments?: (projectId: string, toolName: string, assignments: NumericMap) => void;
   onSaveMgmtMonthlyAssignments?: (
     projectId: string,
     toolName: string,
-    assignments: MonthlyNumericMap
+    assignments: MonthlyNumericMap,
+    maintenancePreferences?: MemberMaintenancePreferences
   ) => void;
 }
 

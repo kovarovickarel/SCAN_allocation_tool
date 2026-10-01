@@ -12,14 +12,17 @@ export function AdjustMemberAllocationModal({
   allProjects = [],
   currentAllocationFTE,
   otherCommitmentFTE,
+  initialIncludeMaintenance = true,
+  allocationMonths,
   onSave,
   onClose,
 }: AdjustMemberAllocationModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
   useEscapeKey(onClose);
 
-  const cap = parseFloat(member?.fte) || 1.0;
+  const cap = Math.max(0, parseFloat(member?.fte) || 0);
   const isMgmt = Boolean(card?._isMgmt);
+  const [includeMaintenance, setIncludeMaintenance] = useState(initialIncludeMaintenance);
 
   // Compute this member's commitment on other workpackages
   const otherCommitment = useMemo(() => {
@@ -42,8 +45,18 @@ export function AdjustMemberAllocationModal({
     return sum;
   }, [otherCommitmentFTE, allCards, allProjects, card?.id, member?.id, isMgmt, project?.id, card?.tool]);
 
-  const maxAvailableFTE = Math.max(0, round2(cap - otherCommitment));
-  const maxAvailablePct = cap > 0 ? Math.min(100, Math.round((maxAvailableFTE / cap) * 100)) : 0;
+  const getAvailableFTE = (include: boolean) => allocationMonths
+    ? Math.max(0, ...allocationMonths.filter((month) => include || !month.isMaintenance).map((month) => month.maxFTE))
+    : Math.max(0, round2(cap - otherCommitment));
+  const getMaxPercentage = (availableFTE: number) => {
+    if (cap <= 0) return 0;
+    for (let pct = 100; pct >= 0; pct--) {
+      if (round2((pct / 100) * cap) <= availableFTE + 0.000001) return pct;
+    }
+    return 0;
+  };
+  const maxAvailableFTE = getAvailableFTE(includeMaintenance);
+  const maxAvailablePct = getMaxPercentage(maxAvailableFTE);
 
   const currentAssignedFTE = useMemo(() => {
     if (currentAllocationFTE !== undefined) return currentAllocationFTE;
@@ -56,13 +69,33 @@ export function AdjustMemberAllocationModal({
   const initialPct = cap > 0 ? clamp(Math.round((currentAssignedFTE / cap) * 100), 0, 100) : 0;
   const [percentage, setPercentage] = useState(initialPct);
 
+  const currentScope = useMemo(() => {
+    if (!allocationMonths) return null;
+    // Judge the existing allocation against its saved maintenance setting.
+    const activeMonths = allocationMonths.filter((month) => month.requiredFTE > 0
+      && (initialIncludeMaintenance || !month.isMaintenance));
+    const assignedCount = activeMonths.filter((month) => month.currentFTE > 0).length;
+    const hasMaintenanceOverrides = !initialIncludeMaintenance
+      && allocationMonths.some((month) => month.isMaintenance && month.currentFTE > 0);
+    const hasCellOverrides = activeMonths.some((month) => Math.abs(month.currentFTE
+      - Math.min(currentAssignedFTE, month.maxFTE)) > 0.000001);
+    return {
+      assignedCount,
+      activeCount: activeMonths.length,
+      hasMaintenanceOverrides,
+      hasCellOverrides,
+      isSelective: hasMaintenanceOverrides || hasCellOverrides
+        || (assignedCount > 0 && assignedCount < activeMonths.length),
+    };
+  }, [allocationMonths, initialIncludeMaintenance, currentAssignedFTE]);
+
   const currentFTE = round2((percentage / 100) * cap);
   const isOverMax = currentFTE > maxAvailableFTE + 0.000001;
 
   const handleCommit = (e) => {
     e.preventDefault();
     if (isOverMax) return;
-    onSave(currentFTE);
+    onSave(currentFTE, includeMaintenance);
     onClose();
   };
 
@@ -71,7 +104,10 @@ export function AdjustMemberAllocationModal({
       className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4"
       role="dialog"
       aria-modal="true"
-      onClick={onClose}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClose();
+      }}
     >
       <div
         className={`${
@@ -111,31 +147,46 @@ export function AdjustMemberAllocationModal({
           </button>
         </div>
 
-        {/* Headroom Status */}
-        <div className={`p-2.5 rounded-lg border text-xs flex flex-col gap-1 ${
+        {/* Warn when saving will replace a selective allocation. */}
+        {currentScope?.isSelective && (
+          <div role="note" className={`p-2.5 rounded-lg border text-[11px] ${
+            isRetro ? "bg-[#ffffec] border-2 border-black text-black" : "bg-amber-50 border-amber-300 text-amber-900"
+          }`}>
+            <div className="flex items-center gap-1.5 font-bold"
+              title={currentScope.hasMaintenanceOverrides
+                ? "Maintenance is excluded, but maintenance cells have manual allocations. Saving replaces them."
+                : currentScope.hasCellOverrides
+                ? "Custom cell allocations are active. Saving replaces them with allocation across the workpackage."
+                : `Currently allocated to ${currentScope.assignedCount} of ${currentScope.activeCount} workpackage months`}>
+              <span aria-hidden="true">⚠</span>
+              <span>Selective allocation active</span>
+            </div>
+            <p className="mt-0.5">Saving replaces it with allocation across the workpackage.</p>
+          </div>
+        )}
+
+        {/* Maintenance scope */}
+        <label className={`p-2.5 rounded-lg border text-xs flex items-center gap-2 cursor-pointer ${
           isRetro ? "bg-[#ffffec] border-2 border-black" : "bg-slate-50 border-slate-200"
         }`}>
-          <div className="flex justify-between items-center">
-            <span className="text-slate-600">Personal Capacity:</span>
-            <span className="font-mono font-bold">{cap.toFixed(2)} FTE</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-slate-600">Other Commitments:</span>
-            <span className="font-mono font-bold">{otherCommitment.toFixed(2)} FTE</span>
-          </div>
-          <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-            <span className="font-bold text-slate-800">Max Available:</span>
-            <span className="font-mono font-bold text-emerald-700">
-              {maxAvailableFTE.toFixed(2)} FTE ({maxAvailablePct}%)
-            </span>
-          </div>
-        </div>
+          <input
+            type="checkbox"
+            checked={includeMaintenance}
+            onChange={(e) => {
+              const include = e.target.checked;
+              setIncludeMaintenance(include);
+              setPercentage((prev) => Math.min(prev, getMaxPercentage(getAvailableFTE(include))));
+            }}
+            className="accent-blue-600 cursor-pointer"
+          />
+          <span className="font-bold text-slate-800">Include maintenance phases</span>
+        </label>
 
         {/* Interactive Percentage Slider & Input */}
         <div className="flex flex-col gap-2">
           <div className="flex justify-between items-center">
             <label className="text-xs font-bold text-slate-800">
-              Dedicated Allocation Percentage:
+              Allocation for entire workpackage:
             </label>
             <div className="flex items-center gap-1">
               <input
@@ -145,7 +196,7 @@ export function AdjustMemberAllocationModal({
                 value={percentage}
                 onChange={(e) => {
                   const val = parseInt(e.target.value, 10);
-                  setPercentage(isNaN(val) ? 0 : clamp(val, 0, 100));
+                  setPercentage(isNaN(val) ? 0 : clamp(val, 0, maxAvailablePct));
                 }}
                 className={`w-16 px-2 py-0.5 text-xs font-mono font-bold text-right border rounded ${
                   isOverMax ? "border-red-500 bg-red-50 text-red-900" : "border-slate-300"
@@ -158,8 +209,8 @@ export function AdjustMemberAllocationModal({
           <input
             type="range"
             min="0"
-            max="100"
-            step="5"
+            max={maxAvailablePct}
+            step="1"
             value={percentage}
             onChange={(e) => setPercentage(parseInt(e.target.value, 10))}
             className="w-full accent-blue-600 cursor-pointer"
@@ -178,11 +229,14 @@ export function AdjustMemberAllocationModal({
               <button
                 key={preset}
                 type="button"
+                disabled={round2((preset / 100) * cap) > maxAvailableFTE + 0.000001}
                 onClick={() => setPercentage(preset)}
-                className={`flex-1 py-1 text-[10px] font-bold border rounded transition-colors cursor-pointer ${
-                  percentage === preset
-                    ? "bg-blue-600 text-white border-blue-600"
-                    : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                className={`flex-1 py-1 text-[10px] font-bold border rounded transition-colors ${
+                  round2((preset / 100) * cap) > maxAvailableFTE + 0.000001
+                    ? "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed"
+                    : percentage === preset
+                    ? "bg-blue-600 text-white border-blue-600 cursor-pointer"
+                    : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 cursor-pointer"
                 }`}
               >
                 {preset === 0 ? "0% (Remove)" : `${preset}%`}
@@ -190,8 +244,11 @@ export function AdjustMemberAllocationModal({
             ))}
             <button
               type="button"
+              disabled={maxAvailablePct === 0}
               onClick={() => setPercentage(maxAvailablePct)}
-              className="px-2 py-1 text-[10px] font-bold border rounded bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 transition-colors cursor-pointer"
+              className={`px-2 py-1 text-[10px] font-bold border rounded transition-colors ${maxAvailablePct === 0
+                ? "bg-slate-100 text-slate-400 border-slate-200 opacity-50 cursor-not-allowed"
+                : "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 cursor-pointer"}`}
             >
               Max ({maxAvailablePct}%)
             </button>

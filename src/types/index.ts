@@ -6,6 +6,14 @@ export type NumericMap = Record<string, number>;
 
 export type MonthlyNumericMap = Record<string, NumericMap>;
 
+export type MemberMaintenancePreferences = Record<string, boolean>;
+
+export interface WorkpackageAllocationMonth {
+  requiredFTE: number;
+  allocations: NumericMap;
+  available: NumericMap;
+}
+
 export type FteMap = Record<string, number>;
 
 export type MilestoneMap = Record<string, number>;
@@ -28,6 +36,7 @@ export interface WorkpackageCard {
   otherMaintenanceEffort?: NumericInput;
   memberAssignments?: NumericMap;
   memberMonthlyAssignments?: MonthlyNumericMap;
+  memberMaintenancePreferences?: MemberMaintenancePreferences;
   customCoreFTE?: FteMap;
   customDevSupportFTE?: FteMap;
   customMeetingsFTE?: FteMap;
@@ -54,6 +63,7 @@ export interface AllocationProject {
   customMgmtMonthlyFTE?: Record<string, NumericMap>;
   mgmtMemberAssignments?: Record<string, NumericMap>;
   mgmtMemberMonthlyAssignments?: Record<string, MonthlyNumericMap>;
+  mgmtMemberMaintenancePreferences?: Record<string, MemberMaintenancePreferences>;
   subSet?: string[];
   toolSet?: string[];
 }
