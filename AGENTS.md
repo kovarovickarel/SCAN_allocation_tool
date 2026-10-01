@@ -17,6 +17,7 @@ The project began as a client-provided monolithic TSX application. Its original 
 - Manage team members, roles, tool associations, and individual FTE capacity.
 - Review project effort estimates and project staffing timelines.
 - Review combined team timelines and assign or adjust member allocations.
+- Team timeline allocations are staged locally. `Save & Close` applies the draft; `Close`, `Discard & Close`, the header close button, Escape, and backdrop clicks discard it. Saving an allocation inside a nested dialog updates the timeline draft only.
 - Override monthly values in timelines, reset overrides, and save or cancel edits.
 - Configure FTE rates, management overhead, stability, reusability, and other defaults.
 - Switch tool views, layout density, app mode, and visual theme.

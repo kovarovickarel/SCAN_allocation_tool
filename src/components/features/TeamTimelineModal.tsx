@@ -8,7 +8,7 @@ import { PersonIcon } from "../ui/PersonIcon";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
 import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
 import { useTimelineRangeSelection } from "../../hooks/useTimelineRangeSelection";
-import type { NumericMap, MonthlyNumericMap } from "../../types";
+import type { AllocationProject, WorkpackageCard, NumericMap, MonthlyNumericMap } from "../../types";
 import type { TeamTimelineModalProps } from './componentTypes';
 import { ChevronRightIcon, ChevronDownIcon, LockIcon, UnlockIcon, ManagementIcon, ToolIcon } from '../ui/icons';
 import { AssignMemberToWPModal } from "./AssignMemberToWPModal";
@@ -18,22 +18,76 @@ import { AdjustMemberAllocationModal } from "./AdjustMemberAllocationModal";
 export function TeamTimelineModal({
   toolName,
   members = [],
-  projects = [],
-  cards = [],
+  projects: sourceProjects = [],
+  cards: sourceCards = [],
   toolFteRates,
   fteRates,
   mgmtSettings = DEFAULT_MGMT_SETTINGS,
   reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   stabilityFactors = DEFAULT_STABILITY_FACTORS,
   onClose,
-  onSaveAssignments,
-  onSaveMonthlyAssignments,
-  onSaveMgmtAssignments,
-  onSaveMgmtMonthlyAssignments,
+  onSaveAssignments: persistAssignments,
+  onSaveMonthlyAssignments: persistMonthlyAssignments,
+  onSaveMgmtAssignments: persistMgmtAssignments,
+  onSaveMgmtMonthlyAssignments: persistMgmtMonthlyAssignments,
 }: TeamTimelineModalProps) {
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
   useEscapeKey(onClose);
+
+  // Allocation editors update the local draft until Save & Close is selected.
+  const [projects, setLocalProjects] = useState<AllocationProject[]>(() => deepClone(sourceProjects));
+  const [cards, setLocalCards] = useState<WorkpackageCard[]>(() => deepClone(sourceCards));
+  const [isDirty, setIsDirty] = useState(false);
+
+  const onSaveAssignments = useCallback((cardId: string, assignments: NumericMap) => {
+    setLocalCards((prev) => prev.map((card) => card.id === cardId
+      ? { ...card, memberAssignments: assignments } : card));
+    setIsDirty(true);
+  }, []);
+
+  const onSaveMonthlyAssignments = useCallback((cardId: string, assignments: MonthlyNumericMap) => {
+    setLocalCards((prev) => prev.map((card) => card.id === cardId
+      ? { ...card, memberMonthlyAssignments: assignments } : card));
+    setIsDirty(true);
+  }, []);
+
+  const onSaveMgmtAssignments = useCallback((projectId: string, tName: string, assignments: NumericMap) => {
+    setLocalProjects((prev) => prev.map((project) => project.id === projectId
+      ? { ...project, mgmtMemberAssignments: { ...project.mgmtMemberAssignments, [tName]: assignments } } : project));
+    setIsDirty(true);
+  }, []);
+
+  const onSaveMgmtMonthlyAssignments = useCallback((projectId: string, tName: string, assignments: MonthlyNumericMap) => {
+    setLocalProjects((prev) => prev.map((project) => project.id === projectId
+      ? { ...project, mgmtMemberMonthlyAssignments: { ...project.mgmtMemberMonthlyAssignments, [tName]: assignments } } : project));
+    setIsDirty(true);
+  }, []);
+
+  const handleSave = useCallback(() => {
+    for (const card of cards) {
+      const original = sourceCards.find((item) => item.id === card.id);
+      if (JSON.stringify(card.memberAssignments || {}) !== JSON.stringify(original?.memberAssignments || {})) {
+        persistAssignments?.(card.id, deepClone(card.memberAssignments || {}));
+      }
+      if (JSON.stringify(card.memberMonthlyAssignments || {}) !== JSON.stringify(original?.memberMonthlyAssignments || {})) {
+        persistMonthlyAssignments?.(card.id, deepClone(card.memberMonthlyAssignments || {}));
+      }
+    }
+    for (const project of projects) {
+      const original = sourceProjects.find((item) => item.id === project.id);
+      const assignments = project.mgmtMemberAssignments?.[toolName] || {};
+      const monthly = project.mgmtMemberMonthlyAssignments?.[toolName] || {};
+      if (JSON.stringify(assignments) !== JSON.stringify(original?.mgmtMemberAssignments?.[toolName] || {})) {
+        persistMgmtAssignments?.(project.id, toolName, deepClone(assignments));
+      }
+      if (JSON.stringify(monthly) !== JSON.stringify(original?.mgmtMemberMonthlyAssignments?.[toolName] || {})) {
+        persistMgmtMonthlyAssignments?.(project.id, toolName, deepClone(monthly));
+      }
+    }
+    onClose();
+  }, [cards, projects, sourceCards, sourceProjects, toolName, persistAssignments, persistMonthlyAssignments,
+    persistMgmtAssignments, persistMgmtMonthlyAssignments, onClose]);
 
   const [collapsedProjects, setCollapsedProjects] = useState({});
   const [collapsedPersonalCapacity, setCollapsedPersonalCapacity] = useState(false);
@@ -949,6 +1003,8 @@ export function TeamTimelineModal({
               type="button"
               onClick={onClose}
               className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+              aria-label="Close modal without saving"
+              title={isDirty ? "Close without saving changes" : "Close timeline"}
             >
               ✕
             </button>
@@ -2106,9 +2162,35 @@ export function TeamTimelineModal({
               <span className="text-[11px] font-mono font-bold text-purple-900">100%</span>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="bg-slate-800 hover:bg-slate-900 text-white font-bold px-4 py-1.5 rounded-lg cursor-pointer">
-            Close
-          </button>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className={`font-bold px-4 py-1.5 text-xs transition-colors cursor-pointer ${
+                isRetro
+                  ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#e0e0e0]"
+                  : "bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg"
+              }`}
+            >
+              {isDirty ? "Discard & Close" : "Close"}
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={!isDirty}
+              className={`font-bold px-4 py-1.5 text-xs transition-colors cursor-pointer shadow-xs flex items-center gap-1.5 ${
+                isRetro
+                  ? isDirty
+                    ? "bg-[#000080] text-white font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black shadow-[2px_2px_0px_#000]"
+                    : "bg-[#c0c0c0] text-[#808080] font-mono border-2 border-t-white border-l-white border-b-black border-r-black cursor-not-allowed opacity-60"
+                  : isDirty
+                  ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-md ring-1 ring-emerald-400 rounded-lg"
+                  : "bg-slate-200 text-slate-400 cursor-not-allowed opacity-60 rounded-lg"
+              }`}
+            >
+              <span>Save &amp; Close</span>
+            </button>
+          </div>
         </div>
       </div>
 

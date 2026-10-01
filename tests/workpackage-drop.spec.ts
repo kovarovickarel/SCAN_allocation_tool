@@ -119,7 +119,7 @@ for (const phase of ["REQ", "IMP", "VAL", "INT", "MAINT"]) {
     if (phase === "IMP") {
       await page.screenshot({ path: test.info().outputPath("subactivity-drop-bars.png"), fullPage: true });
     }
-    await timeline.getByRole("button", { name: "Close", exact: true }).click();
+    await timeline.getByRole("button", { name: "Save & Close", exact: true }).click();
     await page.getByRole("button", { name: "Open KPI Combined Team Timeline" }).click();
     expect(await memberValues(timeline, "Lane Detection KPI", "tm_2")).toEqual(expected);
   });
@@ -276,7 +276,7 @@ test("whole-workpackage drop fills every phase to the available capacity and sur
 
   await dropMember(timeline, "Elena Russo", "Lane Detection KPI");
   expect(await memberValues(timeline, "Lane Detection KPI", "tm_2")).toEqual(expected);
-  await timeline.getByRole("button", { name: "Close", exact: true }).click();
+  await timeline.getByRole("button", { name: "Save & Close", exact: true }).click();
   await page.getByRole("button", { name: "Open KPI Combined Team Timeline" }).click();
   expect(await memberValues(timeline, "Lane Detection KPI", "tm_2")).toEqual(expected);
 });
