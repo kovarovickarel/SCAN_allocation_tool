@@ -220,10 +220,8 @@ export function TeamTimelineModal({
             if (displayFTE > 0) {
               for (const [mId, fteVal] of Object.entries(mgmtAssignments)) {
                 if (mgmtMonthly[mId]?.[pRelIdx] === undefined) {
-                  const mObj = members.find((m) => m.id === mId);
-                  const cap = parseFloat(mObj?.fte) || 1.0;
                   const share = totalStaffedMgmt > 0 ? parseFloat(fteVal) / totalStaffedMgmt : 1;
-                  coveredFTE += Math.min(cap, displayFTE * share);
+                  coveredFTE += Math.min(parseFloat(fteVal) || 0, displayFTE * share);
                 }
               }
               for (const mObj of Object.values(mgmtMonthly)) {
@@ -340,7 +338,9 @@ export function TeamTimelineModal({
             contrib = parseFloat(monthlySpecific[pRel]) || 0;
           } else if (assignedFTE > 0) {
             const wpMonthFTE = wp.mergedMonthsInProject[pRel]?.totalWPMonthlyFTE || 0;
-            contrib = round2(Math.min(memberCap, wpMonthFTE * memberShare));
+            const wpDuration = wp.card.tool === "Other" ? Math.max(1, parseInt(wp.card.otherDuration, 10) || 6) : pRow.pDur;
+            const maxAllowed = Math.min(memberCap, Math.max(assignedFTE, assignedFTE * (pRow.pDur / wpDuration)));
+            contrib = round2(Math.min(maxAllowed, wpMonthFTE * memberShare));
           }
           otherUsageInMonth = round2(otherUsageInMonth + contrib);
         }
@@ -363,7 +363,7 @@ export function TeamTimelineModal({
               contrib = parseFloat(mgmtMonthly[pRel]) || 0;
             } else if (assignedFTE > 0) {
               const mgmtMonthFTE = pRow.mgmtRow.monthEffort[pRel]?.totalFTE || 0;
-              contrib = round2(Math.min(memberCap, mgmtMonthFTE * memberShare));
+              contrib = round2(Math.min(assignedFTE, mgmtMonthFTE * memberShare));
             }
             otherUsageInMonth = round2(otherUsageInMonth + contrib);
           }
@@ -591,8 +591,8 @@ export function TeamTimelineModal({
           }
         }
       }
-      const maxAvailable = Math.max(0, round2(memberCap - otherCommitments));
       const currentMemberAlloc = parseFloat(currentAssignments[member.id]) || 0;
+      const maxAvailable = Math.max(0, round2(memberCap - otherCommitments - currentMemberAlloc));
 
       if (maxAvailable <= 0 || neededFTE <= 0.0005) {
         setSelectedWPForAssign({ card: isMgmt ? target.syntheticCard : target.card, project: target.project });
@@ -631,7 +631,9 @@ export function TeamTimelineModal({
               if (monthlySpecific[pRelIdx] !== undefined) {
                 contrib = parseFloat(monthlySpecific[pRelIdx]) || 0;
               } else if (assignedFTE > 0) {
-                contrib = round2(Math.min(cap, wpMonthFTE * memberShare));
+                const wpDuration = wp.card.tool === "Other" ? Math.max(1, parseInt(wp.card.otherDuration, 10) || 6) : pRow.pDur;
+                const maxAllowed = Math.min(cap, Math.max(assignedFTE, assignedFTE * (pRow.pDur / wpDuration)));
+                contrib = round2(Math.min(maxAllowed, wpMonthFTE * memberShare));
               }
               if (contrib > 0) monthlyAllocations[gIdx].total = round2(monthlyAllocations[gIdx].total + contrib);
             }
@@ -653,7 +655,7 @@ export function TeamTimelineModal({
               if (mgmtMonthly[pRelIdx] !== undefined) {
                 contrib = parseFloat(mgmtMonthly[pRelIdx]) || 0;
               } else if (assignedFTE > 0) {
-                contrib = round2(Math.min(cap, mgmtMonthFTE * memberShare));
+                contrib = round2(Math.min(assignedFTE, mgmtMonthFTE * memberShare));
               }
               if (contrib > 0) monthlyAllocations[gIdx].total = round2(monthlyAllocations[gIdx].total + contrib);
             }
@@ -661,6 +663,10 @@ export function TeamTimelineModal({
         }
       }
 
+      // Workpackage and management allocations share one monthly personal capacity.
+      monthlyAllocations.forEach((allocation) => {
+        allocation.total = Math.min(cap, allocation.total);
+      });
       const totalSum = monthlyAllocations.reduce((s, m) => s + m.total, 0);
       const avgFTE = totalMonths > 0 ? round2(totalSum / totalMonths) : 0;
       const hasAnyOverallocation = monthlyAllocations.some((m) => m.total > cap + 0.001);
@@ -1130,7 +1136,7 @@ export function TeamTimelineModal({
                                         return { isInside: false, fte: 0, isOverridden: false, defaultFTE: 0 };
                                       }
                                       const mgmtMonthFTE = mgmtRow.monthEffort[pRelIdx]?.totalFTE || 0;
-                                      const baseContrib = assignedFTE > 0 ? round2(Math.min(cap, mgmtMonthFTE * memberShare)) : 0;
+                                      const baseContrib = assignedFTE > 0 ? round2(Math.min(assignedFTE, mgmtMonthFTE * memberShare)) : 0;
                                       const isOverridden = memberMonthlyMap[pRelIdx] !== undefined;
                                       const val = isOverridden ? (parseFloat(memberMonthlyMap[pRelIdx]) || 0) : baseContrib;
                                       memberMonthlySum += val;
@@ -1489,7 +1495,9 @@ export function TeamTimelineModal({
                                         return { isInside: false, fte: 0, isOverridden: false, defaultFTE: 0 };
                                       }
                                       const wpMonthFTE = wp.mergedMonthsInProject[pRelIdx]?.totalWPMonthlyFTE || 0;
-                                      const baseContrib = assignedFTE > 0 ? round2(Math.min(cap, wpMonthFTE * memberShare)) : 0;
+                                      const wpDuration = card.tool === "Other" ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : pDur;
+                                      const maxAllowed = Math.min(cap, Math.max(assignedFTE, assignedFTE * (pDur / wpDuration)));
+                                      const baseContrib = assignedFTE > 0 ? round2(Math.min(maxAllowed, wpMonthFTE * memberShare)) : 0;
                                       const isOverridden = memberMonthlyMap[pRelIdx] !== undefined;
                                       const val = isOverridden ? (parseFloat(memberMonthlyMap[pRelIdx]) || 0) : baseContrib;
                                       memberMonthlySum += val;

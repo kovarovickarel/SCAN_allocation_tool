@@ -99,4 +99,34 @@ test.describe("timeline editing behavior", () => {
       new RegExp(`Month 1 .*: ${expectedFTE.toFixed(2)} FTE to Lane Detection KPI`)
     );
   });
+
+  test("combined workpackage loads never exceed a member's monthly FTE capacity", async ({ page }) => {
+    await openApp(page);
+    await assignKpiWorkpackageToFirstProject(page);
+    await page.locator('[draggable="true"]').filter({ hasText: "Object Distance KPI" }).first().dragTo(
+      page.getByRole("heading", { name: "GM", exact: true })
+    );
+
+    await page.getByTitle("KPI Team View").click();
+    await page.getByRole("button", { name: "Open KPI Combined Team Timeline" }).click();
+    const timeline = page.getByRole("dialog");
+
+    for (const workpackage of ["Lane Detection KPI", "Object Distance KPI"]) {
+      await timeline.getByText(workpackage, { exact: true }).click();
+      const assignmentDialog = page.getByRole("dialog").last();
+      const memberCard = assignmentDialog.getByText("Alex Novak", { exact: true }).locator("xpath=../../..");
+      await memberCard.locator('input[type="number"]').fill("0.3");
+      await assignmentDialog.getByRole("button", { name: "Save Allocations" }).click();
+    }
+
+    const monthlyCells = timeline.locator('[title^="Alex Novak (PRA)"]');
+    const percentages = await monthlyCells.evaluateAll((cells) =>
+      cells.map((cell) => Number(cell.getAttribute("title")?.match(/\((\d+)%\)/)?.[1] ?? 0))
+    );
+
+    expect(percentages.length).toBeGreaterThan(0);
+    expect(Math.max(...percentages)).toBeGreaterThan(0);
+    expect(Math.max(...percentages)).toBeLessThanOrEqual(100);
+    await expect(timeline.getByText("⚠️ Over", { exact: true })).toHaveCount(0);
+  });
 });
