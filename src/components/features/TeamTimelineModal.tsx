@@ -43,6 +43,7 @@ export function TeamTimelineModal({
   const [draggedMember, setDraggedMember] = useState(null);
   const [dragOverCellKey, setDragOverCellKey] = useState(null);
   const [expandedWPMembers, setExpandedWPMembers] = useState({});
+  const [allMemberTracksExpanded, setAllMemberTracksExpanded] = useState(false);
   const [roleWarning, setRoleWarning] = useState(null);
 
   // Direct In-Chart Selection & Editing state for team member cells
@@ -50,9 +51,9 @@ export function TeamTimelineModal({
   const toggleWPMembers = useCallback((rowKey) => {
     setExpandedWPMembers((prev) => ({
       ...prev,
-      [rowKey]: !prev[rowKey],
+      [rowKey]: !(prev[rowKey] ?? allMemberTracksExpanded),
     }));
-  }, []);
+  }, [allMemberTracksExpanded]);
 
   const { minStartAbs, totalMonths, monthLabels } = useMemo(() => {
     if (!projects || projects.length === 0) {
@@ -706,6 +707,25 @@ export function TeamTimelineModal({
 
   const minTableWidth = Math.max(940, 300 + totalMonths * 56);
 
+  const setAllMemberTracks = useCallback((expanded: boolean) => {
+    setAllMemberTracksExpanded(expanded);
+    setExpandedWPMembers({});
+    if (!expanded) setRangeSelection(null);
+  }, [setRangeSelection]);
+
+  const expandAll = useCallback(() => {
+    setCollapsedProjects({});
+    setCollapsedPersonalCapacity(false);
+  }, []);
+
+  const collapseAll = useCallback(() => {
+    const nextCollapsed: Record<string, boolean> = {};
+    for (const { project } of projectRows) nextCollapsed[project.id] = true;
+    setCollapsedProjects(nextCollapsed);
+    setCollapsedPersonalCapacity(true);
+    setRangeSelection(null);
+  }, [projectRows, setRangeSelection]);
+
   return (
     <div
       className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-3 md:p-6"
@@ -756,7 +776,7 @@ export function TeamTimelineModal({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
             {!isBasicMode && (
               <button
                 type="button"
@@ -799,6 +819,73 @@ export function TeamTimelineModal({
                 <span>{showOtherWPs ? "Other WPs: Shown" : "Show Other WPs"}</span>
               </button>
             )}
+
+            <div className={`flex items-center p-0.5 text-[10px] ${
+              isRetro
+                ? "bg-[#d4d0c8] border-2 border-t-black border-l-black border-b-white border-r-white text-black font-mono"
+                : "bg-slate-800 rounded-lg border border-slate-700"
+            }`}>
+              <span className={`${isRetro ? "text-black" : "text-slate-400"} px-2 font-bold uppercase tracking-wider text-[9px]`}>Allocation Tracks:</span>
+              <button
+                type="button"
+                onClick={() => setAllMemberTracks(true)}
+                aria-pressed={allMemberTracksExpanded}
+                className={`px-2 py-1 font-bold transition-all cursor-pointer ${
+                  isRetro
+                    ? allMemberTracksExpanded
+                      ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000]"
+                      : "text-black hover:bg-black/10"
+                    : allMemberTracksExpanded
+                    ? "bg-indigo-600 text-white shadow-xs rounded"
+                    : "text-slate-300 hover:text-white rounded"
+                }`}
+                title="Expand individual member allocation tracks under every workpackage, including management support"
+              >
+                Expanded Allocation
+              </button>
+              <button
+                type="button"
+                onClick={() => setAllMemberTracks(false)}
+                aria-pressed={!allMemberTracksExpanded}
+                className={`px-2 py-1 font-bold transition-all cursor-pointer ${
+                  isRetro
+                    ? !allMemberTracksExpanded
+                      ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000]"
+                      : "text-black hover:bg-black/10"
+                    : !allMemberTracksExpanded
+                    ? "bg-indigo-600 text-white shadow-xs rounded"
+                    : "text-slate-300 hover:text-white rounded"
+                }`}
+                title="Collapse individual member allocation tracks under every workpackage, including management support"
+              >
+                Collapsed Allocation
+              </button>
+            </div>
+
+            <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
+
+            <button
+              type="button"
+              onClick={expandAll}
+              className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
+                isRetro
+                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
+                  : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
+              }`}
+            >
+              Expand All
+            </button>
+            <button
+              type="button"
+              onClick={collapseAll}
+              className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
+                isRetro
+                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
+                  : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
+              }`}
+            >
+              Collapse All
+            </button>
 
             <button
               type="button"
@@ -1026,7 +1113,7 @@ export function TeamTimelineModal({
                             })
                             .filter((x) => x.member && x.hasAllocations);
 
-                          const isMgmtExpanded = Boolean(expandedWPMembers[rowId]);
+                          const isMgmtExpanded = Boolean(expandedWPMembers[rowId] ?? allMemberTracksExpanded);
 
                           return (
                             <div key={rowId} className="flex flex-col border-b border-purple-200/80">
@@ -1086,7 +1173,7 @@ export function TeamTimelineModal({
                                           aria-label={isMgmtExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
                                           aria-expanded={isMgmtExpanded}
                                         >
-                                          {isMgmtExpanded ? "- Collapse Members" : "+ Expand Members"}
+                                          {isMgmtExpanded ? "- Collapse Allocation" : "+ Expand Allocation"}
                                         </button>
                                       )}
                                     </div>
@@ -1395,7 +1482,7 @@ export function TeamTimelineModal({
                             })
                             .filter((x) => x.member && x.hasAllocations);
 
-                          const isWPExpanded = Boolean(expandedWPMembers[card.id]);
+                          const isWPExpanded = Boolean(expandedWPMembers[card.id] ?? allMemberTracksExpanded);
 
                           return (
                             <div key={card.id} className="flex flex-col border-b border-slate-100 last:border-b-0">
@@ -1456,7 +1543,7 @@ export function TeamTimelineModal({
                                         aria-label={isWPExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
                                         aria-expanded={isWPExpanded}
                                       >
-                                        {isWPExpanded ? "- Collapse Members" : "+ Expand Members"}
+                                        {isWPExpanded ? "- Collapse Allocation" : "+ Expand Allocation"}
                                       </button>
                                     )}
                                   </div>
