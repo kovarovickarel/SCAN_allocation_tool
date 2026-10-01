@@ -1,10 +1,14 @@
 import React, { memo } from "react";
 import { ThemeContext } from "../../constants";
+import type { TeamMemberRecord } from "../../types";
+import { PersonIcon } from "./PersonIcon";
 
 interface MemberInitialsBadgeMember {
   firstName?: string;
   lastName?: string;
   fte?: string | number;
+  role?: TeamMemberRecord["role"];
+  tool?: string;
 }
 
 interface MemberInitialsBadgeProps {
@@ -19,8 +23,6 @@ export const MemberInitialsBadge = memo(function MemberInitialsBadge({
   onClick,
 }: MemberInitialsBadgeProps) {
   const { isRetro } = React.useContext(ThemeContext);
-  const cap = parseFloat(member?.fte as string) || 1.0;
-  const pct = cap > 0 ? Math.round((allocationFTE / cap) * 100) : 0;
   const initials = member
     ? `${member.firstName?.[0] || ""}${member.lastName?.[0] || ""}`.toUpperCase()
     : "TM";
@@ -32,15 +34,15 @@ export const MemberInitialsBadge = memo(function MemberInitialsBadge({
         e.stopPropagation();
         onClick?.();
       }}
-      className={`px-1.5 py-0.5 rounded text-[8.5px] font-bold border transition-all cursor-pointer shadow-2xs hover:scale-105 active:scale-95 flex items-center gap-1 ${
+      className={`px-0.5 py-0.5 rounded text-[8.5px] font-bold transition-all cursor-pointer hover:scale-105 active:scale-95 flex items-center gap-0.5 ${
         isRetro
-          ? "bg-[#ffff80] text-black border-black font-mono hover:bg-[#ffffb0]"
-          : "bg-blue-100/90 text-blue-950 border-blue-300 hover:bg-blue-200 hover:border-blue-400"
+          ? "bg-transparent text-black font-mono hover:bg-[#c0c0c0]"
+          : "bg-transparent text-slate-700 hover:bg-slate-100"
       }`}
-      title={`${member?.firstName} ${member?.lastName}: ${allocationFTE.toFixed(2)} FTE (${pct}% of personal capacity)\nClick to adjust dedicated allocation percentage`}
+      title={`${member?.firstName} ${member?.lastName}: ${allocationFTE.toFixed(2)} FTE\nClick to adjust dedicated allocation`}
     >
+      <PersonIcon role={member?.role} toolName={member?.tool} size={12} />
       <span className="font-black">{initials}</span>
-      <span className="font-mono text-[7.5px] opacity-85">{pct}%</span>
     </button>
   );
 });

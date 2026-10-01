@@ -1092,7 +1092,7 @@ export function TeamTimelineModal({
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0">
+                                  <div className="flex items-center gap-0.5 mt-1 flex-wrap min-w-0">
                                     {assignedList.map(({ member, fte }) => (
                                       <MemberInitialsBadge
                                         key={member?.id}
@@ -1461,7 +1461,7 @@ export function TeamTimelineModal({
                                     )}
                                   </div>
 
-                                  <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0">
+                                  <div className="flex items-center gap-0.5 mt-1 flex-wrap min-w-0">
                                     {assignedList.map(({ member, fte }) => (
                                       <MemberInitialsBadge
                                         key={member?.id}
