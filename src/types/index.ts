@@ -14,6 +14,21 @@ export interface WorkpackageAllocationMonth {
   available: NumericMap;
 }
 
+export interface AutomaticAllocationTarget {
+  id: string;
+  role: "engineering" | "management";
+  months: readonly { requiredFTE: number; isMaintenance: boolean }[];
+  assignments: MonthlyNumericMap;
+  maintenancePreferences?: MemberMaintenancePreferences;
+}
+
+export interface AutomaticAllocationProject {
+  id: string;
+  monthOffset: number;
+  duration: number;
+  targets: readonly AutomaticAllocationTarget[];
+}
+
 export type FteMap = Record<string, number>;
 
 export type MilestoneMap = Record<string, number>;

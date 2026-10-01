@@ -1,6 +1,13 @@
 import { memo } from "react";
 import type { SvgIconProps, ToolIconProps } from '../features/componentTypes';
 
+export const MagicWandIcon = memo(({ size = 16, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="m4 17 12-12 4 4L8 21z" />
+    <path d="m13 8 4 4M5 3v4M3 5h4M19 2v4M17 4h4M20 17v4M18 19h4" />
+  </svg>
+));
+
 export const GlobeIcon = memo(({ size = 16, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <circle cx="12" cy="12" r="10" />

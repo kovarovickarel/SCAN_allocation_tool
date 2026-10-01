@@ -223,6 +223,14 @@ export interface TeamTimelineModalProps {
   ) => void;
 }
 
+export interface TeamAllocationPriorityModalProps {
+  toolName: string;
+  projects: readonly { id: string; name: string; workpackageCount: number }[];
+  initialPriorities: NumericMap;
+  onConfirm: (priorities: NumericMap) => void;
+  onClose: () => void;
+}
+
 export interface ProjectBasketProps {
   project: AllocationProject;
   cards: WorkpackageCard[];
