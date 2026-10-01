@@ -829,12 +829,16 @@ export function TeamTimelineModal({
                 className="grid divide-x divide-slate-800 bg-slate-950"
                 style={{ gridTemplateColumns: `repeat(${totalMonths}, minmax(52px, 1fr))` }}
               >
-                {teamOverallMonthlyFTE.map((val, idx) => (
-                  <div key={idx} className="p-1.5 text-center flex flex-col items-center justify-center">
-                    <span className="font-mono text-[11px] font-black text-emerald-400">{val.toFixed(2)}</span>
-                    <span className="text-[8px] font-mono text-slate-400">FTE</span>
-                  </div>
-                ))}
+                {teamOverallMonthlyFTE.map((val, idx) => {
+                  const isOverCapacity = val > teamCapacityTotal * 1.05 + 0.000001;
+                  const isNearCapacity = !isOverCapacity && teamCapacityTotal > 0 && val >= teamCapacityTotal * 0.95 - 0.000001;
+                  return (
+                    <div key={idx} className={`p-1.5 text-center flex flex-col items-center justify-center ${isOverCapacity ? "bg-red-500/20" : ""}`}>
+                      <span className={`font-mono text-[11px] font-black ${isOverCapacity ? "text-red-400" : isNearCapacity ? "text-orange-400" : "text-emerald-400"}`}>{val.toFixed(2)}</span>
+                      <span className="text-[8px] font-mono text-slate-400">FTE</span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
