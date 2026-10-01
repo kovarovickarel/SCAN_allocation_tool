@@ -3,6 +3,7 @@ import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, T
 import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, getMemberAllocationGradientStyle } from "../../utils/helpers";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
+import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
 import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
@@ -187,7 +188,18 @@ export function TeamTimelineModal({
           ? Math.min(100, Math.round((totalCoveredSum / totalRequiredSum) * 100))
           : (totalStaffedWP > 0 ? 100 : 0);
 
-        return { card, isNegated, activeCardFTE, coveragePct, alignedTimelineCells, mergedMonthsInProject };
+        const nonMaintenanceCells = alignedTimelineCells.filter(
+          (cell): cell is Extract<AlignedTimelineGanttCell, { isInside: true }> =>
+            cell.isInside && cell.displayFTE > 0 &&
+            cell.coreM.shortPhase !== "Maint" && cell.coreM.shortPhase !== "ResMaint"
+        );
+        const isMaintenanceOnlyUncovered = !isNegated && nonMaintenanceCells.length > 0 &&
+          nonMaintenanceCells.every((cell) => (cell.leftFTE || 0) <= 0.000001) &&
+          alignedTimelineCells.some((cell) => cell.isInside &&
+            (cell.coreM.shortPhase === "Maint" || cell.coreM.shortPhase === "ResMaint") &&
+            (cell.leftFTE || 0) > 0.000001);
+
+        return { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells, mergedMonthsInProject };
       });
 
       let mgmtRow = null;
@@ -1049,6 +1061,7 @@ export function TeamTimelineModal({
                                 >
                                   <div className="flex items-center justify-between gap-1">
                                     <div className="flex items-center gap-1.5 min-w-0">
+                                      <WorkpackageCoverageBadge coveragePct={mgmtRow.coveragePct} />
                                       <ManagementIcon size={13} className="text-purple-700 shrink-0" />
                                       <span className="text-[11px] font-bold text-slate-800 truncate">Management Support Overhead</span>
                                     </div>
@@ -1363,7 +1376,7 @@ export function TeamTimelineModal({
 
                         {/* Regular Workpackages */}
                         {workpackages.map((wp) => {
-                          const { card, isNegated, activeCardFTE, alignedTimelineCells } = wp;
+                          const { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells } = wp;
                           const assignments = card.memberAssignments || {};
                           const monthlyAssignments = card.memberMonthlyAssignments || {};
                           const assignedMemberIds = new Set([
@@ -1418,6 +1431,7 @@ export function TeamTimelineModal({
                                 >
                                   <div className="flex items-center justify-between gap-1">
                                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                      <WorkpackageCoverageBadge coveragePct={coveragePct} isMaintenanceOnlyUncovered={isMaintenanceOnlyUncovered} />
                                       <span className={`text-[11px] font-bold text-slate-800 truncate ${isNegated ? "line-through text-slate-400" : ""}`}>
                                         {card.name}
                                       </span>
