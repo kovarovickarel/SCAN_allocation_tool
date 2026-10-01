@@ -1291,6 +1291,7 @@ export function TeamTimelineModal({
                                     const memberMonthlyMap = mgmtMonthly[member.id] || {};
 
                                     let memberMonthlySum = 0;
+                                    let memberActiveMonths = 0;
                                     const monthlyContrib = Array.from({ length: totalMonths }, (_, gIdx) => {
                                       const pRelIdx = gIdx - pOffset;
                                       if (pRelIdx < 0 || pRelIdx >= pDur) {
@@ -1300,12 +1301,14 @@ export function TeamTimelineModal({
                                       const baseContrib = assignedFTE > 0 ? round2(Math.min(assignedFTE, mgmtMonthFTE * memberShare)) : 0;
                                       const isOverridden = memberMonthlyMap[pRelIdx] !== undefined;
                                       const val = isOverridden ? (parseFloat(memberMonthlyMap[pRelIdx]) || 0) : baseContrib;
-                                      memberMonthlySum += val;
+                                      if (val > 0) {
+                                        memberMonthlySum += val;
+                                        memberActiveMonths++;
+                                      }
                                       return { isInside: true, fte: val, isOverridden, defaultFTE: baseContrib, pRelIdx };
                                     });
 
-                                    const memberMgmtAvg = pDur > 0 ? round2(memberMonthlySum / pDur) : 0;
-                                    const memberMgmtUtilization = cap > 0 ? Math.round((memberMgmtAvg / cap) * 100) : 0;
+                                    const memberMgmtAvg = memberActiveMonths > 0 ? round2(memberMonthlySum / memberActiveMonths) : 0;
 
                                     return (
                                       <div
@@ -1332,14 +1335,13 @@ export function TeamTimelineModal({
                                             <div className="flex items-center gap-1 shrink-0">
                                               <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border shrink-0 ${
                                                 isRetro ? "bg-white text-black border-black" : "bg-white text-purple-900 border-purple-200"
-                                              }`} title={`Average contribution to management: ${memberMgmtAvg.toFixed(2)} FTE/yr`}>
-                                                {memberMgmtAvg.toFixed(2)} FTE
+                                              }`} title={`Average management allocation per active month: ${memberMgmtAvg.toFixed(2)} FTE (${memberActiveMonths} active month${memberActiveMonths === 1 ? "" : "s"})`}>
+                                                Avg {memberMgmtAvg.toFixed(2)} FTE
                                               </span>
                                             </div>
                                           </div>
 
-                                          <div className="flex items-center justify-between text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
-                                            <span>Cap: {cap.toFixed(2)} FTE ({memberMgmtUtilization}%)</span>
+                                          <div className="flex items-center justify-end text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
                                             <span>{member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}</span>
                                           </div>
                                         </div>
@@ -1668,6 +1670,7 @@ export function TeamTimelineModal({
                                     const memberMonthlyMap = monthlyAssignments[member.id] || {};
 
                                     let memberMonthlySum = 0;
+                                    let memberActiveMonths = 0;
                                     const monthlyContrib = Array.from({ length: totalMonths }, (_, gIdx) => {
                                       const pRelIdx = gIdx - pOffset;
                                       if (pRelIdx < 0 || pRelIdx >= pDur) {
@@ -1679,12 +1682,14 @@ export function TeamTimelineModal({
                                       const baseContrib = assignedFTE > 0 ? round2(Math.min(maxAllowed, wpMonthFTE * memberShare)) : 0;
                                       const isOverridden = memberMonthlyMap[pRelIdx] !== undefined;
                                       const val = isOverridden ? (parseFloat(memberMonthlyMap[pRelIdx]) || 0) : baseContrib;
-                                      memberMonthlySum += val;
+                                      if (val > 0) {
+                                        memberMonthlySum += val;
+                                        memberActiveMonths++;
+                                      }
                                       return { isInside: true, fte: val, isOverridden, defaultFTE: baseContrib, pRelIdx };
                                     });
 
-                                    const memberWpAvg = pDur > 0 ? round2(memberMonthlySum / pDur) : 0;
-                                    const memberWpUtilization = cap > 0 ? Math.round((memberWpAvg / cap) * 100) : 0;
+                                    const memberWpAvg = memberActiveMonths > 0 ? round2(memberMonthlySum / memberActiveMonths) : 0;
 
                                     return (
                                       <div
@@ -1711,14 +1716,13 @@ export function TeamTimelineModal({
                                             <div className="flex items-center gap-1 shrink-0">
                                               <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border shrink-0 ${
                                                 isRetro ? "bg-white text-black border-black" : "bg-white text-blue-900 border-blue-200"
-                                              }`} title={`Average contribution to this workpackage: ${memberWpAvg.toFixed(2)} FTE/yr`}>
-                                                {memberWpAvg.toFixed(2)} FTE
+                                              }`} title={`Average workpackage allocation per active month: ${memberWpAvg.toFixed(2)} FTE (${memberActiveMonths} active month${memberActiveMonths === 1 ? "" : "s"})`}>
+                                                Avg {memberWpAvg.toFixed(2)} FTE
                                               </span>
                                             </div>
                                           </div>
 
-                                          <div className="flex items-center justify-between text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
-                                            <span>Cap: {cap.toFixed(2)} FTE ({memberWpUtilization}%)</span>
+                                          <div className="flex items-center justify-end text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
                                             <span>{member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}</span>
                                           </div>
                                         </div>
