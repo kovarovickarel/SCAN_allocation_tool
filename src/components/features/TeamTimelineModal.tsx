@@ -1121,11 +1121,8 @@ export function TeamTimelineModal({
                                   )}
                                 </div>
                               )}
-                              <span className={`font-mono text-[10px] font-black leading-tight ${hasIndicators ? "text-white" : "text-slate-100"}`}>
+                              <span className={`font-mono text-[10px] font-black leading-tight ${val > teamCapacityTotal + 0.000001 ? "text-red-400" : hasIndicators ? "text-white" : "text-slate-100"}`}>
                                 {val > 0 ? val.toFixed(2) : "-"}
-                              </span>
-                              <span className="text-[8px] font-mono text-slate-400 leading-none">
-                                M{pMonthNum}
                               </span>
                             </div>
                           );
@@ -1945,15 +1942,13 @@ export function TeamTimelineModal({
                         <span className={`font-mono text-[11px] font-black leading-none ${
                           isOver ? (isRetro ? "text-red-950 font-black" : "text-rose-400 font-black") : isRetro ? "text-black" : "text-cyan-300"
                         }`}>
-                          {val > 0 ? `${teamPct}%` : "-"}
+                          {teamPct}%
                         </span>
-                        {val > 0 && (
-                          <span className={`text-[7.5px] font-mono font-bold leading-none mt-0.5 opacity-90 ${
-                            isOver ? (isRetro ? "text-red-900" : "text-rose-300") : isRetro ? "text-slate-700" : "text-slate-300"
-                          }`}>
-                            {val.toFixed(2)}
-                          </span>
-                        )}
+                        <span className={`text-[7.5px] font-mono font-bold leading-none mt-0.5 opacity-90 ${
+                          isOver ? (isRetro ? "text-red-900" : "text-rose-300") : isRetro ? "text-slate-700" : "text-slate-300"
+                        }`}>
+                          {val.toFixed(2)}
+                        </span>
                       </div>
                     );
                   })}
@@ -1963,7 +1958,7 @@ export function TeamTimelineModal({
               {!collapsedPersonalCapacity && (
                 <div className={`divide-y ${isRetro ? "divide-black bg-[#ffffec]" : "divide-slate-200 bg-white"}`}>
                   {memberTimelineRows.map((mRow) => {
-                    const { member, cap, avgFTE, hasAnyOverallocation, overallUtilization, monthlyAllocations } = mRow;
+                    const { member, cap, hasAnyOverallocation, monthlyAllocations } = mRow;
                     const initials = `${member.firstName?.[0] || ""}${member.lastName?.[0] || ""}`.toUpperCase() || "TM";
 
                     return (
@@ -2040,10 +2035,7 @@ export function TeamTimelineModal({
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-between text-[9px] font-mono mt-1 pt-0.5 border-t border-black/5">
-                            <span className={hasAnyOverallocation ? "text-red-600 font-bold" : isRetro ? "text-slate-700" : "text-slate-500"}>
-                              Avg: {avgFTE.toFixed(2)} FTE ({overallUtilization}%)
-                            </span>
+                          <div className="flex items-center justify-start text-[9px] font-mono mt-1 pt-0.5 border-t border-black/5">
                             <span className={isRetro ? "text-slate-600" : "text-slate-400"}>
                               {member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}
                             </span>
