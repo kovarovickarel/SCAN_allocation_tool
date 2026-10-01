@@ -1,6 +1,8 @@
 import React, { useState } from "react";
 import { ThemeContext } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
+import { MagicWandIcon } from "../ui/icons";
 
 interface HelpGuideModalProps {
   onClose: () => void;
@@ -25,6 +27,7 @@ export function HelpGuideModal({
 
   const tabs = [
     { id: "team", label: "Team Staffing & Combined Timeline" },
+    { id: "automatic", label: "Automatic Allocation" },
     { id: "indicators", label: "Visual Cues & Project Reordering" },
     { id: "timeline", label: "Gantt Timeline & Range Editing" },
     { id: "milestones", label: "Milestones & 'Other' Workpackages" },
@@ -123,13 +126,13 @@ export function HelpGuideModal({
                   <div className={`p-3 ${isRetro ? "bg-white border border-black shadow-[1px_1px_0px_#000]" : "rounded-lg bg-emerald-50/80 border border-emerald-200"}`}>
                     <strong className="text-emerald-950 block mb-1 text-xs">1. Full Workpackage (Header Drop)</strong>
                     <p className="text-[11px] leading-relaxed">
-                      Drop the member directly onto the left column (workpackage header). This distributes their available capacity across the <strong>entire lifecycle</strong> of that workpackage.
+                      Drop the member onto the workpackage name or header. Each active month is filled up to the member&apos;s remaining capacity and the workpackage&apos;s remaining effort, including maintenance. Existing assignments to other workpackages are respected.
                     </p>
                   </div>
                   <div className={`p-3 ${isRetro ? "bg-white border border-black shadow-[1px_1px_0px_#000]" : "rounded-lg bg-teal-50/80 border border-teal-200"}`}>
-                    <strong className="text-teal-950 block mb-1 text-xs">2. Entire Activity (Area Above Cells)</strong>
+                    <strong className="text-teal-950 block mb-1 text-xs">2. Entire Activity (Start of Phase)</strong>
                     <p className="text-[11px] leading-relaxed">
-                      An invisible drop zone sits directly above the monthly cells. Hovering a dragged member lights it up with an emerald pill (<code className="text-emerald-800 font-bold font-mono">★ ALL {"{PHASE}"}</code>) and illuminates all underlying months in that activity (e.g. all months of <code className="font-bold">IMP</code>, <code className="font-bold">VAL</code>, <code className="font-bold">MAINT</code>). Dropping applies allocation exclusively across that activity.
+                      Drop just before an activity&apos;s first cell, or onto its first phase label (e.g. IMP, VAL, or MAINT). The invisible target highlights the activity and its month range while dragging. This fills only that activity. It works for phases spanning multiple months, including full-project management support; use a cell drop for a one-month activity.
                     </p>
                   </div>
                   <div className={`p-3 ${isRetro ? "bg-white border border-black shadow-[1px_1px_0px_#000]" : "rounded-lg bg-sky-50/80 border border-sky-200"}`}>
@@ -155,7 +158,7 @@ export function HelpGuideModal({
                   <li>
                     <strong>Strict Role Constraints:</strong>
                     <ul className="list-circle pl-4 mt-1 space-y-1">
-                      <li>Only team members with <strong className="text-purple-800">MGMT</strong> or <strong className="text-indigo-800">ENG &amp; MGMT</strong> (<code className="font-mono">both</code>) capability can cover Management Support.</li>
+                      <li>Only team members with <strong className="text-purple-800">MGMT</strong> or <strong className="text-indigo-800">ENG &amp; MGMT</strong> capability can cover Management Support.</li>
                       <li>Pure <strong className="text-purple-800">MGMT</strong> members can <em>only</em> be allocated to Management Support Overhead and cannot be assigned to engineering workpackages.</li>
                       <li>Members with the <strong className="text-indigo-800">ENG &amp; MGMT</strong> role can be allocated freely across both engineering and management workpackages.</li>
                     </ul>
@@ -167,7 +170,7 @@ export function HelpGuideModal({
                     <strong>Live Coverage Heatmap:</strong> Management cells display <code className="font-bold font-mono">% covered - remaining FTE</code> using the standard red (0% unstaffed) &rarr; yellow &rarr; green (100% covered) gradient.
                   </li>
                   <li>
-                    <strong>Detailed Management Dialog:</strong> Clicking the Management Support header opens <code className="font-bold">AssignMemberToWPModal</code>, which calculates each manager&apos;s existing commitments across all projects and displays available headroom.
+                    <strong>Assign Members:</strong> Click the Management Support name to choose members and adjust their allocations. Existing engineering and management commitments in overlapping projects reduce the capacity available in each month.
                   </li>
                 </ul>
               </div>
@@ -185,7 +188,7 @@ export function HelpGuideModal({
                 <div className="flex items-center gap-4 p-3 bg-slate-100/80 rounded-lg border border-slate-200 mb-3">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-[10.5px] uppercase text-slate-700">Heatmap Scale:</span>
-                    <span className="font-mono font-bold text-slate-700 text-xs">0% (White: #ffffff)</span>
+                    <span className="font-mono font-bold text-slate-700 text-xs">0% (White)</span>
                     <div
                       className="w-24 h-3.5 rounded-full border border-slate-300 shadow-inner"
                       style={{
@@ -201,7 +204,7 @@ export function HelpGuideModal({
                 </div>
                 <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                   <li>
-                    <strong>Drag Origin:</strong> Dragging a member from this row uses a custom silhouette badge with their initials (<code className="font-bold font-mono">Alex Novak &rarr; AN</code>) without modifying or collapsing the source row.
+                    <strong>Member Labels:</strong> Allocated members appear as a silhouette and initials (Alex Novak &rarr; AN). Click the initials, an expanded member&apos;s name, or their silhouette to adjust that member&apos;s allocation.
                   </li>
                   <li>
                     <strong>Cross-Team Members:</strong> When a person is staffed across multiple domains (e.g., Alex Novak in KPI + Data Factory), their avatar displays an active star (<code className="text-amber-500 font-bold">★</code>) with a <code className="font-semibold text-indigo-700">Cross-Team</code> badge. Total combined capacity across all teams cannot exceed 1.00 FTE.
@@ -209,6 +212,88 @@ export function HelpGuideModal({
                   <li>
                     <strong>Detailed Tooltips:</strong> Hovering over any personal monthly cell lists the exact itemized breakdown of project workpackages and management support consuming their hours in that month.
                   </li>
+                </ul>
+              </div>
+
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Assign Members &amp; Capacity Limits</h3>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                  <li>Click a workpackage name to open <strong>Assign Members</strong>. An FTE input sets a monthly allocation ceiling; <strong>100%</strong> and <strong>Fill</strong> use that member&apos;s available capacity to fill each month&apos;s remaining effort.</li>
+                  <li><strong>Split Evenly</strong> shares the effort among eligible members within their monthly limits. <strong>Clear</strong> removes the allocations for this workpackage.</li>
+                  <li>If a reduced member capacity leaves an existing allocation too high, use <strong>Cap</strong> or <strong>Auto-Cap All</strong> in this dialog to bring the allocations within the current limits.</li>
+                  <li>Allocation cannot exceed a member&apos;s remaining monthly capacity or the workpackage cell&apos;s remaining demand. A fully covered cell cannot gain additional allocation, even if a member has spare capacity.</li>
+                  <li>Capacity checks include management support, overlapping projects, and Other workpackages even when their rows are hidden. Decimal values use a dot, for example <strong>0.25</strong>.</li>
+                </ul>
+              </div>
+
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Percentage Allocation &amp; Maintenance</h3>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                  <li>Click a member&apos;s initials, name, or silhouette to open their percentage editor. The percentage applies to the member&apos;s capacity across the <strong>entire workpackage</strong>: 50% of a 0.60 FTE member sets a 0.30 FTE monthly ceiling. Each month is still limited by available capacity and remaining effort.</li>
+                  <li><strong>Include maintenance phases</strong> is on for new allocations. Your saved choice is remembered per member and workpackage. Turning it off leaves both initial and residual maintenance unallocated when you save.</li>
+                  <li><strong>Selective allocation active</strong> warns that custom cell or activity allocations will be replaced by a workpackage-wide allocation when saved. Intentionally excluded maintenance alone does not trigger this warning; manually assigning excluded maintenance does.</li>
+                  <li>Presets above the available maximum are disabled. <strong>Max</strong> uses the allowed ceiling; <strong>0% (Remove)</strong> removes the member&apos;s allocation. <strong>Avg</strong> in an expanded member row is the average FTE over months with a positive allocation, rather than over the whole project.</li>
+                </ul>
+              </div>
+
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Allocation Tracks &amp; Saving Changes</h3>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                  <li><strong>Expand Allocation</strong> shows individual member rows beneath a workpackage, including management support. <strong>Expanded Allocation</strong> / <strong>Collapsed Allocation</strong> in the header controls all member tracks; <strong>Expand All</strong> / <strong>Collapse All</strong> controls the project sections.</li>
+                  <li><strong>Show Other WPs</strong> reveals custom Other workpackages. Hiding those rows does not release their members&apos; capacity.</li>
+                  <li>Saving inside an allocation dialog updates only the timeline draft. Choose the timeline&apos;s <strong>Save &amp; Close</strong> to apply it, or <strong>Discard &amp; Close</strong> to cancel all changes. Closing the timeline with its header button, Escape, or the backdrop also discards its draft.</li>
+                  <li>Canceling or closing a nested allocation dialog leaves the timeline and its existing draft open.</li>
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "automatic" && (
+            <div className="space-y-4">
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5 flex items-center gap-2">
+                  <MagicWandIcon size={16} className="text-violet-600" />
+                  <span>Magic Wand for One Project</span>
+                </h3>
+                <p className="text-slate-600 leading-relaxed mb-2">
+                  In the Team Combined Timeline, click the wand beside a project&apos;s FTE/yr badge. It rebalances this team&apos;s allocations across that project&apos;s active workpackages and management support to cover as much required effort as possible.
+                </p>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                  <li>Other projects retain their allocations, and their commitments reduce the capacity available to the selected project.</li>
+                  <li>The wand respects member roles, monthly capacity, other teams&apos; assignments, and saved maintenance exclusions. Hidden Other workpackages are included.</li>
+                  <li>Existing selective allocations in the optimized project may be replaced. Review the result before choosing <strong>Save &amp; Close</strong>.</li>
+                </ul>
+              </div>
+
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Auto-allocate Team &amp; Project Priorities</h3>
+                <ol className="list-decimal pl-5 space-y-1.5 text-slate-600">
+                  <li>Click <strong>Auto-allocate team</strong> in the timeline header. The dialog lists only projects with active workpackages in this team&apos;s scope.</li>
+                  <li>Choose a priority for each project. <strong>1 is highest</strong>; higher priority effort is covered before lower priority effort.</li>
+                  <li>Give projects the same priority to optimize them together as one group. This maximizes their combined covered effort; it does not require an equal split between projects.</li>
+                  <li>Click <strong>Auto-allocate team</strong> in the dialog. Members may be reassigned to improve coverage while preserving the coverage achieved for higher priority groups. The same role, capacity, and maintenance limits apply as for a single project.</li>
+                  <li>Review the live <strong>Project coverage</strong> summary in the footer and inspect any remaining uncovered cells. If capacity or eligible members are insufficient, some work will remain uncovered.</li>
+                </ol>
+              </div>
+
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Clear Allocation &amp; Review the Draft</h3>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                  <li><strong>Clear Allocation</strong>, beside Auto-allocate team, removes this team&apos;s workpackage and management allocations across all projects, including hidden rows. Other teams&apos; allocations and saved maintenance choices are kept.</li>
+                  <li>Both automatic allocation and clearing remain in the timeline draft. <strong>Save &amp; Close</strong> applies the result; <strong>Discard &amp; Close</strong> restores the state from before the timeline was opened.</li>
+                  <li>Canceling the priority dialog does not alter allocations or discard the existing timeline draft.</li>
                 </ul>
               </div>
             </div>
@@ -220,17 +305,43 @@ export function HelpGuideModal({
               <div className={`p-4 shadow-2xs ${
                 isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
               }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Workpackage Coverage Indicators</h3>
+                <p className="text-slate-600 leading-relaxed mb-2.5">Coverage indicators appear on assigned project cards, team timeline workpackages, and management support rows. The percentage compares allocated effort with required effort over the workpackage&apos;s lifecycle.</p>
+                <ul className="space-y-2 text-slate-600">
+                  <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={25} /><span><strong>0–50%:</strong> Pulsating red circle with a white cross.</span></li>
+                  <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={70} /><span><strong>51–89%:</strong> Half-filled yellow circle.</span></li>
+                  <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={95} /><span><strong>90–99%:</strong> Three-quarter-filled green circle.</span></li>
+                  <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={100} /><span><strong>100%:</strong> White check mark in a green circle.</span></li>
+                  <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={85} isMaintenanceOnlyUncovered /><span><strong>Only maintenance incomplete:</strong> White check mark in a blue circle; all non-maintenance activities are fully covered.</span></li>
+                </ul>
+                <p className="text-slate-600 leading-relaxed mt-2.5">Hover over an icon for details. Expanded project cards show member silhouettes and initials beside the workpackage tags. Compact cards show the coverage icon without a percentage; management support keeps both.</p>
+              </div>
+
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Monthly Staffing Signals</h3>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                  <li><strong>Total Team Staffing Needed:</strong> Below 95% of team capacity uses the usual color. From 95% through 105%, inclusive, the number is orange. Above 105%, the number is red and the cell has a red tint.</li>
+                  <li><strong>Project rows:</strong> Required monthly FTE is red when it exceeds the team&apos;s total capacity.</li>
+                  <li><strong>Workpackage cells:</strong> Show the percentage covered and remaining FTE. A dot marks months with no workpackage effort, using the same appearance as months outside the project.</li>
+                  <li><strong>Personal Staffing Capacity:</strong> Shows the team&apos;s used capacity every month, including 0% when there are no allocations. Individual member cells show their own utilization; hover for the project and activity breakdown.</li>
+                </ul>
+              </div>
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
                 <h3 className="font-bold text-slate-900 text-sm mb-1.5 flex items-center gap-2">
                   <span className="text-red-600 font-bold text-base leading-none">★</span>
                   <span>Altered Cell Highlights in Project Timeline</span>
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-2.5">
-                  When monthly FTE values are manually adjusted in the Project Staffing Timeline (`ProjectTimelineModal`), cells are distinctly flagged:
+                  When monthly FTE values are manually adjusted in the Project Staffing Timeline, cells are distinctly flagged:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-slate-600">
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                     <strong className="text-slate-900 block mb-1">Lean Highlight Outline:</strong>
-                    Each altered cell receives a refined 1px red outline separated from the cell background by a 1px white offset padding (<code className="font-mono text-slate-800 text-[10px]">ring-1 ring-red-600 ring-offset-1 ring-offset-white</code>) and a crisp top-right red star (<code className="text-red-600 font-black">★</code>).
+                    A red outline and a top-right red star (<code className="text-red-600 font-black">★</code>) mark cells changed from their calculated defaults.
                   </div>
                   <div className="p-2.5 rounded-lg bg-slate-50 border border-slate-200">
                     <strong className="text-slate-900 block mb-1">Asterisk Tag Indicators:</strong>
@@ -257,7 +368,7 @@ export function HelpGuideModal({
                     <strong>Dynamic Real-Time Shifting:</strong> As you drag across the board, neighboring projects smoothly animate and slide out of the way in real time to show where the project will be inserted.
                   </li>
                   <li>
-                    <strong>Distance-Accelerated Auto-Scroll:</strong> Dragging a project toward the left or right screen edges automatically scrolls the horizontal view. Moving the cursor further outside the screen ramps up scroll speed up to ~95px/frame, making it effortless to reorder between the first and last projects.
+                    <strong>Edge Auto-Scroll:</strong> Dragging a project toward the left or right screen edge automatically scrolls the board so you can reach columns outside the current view.
                   </li>
                 </ul>
               </div>
@@ -342,7 +453,7 @@ export function HelpGuideModal({
                   <span>Staged Editing Buffer (&quot;Save &amp; Close&quot;)</span>
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-2">
-                  All timeline adjustments (manual FTE entries, range resets, and block drags) are staged in a local sandbox buffer:
+                  Both timelines keep changes as a draft until you save. This includes project effort edits and team allocation changes:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-slate-600">
                   <div className={`p-2.5 ${isRetro ? "bg-white border border-black shadow-[1px_1px_0px_#000]" : "rounded-lg bg-emerald-50 border border-emerald-200"}`}>
@@ -354,6 +465,14 @@ export function HelpGuideModal({
                     Abandons all changes made during the session with zero side effects on the project data.
                   </div>
                 </div>
+              </div>
+
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">How Project Effort Edits Affect Allocations</h3>
+                <p className="text-slate-600 leading-relaxed">Saving a lower effort requirement in the project timeline reduces existing member allocations appropriately in the affected months, including management support. Increasing effort does not automatically increase existing commitments. Review the team timeline and use the Magic Wand or manual allocation to cover additional effort.</p>
+                <p className="text-slate-600 leading-relaxed mt-2">In the team timeline, manual edits and resets remain limited by the member&apos;s available capacity and the workpackage&apos;s remaining effort.</p>
               </div>
 
               <div className={`p-4 shadow-2xs ${
@@ -431,9 +550,10 @@ export function HelpGuideModal({
                   <span>Management Support Overhead Calculation</span>
                 </h3>
                 <p className="text-slate-600 leading-relaxed">
-                  Management support is automatically calculated per tool domain (excluding Other) whenever total engineering effort exceeds the <strong>1.50 FTE trigger threshold</strong>, adding <strong>0.20 FTE/yr</strong> per block.
+                  By default, management support adds <strong>0.20 FTE/yr</strong> for each complete <strong>1.50 FTE</strong> block of engineering effort in a tool domain, excluding Other. These values can be changed in configuration. Management demand still needs eligible team members to cover it.
                 </p>
               </div>
+
             </div>
           )}
 
@@ -470,9 +590,15 @@ export function HelpGuideModal({
                   </div>
                   <div className={`p-3 ${isRetro ? "bg-white border border-black shadow-[1px_1px_0px_#000]" : "rounded-lg bg-slate-50 border border-slate-200"}`}>
                     <strong className="text-slate-800 block text-xs mb-1">Basic Mode</strong>
-                    <p className="text-[11px] leading-relaxed">Clean, presentation-ready overview with simplified visual hierarchy and locked inputs.</p>
+                    <p className="text-[11px] leading-relaxed">Simplified overview with direct in-chart manual editing hidden. Team allocation dialogs and the automatic allocation controls remain available.</p>
                   </div>
                 </div>
+              </div>
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Planning Session &amp; Saved Preferences</h3>
+                <p className="text-slate-600 leading-relaxed">Save &amp; Close applies changes within the current app session. Planning data is not stored across page reloads: refreshing restores the initial projects, workpackages, members, and configuration. Only the compact-layout preferences are remembered across reloads.</p>
               </div>
             </div>
           )}
