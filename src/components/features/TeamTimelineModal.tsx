@@ -5,6 +5,7 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
+import { CrossTeamBadge } from "../ui/CrossTeamBadge";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
 import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
 import { useTimelineRangeSelection } from "../../hooks/useTimelineRangeSelection";
@@ -957,7 +958,7 @@ export function TeamTimelineModal({
                 style={{ gridTemplateColumns: `repeat(${totalMonths}, minmax(52px, 1fr))` }}
               >
                 {monthLabels.map((m) => (
-                  <div key={m.idx} className="p-2 text-center text-[10px] font-bold">{m.label}</div>
+                  <div key={m.idx} className="p-2 flex items-center justify-center text-center text-[10px] font-bold">{m.label}</div>
                 ))}
               </div>
             </div>
@@ -1338,8 +1339,9 @@ export function TeamTimelineModal({
                                             </div>
                                           </div>
 
-                                          <div className="flex items-center justify-end text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
+                                          <div className="flex items-center justify-start gap-1.5 text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
                                             <span>{member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}</span>
+                                            {crossTeamMemberIds.has(member.id) && <CrossTeamBadge />}
                                           </div>
                                         </div>
 
@@ -1719,8 +1721,9 @@ export function TeamTimelineModal({
                                             </div>
                                           </div>
 
-                                          <div className="flex items-center justify-end text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
+                                          <div className="flex items-center justify-start gap-1.5 text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
                                             <span>{member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}</span>
+                                            {crossTeamMemberIds.has(member.id) && <CrossTeamBadge />}
                                           </div>
                                         </div>
 
@@ -2035,10 +2038,11 @@ export function TeamTimelineModal({
                             </span>
                           </div>
 
-                          <div className="flex items-center justify-start text-[9px] font-mono mt-1 pt-0.5 border-t border-black/5">
+                          <div className="flex items-center justify-start gap-1.5 text-[9px] font-mono mt-1 pt-0.5 border-t border-black/5">
                             <span className={isRetro ? "text-slate-600" : "text-slate-400"}>
                               {member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}
                             </span>
+                            {crossTeamMemberIds.has(member.id) && <CrossTeamBadge />}
                           </div>
                         </div>
 

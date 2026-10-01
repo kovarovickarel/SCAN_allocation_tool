@@ -2,6 +2,7 @@ import React, { useMemo, useState, memo } from "react";
 import { ThemeContext, TOOLS, TOOL_MAP, TEAM_COMPACT_BTN_STYLES, TEAM_TIMELINE_BTN_STYLES, FOOTPRINTS, FOOTPRINT_MAP, clamp, round2, genId, TOOL_ICON_COLORS } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { PersonIcon } from "../ui/PersonIcon";
+import { CrossTeamBadge } from "../ui/CrossTeamBadge";
 import type { TeamMemberRole } from "../../types";
 import type { TeamMembersPoolProps, AddTeamMemberModalProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, PlusIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
@@ -235,20 +236,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
                         ? "MGMT"
                         : "ENG"}
                     </span>
-                    {isMultiTeam && (
-                      <span
-                        className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded border shrink-0 shadow-2xs ${
-                          isRetro
-                            ? "bg-[#000080] text-white border-black font-mono shadow-[1px_1px_0px_#000]"
-                            : isBasic
-                            ? "bg-slate-100 text-slate-700 border-slate-300"
-                            : "bg-indigo-50 text-indigo-700 border-indigo-200"
-                        }`}
-                        title="Cross-Team Member"
-                      >
-                        Cross-Team
-                      </span>
-                    )}
+                    {isMultiTeam && <CrossTeamBadge />}
                   </div>
                 </div>
               </div>

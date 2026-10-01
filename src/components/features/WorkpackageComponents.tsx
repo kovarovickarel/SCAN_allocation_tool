@@ -447,10 +447,10 @@ export const FunctionCard = memo(function FunctionCard({
     })();
 
     const displayFTEText = isNegated
-      ? "0.00 FTE"
+      ? "0.00"
       : fte !== null
-      ? `${fte.toFixed(2)} FTE`
-      : `~${nominalFTE.toFixed(2)} FTE`;
+      ? fte.toFixed(2)
+      : `~${nominalFTE.toFixed(2)}`;
 
     const fteBadgeStyle = isRetro
       ? isNegated
