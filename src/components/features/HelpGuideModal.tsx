@@ -538,7 +538,10 @@ export function HelpGuideModal({
                     <strong>Development Phases:</strong> Requirements, Implementation, Validation, and Integration are scaled by the workpackage&apos;s <strong>Reusability Multiplier</strong>.
                   </p>
                   <p>
-                    <strong>Maintenance &amp; Support:</strong> Initial Maintenance (first 6 months after dev), Residual Maintenance (until project end), Functions Dev Support, and Weekly Meetings Attendance are not affected by reusability.
+                    <strong>Maintenance &amp; Support:</strong> Maintenance is unchanged by default. Custom reusability can also scale initial and residual maintenance using the checkbox below its factor. Functions Dev Support and Weekly Meetings Attendance remain unchanged unless the reusability factor is 0, which also sets their effort to 0.
+                  </p>
+                  <p>
+                    <strong>Custom Reusability:</strong> Choose Other when creating or editing a workpackage to enter a multiplier from 0 to 1. For workpackages with maintenance, optionally enable Apply factor to maintenance phases (off by default). A factor matching a configured preset automatically uses that preset&apos;s tag when saved and keeps the maintenance setting.
                   </p>
                 </div>
               </div>
