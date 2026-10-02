@@ -3,11 +3,11 @@ import React, { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { TeamTimelineModal } from "../../src/components/features/TeamTimelineModal";
 import { ThemeContext, DEFAULT_TOOL_FTE_RATES, DEFAULT_FTE_RATES, DEFAULT_MGMT_SETTINGS } from "../../src/constants";
-import type { AllocationProject, TeamMemberRecord, WorkpackageCard } from "../../src/types";
+import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings } from "../../src/types";
 import "../../src/index.css";
 
 const fixture: { projects: AllocationProject[]; cards: WorkpackageCard[]; members: TeamMemberRecord[];
-  retro?: boolean; basic?: boolean; management?: boolean } = JSON.parse(new URLSearchParams(location.search).get("fixture")!);
+  retro?: boolean; basic?: boolean; management?: boolean; fteCosts?: FteCostSettings } = JSON.parse(new URLSearchParams(location.search).get("fixture")!);
 function Harness() {
   const [projects, setProjects] = useState(fixture.projects);
   const [cards, setCards] = useState(fixture.cards);
@@ -19,6 +19,7 @@ function Harness() {
     {open && <TeamTimelineModal toolName="KPI" projects={projects} cards={cards}
       members={fixture.members.filter((person) => person.tool === "KPI")} allMembers={fixture.members}
       toolFteRates={DEFAULT_TOOL_FTE_RATES} fteRates={DEFAULT_FTE_RATES}
+      fteCosts={fixture.fteCosts}
       mgmtSettings={(fixture.management ? DEFAULT_MGMT_SETTINGS : { ftePerCard: 0, threshold: 1.5 }) as typeof DEFAULT_MGMT_SETTINGS}
       onClose={() => setOpen(false)}
       onSaveAssignments={(id, assignments) => setCards((prev) => prev.map((card) => card.id === id ? { ...card, memberAssignments: assignments } : card))}

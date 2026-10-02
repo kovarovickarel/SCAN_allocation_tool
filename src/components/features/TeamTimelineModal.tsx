@@ -527,9 +527,9 @@ export function TeamTimelineModal({
   const handleAutoAllocate = useCallback((priorities: NumericMap) => {
     const result = allocateTeamByProjectPriority(autoAllocationProjects.map(({ row, targets }) => ({
       id: row.project.id, monthOffset: row.pOffset, duration: row.pDur, targets,
-    })), members, totalMonths, priorities);
+    })), members, totalMonths, priorities, fteCosts);
     applyAutoAllocation(result);
-  }, [autoAllocationProjects, members, totalMonths, applyAutoAllocation]);
+  }, [autoAllocationProjects, members, totalMonths, applyAutoAllocation, fteCosts]);
 
   const handleAutoAllocateProject = useCallback((projectId: string) => {
     const project = projects.find((item) => item.id === projectId);
@@ -1105,7 +1105,7 @@ export function TeamTimelineModal({
               }}
               disabled={members.length === 0 || priorityProjects.length === 0}
               aria-label={`Auto-allocate ${toolName} team across projects`}
-              title="Magic Wand: choose project priorities and maximize team coverage"
+              title="Auto-allocate team: maximize coverage by project priority, then minimize hourly staffing cost"
               className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 isRetro
                   ? "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black font-mono hover:bg-[#d4d0c8]"
@@ -1344,7 +1344,7 @@ export function TeamTimelineModal({
                             disabled={members.length === 0 || (!mgmtRow?.monthEffort.some((month) => month.totalFTE > 0)
                               && !pRow.workpackages.some((wp) => !wp.isNegated && wp.activeCardFTE > 0))}
                             aria-label={`Auto-allocate ${toolName} team to ${project.name}`}
-                            title={`Magic Wand: maximize ${toolName} team coverage in ${project.name}. Rebalances this project's assignments, respecting other projects and saved maintenance settings.`}
+                            title={`Magic Wand: maximize ${toolName} team coverage in ${project.name}, then minimize hourly staffing cost. Respects other projects and saved maintenance settings.`}
                             className={`p-1 rounded border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                               isRetro
                                 ? "bg-[#c0c0c0] text-black border-t-white border-l-white border-b-black border-r-black hover:bg-[#d4d0c8]"

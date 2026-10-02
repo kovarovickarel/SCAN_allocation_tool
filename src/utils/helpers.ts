@@ -3,6 +3,7 @@ import {
   DEFAULT_REUSABILITY_FACTORS,
   DEFAULT_STABILITY_FACTORS,
   DEFAULT_MGMT_SETTINGS,
+  DEFAULT_FTE_COSTS,
   WORKING_HOURS_PER_MONTH,
   TOOLS,
   clamp,
@@ -177,11 +178,90 @@ export function sumWorkpackageAllocationCosts(
   return result;
 }
 
+interface AllocationFlowEdge {
+  to: number;
+  reverse: number;
+  capacity: number;
+  initialCapacity: number;
+  cost: number;
+}
+
+// Successive shortest residual paths produce minimum cost for the fixed coverage.
+// Potentials keep reverse-edge costs nonnegative for Dijkstra's algorithm.
+function minimizeAllocationFlowCost(graph: AllocationFlowEdge[][], source: number, sink: number, epsilon: number) {
+  const potentials = Array(graph.length).fill(0);
+  while (true) {
+    const distances = Array(graph.length).fill(Infinity);
+    const parents: { from: number; edgeIndex: number }[] = Array(graph.length);
+    const heap: { node: number; distance: number }[] = [];
+    const push = (node: number, distance: number) => {
+      const item = { node, distance };
+      heap.push(item);
+      let index = heap.length - 1;
+      while (index > 0) {
+        const parent = (index - 1) >> 1;
+        if (heap[parent].distance <= distance) break;
+        heap[index] = heap[parent];
+        index = parent;
+      }
+      heap[index] = item;
+    };
+    const pop = () => {
+      const first = heap[0];
+      const last = heap.pop()!;
+      if (heap.length > 0) {
+        let index = 0;
+        while (index * 2 + 1 < heap.length) {
+          let child = index * 2 + 1;
+          if (child + 1 < heap.length && heap[child + 1].distance < heap[child].distance) child++;
+          if (heap[child].distance >= last.distance) break;
+          heap[index] = heap[child];
+          index = child;
+        }
+        heap[index] = last;
+      }
+      return first;
+    };
+    distances[source] = 0;
+    push(source, 0);
+    while (heap.length > 0) {
+      const { node: from, distance } = pop();
+      if (distance > distances[from]) continue;
+      graph[from].forEach((edge, edgeIndex) => {
+        if (edge.capacity <= epsilon) return;
+        const reducedCost = Math.max(0, edge.cost + potentials[from] - potentials[edge.to]);
+        const candidate = distance + reducedCost;
+        if (candidate < distances[edge.to]) {
+          distances[edge.to] = candidate;
+          parents[edge.to] = { from, edgeIndex };
+          push(edge.to, candidate);
+        }
+      });
+    }
+    if (!Number.isFinite(distances[sink])) break;
+    distances.forEach((distance, node) => {
+      if (Number.isFinite(distance)) potentials[node] += distance;
+    });
+    let amount = Infinity;
+    for (let to = sink; to !== source; to = parents[to].from) {
+      const { from, edgeIndex } = parents[to];
+      amount = Math.min(amount, graph[from][edgeIndex].capacity);
+    }
+    for (let to = sink; to !== source; to = parents[to].from) {
+      const { from, edgeIndex } = parents[to];
+      const edge = graph[from][edgeIndex];
+      edge.capacity -= amount;
+      graph[to][edge.reverse].capacity += amount;
+    }
+  }
+}
+
 export function allocateProjectTeam(
   targets: readonly AutomaticAllocationTarget[],
   members: readonly TeamMemberRecord[],
   availableByMonth: readonly NumericMap[],
-  targetPriorities: NumericMap = {}
+  targetPriorities: NumericMap = {},
+  fteCosts: FteCostSettings = DEFAULT_FTE_COSTS
 ) {
   const memberIds = new Set(members.map((member) => member.id));
   const plans = targets.map((target) => Object.fromEntries(Object.entries(target.assignments)
@@ -190,6 +270,14 @@ export function allocateProjectTeam(
   let totalRequired = 0;
   let totalCovered = 0;
   const priorityLevels = [...new Set(targets.map((target) => targetPriorities[target.id] || 1))].sort((a, b) => a - b);
+  const hourlyRates = members.map((member) => {
+    const rate = fteCosts.hourlyRates[member.footprint || "PRA"];
+    return typeof rate === "number" && Number.isFinite(rate) && rate >= 0 ? rate : null;
+  });
+  // Scaling all known rates equally preserves the optimum (160 hours is common
+  // to every FTE-month). Missing rates must not make a member appear free.
+  const rateScale = Math.max(1, ...hourlyRates.map((rate) => rate ?? 0));
+  const memberCosts = hourlyRates.map((rate) => rate === null ? members.length + 1 : rate / rateScale);
 
   // A residual flow graph can move flexible members to leave capacity for restricted roles.
   // This maximizes covered effort even when maintenance exclusions differ by workpackage.
@@ -198,11 +286,11 @@ export function allocateProjectTeam(
     const targetStart = 1 + members.length;
     const priorityStart = targetStart + targets.length;
     const sink = priorityStart + priorityLevels.length;
-    const graph: { to: number; reverse: number; capacity: number }[][] = Array.from({ length: sink + 1 }, () => []);
-    const addEdge = (from: number, to: number, capacity: number) => {
-      const edge = { to, reverse: graph[to].length, capacity };
+    const graph: AllocationFlowEdge[][] = Array.from({ length: sink + 1 }, () => []);
+    const addEdge = (from: number, to: number, capacity: number, cost = 0) => {
+      const edge = { to, reverse: graph[to].length, capacity, initialCapacity: capacity, cost };
       graph[from].push(edge);
-      graph[to].push({ to: from, reverse: graph[from].length - 1, capacity: 0 });
+      graph[to].push({ to: from, reverse: graph[from].length - 1, capacity: 0, initialCapacity: 0, cost: -cost });
       return edge;
     };
     const allocationEdges: { memberId: string; targetIndex: number; edge: typeof graph[number][number] }[] = [];
@@ -222,7 +310,7 @@ export function allocateProjectTeam(
       .sort((a, b) => Number(a.member.role === "both") - Number(b.member.role === "both"));
     for (const { member, index } of memberOrder) {
       const available = Math.max(0, availableByMonth[month]?.[member.id] || 0);
-      addEdge(source, 1 + index, available);
+      addEdge(source, 1 + index, available, memberCosts[index]);
       const targetOrder = targets.map((target, targetIndex) => ({ target, targetIndex }))
         .sort((a, b) => Number((b.target.assignments[member.id]?.[month] || 0) > 0)
           - Number((a.target.assignments[member.id]?.[month] || 0) > 0));
@@ -240,10 +328,11 @@ export function allocateProjectTeam(
     // Enable one priority group's sink at a time. Residual paths can reassign
     // members within higher groups, but cannot reduce their already achieved coverage.
     // A group node also allows tied workpackages to trade coverage as one project.
+    const priorityEdges: AllocationFlowEdge[] = [];
     for (let priorityIndex = 0; priorityIndex < priorityLevels.length; priorityIndex++) {
       const groupDemand = targets.reduce((sum, target, index) => sum
         + ((targetPriorities[target.id] || 1) === priorityLevels[priorityIndex] ? remaining[index] : 0), 0);
-      addEdge(priorityStart + priorityIndex, sink, groupDemand);
+      priorityEdges.push(addEdge(priorityStart + priorityIndex, sink, groupDemand));
       while (true) {
         const parents: { from: number; edgeIndex: number }[] = Array(graph.length);
         const queue = [source];
@@ -274,6 +363,59 @@ export function allocateProjectTeam(
       }
     }
 
+    // Rebuild the flow with each group's achieved coverage as its exact demand.
+    // Cost optimization can reroute assignments across groups, but cannot trade
+    // any higher or lower priority coverage for savings.
+    const groupCoverage = priorityEdges.map((edge) => graph[sink][edge.reverse].capacity);
+    const coverageCapacities = graph.map((edges) => edges.map((edge) => edge.capacity));
+    graph.forEach((edges) => edges.forEach((edge) => { edge.capacity = edge.initialCapacity; }));
+    priorityEdges.forEach((edge, index) => { edge.capacity = groupCoverage[index]; });
+    minimizeAllocationFlowCost(graph, source, sink, epsilon);
+    // Preserve the coverage solution if floating-point residuals ever prevent
+    // the cost pass from satisfying a group's locked demand.
+    if (priorityEdges.some((edge) => edge.capacity > epsilon)) {
+      graph.forEach((edges, from) => edges.forEach((edge, index) => {
+        edge.capacity = coverageCapacities[from][index];
+      }));
+    }
+
+    // Keep an already optimal input plan. Merely preferring its edge order is
+    // insufficient: shortest-path ties can otherwise reshuffle equal-cost
+    // allocations on every click, marking an unchanged optimum as a new draft.
+    const existingUsage = members.map(() => 0);
+    const existingCoverage = priorityLevels.map(() => 0);
+    let existingCost = 0;
+    let isExistingFeasible = true;
+    targets.forEach((target, targetIndex) => {
+      let covered = 0;
+      members.forEach((member, index) => {
+        const amount = Number(target.assignments[member.id]?.[month] ?? 0);
+        if (!Number.isFinite(amount) || amount < 0) { isExistingFeasible = false; return; }
+        if (amount > epsilon && ((member.role !== "both" && member.role !== target.role) ||
+          (target.months[month]?.isMaintenance && target.maintenancePreferences?.[member.id] === false))) {
+          isExistingFeasible = false;
+        }
+        covered += amount;
+        existingUsage[index] += amount;
+        existingCost += amount * memberCosts[index];
+      });
+      if (covered > remaining[targetIndex] + epsilon) isExistingFeasible = false;
+      existingCoverage[priorityLevels.indexOf(targetPriorities[target.id] || 1)] += covered;
+    });
+    const optimizedCost = graph[source].reduce((sum, edge) =>
+      sum + graph[edge.to][edge.reverse].capacity * edge.cost, 0);
+    const costTolerance = Number.EPSILON * 64 * Math.max(Math.abs(existingCost), Math.abs(optimizedCost), Number.MIN_VALUE);
+    const keepExisting = isExistingFeasible &&
+      existingUsage.every((used, index) => used <= Math.max(0, availableByMonth[month]?.[members[index].id] || 0) + epsilon) &&
+      existingCoverage.every((covered, index) => Math.abs(covered - groupCoverage[index]) <= epsilon) &&
+      Math.abs(existingCost - optimizedCost) <= costTolerance;
+    if (keepExisting) {
+      targets.forEach((target, targetIndex) => members.forEach((member) => {
+        if (plans[targetIndex][member.id]) plans[targetIndex][member.id][month] = target.assignments[member.id]?.[month] || 0;
+      }));
+      continue;
+    }
+
     for (const { memberId, targetIndex, edge } of allocationEdges) {
       const allocated = graph[edge.to][edge.reverse].capacity;
       if (allocated <= epsilon) continue;
@@ -296,7 +438,8 @@ export function allocateTeamByProjectPriority(
   projects: readonly AutomaticAllocationProject[],
   members: readonly TeamMemberRecord[],
   totalMonths: number,
-  priorities: NumericMap
+  priorities: NumericMap,
+  fteCosts: FteCostSettings = DEFAULT_FTE_COSTS
 ) {
   const selected = projects.filter((project) => Number.isInteger(priorities[project.id]) && priorities[project.id] > 0);
   const selectedIds = new Set(selected.map((project) => project.id));
@@ -325,7 +468,7 @@ export function allocateTeamByProjectPriority(
   })));
   const targetPriorities = Object.fromEntries(selected.flatMap((project) =>
     project.targets.map((target) => [target.id, priorities[project.id]])));
-  const result = allocateProjectTeam(alignedTargets, members, availableByMonth, targetPriorities);
+  const result = allocateProjectTeam(alignedTargets, members, availableByMonth, targetPriorities, fteCosts);
   for (const project of selected) {
     for (const target of project.targets) {
       const aligned = result.allocations.get(target.id)!;

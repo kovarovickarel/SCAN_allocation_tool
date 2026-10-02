@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import type { AllocationProject, TeamMemberRecord, WorkpackageCard } from "../src/types";
+import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings } from "../src/types";
 
 const person = (id: string, fte = 1, role: TeamMemberRecord["role"] = "engineering"): TeamMemberRecord =>
   ({ id, firstName: id, lastName: "Tester", fte, role, tool: "KPI", footprint: "PRA" });
@@ -10,7 +10,7 @@ const card = (id: string, projectId: string, demand = Array(6).fill(1)): Workpac
     customCoreFTE: Object.fromEntries(demand.map((value, index) => [index, value])),
     customDevSupportFTE: Object.fromEntries(demand.map((_, index) => [index, 0])),
     customMeetingsFTE: Object.fromEntries(demand.map((_, index) => [index, 0])) });
-type Fixture = { projects: AllocationProject[]; cards: WorkpackageCard[]; members: TeamMemberRecord[]; retro?: boolean; basic?: boolean; management?: boolean };
+type Fixture = { projects: AllocationProject[]; cards: WorkpackageCard[]; members: TeamMemberRecord[]; retro?: boolean; basic?: boolean; management?: boolean; fteCosts?: FteCostSettings };
 const simple = (): Fixture => ({ projects: [project("A"), project("B"), project("Empty")],
   cards: [card("a", "A"), card("b", "B")], members: [person("Engineer")] });
 async function fixture(page: Page, data: Fixture) {
@@ -89,7 +89,9 @@ for (const samePriority of [true, false]) test(`${samePriority ? "equal" : "diff
   data.cards[1] = { id: "b", name: "b workpackage", projectId: "B", tool: "Other", reusability: "New",
     otherStartMonth: 1, otherDuration: 1, otherEffort: 1, otherHasMaintenance: true, otherMaintenanceEffort: 1,
     memberMaintenancePreferences: { Second: false } };
-  await fixture(page, data); await optimize(page, samePriority ? {} : { A: 1, B: 2 });
+  await fixture(page, data);
+  await page.getByRole("button", { name: 'Include "Other" WPs', exact: true }).click();
+  await optimize(page, samePriority ? {} : { A: 1, B: 2 });
   await expect(page.getByRole("status")).toContainText("A: 100%");
   await expect(page.getByRole("status")).toContainText("B: 100%");
   const plan = await save(page);
@@ -250,4 +252,80 @@ test("production App wiring persists project and team wand allocations", async (
   await expect(page.getByRole("button", { name: "Clear Allocation", exact: true })).toBeEnabled();
   await page.getByRole("button", { name: "Auto-allocate KPI team to GM", exact: true }).click();
   await expect(page.getByRole("status")).toContainText("MBAG:");
+});
+
+for (const wand of ["project", "team"] as const) {
+  test(`${wand} wand uses configured hourly prices and saves the cheapest covered allocation`, async ({ page }) => {
+    const data: Fixture = {
+      projects: [project("A"), project("B")],
+      cards: [card("a", "A", Array(6).fill(0.7)), { ...card("b", "B", Array(6).fill(0.2)),
+        memberMonthlyAssignments: { Cheap: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.2])) } }],
+      members: [{ ...person("Expensive"), footprint: "TRO" }, { ...person("Cheap", 0.6), footprint: "CHE",
+        isExternal: true, monthlySalaryCost: 100000, monthlySalaryCurrency: "EUR" }],
+      fteCosts: { currency: "EUR", hourlyRates: { TRO: 200, CHE: 8 } },
+    };
+    await fixture(page, data);
+    if (wand === "project") await page.getByRole("button", { name: "Auto-allocate KPI team to A", exact: true }).click();
+    else await optimize(page, { A: 1, B: 2 });
+    await expect(page.getByRole("status")).toContainText("A: 100%");
+    await expect(page.getByRole("status")).toContainText("B: 100%");
+    const plan = await save(page);
+    checkSavedLimits(data, plan);
+    for (let month = 0; month < 6; month++) {
+      const cheap = plan.cards.reduce((sum, work) => sum + (work.memberMonthlyAssignments?.Cheap?.[month] || 0), 0);
+      const expensive = plan.cards.reduce((sum, work) => sum + (work.memberMonthlyAssignments?.Expensive?.[month] || 0), 0);
+      expect(cheap).toBeCloseTo(0.6, 7);
+      expect(expensive).toBeCloseTo(0.3, 7);
+      expect(cheap * 8 * 160 + expensive * 200 * 160).toBeCloseTo(10368, 6);
+    }
+    if (wand === "project") expect(plan.cards[1]).toEqual(data.cards[1]);
+    await page.getByRole("button", { name: "Reopen timeline", exact: true }).click();
+    if (wand === "project") await page.getByRole("button", { name: "Auto-allocate KPI team to A", exact: true }).click();
+    else await optimize(page, { A: 1, B: 2 });
+    await expect(page.getByRole("button", { name: "Save & Close", exact: true })).toBeDisabled();
+  });
+}
+
+test("price optimization includes management and preserves the resulting draft on discard", async ({ page }) => {
+  const data: Fixture = { management: true,
+    projects: [{ ...project("A"), customMgmtMonthlyFTE: { KPI: Object.fromEntries(Array.from({ length: 6 }, (_, m) => [m, 0.2])) } }],
+    cards: [card("a", "A", Array(6).fill(1.5))],
+    members: [{ ...person("Flexible", 1, "both"), footprint: "CHE" }, { ...person("Engineer"), footprint: "PRA" },
+      { ...person("Manager", 1, "management"), footprint: "TRO" }],
+    fteCosts: { currency: "EUR", hourlyRates: { CHE: 20, PRA: 60, TRO: 115 } },
+  };
+  await fixture(page, data); await optimize(page);
+  await expect(page.getByRole("status")).toContainText("A: 100%");
+  await page.getByRole("button", { name: "Discard & Close", exact: true }).click();
+  expect((await saved(page)).cards).toEqual(data.cards);
+  expect((await saved(page)).projects).toEqual(data.projects);
+  await page.getByRole("button", { name: "Reopen timeline", exact: true }).click();
+  await optimize(page); const plan = await save(page); checkSavedLimits(data, plan);
+  for (let month = 0; month < 6; month++) {
+    expect(plan.projects[0].mgmtMemberMonthlyAssignments?.KPI?.Flexible?.[month]).toBeCloseTo(0.2, 7);
+    expect(plan.projects[0].mgmtMemberMonthlyAssignments?.KPI?.Manager?.[month] || 0).toBe(0);
+    expect(plan.cards[0].memberMonthlyAssignments?.Flexible?.[month]).toBeCloseTo(0.8, 7);
+    expect(plan.cards[0].memberMonthlyAssignments?.Engineer?.[month]).toBeCloseTo(0.7, 7);
+  }
+});
+
+test("cost optimization never allocates excluded Other workpackages", async ({ page }) => {
+  const data: Fixture = { projects: [project("A")], cards: [card("a", "A", Array(6).fill(0.5)),
+    { id: "other", name: "Other scope", tool: "Other", projectId: "A", otherStartMonth: 1,
+      otherDuration: 6, otherEffort: 0.5, otherHasMaintenance: false, reusability: "New" }],
+    members: [{ ...person("Expensive"), footprint: "TRO" }, { ...person("Cheap"), footprint: "CHE" }],
+    fteCosts: { currency: "EUR", hourlyRates: { TRO: 200, CHE: 10 } },
+  };
+  await fixture(page, data);
+  await page.getByRole("button", { name: 'Include "Other" WPs', exact: true }).click();
+  await page.getByRole("button", { name: "Exclude Other scope from KPI team", exact: true }).click();
+  await optimize(page);
+  const plan = await save(page);
+  expect(plan.cards[1].memberAssignments || {}).toEqual({});
+  expect(plan.cards[1].memberMonthlyAssignments || {}).toEqual({});
+  for (let month = 0; month < 6; month++) {
+    expect(plan.cards[0].memberMonthlyAssignments?.Cheap?.[month]).toBe(0.5);
+    expect(plan.cards[0].memberMonthlyAssignments?.Expensive?.[month] || 0).toBe(0);
+  }
+  checkSavedLimits(data, plan);
 });
