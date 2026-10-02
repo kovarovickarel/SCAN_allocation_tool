@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, SUBCAT_TOOL_MAP, DEFAULT_MGMT_SETTINGS, PROJECT_TYPES, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2, genId } from "../../constants";
-import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort } from "../../utils/helpers";
+import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
@@ -1116,6 +1116,9 @@ export const ProjectBasket = memo(function ProjectBasket({
         {visibleTools.map((tool) => (
           <ToolRow
             key={tool.name}
+            reusabilityFactors={reusabilityFactors}
+            fteRates={fteRates}
+            toolFteRates={toolFteRates}
             tool={tool}
             toolCards={projectCardsByTool.get(tool.name) || []}
             teamMembers={teamMembers}
@@ -1265,13 +1268,13 @@ export const ProjectBasket = memo(function ProjectBasket({
   );
 });
 
-export function AssignOtherWPModal({ card, project, onConfirm, onCancel }) {
+export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS }) {
   const { isRetro } = React.useContext(ThemeContext);
   const duration = Math.max(1, parseInt(card.otherDuration, 10) || 6);
   const projectDuration = project.duration;
 
   const rawEffort = parseFloat(card.otherEffort) || 0.3;
-  const reusabilityMult = DEFAULT_REUSABILITY_FACTORS[card.reusability] ?? 1.0;
+  const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
   const finalEffort = round2(rawEffort * reusabilityMult);
 
   const [selectedMilestone, setSelectedMilestone] = useState(card.otherFinishMilestone || "");
@@ -1475,7 +1478,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel }) {
             <span className={`font-semibold ${isRetro ? "text-black" : "text-slate-500"}`}>Maintenance Phase:</span>
             <span className={`font-bold font-mono ${isRetro ? "text-black font-black" : "text-slate-800"}`}>
               {card.otherHasMaintenance
-                ? `${card.otherMaintenanceEffort ?? 0.05} FTE/mo until project end`
+                ? `${round2(Math.max(0, Number(card.otherMaintenanceEffort ?? 0.05) || 0) * getMaintenanceReusabilityFactor(card, reusabilityFactors)).toFixed(2)} FTE/mo until project end`
                 : "None"}
             </span>
           </div>

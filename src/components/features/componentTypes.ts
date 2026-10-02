@@ -21,15 +21,22 @@ export type CardEditHandler = (
   draft?: Partial<WorkpackageCard> | null
 ) => void;
 
-export interface EditCardContentProps {
+interface ReusabilityRatesProps {
+  fteRates?: typeof DEFAULT_FTE_RATES;
+  toolFteRates?: typeof DEFAULT_TOOL_FTE_RATES;
+}
+
+export interface EditCardContentProps extends ReusabilityRatesProps {
   card: WorkpackageCard;
+  reusabilityFactors?: FactorMap;
   onEdit: CardEditHandler;
   projectDuration?: number;
   projectMilestones?: MilestoneMap;
 }
 
-export interface FunctionCardProps {
+export interface FunctionCardProps extends ReusabilityRatesProps {
   card: WorkpackageCard;
+  reusabilityFactors?: FactorMap;
   teamMembers?: TeamMemberRecord[];
   projectId?: string | null;
   projectDuration?: number;
@@ -49,8 +56,9 @@ export interface ManagementOverheadsProps {
   isCompact?: boolean;
 }
 
-export interface ToolRowProps {
+export interface ToolRowProps extends ReusabilityRatesProps {
   tool: ToolDefinition;
+  reusabilityFactors?: FactorMap;
   teamMembers?: TeamMemberRecord[];
   toolCards?: WorkpackageCard[];
   projectId: string;
@@ -77,8 +85,9 @@ export interface SubcategoryManagerModalProps {
   activeToolView?: string;
 }
 
-export interface UnassignedPoolProps {
+export interface UnassignedPoolProps extends ReusabilityRatesProps {
   cards: WorkpackageCard[];
+  reusabilityFactors?: FactorMap;
   onEdit: CardEditHandler;
   onDelete: (cardId: string) => void;
   onDrop: (cardId: string, projectId: string) => void;
@@ -112,8 +121,9 @@ export interface AddTeamMemberModalProps {
   onSave: (member: TeamMemberRecord) => void;
 }
 
-export interface AddFunctionModalProps {
+export interface AddFunctionModalProps extends ReusabilityRatesProps {
   onClose: () => void;
+  reusabilityFactors?: FactorMap;
   onAdd: (card: WorkpackageCard) => void;
   otherDefaults?: typeof DEFAULT_OTHER_SETTINGS;
   activeToolView?: string;
@@ -124,6 +134,8 @@ export interface AddFunctionDraft {
   tool: string;
   complexity: string | null;
   reusability: string;
+  customReusabilityFactor: NumericInput;
+  reusabilityAppliesToMaintenance: boolean;
   subcategory: string | null;
   otherEffort: NumericInput;
   otherDuration: NumericInput;

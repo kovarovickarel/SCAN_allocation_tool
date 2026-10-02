@@ -7,7 +7,50 @@ import {
   clamp,
   round2,
 } from "../constants";
-import type { TeamMemberRecord, WorkpackageCard, NumericMap, MonthlyNumericMap, AutomaticAllocationTarget, AutomaticAllocationProject } from "../types";
+import type { TeamMemberRecord, WorkpackageCard, NumericInput, FactorMap, NumericMap, MonthlyNumericMap, AutomaticAllocationTarget, AutomaticAllocationProject } from "../types";
+
+export function parseReusabilityFactor(value: NumericInput | undefined): number | null {
+  if (value === undefined || String(value).trim() === "") return null;
+  const factor = Number(value);
+  return Number.isFinite(factor) && factor >= 0 && factor <= 1 ? factor : null;
+}
+
+export function getReusabilityFactor(card: WorkpackageCard, factors: FactorMap = DEFAULT_REUSABILITY_FACTORS): number {
+  return card.reusability === "Other" ? parseReusabilityFactor(card.customReusabilityFactor) ?? 1
+    : factors[card.reusability] ?? DEFAULT_REUSABILITY_FACTORS[card.reusability] ?? 1;
+}
+
+export function getMaintenanceReusabilityFactor(card: WorkpackageCard, factors: FactorMap = DEFAULT_REUSABILITY_FACTORS): number {
+  return card.reusabilityAppliesToMaintenance ? getReusabilityFactor(card, factors) : 1;
+}
+
+export function getSupportReusabilityFactor(card: WorkpackageCard, factors: FactorMap = DEFAULT_REUSABILITY_FACTORS): number {
+  return getReusabilityFactor(card, factors) === 0 ? 0 : 1;
+}
+
+export function hasWorkpackageMaintenance(card: Pick<WorkpackageCard, "tool" | "complexity" | "otherHasMaintenance">, fteRates = DEFAULT_FTE_RATES, toolFteRates = null): boolean {
+  if (card.tool === "Other") return Boolean(card.otherHasMaintenance);
+  const complexity = card.tool === "KPI" ? card.complexity || "Supporting" : "Point Cloud";
+  const rates = toolFteRates?.[card.tool]?.[complexity] ?? fteRates[complexity] ?? fteRates["Point Cloud"];
+  return (rates?.initialMaintenance ?? 0) > 0 || (rates?.residualMaintenance ?? 0) > 0;
+}
+
+export function normalizeReusability(
+  card: Pick<WorkpackageCard, "reusability" | "customReusabilityFactor" | "reusabilityAppliesToMaintenance">,
+  factors: FactorMap = DEFAULT_REUSABILITY_FACTORS
+) {
+  const reusabilityAppliesToMaintenance = Boolean(card.reusabilityAppliesToMaintenance);
+  if (card.reusability !== "Other") return { reusability: card.reusability, customReusabilityFactor: undefined, reusabilityAppliesToMaintenance };
+  const factor = parseReusabilityFactor(card.customReusabilityFactor);
+  const preset = factor === null ? undefined : Object.keys(DEFAULT_REUSABILITY_FACTORS)
+    .find((name) => Math.abs((factors[name] ?? DEFAULT_REUSABILITY_FACTORS[name]) - factor) <= 1e-9);
+  return { reusability: preset ?? "Other", customReusabilityFactor: preset ? undefined : factor ?? undefined, reusabilityAppliesToMaintenance };
+}
+
+export function getReusabilityLabel(card: WorkpackageCard, factors: FactorMap = DEFAULT_REUSABILITY_FACTORS): string {
+  const normalized = normalizeReusability(card, factors);
+  return normalized.reusability === "Other" ? `Other Reusability ${getReusabilityFactor(card, factors)}×` : normalized.reusability;
+}
 
 // Materialize legacy scalar assignments before replacing a project's monthly plan.
 export function resolveMonthlyMemberAllocations(
@@ -401,7 +444,8 @@ export function calcCardFTE(
   toolFteRates = null
 ) {
   if (!project || project.duration <= 0) return 0;
-  const reusabilityMultiplier = reusabilityFactors[card.reusability] ?? 1.0;
+  const reusabilityMultiplier = getReusabilityFactor(card, reusabilityFactors);
+  const maintenanceMultiplier = getMaintenanceReusabilityFactor(card, reusabilityFactors);
   const stabilityMultiplier = stabilityFactors[project.stability] ?? 1.0;
 
   if (card.tool === "Other") {
@@ -414,13 +458,13 @@ export function calcCardFTE(
       ? Math.max(0, parseFloat(rawMaint))
       : 0.05;
 
-    // Execution phase is scaled by reusability; maintenance phase is NOT affected by reusability.
+    // Maintenance is scaled only when the workpackage explicitly opts in.
     // Custom Other workpackages are directly specified by the user and not scaled by stability factor.
     const activeExecMonths = Math.max(0, Math.min(durationMonths, project.duration - startMonth + 1));
     const devFTEMonths = monthlyEffort * activeExecMonths * reusabilityMultiplier;
     const execEndMonth = startMonth + durationMonths - 1;
     const maintenanceMonths = Math.max(0, project.duration - execEndMonth);
-    const maintenanceFTEMonths = hasMaintenance ? maintenanceRate * maintenanceMonths : 0;
+    const maintenanceFTEMonths = hasMaintenance ? maintenanceRate * maintenanceMonths * maintenanceMultiplier : 0;
     const totalFTEMonths = devFTEMonths + maintenanceFTEMonths;
 
     return round2(totalFTEMonths / project.duration);
@@ -445,9 +489,9 @@ export function calcCardFTE(
   const maintenanceDuration = Math.max(0, project.duration - devDuration);
   const initialMaint = Math.min(maintenanceDuration, 6) * (rates.initialMaintenance ?? 0);
   const residualMaint = Math.max(0, maintenanceDuration - 6) * (rates.residualMaintenance ?? 0);
-  const maintenanceFTEMonths = initialMaint + residualMaint;
+  const maintenanceFTEMonths = (initialMaint + residualMaint) * maintenanceMultiplier;
 
-  const monthlySupportRate = (rates.devFunctionsSupport ?? 0) + (rates.weeklyMeetings ?? 0);
+  const monthlySupportRate = ((rates.devFunctionsSupport ?? 0) + (rates.weeklyMeetings ?? 0)) * getSupportReusabilityFactor(card, reusabilityFactors);
   const supportFTEMonths = monthlySupportRate * project.duration;
 
   const totalFTEMonths = devFTEMonths + maintenanceFTEMonths + supportFTEMonths;
@@ -569,7 +613,8 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
     }));
   }
 
-  const reusabilityMultiplier = reusabilityFactors[card.reusability] ?? 1.0;
+  const reusabilityMultiplier = getReusabilityFactor(card, reusabilityFactors);
+  const maintenanceMultiplier = getMaintenanceReusabilityFactor(card, reusabilityFactors);
   const stabilityMultiplier = stabilityFactors[project.stability] ?? 1.0;
 
   if (card.tool === "Other") {
@@ -584,10 +629,10 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
       ? Math.max(0, parseFloat(rawMaint))
       : 0.05;
 
-    // Execution phase is scaled by reusability; maintenance phase is NOT affected by reusability.
+    // Maintenance is scaled only when the workpackage explicitly opts in.
     // Custom Other workpackages are directly defined by the user and not scaled by project stability.
     const scaledExecRate = round2(monthlyEffort * reusabilityMultiplier);
-    const scaledMaintRate = round2(maintenanceRate);
+    const scaledMaintRate = round2(maintenanceRate * maintenanceMultiplier);
 
     const months = [];
     const maintSpan = Math.max(0, totalDuration - (endIdx + 1));
@@ -702,7 +747,7 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
     } else if (m < initialMaintEnd) {
       phaseName = "Initial Maintenance";
       shortPhase = "Maint";
-      phaseRate = rates.initialMaintenance ?? 0;
+      phaseRate = (rates.initialMaintenance ?? 0) * maintenanceMultiplier;
       phaseSpan = initialMaintSpan;
       phaseMonthIndex = m - devEnd + 1;
       isPhaseStart = m === devEnd;
@@ -710,7 +755,7 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
     } else {
       phaseName = "Residual Maintenance";
       shortPhase = "ResMaint";
-      phaseRate = rates.residualMaintenance ?? 0;
+      phaseRate = (rates.residualMaintenance ?? 0) * maintenanceMultiplier;
       phaseSpan = residualMaintSpan;
       phaseMonthIndex = m - initialMaintEnd + 1;
       isPhaseStart = m === initialMaintEnd;

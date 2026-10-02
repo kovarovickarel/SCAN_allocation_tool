@@ -26,6 +26,7 @@ import {
   calcCardFTE,
   computeWorkpackageLifecycleTimeline,
   calculateWorkpackageCoverage,
+  getSupportReusabilityFactor,
 } from "./utils/helpers";
 import { reconcileProjectTimelineAllocations } from "./utils/timelineAllocations";
 import { ConfigurationModal } from "./components/features/ConfigurationModal";
@@ -267,8 +268,9 @@ export default function App() {
       );
 
       const stabilityMultiplier = config.stabilityFactors[project.stability] ?? 1.0;
-      const defaultDevRate = isOther ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier);
-      const defaultMeetingsRate = isOther ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier);
+      const supportMultiplier = getSupportReusabilityFactor(f, config.reusabilityFactors);
+      const defaultDevRate = isOther ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier * supportMultiplier);
+      const defaultMeetingsRate = isOther ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier * supportMultiplier);
 
       let isAltered = false;
       let totalEffortMonths = 0;
@@ -277,8 +279,8 @@ export default function App() {
       for (let m = 0; m < project.duration; m++) {
         const defCore = defaultMonths[m]?.totalFTE || 0;
         const customCore = f.customCoreFTE?.[m];
-        const customDev = isOther ? undefined : f.customDevSupportFTE?.[m];
-        const customMeetings = isOther ? undefined : f.customMeetingsFTE?.[m];
+        const customDev = isOther || supportMultiplier === 0 ? undefined : f.customDevSupportFTE?.[m];
+        const customMeetings = isOther || supportMultiplier === 0 ? undefined : f.customMeetingsFTE?.[m];
 
         if (customCore !== undefined && Math.abs(customCore - defCore) > 0.001) isAltered = true;
         if (!isOther && customDev !== undefined && Math.abs(customDev - defaultDevRate) > 0.001) isAltered = true;
@@ -289,7 +291,7 @@ export default function App() {
         const effMeetings = !isOther && customMeetings !== undefined ? customMeetings : defaultMeetingsRate;
 
         totalEffortMonths += (effCore + effDev + effMeetings);
-        const coverageSupport = round2((f.customDevSupportFTE?.[m] ?? defaultDevRate) +
+        const coverageSupport = supportMultiplier === 0 ? 0 : round2((f.customDevSupportFTE?.[m] ?? defaultDevRate) +
           (f.customMeetingsFTE?.[m] ?? defaultMeetingsRate));
         coverageMonths.push({ shortPhase: defaultMonths[m]?.shortPhase, totalWPMonthlyFTE: round2(effCore + coverageSupport) });
       }
@@ -730,6 +732,9 @@ export default function App() {
           {activeToolView === "all" ? (
             <UnassignedPool
               cards={functionsWithFTE}
+              reusabilityFactors={config.reusabilityFactors}
+              fteRates={config.fteRates}
+              toolFteRates={config.toolFteRates}
               onEdit={handleEdit}
               onDelete={handleDelete}
               onDrop={handleDrop}
@@ -747,6 +752,9 @@ export default function App() {
               <div className="flex-1 min-h-0 flex flex-col">
                 <UnassignedPool
                   cards={functionsWithFTE}
+                  reusabilityFactors={config.reusabilityFactors}
+                  fteRates={config.fteRates}
+                  toolFteRates={config.toolFteRates}
                   onEdit={handleEdit}
                   onDelete={handleDelete}
                   onDrop={handleDrop}
@@ -898,6 +906,9 @@ export default function App() {
         {showAddFunction && (
           <AddFunctionModal
             onClose={() => setShowAddFunction(false)}
+            reusabilityFactors={config.reusabilityFactors}
+            fteRates={config.fteRates}
+            toolFteRates={config.toolFteRates}
             onAdd={handleAddFunction}
             otherDefaults={config.otherDefaults}
             activeToolView={activeToolView}
@@ -975,6 +986,7 @@ export default function App() {
         {pendingOtherAssignment && (
           <AssignOtherWPModal
             card={pendingOtherAssignment.card}
+            reusabilityFactors={config.reusabilityFactors}
             project={pendingOtherAssignment.project}
             onConfirm={handleConfirmOtherAssignment}
             onCancel={handleCancelOtherAssignment}

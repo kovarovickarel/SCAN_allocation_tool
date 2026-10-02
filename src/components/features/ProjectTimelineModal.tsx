@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_COLORS, TOOLS, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, MILESTONE_MAP, clamp, round2 } from "../../constants";
-import { normalizeMilestones, calculateProjectEffort, getFTEGradientStyle, computeWorkpackageLifecycleTimeline } from "../../utils/helpers";
+import { normalizeMilestones, calculateProjectEffort, getFTEGradientStyle, computeWorkpackageLifecycleTimeline, getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "../../utils/helpers";
+import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { useProjectTimelineRangeEditing } from "../../hooks/useProjectTimelineRangeEditing";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { ProjectTimelineModalProps } from './componentTypes';
@@ -288,8 +289,9 @@ export function ProjectTimelineModal({
         }
         const activeCustomCore = isDraggingThisCard && dragDelta !== 0 ? shiftedCustomCore : c.customCoreFTE;
 
-        const defaultDevFunctionsRate = isNegated || isToolOther ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier);
-        const defaultMeetingsRate = isNegated || isToolOther ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier);
+        const supportMultiplier = getSupportReusabilityFactor(c, reusabilityFactors);
+        const defaultDevFunctionsRate = isNegated || isToolOther ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier * supportMultiplier);
+        const defaultMeetingsRate = isNegated || isToolOther ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier * supportMultiplier);
 
         let hasAnyDevOverride = false;
         let hasAnyMeetingsOverride = false;
@@ -298,7 +300,7 @@ export function ProjectTimelineModal({
         const meetingsMonths = [];
 
         for (let m = 0; m < duration; m++) {
-          const customDev = isNegated ? undefined : c.customDevSupportFTE?.[m];
+          const customDev = isNegated || supportMultiplier === 0 ? undefined : c.customDevSupportFTE?.[m];
           const isDevOverridden = customDev !== undefined && Math.abs(customDev - defaultDevFunctionsRate) > 0.001;
           if (isDevOverridden) hasAnyDevOverride = true;
           const effDevRate = isDevOverridden ? customDev : defaultDevFunctionsRate;
@@ -316,7 +318,7 @@ export function ProjectTimelineModal({
             style: getFTEGradientStyle(effDevRate, isNegated, 3.0, true),
           });
 
-          const customMeetings = isNegated ? undefined : c.customMeetingsFTE?.[m];
+          const customMeetings = isNegated || supportMultiplier === 0 ? undefined : c.customMeetingsFTE?.[m];
           const isMeetingsOverridden = customMeetings !== undefined && Math.abs(customMeetings - defaultMeetingsRate) > 0.001;
           if (isMeetingsOverridden) hasAnyMeetingsOverride = true;
           const effMeetingsRate = isMeetingsOverridden ? customMeetings : defaultMeetingsRate;
@@ -1102,7 +1104,7 @@ export function ProjectTimelineModal({
                                       <span className={`text-[8.5px] px-1.5 py-0.2 rounded font-semibold shrink-0 whitespace-nowrap ${
                                         isRetro ? "bg-white text-black border border-black font-mono shadow-[1px_1px_0px_#000]" : "bg-white text-gray-700 border border-gray-300 shadow-2xs"
                                       }`}>
-                                        {card.reusability}
+                                        <ReusabilityLabel card={card} factors={reusabilityFactors} factorOnly />
                                       </span>
                                       {finishMsDef && (
                                         <span
@@ -1176,12 +1178,13 @@ export function ProjectTimelineModal({
                                     )}
                                     {card.tool === "Other" && (() => {
                                       const rawEffort = parseFloat(card.otherEffort) || 0.3;
-                                      const reusabilityMult = reusabilityFactors[card.reusability] ?? DEFAULT_REUSABILITY_FACTORS[card.reusability] ?? 1.0;
+                                      const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
                                       const finalEffort = round2(rawEffort * reusabilityMult);
                                       const rawMaint = card.otherMaintenanceEffort;
                                       const maintRate = rawMaint !== undefined && rawMaint !== null && !isNaN(parseFloat(rawMaint))
                                         ? Math.max(0, parseFloat(rawMaint))
                                         : 0.05;
+                                      const scaledMaintRate = round2(maintRate * getMaintenanceReusabilityFactor(card, reusabilityFactors));
                                       const activeStartM = isDraggingThisWP ? activityDrag.currentStartMonth : Math.max(1, parseInt(card.otherStartMonth, 10) || 1);
                                       const durationM = Math.max(1, parseInt(card.otherDuration, 10) || 6);
                                       const endM = activeStartM + durationM - 1;
@@ -1209,9 +1212,9 @@ export function ProjectTimelineModal({
                                           {card.otherHasMaintenance && (
                                             <span
                                               className={`text-[8.5px] px-1 py-0.2 rounded font-bold border ${maintBadgeStyle}`}
-                                              title={`Maintenance phase: ${maintRate.toFixed(2)} FTE/mo`}
+                                              title={`Maintenance phase: ${scaledMaintRate.toFixed(2)} FTE/mo${card.reusabilityAppliesToMaintenance ? " (reusability factor applied)" : ""}`}
                                             >
-                                              +Maint ({maintRate.toFixed(2)} FTE)
+                                              +Maint ({scaledMaintRate.toFixed(2)} FTE)
                                             </span>
                                           )}
                                         </>

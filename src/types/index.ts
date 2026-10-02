@@ -41,6 +41,8 @@ export interface WorkpackageCard {
   tool: string;
   complexity?: string | null;
   reusability?: string;
+  customReusabilityFactor?: NumericInput;
+  reusabilityAppliesToMaintenance?: boolean;
   subcategory?: string | null;
   projectId?: string | null;
   otherEffort?: NumericInput;

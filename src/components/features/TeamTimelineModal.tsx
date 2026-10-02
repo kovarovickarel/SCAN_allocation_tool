@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, round2 } from "../../constants";
-import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority } from "../../utils/helpers";
+import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
@@ -200,12 +200,13 @@ export function TeamTimelineModal({
         const rates = toolFteRates?.[card.tool]?.[complexityKey] ?? fteRates?.[complexityKey] ?? DEFAULT_FTE_RATES[complexityKey] ?? DEFAULT_FTE_RATES["Point Cloud"];
 
         const defaultCoreMonths = computeWorkpackageLifecycleTimeline(card, p, rates, reusabilityFactors, stabilityFactors, isNegated, pDur);
-        const defaultDevRate = isNegated || card.tool === "Other" ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier);
-        const defaultMeetingsRate = isNegated || card.tool === "Other" ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier);
+        const supportMultiplier = getSupportReusabilityFactor(card, reusabilityFactors);
+        const defaultDevRate = isNegated || card.tool === "Other" ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier * supportMultiplier);
+        const defaultMeetingsRate = isNegated || card.tool === "Other" ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier * supportMultiplier);
 
         const mergedMonthsInProject = defaultCoreMonths.map((m, mIdx) => {
-          const effDevRate = card.customDevSupportFTE?.[mIdx] ?? defaultDevRate;
-          const effMeetingsRate = card.customMeetingsFTE?.[mIdx] ?? defaultMeetingsRate;
+          const effDevRate = supportMultiplier === 0 ? 0 : card.customDevSupportFTE?.[mIdx] ?? defaultDevRate;
+          const effMeetingsRate = supportMultiplier === 0 ? 0 : card.customMeetingsFTE?.[mIdx] ?? defaultMeetingsRate;
           const supportSum = round2(effDevRate + effMeetingsRate);
           const customCore = isNegated ? undefined : card.customCoreFTE?.[mIdx];
           const coreFTE = customCore !== undefined ? customCore : m.totalFTE;

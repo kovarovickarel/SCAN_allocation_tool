@@ -2,8 +2,10 @@ import React, { useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, TOOLS, TOOL_MAP, DEFAULT_OTHER_SETTINGS, MILESTONES_DEF, genId } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { AddFunctionModalProps, AddFunctionDraft } from './componentTypes';
+import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
+import { normalizeReusability, parseReusabilityFactor, hasWorkpackageMaintenance } from "../../utils/helpers";
 
-export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER_SETTINGS, activeToolView = "all" }: AddFunctionModalProps) {
+export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER_SETTINGS, activeToolView = "all", reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates, toolFteRates }: AddFunctionModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
   const defaultTool = activeToolView !== "all" ? activeToolView : "KPI";
   const [draft, setDraft] = useState<AddFunctionDraft>({
@@ -11,6 +13,8 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
     tool: defaultTool,
     complexity: defaultTool === "KPI" ? "Supporting" : null,
     reusability: "New",
+    customReusabilityFactor: 0.5,
+    reusabilityAppliesToMaintenance: false,
     subcategory: null,
     otherEffort: otherDefaults?.defaultEffort ?? 0.3,
     otherDuration: otherDefaults?.defaultDuration ?? 6,
@@ -27,6 +31,8 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
   }, [activeToolView]);
 
   const selectedTool = TOOL_MAP[draft.tool];
+  const maintenanceAvailable = hasWorkpackageMaintenance(draft, fteRates, toolFteRates);
+  const isInvalidReusability = draft.reusability === "Other" && parseReusabilityFactor(draft.customReusabilityFactor) === null;
 
   const handleToolChange = (t) => {
     const nextTool = TOOL_MAP[t];
@@ -39,13 +45,13 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
   };
 
   const handleAdd = () => {
-    if (!draft.name.trim()) return;
+    if (!draft.name.trim() || isInvalidReusability) return;
     onAdd({
       id: genId(),
       name: draft.name.trim(),
       tool: draft.tool,
       complexity: draft.tool === "KPI" ? (draft.complexity || "Supporting") : null,
-      reusability: draft.reusability,
+      ...normalizeReusability({ ...draft, reusabilityAppliesToMaintenance: draft.reusability === "Other" && maintenanceAvailable && draft.reusabilityAppliesToMaintenance }, reusabilityFactors),
       subcategory: selectedTool?.subcategories ? (draft.subcategory ?? selectedTool.subcategories[0]) : null,
       projectId: null,
       otherEffort: Math.max(0.01, parseFloat(draft.otherEffort) || 0.01),
@@ -271,7 +277,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
               Reusability
             </label>
             <div className="grid grid-cols-3 gap-1">
-              {Object.keys(DEFAULT_REUSABILITY_FACTORS).map((r) => {
+              {[...Object.keys(DEFAULT_REUSABILITY_FACTORS), "Other"].map((r) => {
                 const isSelected = draft.reusability === r;
                 return (
                   <button
@@ -293,6 +299,16 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                 );
               })}
             </div>
+            {draft.reusability === "Other" && (
+              <ReusabilityFactorInput
+                value={draft.customReusabilityFactor}
+                factors={reusabilityFactors}
+                maintenanceAvailable={maintenanceAvailable}
+                applyToMaintenance={draft.reusabilityAppliesToMaintenance}
+                onMaintenanceChange={(checked) => setDraft((d) => ({ ...d, reusabilityAppliesToMaintenance: checked }))}
+                onChange={(value) => setDraft((d) => ({ ...d, customReusabilityFactor: value }))}
+              />
+            )}
           </div>
         </div>
         <div className={`flex gap-2 pt-2 ${isRetro ? "border-t-2 border-black" : "border-t"}`}>
@@ -310,7 +326,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!draft.name.trim()}
+            disabled={!draft.name.trim() || isInvalidReusability}
             className={
               isRetro
                 ? "flex-1 bg-[#000080] disabled:bg-[#808080] disabled:text-[#c0c0c0] text-white font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black text-xs py-2 cursor-pointer"

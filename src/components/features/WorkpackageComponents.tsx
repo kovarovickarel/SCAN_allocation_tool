@@ -4,15 +4,19 @@ import type { EditCardContentProps, FunctionCardProps, ManagementOverheadsProps,
 import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon } from '../ui/icons';
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
-import { getCrossTeamMemberIds, calculateManagementCoverage } from "../../utils/helpers";
+import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
+import { ReusabilityLabel } from "../ui/ReusabilityLabel";
+import { getCrossTeamMemberIds, calculateManagementCoverage, getReusabilityFactor, getMaintenanceReusabilityFactor, hasWorkpackageMaintenance, normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
 
-export function EditCardContent({ card, onEdit, projectDuration, projectMilestones }: EditCardContentProps) {
+export function EditCardContent({ card, onEdit, projectDuration, projectMilestones, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates, toolFteRates }: EditCardContentProps) {
   const { isBasic, isRetro } = React.useContext(ThemeContext);
   const [draft, setDraft] = useState({
     name: card.name,
     tool: card.tool,
     complexity: card.tool === "KPI" ? (card.complexity || "Supporting") : null,
-    reusability: card.reusability,
+    reusability: card.reusabilityAppliesToMaintenance ? "Other" : card.reusability,
+    customReusabilityFactor: card.customReusabilityFactor ?? (card.reusabilityAppliesToMaintenance ? getReusabilityFactor(card, reusabilityFactors) : 0.5),
+    reusabilityAppliesToMaintenance: card.reusabilityAppliesToMaintenance ?? false,
     subcategory: card.subcategory,
     otherEffort: card.otherEffort ?? 0.3,
     otherDuration: card.otherDuration ?? 6,
@@ -25,6 +29,18 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
   const selectedTool = TOOL_MAP[draft.tool] || TOOLS[0];
   const isKPI = draft.tool === "KPI";
   const isOther = draft.tool === "Other";
+  const maintenanceAvailable = hasWorkpackageMaintenance(draft, fteRates, toolFteRates);
+  const isInvalidReusability = draft.reusability === "Other" && parseReusabilityFactor(draft.customReusabilityFactor) === null;
+  const customFactorInput = draft.reusability === "Other" && (
+    <ReusabilityFactorInput
+      value={draft.customReusabilityFactor}
+      factors={reusabilityFactors}
+      maintenanceAvailable={maintenanceAvailable}
+      applyToMaintenance={draft.reusabilityAppliesToMaintenance}
+      onMaintenanceChange={(checked) => setDraft((d) => ({ ...d, reusabilityAppliesToMaintenance: checked }))}
+      onChange={(value) => setDraft((d) => ({ ...d, customReusabilityFactor: value }))}
+    />
+  );
 
   const curDuration = Math.max(1, parseInt(draft.otherDuration, 10) || 1);
   const rawStartMonth = draft.otherStartMonth !== null && draft.otherStartMonth !== undefined ? parseInt(draft.otherStartMonth, 10) : NaN;
@@ -83,7 +99,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
 
   const commit = (e) => {
     e.stopPropagation();
-    if (isNameEmpty) return;
+    if (isNameEmpty || isInvalidReusability) return;
     if (isOther && (isDurationTooLong || isInvalidStart)) return;
     const finalStartMonth = hasProject && isOther
       ? isSpanningError
@@ -93,6 +109,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
 
     onEdit(card.id, false, {
       ...draft,
+      ...normalizeReusability({ ...draft, reusabilityAppliesToMaintenance: draft.reusability === "Other" && maintenanceAvailable && draft.reusabilityAppliesToMaintenance }, reusabilityFactors),
       name: draft.name.trim(),
       complexity: draft.tool === "KPI" ? (draft.complexity || "Supporting") : null,
       otherEffort: Math.max(0.01, parseFloat(draft.otherEffort) || 0.01),
@@ -162,10 +179,11 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
             value={draft.reusability}
             onChange={(e) => setDraft((d) => ({ ...d, reusability: e.target.value }))}
           >
-            {Object.keys(DEFAULT_REUSABILITY_FACTORS).map((r) => (
+            {[...Object.keys(DEFAULT_REUSABILITY_FACTORS), "Other"].map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
           </select>
+          {customFactorInput && <div className="col-span-2">{customFactorInput}</div>}
         </div>
       ) : !isOther ? (
         <div>
@@ -175,10 +193,11 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
             value={draft.reusability}
             onChange={(e) => setDraft((d) => ({ ...d, reusability: e.target.value }))}
           >
-            {Object.keys(DEFAULT_REUSABILITY_FACTORS).map((r) => (
+            {[...Object.keys(DEFAULT_REUSABILITY_FACTORS), "Other"].map((r) => (
               <option key={r} value={r}>{r}</option>
             ))}
           </select>
+          {customFactorInput}
         </div>
       ) : (
         <div className="flex flex-col gap-1.5 bg-slate-100/70 p-1.5 rounded border border-slate-200">
@@ -271,10 +290,11 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
               value={draft.reusability}
               onChange={(e) => setDraft((d) => ({ ...d, reusability: e.target.value }))}
             >
-              {Object.keys(DEFAULT_REUSABILITY_FACTORS).map((r) => (
+              {[...Object.keys(DEFAULT_REUSABILITY_FACTORS), "Other"].map((r) => (
                 <option key={r} value={r}>{r}</option>
               ))}
             </select>
+            {customFactorInput}
           </div>
           <div className="pt-1 border-t border-slate-200/80">
             <label className="flex items-center gap-1.5 cursor-pointer text-[10px] text-slate-800 font-bold">
@@ -310,7 +330,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
         <button
           type="button"
           onClick={commit}
-          disabled={isNameEmpty || (isOther && (isDurationTooLong || isInvalidStart))}
+          disabled={isNameEmpty || isInvalidReusability || (isOther && (isDurationTooLong || isInvalidStart))}
           className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold py-1 rounded transition-colors cursor-pointer shadow-xs"
         >
           Save
@@ -329,6 +349,9 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
 
 export const FunctionCard = memo(function FunctionCard({
   card,
+  reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
+  fteRates,
+  toolFteRates,
   teamMembers = [],
   projectId,
   projectDuration,
@@ -418,6 +441,9 @@ export const FunctionCard = memo(function FunctionCard({
     return (
       <EditCardContent
         card={card}
+        reusabilityFactors={reusabilityFactors}
+        fteRates={fteRates}
+        toolFteRates={toolFteRates}
         onEdit={onEdit}
         projectDuration={projectDuration}
         projectMilestones={projectMilestones}
@@ -614,7 +640,7 @@ export const FunctionCard = memo(function FunctionCard({
             {card.name}
           </span>
           <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold shrink-0 shadow-2xs whitespace-nowrap ${isRetro ? "bg-white text-black border border-black font-mono shadow-[1px_1px_0px_#000]" : "bg-white text-gray-700 border border-gray-300"}`}>
-            {card.reusability}
+            <ReusabilityLabel card={card} factors={reusabilityFactors} />
           </span>
         </div>
         {coverageIndicator}
@@ -636,12 +662,13 @@ export const FunctionCard = memo(function FunctionCard({
         )}
         {card.tool === "Other" && (() => {
           const rawEffort = parseFloat(card.otherEffort) || 0.3;
-          const reusabilityMult = DEFAULT_REUSABILITY_FACTORS[card.reusability] ?? 1.0;
+          const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
           const finalEffort = round2(rawEffort * reusabilityMult);
           const rawMaint = card.otherMaintenanceEffort;
           const maintRate = rawMaint !== undefined && rawMaint !== null && !isNaN(parseFloat(rawMaint))
             ? Math.max(0, parseFloat(rawMaint))
             : 0.05;
+          const scaledMaintRate = round2(maintRate * getMaintenanceReusabilityFactor(card, reusabilityFactors));
           const startM = card.otherStartMonth ? Math.max(1, parseInt(card.otherStartMonth, 10) || 1) : null;
           const durationM = Math.max(1, parseInt(card.otherDuration, 10) || 6);
           const endM = startM ? startM + durationM - 1 : null;
@@ -665,9 +692,9 @@ export const FunctionCard = memo(function FunctionCard({
               {card.otherHasMaintenance && (
                 <span
                   className={`text-[8.5px] px-1 py-0.2 rounded font-bold border ${maintBadgeStyle}`}
-                  title={`Maintenance phase: ${maintRate.toFixed(2)} FTE/mo (not affected by reusability)`}
+                  title={`Maintenance phase: ${scaledMaintRate.toFixed(2)} FTE/mo${card.reusabilityAppliesToMaintenance ? " (reusability factor applied)" : " (not affected by reusability)"}`}
                 >
-                  +Maint ({maintRate.toFixed(2)} FTE)
+                  +Maint ({scaledMaintRate.toFixed(2)} FTE)
                 </span>
               )}
             </>
@@ -798,6 +825,9 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
 
 export const ToolRow = memo(function ToolRow({
   tool,
+  reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
+  fteRates,
+  toolFteRates,
   toolCards = [],
   teamMembers = [],
   projectId,
@@ -1040,6 +1070,9 @@ export const ToolRow = memo(function ToolRow({
                     <FunctionCard
                       key={c.id}
                       card={c}
+                      reusabilityFactors={reusabilityFactors}
+                      fteRates={fteRates}
+                      toolFteRates={toolFteRates}
                       teamMembers={teamMembers}
                       projectId={projectId}
                       projectDuration={projectDuration}
@@ -1099,6 +1132,9 @@ export const ToolRow = memo(function ToolRow({
 
 export const UnassignedPool = memo(function UnassignedPool({
   cards,
+  reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
+  fteRates,
+  toolFteRates,
   onEdit,
   onDelete,
   onDrop,
@@ -1205,6 +1241,9 @@ export const UnassignedPool = memo(function UnassignedPool({
           <FunctionCard
             key={card.id}
             card={card}
+            reusabilityFactors={reusabilityFactors}
+            fteRates={fteRates}
+            toolFteRates={toolFteRates}
             projectId="pool"
             isCompact={isCompact}
             onEdit={onEdit}
