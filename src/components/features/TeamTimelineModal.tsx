@@ -6,6 +6,7 @@ import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { CrossTeamBadge } from "../ui/CrossTeamBadge";
+import { ExternalMemberBadge } from "../ui/ExternalMemberBadge";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
 import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
 import { useTimelineRangeSelection } from "../../hooks/useTimelineRangeSelection";
@@ -1687,6 +1688,7 @@ export function TeamTimelineModal({
 
                                           <div className="flex items-center justify-start gap-1.5 text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
                                             <span>{member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}</span>
+                                            {member.isExternal && <ExternalMemberBadge />}
                                             {crossTeamMemberIds.has(member.id) && <CrossTeamBadge />}
                                           </div>
                                         </div>
@@ -2128,6 +2130,7 @@ export function TeamTimelineModal({
 
                                           <div className="flex items-center justify-start gap-1.5 text-[8.5px] font-mono mt-0.5 pt-0.5 border-t border-black/5 text-slate-500">
                                             <span>{member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}</span>
+                                            {member.isExternal && <ExternalMemberBadge />}
                                             {crossTeamMemberIds.has(member.id) && <CrossTeamBadge />}
                                           </div>
                                         </div>
@@ -2447,6 +2450,7 @@ export function TeamTimelineModal({
                             <span className={isRetro ? "text-slate-600" : "text-slate-400"}>
                               {member.role === "both" ? "ENG & MGMT" : member.role === "management" ? "MGMT" : "ENG"}
                             </span>
+                            {member.isExternal && <ExternalMemberBadge />}
                             {crossTeamMemberIds.has(member.id) && <CrossTeamBadge />}
                           </div>
                         </div>

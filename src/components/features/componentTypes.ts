@@ -115,6 +115,7 @@ export interface TeamMembersPoolProps {
 
 export interface AddTeamMemberModalProps {
   toolName: string;
+  defaultCurrency?: string;
   initialMember?: TeamMemberRecord | null;
   allMembers?: TeamMemberRecord[];
   onClose: () => void;

@@ -3,6 +3,7 @@ import { ThemeContext, TOOLS, TOOL_MAP, TEAM_COMPACT_BTN_STYLES, TEAM_TIMELINE_B
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { PersonIcon } from "../ui/PersonIcon";
 import { CrossTeamBadge } from "../ui/CrossTeamBadge";
+import { ExternalMemberBadge } from "../ui/ExternalMemberBadge";
 import type { TeamMemberRole } from "../../types";
 import type { TeamMembersPoolProps, AddTeamMemberModalProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, PlusIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
@@ -167,7 +168,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
               <div
                 key={member.id}
                 className={`group bg-white ${isRetro ? "border-2 border-black rounded-none shadow-[2px_2px_0px_#000]" : "border border-slate-200 hover:border-slate-400 rounded-md shadow-2xs"} px-1.5 py-1 flex items-center justify-between gap-1 transition-all h-7 relative`}
-                title={`${member.firstName} ${member.lastName} (${(parseFloat(member.fte) || 1).toFixed(2)} FTE)${isMultiTeam ? " • Cross-Team Member" : ""}`}
+                title={`${member.firstName} ${member.lastName} (${(parseFloat(member.fte) || 1).toFixed(2)} FTE)${member.isExternal ? " • External" : ""}${isMultiTeam ? " • Cross-Team Member" : ""}`}
               >
                 <div className="flex items-center gap-1 min-w-0">
                   {!isBasicMode && (
@@ -236,6 +237,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
                         ? "MGMT"
                         : "ENG"}
                     </span>
+                    {member.isExternal && <ExternalMemberBadge />}
                     {isMultiTeam && <CrossTeamBadge />}
                   </div>
                 </div>
@@ -286,12 +288,16 @@ export const TeamMembersPool = memo(function TeamMembersPool({
   );
 });
 
-export function AddTeamMemberModal({ toolName, initialMember = null, allMembers = [], onClose, onSave }: AddTeamMemberModalProps) {
+export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", initialMember = null, allMembers = [], onClose, onSave }: AddTeamMemberModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
   const [firstName, setFirstName] = useState(initialMember ? initialMember.firstName : "");
   const [lastName, setLastName] = useState(initialMember ? initialMember.lastName : "");
   const [fte, setFte] = useState(initialMember ? String(initialMember.fte) : "1.00");
   const [role, setRole] = useState<TeamMemberRole>(initialMember ? initialMember.role : "engineering");
+  const [isExternal, setIsExternal] = useState(initialMember?.isExternal ?? false);
+  const [monthlySalaryCost, setMonthlySalaryCost] = useState(initialMember?.monthlySalaryCost !== undefined
+    ? String(initialMember.monthlySalaryCost) : "");
+  const [monthlySalaryCurrency] = useState(initialMember?.monthlySalaryCurrency || defaultCurrency);
   const [footprint, setFootprint] = useState(initialMember ? (initialMember.footprint || "PRA") : "PRA");
 
   useEscapeKey(onClose);
@@ -299,6 +305,13 @@ export function AddTeamMemberModal({ toolName, initialMember = null, allMembers 
   const normalizedFteStr = fte.replace(",", ".");
   const parsedFte = parseFloat(normalizedFteStr);
   const isFteValid = !isNaN(parsedFte) && parsedFte > 0 && parsedFte <= 1.0;
+  const normalizedSalary = monthlySalaryCost.trim().replace(/,/g, ".");
+  const parsedSalary = Number(normalizedSalary);
+  const isSalaryValid = /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(normalizedSalary) &&
+    Number.isFinite(parsedSalary) && parsedSalary >= 0 && Number.isFinite(round2(parsedSalary));
+  const salaryError = isExternal && !isSalaryValid
+    ? normalizedSalary === "" ? "Monthly salary cost is required for external members." : "Enter a valid monthly salary cost of 0 or more."
+    : null;
 
   const trimmedFirst = firstName.trim().toLowerCase();
   const trimmedLast = lastName.trim().toLowerCase();
@@ -379,7 +392,8 @@ export function AddTeamMemberModal({ toolName, initialMember = null, allMembers 
     Boolean(lastName.trim()) &&
     isFteValid &&
     !sameTeamDuplicate &&
-    !exceedsCapacity;
+    !exceedsCapacity &&
+    (!isExternal || isSalaryValid);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -393,6 +407,9 @@ export function AddTeamMemberModal({ toolName, initialMember = null, allMembers 
       fte: finalFte,
       role,
       footprint,
+      isExternal,
+      monthlySalaryCost: isSalaryValid ? round2(parsedSalary) : undefined,
+      monthlySalaryCurrency: isSalaryValid ? monthlySalaryCurrency : undefined,
     });
     onClose();
   };
@@ -462,6 +479,44 @@ export function AddTeamMemberModal({ toolName, initialMember = null, allMembers 
               />
             </div>
           </div>
+
+          <label className={`inline-flex self-start items-center gap-2 cursor-pointer text-[11px] font-semibold ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
+            <input
+              type="checkbox"
+              checked={isExternal}
+              onChange={(e) => setIsExternal(e.target.checked)}
+              className="w-4 h-4 accent-blue-600 shrink-0 cursor-pointer"
+            />
+            <span>External team member</span>
+          </label>
+
+          {isExternal && (
+            <div>
+              <label htmlFor="member-monthly-salary" className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
+                Monthly salary cost *
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="member-monthly-salary"
+                  type="text"
+                  inputMode="decimal"
+                  required
+                  value={monthlySalaryCost}
+                  onChange={(e) => setMonthlySalaryCost(e.target.value.replace(/,/g, "."))}
+                  aria-invalid={Boolean(salaryError)}
+                  aria-describedby={salaryError ? "member-monthly-salary-error" : undefined}
+                  placeholder="e.g. 5000.00"
+                  className={`px-2.5 py-1.5 w-full min-w-0 text-xs font-mono focus:outline-none ${isRetro
+                    ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black"
+                    : salaryError && normalizedSalary !== ""
+                    ? "border border-red-400 rounded focus:ring-1 focus:ring-red-500"
+                    : "border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"}`}
+                />
+                <span className={`text-[11px] whitespace-nowrap ${isRetro ? "text-black" : "text-slate-500"}`}>{monthlySalaryCurrency}/month</span>
+              </div>
+              {salaryError && <p id="member-monthly-salary-error" className="mt-1 text-[10px] text-red-700" role="status">{salaryError}</p>}
+            </div>
+          )}
 
           <div>
             <label className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>Footprint (Location) *</label>

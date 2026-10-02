@@ -109,6 +109,9 @@ export interface TeamMemberRecord {
   fte: NumericInput;
   role: TeamMemberRole;
   footprint: string;
+  isExternal?: boolean;
+  monthlySalaryCost?: number;
+  monthlySalaryCurrency?: string;
 }
 
 export interface ToolDefinition {

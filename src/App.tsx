@@ -919,6 +919,7 @@ export default function App() {
         {showAddMember && activeToolView !== "all" && (
           <AddTeamMemberModal
             toolName={activeToolView}
+            defaultCurrency={config.fteCosts.currency}
             initialMember={editingMember}
             allMembers={teamMembers}
             onClose={() => {
