@@ -558,8 +558,8 @@ export default function App() {
       <div className={`min-h-screen ${isRetro ? "bg-[#008080] font-sans" : "bg-slate-950"} flex flex-col text-slate-800 select-none`}>
         <header className={`${isRetro ? "bg-[#c0c0c0] border-b-2 border-black shadow-[0_2px_0px_#fff]" : "bg-slate-900 border-b border-slate-800 shadow-lg"} px-4 md:px-5 py-3 flex items-center gap-5 shrink-0`}>
           <div className="w-80 shrink-0 flex items-center gap-3 min-w-0">
-            <div className={`w-8 h-8 ${isRetro ? "bg-[#000080] border-2 border-t-white border-l-white border-b-black border-r-black" : "bg-blue-600 rounded-lg"} flex items-center justify-center shadow shrink-0`}>
-              <span className="text-white font-black text-xs font-mono">SCAN</span>
+            <div className={`w-8 h-8 ${isRetro ? "bg-purple-900 border-2 border-t-white border-l-white border-b-black border-r-black" : "rounded-lg"} flex items-center justify-center shadow shrink-0`}>
+              <img src="/app-icon.svg" alt="SCAN" className="w-full h-full" />
             </div>
             <div className="min-w-0">
               <h1 className={`${isRetro ? "text-black font-black font-mono text-sm tracking-tighter" : "text-white font-black text-sm md:text-base tracking-tight"} leading-tight truncate`}>
