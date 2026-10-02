@@ -85,6 +85,7 @@ export interface AllocationProject {
   id: string;
   name: string;
   type: string;
+  isRFQ?: boolean;
   startDate: string;
   duration: number;
   stability: string;

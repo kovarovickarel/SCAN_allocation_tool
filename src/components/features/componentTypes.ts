@@ -154,6 +154,7 @@ export interface AddProjectModalProps {
 export interface AddProjectDraft {
   name: string;
   type: string;
+  isRFQ: boolean;
   duration: NumericInput;
   stability: string;
   startDate: string;

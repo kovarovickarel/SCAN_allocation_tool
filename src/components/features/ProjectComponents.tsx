@@ -6,6 +6,7 @@ import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraf
 import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
 import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
 import { ProjectTimelineModal } from './ProjectTimelineModal';
+import { ProjectRFQBadge } from '../ui/ProjectRFQBadge';
 
 export function SubcategoryManagerModal({ project, onClose, onToggleSubcategory, onToggleTool, onResetSubcategories, activeToolView = "all" }: SubcategoryManagerModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
@@ -174,6 +175,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
   const [draft, setDraft] = useState<AddProjectDraft>({
     name: "",
     type: "Lidar",
+    isRFQ: false,
     duration: 12,
     stability: "Ideal",
     startDate: "2026-01",
@@ -216,6 +218,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
       id: genId(),
       name: draft.name.trim(),
       type: draft.type,
+      isRFQ: draft.isRFQ,
       startDate: draft.startDate || "2026-01",
       duration: d,
       stability: draft.stability,
@@ -307,6 +310,15 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
               })}
             </div>
           </div>
+          <label className={`inline-flex self-start items-center gap-2 cursor-pointer text-xs font-semibold ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
+            <input
+              type="checkbox"
+              checked={draft.isRFQ}
+              onChange={(e) => setDraft((d) => ({ ...d, isRFQ: e.target.checked }))}
+              className="w-4 h-4 accent-blue-600 cursor-pointer"
+            />
+            RFQ
+          </label>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={`text-xs font-semibold block mb-1 ${isRetro ? "text-black font-mono font-bold" : "text-gray-700"}`}>
@@ -499,6 +511,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   const [headerDraft, setHeaderDraft] = useState({
     name: project.name,
     type: project.type || "Lidar",
+    isRFQ: project.isRFQ ?? false,
     startDate: project.startDate || "2026-01",
     duration: project.duration,
     stability: project.stability,
@@ -755,6 +768,7 @@ export const ProjectBasket = memo(function ProjectBasket({
     onUpdateProject(project.id, {
       name: headerDraft.name.trim() || project.name,
       type: headerDraft.type || project.type,
+      isRFQ: headerDraft.isRFQ,
       startDate: headerDraft.startDate || project.startDate || "2026-01",
       duration: d,
       stability: headerDraft.stability,
@@ -910,6 +924,16 @@ export const ProjectBasket = memo(function ProjectBasket({
               </div>
             </div>
 
+            <label className="inline-flex self-start items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={headerDraft.isRFQ}
+                onChange={(e) => setHeaderDraft((d) => ({ ...d, isRFQ: e.target.checked }))}
+                className="w-4 h-4 accent-blue-600 cursor-pointer"
+              />
+              RFQ
+            </label>
+
             <div className="bg-slate-850 border border-slate-700 rounded-lg p-2 mt-0.5">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wide flex items-center gap-1">
@@ -975,6 +999,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                     {project.type}
                   </span>
                 )}
+                {project.isRFQ && <ProjectRFQBadge />}
               </div>
 
               <div
@@ -1023,6 +1048,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                     setHeaderDraft({
                       name: project.name,
                       type: project.type || "Lidar",
+                      isRFQ: project.isRFQ ?? false,
                       startDate: project.startDate || "2026-01",
                       duration: project.duration,
                       stability: project.stability,

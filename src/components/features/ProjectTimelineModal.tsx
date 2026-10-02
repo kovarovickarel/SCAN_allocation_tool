@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_COLORS, TOOLS, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, MILESTONE_MAP, clamp, round2 } from "../../constants";
 import { normalizeMilestones, calculateProjectEffort, getFTEGradientStyle, computeWorkpackageLifecycleTimeline, getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "../../utils/helpers";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
+import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { useProjectTimelineRangeEditing } from "../../hooks/useProjectTimelineRangeEditing";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { ProjectTimelineModalProps } from './componentTypes';
@@ -541,6 +542,7 @@ export function ProjectTimelineModal({
                     {localProject.type}
                   </span>
                 )}
+                {localProject.isRFQ && <ProjectRFQBadge />}
                 <span className={`text-xs ${isRetro ? "text-slate-200" : "text-slate-400"} font-mono`}>
                   ({totalProjectWorkpackages} workpackage{totalProjectWorkpackages === 1 ? "" : "s"})
                 </span>

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, round2 } from "../../constants";
 import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
+import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
@@ -1319,6 +1320,7 @@ export function TeamTimelineModal({
                               {project.type}
                             </span>
                           )}
+                          {project.isRFQ && <ProjectRFQBadge />}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
                           <span className="text-[11px] font-mono font-bold px-1.5 py-0.5 rounded border bg-white/10 text-white border-white/20">
