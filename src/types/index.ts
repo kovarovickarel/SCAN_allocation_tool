@@ -48,6 +48,30 @@ export interface WorkpackageAllocationCost {
   missingLocations: string[];
 }
 
+export interface ProjectSpendingMember {
+  id: string;
+  member?: TeamMemberRecord;
+  monthlyCosts: WorkpackageAllocationCost[];
+  totalCost: WorkpackageAllocationCost;
+}
+
+export interface ProjectSpendingTrack {
+  id: string;
+  name: string;
+  tool: string;
+  isManagement: boolean;
+  monthlyCosts: WorkpackageAllocationCost[];
+  totalCost: WorkpackageAllocationCost;
+  members: ProjectSpendingMember[];
+}
+
+export interface ProjectSpendingTool {
+  tool: string;
+  tracks: ProjectSpendingTrack[];
+  monthlyCosts: WorkpackageAllocationCost[];
+  totalCost: WorkpackageAllocationCost;
+}
+
 export interface WorkpackageCard {
   id: string;
   name: string;

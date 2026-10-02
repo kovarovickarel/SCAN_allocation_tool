@@ -8,6 +8,7 @@ import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
 import { ProjectTimelineModal } from './ProjectTimelineModal';
 import { ProjectRFQBadge } from '../ui/ProjectRFQBadge';
 import { ProjectCostSummary } from '../ui/ProjectCostSummary';
+import { ProjectSpendingModal } from './ProjectSpendingModal';
 
 export function SubcategoryManagerModal({ project, onClose, onToggleSubcategory, onToggleTool, onResetSubcategories, activeToolView = "all" }: SubcategoryManagerModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
@@ -507,6 +508,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   const [isDragOverBasket, setIsDragOverBasket] = useState(false);
   const [showSubcatModal, setShowSubcatModal] = useState(false);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
+  const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [milestoneError, setMilestoneError] = useState(null);
   const [isCompact, setIsCompact] = useState(false);
@@ -1120,7 +1122,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                     </span>
                   )}
                 </div>
-                <ProjectCostSummary cost={projectCost} />
+                <ProjectCostSummary cost={projectCost} onOpen={() => setShowSpendingModal(true)} />
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
@@ -1257,6 +1259,22 @@ export const ProjectBasket = memo(function ProjectBasket({
           onSaveTimeline={onSaveTimeline}
           onClose={() => setShowTimelineModal(false)}
           activeToolView={activeToolView}
+        />
+      )}
+
+      {showSpendingModal && (
+        <ProjectSpendingModal
+          project={project}
+          cards={cards}
+          members={teamMembers}
+          overheads={effortSummary.overheads}
+          fteCosts={fteCosts}
+          fteRates={fteRates}
+          toolFteRates={toolFteRates}
+          reusabilityFactors={reusabilityFactors}
+          stabilityFactors={stabilityFactors}
+          activeToolView={activeToolView}
+          onClose={() => setShowSpendingModal(false)}
         />
       )}
 
