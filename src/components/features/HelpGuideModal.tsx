@@ -579,6 +579,9 @@ export function HelpGuideModal({
                 <p className="text-slate-600 leading-relaxed mt-2">
                   The project header shows <strong>Cost:</strong> below Total in purple, including management support. Its outlined amount button follows the same tool scope as Total and displays the full rounded amount with a yellow € before the number; rates in another currency are converted automatically to EUR.
                 </p>
+                <p className="text-slate-600 leading-relaxed mt-2">
+                  Click the project&apos;s cost amount to open <strong>Project Spending</strong>. It shows monthly and cumulative spending in EUR, with tool, workpackage, and management support totals. Expand a workpackage to see each member&apos;s monthly cost, or use <strong>Expand All</strong> / <strong>Collapse All</strong>. Select <strong>Graph View</strong> to see cumulative spending as a line together with yellow monthly spending bars on one EUR scale. Hover or focus a month to see both values; the monthly spending amount is also yellow. Below it, the monthly breakdown stacks costs by tool, including each tool&apos;s management support. In a tool-specific view, engineering and purple management support remain separate. Click a legend category or bar segment to move it to the bottom and fade the others; click it again to restore the full view. The upper chart shows milestone tags at their scheduled months. <strong>Timeline View</strong> returns to the detailed breakdown. The summary includes average monthly spending and the peak month. This view follows current allocations; unallocated effort is not priced. Missing hourly rates are flagged, and external monthly salaries are not included yet.
+                </p>
               </div>
 
             </div>

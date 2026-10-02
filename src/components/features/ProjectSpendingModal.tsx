@@ -7,10 +7,11 @@ import { getCrossTeamMemberIds } from "../../utils/memberAllocations";
 import { computeWorkpackageLifecycleTimeline, getFTEGradientStyle, normalizeMilestones } from "../../utils/helpers";
 import { useEuroCostConversion } from "../../hooks/useEuroCostConversion";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
-import { ChevronDownIcon, ChevronRightIcon, ManagementIcon, ToolIcon } from "../ui/icons";
+import { CalendarGanttIcon, ChevronDownIcon, ChevronRightIcon, ManagementIcon, ToolIcon } from "../ui/icons";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
+import { ProjectSpendingCharts } from "../ui/ProjectSpendingCharts";
 
 interface ProjectSpendingModalProps {
   project: AllocationProject;
@@ -41,6 +42,7 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
   const { rate, conversionFailed } = useEuroCostConversion(spending.totalCost.currency, spending.totalCost.totalCost);
   const [collapsedTools, setCollapsedTools] = useState<Set<string>>(new Set());
   const [expandedTracks, setExpandedTracks] = useState<Set<string>>(new Set());
+  const [graphView, setGraphView] = useState(false);
   const crossTeamIds = useMemo(() => getCrossTeamMemberIds(members), [members]);
   const monthLabels = useMemo(() => {
     const [year, month] = (project.startDate || "2026-01").split("-").map(Number);
@@ -180,12 +182,21 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <><button type="button" className={buttonClass} onClick={() => {
+          {!graphView && <><button type="button" className={buttonClass} onClick={() => {
             setCollapsedTools(new Set()); setExpandedTracks(new Set(spending.tools.flatMap((tool) => tool.tracks.map((track) => track.id))));
           }}>Expand All</button>
           <button type="button" className={buttonClass} onClick={() => {
             setCollapsedTools(new Set(spending.tools.map((tool) => tool.tool))); setExpandedTracks(new Set());
-          }}>Collapse All</button></>
+          }}>Collapse All</button></>}
+          <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
+          <button type="button" className={`inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 focus-visible:outline-offset-2 ${isRetro
+            ? "font-mono bg-purple-950 hover:bg-purple-900 text-yellow-300 border-2 border-t-purple-300 border-l-purple-300 border-b-purple-900 border-r-purple-900 shadow-[1px_1px_0px_#000]"
+            : `text-yellow-300 border border-purple-500/40 rounded-lg shadow-sm ${isBasic ? "bg-purple-900/40 hover:bg-purple-900/50" : "bg-purple-600/30 hover:bg-purple-600/40"}`}`} aria-pressed={graphView}
+            onClick={() => setGraphView((previous) => !previous)} title={graphView ? "Return to the spending timeline" : "Show cumulative and monthly spending charts"}>
+            {graphView ? <CalendarGanttIcon size={14} className="text-yellow-300" /> :
+              <svg width="14" height="14" className="text-yellow-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 14l5-6 5 3 4-7" /></svg>}
+            {graphView ? "Timeline View" : "Graph View"}
+          </button>
           <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
           <button ref={closeRef} type="button" className={`transition-colors cursor-pointer ml-1 ${isRetro ? "w-6 h-6 bg-[#c0c0c0] text-black font-mono font-black border-2 border-t-white border-l-white border-b-black border-r-black flex items-center justify-center" : "p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"}`} aria-label="Close project spending" onClick={onClose}>✕</button>
         </div>
@@ -195,7 +206,12 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
         {total.unpricedHours > 0 ? `* Partial estimate: ${total.unpricedHours.toFixed(2)} allocated hours have no rate (${total.missingLocations.join(", ")}).` : ""}
       </div>}
       <div className={`flex-1 overflow-auto min-h-0 p-4 md:p-5 ${isRetro ? "bg-[#808080]" : "bg-slate-100"}`}>
-        <div className={`${isRetro ? "bg-white border-2 border-t-black border-l-black border-b-white border-r-white shadow-none" : "bg-white border border-slate-200 rounded-xl shadow-xs"} overflow-hidden`} style={{ minWidth: minTableWidth }}>
+        {graphView ? <ProjectSpendingCharts monthLabels={monthLabels} monthlyCosts={spending.monthlyCosts}
+          cumulativeCosts={spending.cumulativeCosts} rate={rate} conversionFailed={conversionFailed}
+          engineeringCostsByTool={spending.engineeringCostsByTool} managementMonthlyCosts={spending.managementMonthlyCosts}
+          costsByTool={spending.tools}
+          engineeringMonthlyCosts={spending.engineeringMonthlyCosts}
+          activeToolView={activeToolView} milestones={milestones} formatAmount={amount} costTooltip={tooltip} /> : <div className={`${isRetro ? "bg-white border-2 border-t-black border-l-black border-b-white border-r-white shadow-none" : "bg-white border border-slate-200 rounded-xl shadow-xs"} overflow-hidden`} style={{ minWidth: minTableWidth }}>
           <div className={`grid border-b text-xs sticky top-0 z-20 shadow-xs font-bold ${isRetro ? "bg-[#d4d0c8] text-black border-black font-mono divide-x-2 divide-[#808080]" : "border-slate-200 bg-slate-900 text-white"}`} style={gridStyle}>
             <div className={`p-3 border-r flex items-center justify-between uppercase tracking-wider text-[11px] ${isRetro ? "border-[#808080] bg-[#d4d0c8] text-black font-mono font-black" : "border-slate-700 bg-slate-900 text-slate-300"}`}><span>Category / Spending Track</span></div>
             <div className={`grid ${isRetro ? "divide-x-2 divide-[#808080] bg-[#d4d0c8]" : "divide-x divide-slate-700/80 bg-slate-900"}`} style={monthGridStyle}>
@@ -256,11 +272,11 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
           </div>;
           })}
           {spending.tools.length === 0 && <div className={`px-5 py-10 text-sm text-slate-500 ${isRetro ? "bg-white" : "bg-slate-50"}`}>No active workpackages in this project view yet.</div>}
-        </div>
+        </div>}
       </div>
       <div className={`flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 ${isRetro ? "bg-[#d4d0c8] border-t-2 border-white px-5 py-3 font-mono text-black" : "bg-slate-50 border-t border-slate-200 px-6 py-3"}`}>
         <div className="flex flex-col gap-1.5 min-w-0">
-          <div className="flex items-center flex-wrap gap-4">
+          {!graphView && <div className="flex items-center flex-wrap gap-4">
             <span className={`font-bold uppercase text-[10px] tracking-wider ${isRetro ? "text-black font-mono" : "text-slate-700"}`}>Heatmap Scale:</span>
             <div className="flex items-center gap-2" title="Monthly spending per workpackage: green is lower, red is higher. Member rows use purple.">
               <span className={`text-[11px] font-mono font-bold ${isRetro ? "text-black" : "text-emerald-700"}`}>€ 0</span>
@@ -268,7 +284,7 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
                 style={{ background: "linear-gradient(to right, rgb(34, 197, 94), rgb(234, 200, 24) 50%, rgb(239, 68, 68))" }} />
               <span className={`text-[11px] font-mono font-bold ${isRetro ? "text-black" : "text-red-600"}`}>{amount({ ...total, totalCost: heatmapMax, unpricedHours: 0 }, true)}</span>
             </div>
-          </div>
+          </div>}
         </div>
         <button type="button" onClick={onClose} className={`font-bold px-4 py-1.5 text-xs transition-colors cursor-pointer ${isRetro ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black hover:bg-[#e0e0e0]" : "bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg"}`}>Close</button>
       </div>
