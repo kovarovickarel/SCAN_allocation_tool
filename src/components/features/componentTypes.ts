@@ -198,6 +198,9 @@ export interface AdjustMemberAllocationModalProps {
 
 export interface TeamTimelineModalProps {
   toolName: string;
+  initialShowOtherWPs?: boolean;
+  initialExcludedOtherWPIds?: readonly string[];
+  onSaveOtherWPs?: (showOtherWPs: boolean, excludedOtherWPIds: string[]) => void;
   members?: TeamMemberRecord[];
   allMembers?: TeamMemberRecord[];
   projects?: AllocationProject[];

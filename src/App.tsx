@@ -99,6 +99,10 @@ export default function App() {
   ]);
 
   const [showAddMember, setShowAddMember] = useState(false);
+  const [teamOtherWPScopes, setTeamOtherWPScopes] = useState<Record<string, {
+    included: boolean;
+    excludedCardIds: string[];
+  }>>({});
   const [editingMember, setEditingMember] = useState<TeamMemberRecord | null>(null);
 
   const handleAddMember = useCallback((newMember) => {
@@ -947,6 +951,11 @@ export default function App() {
         {showTeamTimeline && activeToolView !== "all" && (
           <TeamTimelineModal
             toolName={activeToolView}
+            initialShowOtherWPs={teamOtherWPScopes[activeToolView]?.included ?? false}
+            initialExcludedOtherWPIds={teamOtherWPScopes[activeToolView]?.excludedCardIds ?? []}
+            onSaveOtherWPs={(shown, excludedCardIds) => setTeamOtherWPScopes((prev) => ({
+              ...prev, [activeToolView]: { included: shown, excludedCardIds },
+            }))}
             members={teamMembers.filter((m) => m.tool === activeToolView)}
             allMembers={teamMembers}
             projects={projects}
