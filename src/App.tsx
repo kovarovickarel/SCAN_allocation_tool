@@ -27,6 +27,7 @@ import {
   calcCardFTE,
   computeWorkpackageLifecycleTimeline,
   calculateWorkpackageCoverage,
+  calculateWorkpackageAllocationCost,
   getSupportReusabilityFactor,
 } from "./utils/helpers";
 import { reconcileProjectTimelineAllocations } from "./utils/timelineAllocations";
@@ -228,19 +229,19 @@ export default function App() {
       );
 
       if (!f.projectId) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: false, _isAltered: false };
+        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: false, _isAltered: false, _allocationCost: undefined };
       }
 
       const project = projectIndex.get(f.projectId);
       if (!project) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: false, _isAltered: false };
+        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: false, _isAltered: false, _allocationCost: undefined };
       }
 
       const isToolHidden = project.toolSet.has(f.tool);
       const isSubcategoryHidden = f.subcategory && project.subSet.has(f.subcategory);
 
       if (isToolHidden || isSubcategoryHidden) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: true, _isAltered: false, _coveragePct: 0, _isMaintenanceOnlyUncovered: false };
+        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: true, _isAltered: false, _coveragePct: 0, _isMaintenanceOnlyUncovered: false, _allocationCost: undefined };
       }
 
       const defaultFte = calcCardFTE(
@@ -309,6 +310,8 @@ export default function App() {
         _fte: finalFTE,
         _coveragePct: coverage.coveragePct,
         _isMaintenanceOnlyUncovered: coverage.isMaintenanceOnlyUncovered,
+        _allocationCost: calculateWorkpackageAllocationCost(f, project.duration,
+          coverageMonths.map((month) => month.totalWPMonthlyFTE), teamMembers, config.fteCosts),
       };
     });
   }, [functions, projectIndex, config, teamMembers]);
@@ -882,6 +885,7 @@ export default function App() {
                       mgmtSettings={config.management}
                       toolFteRates={config.toolFteRates}
                       fteRates={config.fteRates}
+                      fteCosts={config.fteCosts}
                       activeToolView={activeToolView}
                     />
                   </div>
@@ -976,6 +980,7 @@ export default function App() {
             cards={functionsWithFTE}
             toolFteRates={config.toolFteRates}
             fteRates={config.fteRates}
+            fteCosts={config.fteCosts}
             mgmtSettings={config.management}
             reusabilityFactors={config.reusabilityFactors}
             stabilityFactors={config.stabilityFactors}

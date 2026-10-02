@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
-import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, SUBCAT_TOOL_MAP, DEFAULT_MGMT_SETTINGS, PROJECT_TYPES, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2, genId } from "../../constants";
-import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
+import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, SUBCAT_TOOL_MAP, DEFAULT_MGMT_SETTINGS, DEFAULT_FTE_COSTS, PROJECT_TYPES, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2, genId } from "../../constants";
+import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, calculateWorkpackageAllocationCost, sumWorkpackageAllocationCosts, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
@@ -498,6 +498,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   mgmtSettings = DEFAULT_MGMT_SETTINGS,
   toolFteRates,
   fteRates,
+  fteCosts = DEFAULT_FTE_COSTS,
   activeToolView = "all",
 }: ProjectBasketProps) {
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
@@ -557,6 +558,16 @@ export const ProjectBasket = memo(function ProjectBasket({
       overheads: filteredOverheads,
     };
   }, [projectCards, mgmtSettings, project, activeToolView]);
+
+  const managementAllocationCosts = useMemo(() => new Map(effortSummary.overheads.map((overhead) => {
+    const monthlyEffort = Array.from({ length: project.duration }, (_, monthIdx) =>
+      project.customMgmtMonthlyFTE?.[overhead.tool]?.[monthIdx] ?? overhead.fte);
+    return [overhead.tool, calculateWorkpackageAllocationCost({
+      id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support Overhead", tool: overhead.tool,
+      _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
+      memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {},
+    }, project.duration, monthlyEffort, teamMembers, fteCosts)] as const;
+  })), [effortSummary.overheads, project, teamMembers, fteCosts]);
 
   const hiddenTools = project.hiddenTools || [];
   const hiddenSubs = project.hiddenSubcategories || [];
@@ -1137,10 +1148,12 @@ export const ProjectBasket = memo(function ProjectBasket({
       </div>
 
       <div className="flex flex-col gap-3 p-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-        <ManagementOverheads overheads={effortSummary.overheads} project={project} teamMembers={teamMembers} isCompact={isCompact} />
+        <ManagementOverheads overheads={effortSummary.overheads} project={project} teamMembers={teamMembers} isCompact={isCompact} allocationCosts={managementAllocationCosts} />
 
         {visibleTools.map((tool) => (
           <ToolRow
+            fteCosts={fteCosts}
+            managementAllocationCost={managementAllocationCosts.get(tool.name)}
             key={tool.name}
             reusabilityFactors={reusabilityFactors}
             fteRates={fteRates}

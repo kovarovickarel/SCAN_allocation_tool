@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { AllocationProject, FactorMap, ManagementOverhead, MemberMaintenancePreferences, MilestoneMap, MonthlyNumericMap, NumericMap, NumericInput, TeamMemberRecord, ToolDefinition, WorkpackageCard, WorkpackageAllocationMonth } from '../../types';
+import type { AllocationProject, FactorMap, ManagementOverhead, MemberMaintenancePreferences, MilestoneMap, MonthlyNumericMap, NumericMap, NumericInput, TeamMemberRecord, ToolDefinition, WorkpackageCard, WorkpackageAllocationMonth, WorkpackageAllocationCost, FteCostSettings } from '../../types';
 import type { DEFAULT_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_OTHER_SETTINGS, DEFAULT_TOOL_FTE_RATES } from '../../constants';
 
 export interface SvgIconProps {
@@ -50,6 +50,7 @@ export interface FunctionCardProps extends ReusabilityRatesProps {
 }
 
 export interface ManagementOverheadsProps {
+  allocationCosts: ReadonlyMap<string, WorkpackageAllocationCost>;
   overheads: ManagementOverhead[];
   project: AllocationProject;
   teamMembers?: TeamMemberRecord[];
@@ -57,6 +58,8 @@ export interface ManagementOverheadsProps {
 }
 
 export interface ToolRowProps extends ReusabilityRatesProps {
+  fteCosts?: FteCostSettings;
+  managementAllocationCost?: WorkpackageAllocationCost;
   tool: ToolDefinition;
   reusabilityFactors?: FactorMap;
   teamMembers?: TeamMemberRecord[];
@@ -211,6 +214,7 @@ export interface AdjustMemberAllocationModalProps {
 }
 
 export interface TeamTimelineModalProps {
+  fteCosts?: FteCostSettings;
   toolName: string;
   initialShowOtherWPs?: boolean;
   initialExcludedOtherWPIds?: readonly string[];
@@ -249,6 +253,7 @@ export interface TeamAllocationPriorityModalProps {
 }
 
 export interface ProjectBasketProps {
+  fteCosts?: FteCostSettings;
   project: AllocationProject;
   cards: WorkpackageCard[];
   teamMembers?: TeamMemberRecord[];

@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, round2 } from "../../constants";
-import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
+import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, calculateWorkpackageAllocationCost, formatMemberMonthlyAllocationCost, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
+import { DEFAULT_FTE_COSTS } from "../../constants";
+import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
@@ -27,6 +29,7 @@ export function TeamTimelineModal({
   cards: sourceCards = [],
   toolFteRates,
   fteRates,
+  fteCosts = DEFAULT_FTE_COSTS,
   mgmtSettings = DEFAULT_MGMT_SETTINGS,
   reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   stabilityFactors = DEFAULT_STABILITY_FACTORS,
@@ -243,7 +246,9 @@ export function TeamTimelineModal({
         for (let m = 0; m < pDur; m++) totalEffortSum += mergedMonthsInProject[m]?.totalWPMonthlyFTE ?? 0;
         const activeCardFTE = isNegated ? 0 : round2(totalEffortSum / pDur);
 
-        return { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells, mergedMonthsInProject };
+        const allocationCost = calculateWorkpackageAllocationCost(card, pDur,
+          mergedMonthsInProject.map((month) => month.totalWPMonthlyFTE), allMembers, fteCosts, isNegated);
+        return { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells, mergedMonthsInProject, allocationCost };
       });
 
       let mgmtRow = null;
@@ -287,6 +292,10 @@ export function TeamTimelineModal({
 
           mgmtRow = {
             toolName,
+            allocationCost: calculateWorkpackageAllocationCost({
+              id: `${p.id}_mgmt_${toolName}`, name: "Management Support Overhead", tool: toolName,
+              _isMgmt: true, memberAssignments: mgmtAssignments, memberMonthlyAssignments: mgmtMonthly,
+            }, pDur, monthEffort.map((month) => month.totalFTE), allMembers, fteCosts),
             fte: toolOverhead.fte,
             coveragePct: mgmtCoveragePct,
             monthEffort,
@@ -328,7 +337,7 @@ export function TeamTimelineModal({
         excludedOtherWorkpackages: workpackages.filter((wp) => !isCardInTeamScope(wp.card)),
         mgmtRow, totalProjectTeamMonthlyFTE, totalProjectTeamFTE };
     });
-  }, [projects, cards, toolName, showOtherWPs, isCardInTeamScope, minStartAbs, totalMonths, toolFteRates, fteRates, reusabilityFactors, stabilityFactors, mgmtSettings, members]);
+  }, [projects, cards, toolName, showOtherWPs, isCardInTeamScope, minStartAbs, totalMonths, toolFteRates, fteRates, reusabilityFactors, stabilityFactors, mgmtSettings, members, allMembers, fteCosts]);
 
   // Excluded Other workpackages are outside this team's scope. Release only its members,
   // materializing legacy monthly values first so other teams keep their allocations.
@@ -1563,9 +1572,7 @@ export function TeamTimelineModal({
                                         onClick={() => setSelectedAdjustMember({ card: mgmtRow.syntheticCard, member, project })}
                                       />
                                     ))}
-                                    <span className="ml-auto font-mono font-bold text-[10px] text-purple-800">
-                                      +{mgmtRow.fte.toFixed(2)} FTE
-                                    </span>
+                                    <WorkpackageCostLabel cost={mgmtRow.allocationCost} className="ml-auto" />
                                   </div>
                                 </div>
 
@@ -1829,7 +1836,7 @@ export function TeamTimelineModal({
                                                     className={`w-full h-8 ${isRetro ? "rounded-none font-mono" : "rounded-md"} border flex flex-col items-center justify-center select-none shadow-2xs transition-transform hover:scale-105 hover:z-20 relative ${
                                                       isCellSelected ? "brightness-105" : ""
                                                     }`}
-                                                    title={`${member.firstName} ${member.lastName} (${member.footprint || "PRA"})\nMonth ${pRelIdx + 1} (${monthLabels[gIdx]?.label}): ${val.toFixed(2)} FTE to Management (${pct}% of capacity)\nClick or drag across months to adjust.`}
+                                                    title={`${member.firstName} ${member.lastName} (${member.footprint || "PRA"})\nMonth ${pRelIdx + 1} (${monthLabels[gIdx]?.label}): ${val.toFixed(2)} FTE to Management (${pct}% of capacity)\n${formatMemberMonthlyAllocationCost(val, member, fteCosts)}\nClick or drag across months to adjust.`}
                                                   >
                                                     {isCellSelected && (
                                                       <div className="absolute inset-0 z-20 pointer-events-none rounded bg-cyan-400/50 ring-2 ring-inset ring-cyan-300 shadow-[inset_0_0_8px_rgba(6,182,212,0.8)] flex items-end justify-end p-0.5">
@@ -1864,7 +1871,7 @@ export function TeamTimelineModal({
 
                         {/* Regular Workpackages */}
                         {displayedWorkpackages.map((wp) => {
-                          const { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells } = wp;
+                          const { card, isNegated, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells } = wp;
                           if (!isCardInTeamScope(card)) {
                             return (
                               <div key={card.id} className="grid grid-cols-[300px_1fr] items-center min-h-[28px] border-b border-slate-100 last:border-b-0 bg-slate-50">
@@ -2001,9 +2008,7 @@ export function TeamTimelineModal({
                                         onClick={() => setSelectedAdjustMember({ card, member, project })}
                                       />
                                     ))}
-                                    <span className="ml-auto font-mono font-bold text-[10px] text-blue-700">
-                                      {isNegated ? "0.00 FTE" : `${activeCardFTE.toFixed(2)} FTE/yr`}
-                                    </span>
+                                    <WorkpackageCostLabel cost={wp.allocationCost} className="ml-auto" />
                                   </div>
                                 </div>
 
@@ -2271,7 +2276,7 @@ export function TeamTimelineModal({
                                                     className={`w-full h-8 ${isRetro ? "rounded-none font-mono" : "rounded-md"} border flex flex-col items-center justify-center select-none shadow-2xs transition-transform hover:scale-105 hover:z-20 relative ${
                                                       isCellSelected ? "brightness-105" : ""
                                                     }`}
-                                                    title={`${member.firstName} ${member.lastName} (${member.footprint || "PRA"})\nMonth ${pRelIdx + 1} (${monthLabels[gIdx]?.label}): ${val.toFixed(2)} FTE to ${card.name} (${pct}% of capacity)\nClick or drag across months to adjust.`}
+                                                    title={`${member.firstName} ${member.lastName} (${member.footprint || "PRA"})\nMonth ${pRelIdx + 1} (${monthLabels[gIdx]?.label}): ${val.toFixed(2)} FTE to ${card.name} (${pct}% of capacity)\n${formatMemberMonthlyAllocationCost(val, member, fteCosts)}\nClick or drag across months to adjust.`}
                                                   >
                                                     {isCellSelected && (
                                                       <div className="absolute inset-0 z-20 pointer-events-none rounded bg-cyan-400/50 ring-2 ring-inset ring-cyan-300 shadow-[inset_0_0_8px_rgba(6,182,212,0.8)] flex items-end justify-end p-0.5">

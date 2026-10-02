@@ -1191,11 +1191,9 @@ export function ProjectTimelineModal({
                                       const durationM = Math.max(1, parseInt(card.otherDuration, 10) || 6);
                                       const endM = activeStartM + durationM - 1;
 
-                                      const maintBadgeStyle = isRetro
-                                        ? "bg-[#ffff80] text-black border-black font-mono shadow-[1px_1px_0px_#000]"
-                                        : isBasic
-                                        ? "bg-slate-100 text-slate-800 border-slate-300"
-                                        : "bg-amber-100 text-amber-900 border-amber-300";
+                                      const maintBadgeStyle = `bg-[#efe0d2] text-[#784b2b] ${isRetro
+                                        ? "border-black font-mono shadow-[1px_1px_0px_#000]"
+                                        : "border-[#c49a78]"}`;
 
                                       return (
                                         <>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, memo } from "react";
 import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
 import type { EditCardContentProps, FunctionCardProps, ManagementOverheadsProps, ToolRowProps, UnassignedPoolProps } from './componentTypes';
 import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon } from '../ui/icons';
@@ -6,7 +6,9 @@ import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
-import { getCrossTeamMemberIds, calculateManagementCoverage, getReusabilityFactor, getMaintenanceReusabilityFactor, hasWorkpackageMaintenance, normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
+import { getCrossTeamMemberIds, calculateManagementCoverage, hasAllocatedCost, sumWorkpackageAllocationCosts, getReusabilityFactor, getReusabilityLabel, getMaintenanceReusabilityFactor, hasWorkpackageMaintenance, normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
+import { DEFAULT_FTE_COSTS } from "../../constants";
+import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
 
 export function EditCardContent({ card, onEdit, projectDuration, projectMilestones, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates, toolFteRates }: EditCardContentProps) {
   const { isBasic, isRetro } = React.useContext(ThemeContext);
@@ -396,6 +398,93 @@ export const FunctionCard = memo(function FunctionCard({
     : toolTheme.dragging;
 
   const isAssigned = projectId !== "pool" && Boolean(card.projectId);
+  const [hideCompactEffort, setHideCompactEffort] = useState(false);
+  const compactHeaderRef = useRef<HTMLDivElement>(null);
+  const compactCategoryRef = useRef<HTMLSpanElement>(null);
+  const compactCategoryTextRef = useRef<HTMLSpanElement>(null);
+  const compactMilestoneRef = useRef<HTMLSpanElement>(null);
+  const compactEffortRef = useRef<HTMLSpanElement>(null);
+  const compactCostRef = useRef<HTMLSpanElement>(null);
+  const compactDeleteRef = useRef<HTMLButtonElement>(null);
+
+  useLayoutEffect(() => {
+    if (!isCompact || !isAssigned || card._editing || !hasAllocatedCost(card._allocationCost)) {
+      setHideCompactEffort(false);
+      return;
+    }
+    const header = compactHeaderRef.current;
+    const category = compactCategoryRef.current;
+    const text = compactCategoryTextRef.current;
+    const effort = compactEffortRef.current;
+    const cost = compactCostRef.current;
+    const deleteButton = compactDeleteRef.current;
+    if (!header || !category || !text || !effort || !cost || !deleteButton) return;
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      const categoryStyle = getComputedStyle(category);
+      const dot = category.firstElementChild !== text ? category.firstElementChild : null;
+      const categoryWidth = text.scrollWidth
+        + parseFloat(categoryStyle.paddingLeft) + parseFloat(categoryStyle.paddingRight)
+        + parseFloat(categoryStyle.borderLeftWidth) + parseFloat(categoryStyle.borderRightWidth)
+        + (dot ? dot.getBoundingClientRect().width + (parseFloat(categoryStyle.columnGap) || 0) : 0);
+      const milestone = compactMilestoneRef.current;
+      const leftWidth = categoryWidth + (milestone
+        ? milestone.getBoundingClientRect().width + (parseFloat(getComputedStyle(category.parentElement).columnGap) || 0) : 0);
+      // The invisible effort badge still measures its full width, so hiding it cannot
+      // make the next resize measurement bring it back and cause flickering.
+      const rightWidth = effort.getBoundingClientRect().width + cost.getBoundingClientRect().width
+        + deleteButton.getBoundingClientRect().width
+        + 2 * (parseFloat(getComputedStyle(deleteButton.parentElement).columnGap) || 0);
+      const requiredWidth = leftWidth + rightWidth + (parseFloat(getComputedStyle(header).columnGap) || 0);
+      setHideCompactEffort(requiredWidth > header.getBoundingClientRect().width + 0.5);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    [header, text, effort, cost, deleteButton].forEach((element) => observer.observe(element));
+    void document.fonts.ready.then(measure);
+    return () => {
+      disposed = true;
+      observer.disconnect();
+    };
+  }, [isCompact, isAssigned, card, isRetro, isBasic, isBasicMode]);
+  const [shortReusabilityLabel, setShortReusabilityLabel] = useState(false);
+  const nameRowRef = useRef<HTMLDivElement>(null);
+  const nameTextRef = useRef<HTMLSpanElement>(null);
+  const reusabilityTagRef = useRef<HTMLSpanElement>(null);
+  const fullReusabilityLabelRef = useRef<HTMLSpanElement>(null);
+
+  useLayoutEffect(() => {
+    if (isCompact || card._editing || normalizeReusability(card, reusabilityFactors).reusability !== "Other") {
+      setShortReusabilityLabel(false);
+      return;
+    }
+    const row = nameRowRef.current;
+    const name = nameTextRef.current;
+    const tag = reusabilityTagRef.current;
+    const fullLabel = fullReusabilityLabelRef.current;
+    if (!row || !name || !tag || !fullLabel) return;
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      const style = getComputedStyle(tag);
+      // Measure the full label independently of the displayed short version.
+      const fullTagWidth = fullLabel.getBoundingClientRect().width
+        + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
+        + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
+      const requiredWidth = name.getBoundingClientRect().width + fullTagWidth
+        + (parseFloat(getComputedStyle(row).columnGap) || 0);
+      setShortReusabilityLabel(requiredWidth > row.getBoundingClientRect().width + 0.5);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    [row, name, fullLabel].forEach((element) => observer.observe(element));
+    void document.fonts.ready.then(measure);
+    return () => {
+      disposed = true;
+      observer.disconnect();
+    };
+  }, [isCompact, card, reusabilityFactors, isRetro, isBasic]);
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
   const allocatedMembers = isAssigned && !isCompact ? teamMembers.filter((member) =>
     Number(card.memberAssignments?.[member.id]) > 0 ||
@@ -502,9 +591,10 @@ export const FunctionCard = memo(function FunctionCard({
         `}
         title={`${card.name} (${card.tool}${card.subcategory ? ` → ${card.subcategory}` : ""})`}
       >
-        <div className="flex items-center justify-between gap-1 mb-1 min-w-0">
+        <div ref={compactHeaderRef} className="flex items-center justify-between gap-1 mb-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <span
+              ref={compactCategoryRef}
               className={`text-[8.5px] font-black uppercase tracking-tight px-1 py-0.2 rounded truncate shadow-xs flex items-center gap-0.5 min-w-0 ${
                 isRetro
                   ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000] font-mono"
@@ -517,10 +607,11 @@ export const FunctionCard = memo(function FunctionCard({
               {!isBasicMode && (
                 <span className={`w-1.5 h-1.5 rounded-full ${cardEffortDot} shrink-0 inline-block`} />
               )}
-              <span className="truncate">{compactCategoryLabel}</span>
+              <span ref={compactCategoryTextRef} className="truncate">{compactCategoryLabel}</span>
             </span>
             {finishMsDef && (
               <span
+                ref={compactMilestoneRef}
                 className="inline-flex items-center shrink-0"
                 title={`Finish Target: ${finishMsDef.label} (${finishMsDef.name})`}
               >
@@ -531,10 +622,16 @@ export const FunctionCard = memo(function FunctionCard({
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <span className={`font-mono font-bold text-[8px] px-1 py-0.2 rounded border shrink-0 whitespace-nowrap shadow-2xs ${fteBadgeStyle}`}>
+            {isAssigned && hasAllocatedCost(card._allocationCost) && (
+              <span ref={compactCostRef} className="inline-flex shrink-0">
+                <WorkpackageCostLabel cost={card._allocationCost} compact />
+              </span>
+            )}
+            <span ref={compactEffortRef} aria-hidden={isAssigned && hideCompactEffort ? true : undefined} className={`font-mono font-bold text-[8px] px-1 py-0.2 rounded border shrink-0 whitespace-nowrap shadow-2xs ${fteBadgeStyle} ${isAssigned && hideCompactEffort ? "absolute invisible pointer-events-none" : ""}`}>
               {displayFTEText}
             </span>
             <button
+              ref={compactDeleteRef}
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
@@ -562,7 +659,9 @@ export const FunctionCard = memo(function FunctionCard({
   }
 
   const toolWithStar = isAltered ? `${card.tool}*` : card.tool;
-  const categoryDisplayName = card.subcategory ? `${toolWithStar} → ${card.subcategory}` : toolWithStar;
+  const fullCategoryName = card.subcategory ? `${toolWithStar} → ${card.subcategory}` : toolWithStar;
+  const categoryDisplayName = isAssigned && card.subcategory
+    ? `${card.subcategory}${isAltered ? "*" : ""}` : fullCategoryName;
 
   return (
     <div
@@ -587,7 +686,7 @@ export const FunctionCard = memo(function FunctionCard({
                 ? "bg-slate-800 text-blue-200 border border-slate-700"
                 : "bg-slate-900 text-amber-300"
             }`}
-            title={isAltered ? `Category: ${categoryDisplayName} (Timeline monthly effort manually altered)` : `Category: ${categoryDisplayName}`}
+            title={isAltered ? `Category: ${fullCategoryName} (Timeline monthly effort manually altered)` : `Category: ${fullCategoryName}`}
           >
             {!isBasicMode && <span className={`w-1.5 h-1.5 rounded-full ${cardEffortDot} shrink-0 inline-block transition-colors duration-200`} />}
             <span className="truncate">{categoryDisplayName}</span>
@@ -635,12 +734,17 @@ export const FunctionCard = memo(function FunctionCard({
       </div>
 
       <div className="flex items-start justify-between gap-1.5 mb-1.5 min-w-0">
-        <div className="flex items-center flex-wrap gap-1.5 min-w-0 flex-1">
-          <span className={`font-bold text-[11px] ${isRetro ? "text-black font-mono font-black" : "text-gray-900"} leading-tight break-words`} title={card.name}>
+        <div ref={nameRowRef} className="flex items-center flex-wrap gap-1.5 min-w-0 flex-1">
+          <span ref={nameTextRef} className={`font-bold text-[11px] ${isRetro ? "text-black font-mono font-black" : "text-gray-900"} leading-tight break-words`} title={card.name}>
             {card.name}
           </span>
-          <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold shrink-0 shadow-2xs whitespace-nowrap ${isRetro ? "bg-white text-black border border-black font-mono shadow-[1px_1px_0px_#000]" : "bg-white text-gray-700 border border-gray-300"}`}>
-            <ReusabilityLabel card={card} factors={reusabilityFactors} />
+          <span ref={reusabilityTagRef} title={getReusabilityLabel(card, reusabilityFactors)} className={`relative text-[9px] px-1.5 py-0.2 rounded font-semibold shrink-0 shadow-2xs whitespace-nowrap ${isRetro ? "bg-white text-black border border-black font-mono shadow-[1px_1px_0px_#000]" : "bg-white text-gray-700 border border-gray-300"}`}>
+            <ReusabilityLabel card={card} factors={reusabilityFactors} shortLabel={shortReusabilityLabel} />
+            {normalizeReusability(card, reusabilityFactors).reusability === "Other" && (
+              <span ref={fullReusabilityLabelRef} aria-hidden="true" className="absolute invisible pointer-events-none whitespace-nowrap">
+                <ReusabilityLabel card={card} factors={reusabilityFactors} />
+              </span>
+            )}
           </span>
         </div>
         {coverageIndicator}
@@ -675,11 +779,9 @@ export const FunctionCard = memo(function FunctionCard({
           const targetMs = card.otherFinishMilestone;
           const msMonth = targetMs && projectMilestones?.[targetMs] ? projectMilestones[targetMs] : null;
 
-          const maintBadgeStyle = isRetro
-            ? "bg-[#ffff80] text-black border border-black font-mono shadow-[1px_1px_0px_#000]"
-            : isBasic
-            ? "bg-slate-100 text-slate-800 border-slate-300"
-            : "bg-amber-100 text-amber-900 border-amber-300";
+          const maintBadgeStyle = `bg-[#efe0d2] text-[#784b2b] ${isRetro
+            ? "border-black font-mono shadow-[1px_1px_0px_#000]"
+            : "border-[#c49a78]"}`;
 
           return (
             <>
@@ -723,8 +825,10 @@ export const FunctionCard = memo(function FunctionCard({
 
       <div className="mt-1 pt-1 border-t border-black/10 flex items-center justify-between text-xs min-w-0 gap-1">
         <span className={`text-[9px] font-bold ${isRetro ? "text-black font-mono" : "text-gray-600"} uppercase shrink-0`}>
-          {fte !== null ? "Effort:" : "Nominal:"}
+          {fte !== null ? "Efforts:" : "Nominal:"}
         </span>
+        <div className="flex items-center justify-end gap-1 min-w-0">
+          {isAssigned && <WorkpackageCostLabel cost={card._allocationCost} />}
         <span
           className={`font-mono font-bold text-[10px] px-1 py-0.2 rounded border truncate ${
             isRetro
@@ -740,12 +844,13 @@ export const FunctionCard = memo(function FunctionCard({
         >
           {isNegated ? "0.00 FTE/yr" : fte !== null ? `${fte.toFixed(2)} FTE/yr` : `~${nominalFTE.toFixed(2)} FTE/yr`}
         </span>
+        </div>
       </div>
     </div>
   );
 });
 
-export const ManagementOverheads = memo(function ManagementOverheads({ overheads, project, teamMembers = [], isCompact = false }: ManagementOverheadsProps) {
+export const ManagementOverheads = memo(function ManagementOverheads({ overheads, project, teamMembers = [], isCompact = false, allocationCosts }: ManagementOverheadsProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
   if (!overheads || overheads.length === 0) return null;
@@ -770,12 +875,14 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
           {!isBasicMode && <ManagementIcon size={14} className={`shrink-0 ${iconColor} opacity-90`} />}
           MANAGEMENT SUPPORT OVERHEAD{anyAltered ? "*" : ""}
         </span>
-        <span
-          className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded ${isRetro ? "bg-white border-2 border-black shadow-[1px_1px_0px_#000] text-black" : "bg-white/80 border border-black/10 text-gray-800 shadow-2xs"}`}
-          title={`Total Management Support: ${totalMgmtFTE.toFixed(2)} FTE/yr`}
-        >
-          {totalMgmtFTE.toFixed(2)} FTE/yr
-        </span>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <span
+            className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded ${isRetro ? "bg-white border-2 border-black shadow-[1px_1px_0px_#000] text-black" : "bg-white/80 border border-black/10 text-gray-800 shadow-2xs"}`}
+            title={`Total Management Support: ${totalMgmtFTE.toFixed(2)} FTE/yr`}
+          >
+            {totalMgmtFTE.toFixed(2)} FTE/yr
+          </span>
+        </div>
       </div>
       <div className="flex flex-col gap-1">
         {overheads.map((o) => {
@@ -784,6 +891,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
           const monthlyEffort = Array.from({ length: project.duration }, (_, monthIdx) =>
             project.customMgmtMonthlyFTE?.[o.tool]?.[monthIdx] ?? o.fte);
           const { coveragePct } = calculateManagementCoverage(assignments, monthlyAssignments, monthlyEffort);
+          const allocationCost = allocationCosts.get(o.tool);
           const allocatedMembers = !isCompact ? teamMembers.filter((member) =>
             Number(assignments[member.id]) > 0 ||
             Object.values(monthlyAssignments[member.id] || {}).some((value) => Number(value) > 0)
@@ -799,6 +907,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
                   <span className={`font-mono whitespace-nowrap ${fteTextColor}`}>+{o.fte.toFixed(2)} FTE/yr</span>
                 </span>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  <WorkpackageCostLabel cost={allocationCost} tone="management" />
                   <span className="inline-flex items-center gap-1 shrink-0" title={`Overall management support coverage: ${coveragePct}%`}>
                     <span className={`text-[11px] font-mono font-bold ${fteTextColor}`}>{coveragePct}%</span>
                     <WorkpackageCoverageBadge coveragePct={coveragePct} />
@@ -825,6 +934,8 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
 
 export const ToolRow = memo(function ToolRow({
   tool,
+  fteCosts = DEFAULT_FTE_COSTS,
+  managementAllocationCost,
   reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   fteRates,
   toolFteRates,
@@ -858,6 +969,10 @@ export const ToolRow = memo(function ToolRow({
     () => toolCards.reduce((sum, c) => sum + (c._fte ?? 0), 0),
     [toolCards]
   );
+  const toolTotalCost = useMemo(() => sumWorkpackageAllocationCosts(
+    [...toolCards.filter((card) => card.projectId === projectId && !card._isNegated).map((card) => card._allocationCost), managementAllocationCost],
+    fteCosts.currency
+  ), [toolCards, projectId, fteCosts.currency, managementAllocationCost]);
 
   const allSubcategories = tool.subcategories;
   const hasMultipleSlots = allSubcategories !== null;
@@ -929,6 +1044,7 @@ export const ToolRow = memo(function ToolRow({
               {unusedInThisTool.length} unused
             </span>
           )}
+          <WorkpackageCostLabel cost={toolTotalCost} />
           <span
             className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded ${isRetro ? "bg-white border-2 border-black text-black shadow-[1px_1px_0px_#000]" : "bg-white/90 border border-black/10 text-gray-800 shadow-2xs"}`}
             title={`${toolCards.length} workpackage(s) · Total: ${toolTotalFTE.toFixed(2)} FTE/yr`}
