@@ -35,6 +35,19 @@ export type MilestoneMap = Record<string, number>;
 
 export type FactorMap = Record<string, number>;
 
+export interface FteCostSettings {
+  currency: string;
+  hourlyRates: Record<string, number | null>;
+}
+
+export interface WorkpackageAllocationCost {
+  currency: string;
+  totalCost: number;
+  allocatedHours: number;
+  unpricedHours: number;
+  missingLocations: string[];
+}
+
 export interface WorkpackageCard {
   id: string;
   name: string;
@@ -65,6 +78,7 @@ export interface WorkpackageCard {
   _fte?: number;
   _coveragePct?: number;
   _isMaintenanceOnlyUncovered?: boolean;
+  _allocationCost?: WorkpackageAllocationCost;
 }
 
 export interface AllocationProject {

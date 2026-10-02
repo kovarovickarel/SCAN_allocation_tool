@@ -1,5 +1,5 @@
 import React from "react";
-import type { ThemeContextValue } from "../types";
+import type { FteCostSettings, ThemeContextValue } from "../types";
 
 export const ThemeContext = React.createContext<ThemeContextValue>({
   theme: "vibrant",
@@ -390,6 +390,20 @@ export const FOOTPRINTS = Object.freeze([
 export const FOOTPRINT_MAP = Object.freeze(
   Object.fromEntries(FOOTPRINTS.map((f) => [f.code, f]))
 );
+
+export const WORKING_HOURS_PER_MONTH = 160;
+
+export const DEFAULT_FTE_COSTS: FteCostSettings = Object.freeze({
+  currency: "EUR",
+  hourlyRates: Object.freeze({
+    PRA: 60,
+    BIE: 80,
+    CHE: 20,
+    TRO: 115,
+    CAI: 40,
+    TOK: 55,
+  }),
+});
 
 export const PROJECT_TYPES = Object.freeze(["Lidar", "HDR", "SRR", "LRR", "FRR"]);
 

@@ -9,6 +9,7 @@ import {
   TEST_TOOLS,
   TOOL_VIEW_SWITCHER_STYLES,
   DEFAULT_FTE_RATES,
+  DEFAULT_FTE_COSTS,
   DEFAULT_TOOL_FTE_RATES,
   DEFAULT_MGMT_SETTINGS,
   DEFAULT_OTHER_SETTINGS,
@@ -174,6 +175,7 @@ export default function App() {
 
   const [config, setConfig] = useState({
     fteRates: deepClone(DEFAULT_FTE_RATES),
+    fteCosts: deepClone(DEFAULT_FTE_COSTS),
     toolFteRates: deepClone(DEFAULT_TOOL_FTE_RATES),
     otherDefaults: { ...DEFAULT_OTHER_SETTINGS },
     management: DEFAULT_MGMT_SETTINGS,

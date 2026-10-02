@@ -1,21 +1,27 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   COMPLEXITY_COLORS,
   COMPLEXITY_TYPES,
   DEFAULT_FTE_RATES,
+  DEFAULT_FTE_COSTS,
   DEFAULT_MGMT_SETTINGS,
   DEFAULT_OTHER_SETTINGS,
   DEFAULT_REUSABILITY_FACTORS,
   DEFAULT_STABILITY_FACTORS,
   DEFAULT_TOOL_FTE_RATES,
+  FOOTPRINTS,
   ThemeContext,
   TOOLS,
   deepClone,
 } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import type { FteCostSettings } from "../../types";
+import { parseFteHourlyRate } from "../../utils/helpers";
+import { convertHourlyRateInputs, fetchLatestExchangeRate } from "../../utils/currencyRates";
 
 type ConfigurationModalConfig = {
   fteRates: typeof DEFAULT_FTE_RATES;
+  fteCosts: FteCostSettings;
   toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
   otherDefaults: typeof DEFAULT_OTHER_SETTINGS;
   management: typeof DEFAULT_MGMT_SETTINGS;
@@ -43,12 +49,62 @@ export function ConfigurationModal({
   RotateCcwIcon,
 }: ConfigurationModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
-  const [draft, setDraft] = useState(() => deepClone(config));
+  const [draft, setDraft] = useState(() => deepClone({ ...config, fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
+  const [hourlyRateInputs, setHourlyRateInputs] = useState<Record<string, string>>(() =>
+    Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(config.fteCosts?.hourlyRates?.[location.code] ?? "")])));
+  const hasInvalidHourlyRates = FOOTPRINTS.some((location) => parseFteHourlyRate(hourlyRateInputs[location.code]) === undefined);
+  const [isConvertingCurrency, setIsConvertingCurrency] = useState(false);
+  const [conversionNotice, setConversionNotice] = useState<string | null>(null);
+  const [conversionError, setConversionError] = useState<string | null>(null);
+  const currencyRequest = useRef<AbortController | null>(null);
+  const currencyRequestId = useRef(0);
   const [activeTab, setActiveTab] = useState("tools");
   const [selectedTool, setSelectedTool] = useState(TOOLS[0].name);
   const [selectedComplexity, setSelectedComplexity] = useState("Supporting");
 
   useEscapeKey(onClose);
+
+  useEffect(() => () => {
+    currencyRequestId.current += 1;
+    currencyRequest.current?.abort();
+  }, []);
+
+  const handleCurrencyChange = async (currency: string) => {
+    const previousCurrency = draft.fteCosts.currency;
+    if (currencyRequest.current || hasInvalidHourlyRates || currency === previousCurrency) return;
+    setConversionNotice(null);
+    setConversionError(null);
+    const hasAmounts = Object.values(hourlyRateInputs).some((input) => (parseFteHourlyRate(input) ?? 0) > 0);
+    if (!hasAmounts) {
+      setDraft((d) => ({ ...d, fteCosts: { ...d.fteCosts, currency } }));
+      return;
+    }
+
+    const requestId = ++currencyRequestId.current;
+    const controller = new AbortController();
+    currencyRequest.current = controller;
+    setIsConvertingCurrency(true);
+    const timeout = window.setTimeout(() => controller.abort(), 10000);
+    try {
+      const exchange = await fetchLatestExchangeRate(previousCurrency, currency, controller.signal);
+      if (currencyRequestId.current !== requestId) return;
+      if (controller.signal.aborted) throw new DOMException("Conversion timed out", "AbortError");
+      const converted = convertHourlyRateInputs(hourlyRateInputs, exchange.rate);
+      setHourlyRateInputs(converted);
+      setDraft((d) => ({ ...d, fteCosts: { ...d.fteCosts, currency } }));
+      setConversionNotice(`Converted using 1 ${previousCurrency} = ${Number(exchange.rate.toPrecision(6))} ${currency} · ${exchange.date}`);
+    } catch {
+      if (currencyRequestId.current === requestId) {
+        setConversionError(`Could not convert ${previousCurrency} to ${currency}. Check your connection and try again. Your currency and rates were kept.`);
+      }
+    } finally {
+      window.clearTimeout(timeout);
+      if (currencyRequestId.current === requestId) {
+        currencyRequest.current = null;
+        setIsConvertingCurrency(false);
+      }
+    }
+  };
 
   const phases = ["Requirements", "Implementation", "Validation", "Integration"];
 
@@ -116,14 +172,22 @@ export function ConfigurationModal({
   };
 
   const resetToDefaults = () => {
+    currencyRequestId.current += 1;
+    currencyRequest.current?.abort();
+    currencyRequest.current = null;
+    setIsConvertingCurrency(false);
+    setConversionNotice(null);
+    setConversionError(null);
     setDraft({
       fteRates: deepClone(DEFAULT_FTE_RATES),
+      fteCosts: deepClone(DEFAULT_FTE_COSTS),
       toolFteRates: deepClone(DEFAULT_TOOL_FTE_RATES),
       otherDefaults: { ...DEFAULT_OTHER_SETTINGS },
       management: { ...DEFAULT_MGMT_SETTINGS },
       reusabilityFactors: { ...DEFAULT_REUSABILITY_FACTORS },
       stabilityFactors: { ...DEFAULT_STABILITY_FACTORS },
     });
+    setHourlyRateInputs(Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(DEFAULT_FTE_COSTS.hourlyRates[location.code] ?? "")])));
   };
 
   const activeToolRates = draft.toolFteRates?.[selectedTool]?.[selectedComplexity] ?? draft.fteRates[selectedComplexity];
@@ -151,7 +215,7 @@ export function ConfigurationModal({
             </div>
             <div>
               <h2 className={`text-base font-black tracking-tight ${isRetro ? "font-mono text-white" : ""}`}>Calculation Configuration</h2>
-              <p className={`text-xs ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>Tool phase rates, durations, management overheads &amp; multipliers</p>
+              <p className={`text-xs ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>Tool phase rates, durations, costs, management overheads &amp; multipliers</p>
             </div>
           </div>
           <button
@@ -173,6 +237,7 @@ export function ConfigurationModal({
         }`}>
           {[
             { key: "tools", label: "Tool Phase Rates & Durations" },
+            { key: "costs", label: "FTE costs" },
             { key: "management", label: "Management Support" },
             { key: "reusability", label: "Reusability Factors" },
             { key: "stability", label: "Stability Factors" },
@@ -559,6 +624,73 @@ export function ConfigurationModal({
             </div>
           )}
 
+          {activeTab === "costs" && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className={`text-sm font-bold ${isRetro ? "text-black" : "text-slate-900"}`}>Hourly rates by location</h3>
+                  <p className={`text-xs mt-1 leading-relaxed ${isRetro ? "text-black" : "text-slate-500"}`}>
+                    Enter the cost per resource hour at each location. Leave a rate blank if it is not configured yet.
+                  </p>
+                </div>
+                <label className={`text-[11px] font-semibold shrink-0 ${isRetro ? "text-black" : "text-gray-700"}`}>
+                  Currency
+                  <select
+                    value={draft.fteCosts.currency}
+                    onChange={(e) => void handleCurrencyChange(e.target.value)}
+                    disabled={isConvertingCurrency || hasInvalidHourlyRates}
+                    title={hasInvalidHourlyRates ? "Correct the hourly rates before changing currency." : undefined}
+                    className={`block mt-1 text-xs px-2 py-1.5 bg-white disabled:opacity-50 disabled:cursor-not-allowed ${isRetro ? "border-2 border-black text-black" : "border border-gray-300 rounded"}`}
+                  >
+                    {["EUR", "USD", "CZK", "INR", "JPY", "EGP", "GBP", "CHF", "CNY"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+                  </select>
+                </label>
+              </div>
+              <p className={`text-[11px] ${isRetro ? "text-black" : "text-slate-500"}`}>Changing currency converts entered rates using the latest published exchange rate, rounded to 2 decimals.</p>
+              {isConvertingCurrency && <p role="status" className="text-xs text-blue-700">Converting hourly rates…</p>}
+              {conversionNotice && <p role="status" className="text-[11px] text-slate-600">{conversionNotice} · <a href="https://frankfurter.dev/" target="_blank" rel="noreferrer" className="text-blue-600 underline">Frankfurter</a></p>}
+              {conversionError && <p role="alert" className="text-xs text-red-700">{conversionError}</p>}
+              {FOOTPRINTS.map((location) => {
+                const isInvalid = parseFteHourlyRate(hourlyRateInputs[location.code]) === undefined;
+                const inputId = `fte-hourly-rate-${location.code}`;
+                return (
+                  <div key={location.code} className={`flex items-center justify-between gap-4 p-3 ${isRetro
+                    ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]"
+                    : "border border-slate-200 rounded-xl bg-slate-50/70"}`}>
+                    <label htmlFor={inputId}>
+                      <span className={`text-xs font-bold block ${isRetro ? "text-black" : "text-slate-800"}`}>{location.name}</span>
+                      <span className={`text-[11px] font-mono ${isRetro ? "text-slate-700" : "text-gray-500"}`}>{location.code}</span>
+                    </label>
+                    <div className="w-44 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <input
+                          id={inputId}
+                          type="text"
+                          inputMode="decimal"
+                          value={hourlyRateInputs[location.code]}
+                          disabled={isConvertingCurrency}
+                          placeholder="Not set"
+                          aria-invalid={isInvalid}
+                          aria-describedby={isInvalid ? `${inputId}-error` : undefined}
+                          onChange={(e) => {
+                            setHourlyRateInputs((current) => ({ ...current, [location.code]: e.target.value.replace(/,/g, ".") }));
+                            setConversionError(null);
+                          }}
+                          className={`w-full min-w-0 text-xs px-2.5 py-1.5 font-mono font-bold text-right focus:outline-none disabled:opacity-50 ${isRetro
+                            ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black"
+                            : `border rounded bg-white focus:ring-1 focus:ring-blue-500 ${isInvalid ? "border-red-400" : "border-gray-300"}`}`}
+                        />
+                        <span className={`text-[11px] whitespace-nowrap ${isRetro ? "text-black" : "text-slate-500"}`}>{draft.fteCosts.currency}/h</span>
+                      </div>
+                      {isInvalid && <p id={`${inputId}-error`} role="alert" className="text-[10px] text-red-700 mt-1">Enter a number of 0 or more.</p>}
+                    </div>
+                  </div>
+                );
+              })}
+              {hasInvalidHourlyRates && <p role="alert" className="text-xs text-red-700">Correct the hourly rates before saving.</p>}
+            </div>
+          )}
+
           {activeTab === "reusability" && (
             <div className="flex flex-col gap-3">
               <div className={`p-3 text-xs leading-relaxed ${
@@ -663,10 +795,14 @@ export function ConfigurationModal({
             <button
               type="button"
               onClick={() => {
-                onSave(draft);
+                if (hasInvalidHourlyRates || currencyRequest.current) return;
+                onSave({ ...draft, fteCosts: { ...draft.fteCosts, hourlyRates: Object.fromEntries(FOOTPRINTS.map((location) =>
+                  [location.code, parseFteHourlyRate(hourlyRateInputs[location.code]) ?? null])) } });
                 onClose();
               }}
-              className={`text-xs font-bold px-4 py-1.5 transition-colors cursor-pointer ${
+              disabled={hasInvalidHourlyRates || isConvertingCurrency}
+              title={isConvertingCurrency ? "Wait for currency conversion to finish." : hasInvalidHourlyRates ? "Correct the hourly rates in the FTE costs tab before saving." : undefined}
+              className={`text-xs font-bold px-4 py-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 isRetro
                   ? "bg-[#000080] text-white border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black font-mono"
                   : "text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm"
