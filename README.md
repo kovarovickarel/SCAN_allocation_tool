@@ -30,6 +30,8 @@ pnpm dev
 
 Vite serves the app at [http://127.0.0.1:5173](http://127.0.0.1:5173).
 
+The development server uses React Fast Refresh. Component and styling edits appear automatically in an active preview, usually preserving the current screen and form state. Configuration changes and edits that cannot be refreshed safely may still reload the page. If an old preview tab stops responding, open the local URL in a new tab connected to the running server.
+
 ## Checks
 
 ```bash

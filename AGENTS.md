@@ -137,6 +137,8 @@ Playwright is configured in `playwright.config.ts` to run Chromium against a Vit
 
 The normal app dev server uses `127.0.0.1:5173`. The Playwright server uses port `5174` so it does not collide with the interactive app.
 
+`vite.config.mjs` enables the official `@vitejs/plugin-react` plugin for React Fast Refresh. Keep it enabled so component edits update the active preview without unnecessarily resetting session-only planning state. Configuration changes and incompatible export changes can still trigger a full reload. Verify suspected preview issues against the live server's HMR connection before changing file-watch settings; stale Codex browser tabs may need a fresh tab.
+
 `tests/auto-allocation-calculations.spec.ts` checks Magic Wand flow constraints, exhaustive small-problem priority optima, and a large portfolio. `tests/auto-allocation.spec.ts` checks both production wand buttons, priority dialogs, per-project summaries, roles, maintenance, and Save/Discard/Clear behavior. Its test-only harness in `tests/fixtures/team-allocation-harness.tsx` mounts the production timeline with deterministic datasets; it does not add a production route.
 
 `tests/auto-allocation-cost.spec.ts` checks coverage before price, minimum cost against 1,000 exhaustive generated scenarios, zero/missing rates, foreign/reserved assignments, external salary exclusion, extreme rate scales, and repeated optimization of an 8-project/40-member/120-workpackage portfolio. Browser tests also verify custom FTE rates reach both wand callbacks, management cost optimization, excluded Other scope, and Save/Discard behavior. Tests that allocate Other workpackages explicitly enable Include "Other" WPs.

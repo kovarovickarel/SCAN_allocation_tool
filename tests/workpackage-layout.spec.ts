@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
+import { harnessHtml } from "./fixtures/harnessHtml";
 
 for (const theme of ["vibrant", "basic", "retro"]) for (const mode of ["extended", "basic"]) {
   test(`priced cards retain their responsive layout in ${theme} theme / ${mode} mode`, async ({ page }) => {
     await page.route("**/__workpackage-layout-test?*", (route) => route.fulfill({ contentType: "text/html", body:
-      '<html><body><div id="root"></div><script type="module" src="/tests/fixtures/workpackage-layout-harness.tsx"></script></body></html>' }));
+      harnessHtml("/tests/fixtures/workpackage-layout-harness.tsx") }));
     await page.goto(`/__workpackage-layout-test?theme=${theme}&mode=${mode}`);
     await page.waitForLoadState("networkidle");
     const narrow = page.getByTestId("cards-120");

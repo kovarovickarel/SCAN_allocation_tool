@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { harnessHtml } from "./fixtures/harnessHtml";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings } from "../src/types";
 
 const person = (id: string, fte = 1, role: TeamMemberRecord["role"] = "engineering"): TeamMemberRecord =>
@@ -15,7 +16,7 @@ const simple = (): Fixture => ({ projects: [project("A"), project("B"), project(
   cards: [card("a", "A"), card("b", "B")], members: [person("Engineer")] });
 async function fixture(page: Page, data: Fixture) {
   await page.route("**/__team-allocation-test?*", (route) => route.fulfill({ contentType: "text/html", body:
-    '<html><body><div id="root"></div><script type="module" src="/tests/fixtures/team-allocation-harness.tsx"></script></body></html>' }));
+    harnessHtml("/tests/fixtures/team-allocation-harness.tsx") }));
   await page.goto(`/__team-allocation-test?fixture=${encodeURIComponent(JSON.stringify(data))}`);
   await expect(page.getByRole("heading", { name: "KPI Team Combined Timeline" })).toBeVisible();
   return page.getByRole("dialog").first();
