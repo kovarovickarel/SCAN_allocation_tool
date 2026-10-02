@@ -224,7 +224,7 @@ export function HelpGuideModal({
                   <li><strong>Split Evenly</strong> shares the effort among eligible members within their monthly limits. <strong>Clear</strong> removes the allocations for this workpackage.</li>
                   <li>If a reduced member capacity leaves an existing allocation too high, use <strong>Cap</strong> or <strong>Auto-Cap All</strong> in this dialog to bring the allocations within the current limits.</li>
                   <li>Allocation cannot exceed a member&apos;s remaining monthly capacity or the workpackage cell&apos;s remaining demand. A fully covered cell cannot gain additional allocation, even if a member has spare capacity.</li>
-                  <li>Capacity checks include management support, overlapping projects, and Other workpackages even when their rows are hidden. Decimal values use a dot, for example <strong>0.25</strong>.</li>
+                  <li>Capacity checks include management support, overlapping projects, and Other workpackages when <strong>Include &quot;Other&quot; WPs</strong> is enabled. Decimal values use a dot, for example <strong>0.25</strong>.</li>
                 </ul>
               </div>
 
@@ -246,7 +246,8 @@ export function HelpGuideModal({
                 <h3 className="font-bold text-slate-900 text-sm mb-1.5">Allocation Tracks &amp; Saving Changes</h3>
                 <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                   <li><strong>Expand Allocation</strong> shows individual member rows beneath a workpackage, including management support. <strong>Expanded Allocation</strong> / <strong>Collapsed Allocation</strong> in the header controls all member tracks; <strong>Expand All</strong> / <strong>Collapse All</strong> controls the project sections.</li>
-                  <li><strong>Show Other WPs</strong> reveals custom Other workpackages. Hiding those rows does not release their members&apos; capacity.</li>
+                  <li><strong>Include &quot;Other&quot; WPs</strong> includes custom Other workpackages in this team&apos;s allocation scope. Turning it off releases this team&apos;s allocations to them. Other teams&apos; allocations are kept. The setting and allocation changes follow <strong>Save &amp; Close</strong> / <strong>Discard &amp; Close</strong>.</li>
+                  <li>Use <strong>Exclude</strong> on an individual Other workpackage to leave it for another team. This releases the current team&apos;s allocation and removes its effort from this team&apos;s totals and automatic allocation. The muted row&apos;s <strong>Include</strong> button restores it to the scope. Selections are saved per team with <strong>Save &amp; Close</strong>.</li>
                   <li>Saving inside an allocation dialog updates only the timeline draft. Choose the timeline&apos;s <strong>Save &amp; Close</strong> to apply it, or <strong>Discard &amp; Close</strong> to cancel all changes. Closing the timeline with its header button, Escape, or the backdrop also discards its draft.</li>
                   <li>Canceling or closing a nested allocation dialog leaves the timeline and its existing draft open.</li>
                 </ul>
@@ -268,7 +269,7 @@ export function HelpGuideModal({
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                   <li>Other projects retain their allocations, and their commitments reduce the capacity available to the selected project.</li>
-                  <li>The wand respects member roles, monthly capacity, other teams&apos; assignments, and saved maintenance exclusions. Hidden Other workpackages are included.</li>
+                  <li>The wand respects member roles, monthly capacity, other teams&apos; assignments, and saved maintenance exclusions. Other workpackages are included only when <strong>Include &quot;Other&quot; WPs</strong> is enabled.</li>
                   <li>Existing selective allocations in the optimized project may be replaced. Review the result before choosing <strong>Save &amp; Close</strong>.</li>
                 </ul>
               </div>
