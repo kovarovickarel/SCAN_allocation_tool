@@ -1148,13 +1148,15 @@ export function TeamTimelineModal({
               </button>
             )}
             {!isBasicMode && (
+              <>
+              {toolName !== "Other" && <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />}
               <button
                 type="button"
                 onClick={() => {
                   setIsManualEditEnabled((prev) => !prev);
                   setRangeSelection(null);
                 }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer select-none ${
+                className={`flex items-center shrink-0 gap-1.5 px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer select-none ${
                   isRetro
                     ? isManualEditEnabled
                       ? "bg-[#ffff80] text-black border-2 border-t-black border-l-black border-b-white border-r-white font-mono"
@@ -1174,8 +1176,14 @@ export function TeamTimelineModal({
                 ) : (
                   <LockIcon size={13} className={isRetro ? "text-black" : "text-slate-400"} />
                 )}
-                <span>{isManualEditEnabled ? "Manual Adjust: Enabled" : "Manual Adjust: Disabled"}</span>
+                <span className="grid whitespace-nowrap">
+                  <span aria-hidden="true" className="invisible col-start-1 row-start-1">Manual Adjust: Enabled</span>
+                  <span aria-hidden="true" className="invisible col-start-1 row-start-1">Manual Adjust: Disabled</span>
+                  <span className="col-start-1 row-start-1">{isManualEditEnabled ? "Manual Adjust: Enabled" : "Manual Adjust: Disabled"}</span>
+                </span>
               </button>
+              <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
+              </>
             )}
 
             <div className={`flex items-center p-0.5 text-[10px] ${
