@@ -7,6 +7,7 @@ import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOf
 import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
 import { ProjectTimelineModal } from './ProjectTimelineModal';
 import { ProjectRFQBadge } from '../ui/ProjectRFQBadge';
+import { ProjectCostSummary } from '../ui/ProjectCostSummary';
 
 export function SubcategoryManagerModal({ project, onClose, onToggleSubcategory, onToggleTool, onResetSubcategories, activeToolView = "all" }: SubcategoryManagerModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
@@ -569,6 +570,13 @@ export const ProjectBasket = memo(function ProjectBasket({
     }, project.duration, monthlyEffort, teamMembers, fteCosts)] as const;
   })), [effortSummary.overheads, project, teamMembers, fteCosts]);
 
+  const projectCost = useMemo(() => sumWorkpackageAllocationCosts([
+    ...projectCards.filter((card) => !card._isNegated &&
+      (activeToolView === "all" || card.tool === activeToolView || card.tool === "Other"))
+      .map((card) => card._allocationCost),
+    ...managementAllocationCosts.values(),
+  ], fteCosts.currency), [projectCards, managementAllocationCosts, activeToolView, fteCosts.currency]);
+
   const hiddenTools = project.hiddenTools || [];
   const hiddenSubs = project.hiddenSubcategories || [];
 
@@ -1112,6 +1120,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                     </span>
                   )}
                 </div>
+                <ProjectCostSummary cost={projectCost} />
               </div>
 
               <div className="flex items-center gap-1.5 shrink-0">
