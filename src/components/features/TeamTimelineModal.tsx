@@ -15,7 +15,7 @@ import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
 import { useTimelineRangeSelection } from "../../hooks/useTimelineRangeSelection";
 import type { AllocationProject, WorkpackageCard, NumericMap, MonthlyNumericMap, MemberMaintenancePreferences, WorkpackageAllocationMonth, AutomaticAllocationTarget } from "../../types";
 import type { TeamTimelineModalProps } from './componentTypes';
-import { ChevronRightIcon, ChevronDownIcon, LockIcon, UnlockIcon, ManagementIcon, ToolIcon, MagicWandIcon } from '../ui/icons';
+import { ChevronRightIcon, ChevronDownIcon, LockIcon, UnlockIcon, ManagementIcon, ToolIcon, MagicWandIcon, RotateCcwIcon } from '../ui/icons';
 import { AssignMemberToWPModal } from "./AssignMemberToWPModal";
 import { AdjustMemberAllocationModal } from "./AdjustMemberAllocationModal";
 import { TeamAllocationPriorityModal } from "./TeamAllocationPriorityModal";
@@ -1106,28 +1106,47 @@ export function TeamTimelineModal({
               disabled={members.length === 0 || priorityProjects.length === 0}
               aria-label={`Auto-allocate ${toolName} team across projects`}
               title="Auto-allocate team: maximize coverage by project priority, then minimize hourly staffing cost"
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`flex items-center justify-center w-8 h-7 text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 isRetro
                   ? "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black font-mono hover:bg-[#d4d0c8]"
                   : "bg-violet-500/20 text-violet-300 border-violet-400/50 hover:bg-violet-500/30 rounded-lg"
               }`}
             >
               <MagicWandIcon size={14} />
-              Auto-allocate team
             </button>
             <button
               type="button"
               onClick={handleClearAllocation}
               disabled={!hasTeamAllocations}
-              title="Clear this team's allocations across all projects, including management support"
-              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              aria-label="Clear Allocation"
+              title="Clear Allocation: reset this team's allocations across all projects, including management support"
+              className={`flex items-center justify-center w-8 h-7 text-xs font-bold border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 isRetro
                   ? "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black font-mono hover:bg-[#d4d0c8]"
                   : "bg-slate-800 text-slate-300 border-slate-700 hover:text-white hover:border-slate-600 rounded-lg"
               }`}
             >
-              Clear Allocation
+              <RotateCcwIcon size={14} />
             </button>
+            {toolName !== "Other" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOtherWPs((prev) => !prev);
+                  setRangeSelection(null);
+                  setDragOverCellKey(null);
+                  setIsDirty(true);
+                }}
+                aria-label={'Include "Other" WPs'}
+                aria-pressed={showOtherWPs}
+                title={`Include "Other" WPs: ${showOtherWPs ? "enabled" : "disabled"}. Include Other workpackages in this team's allocation scope. Turning this off releases this team's Other allocations in the draft.`}
+                className={`flex items-center justify-center w-8 h-7 text-xs font-bold border rounded-lg transition-all cursor-pointer ${
+                  showOtherWPs ? "bg-amber-500/20 text-amber-300 border-amber-400/50" : "bg-slate-800 text-slate-400 border-slate-700"
+                }`}
+              >
+                <ToolIcon toolName="Other" size={14} />
+              </button>
+            )}
             {!isBasicMode && (
               <button
                 type="button"
@@ -1156,25 +1175,6 @@ export function TeamTimelineModal({
                   <LockIcon size={13} className={isRetro ? "text-black" : "text-slate-400"} />
                 )}
                 <span>{isManualEditEnabled ? "Manual Adjust: Enabled" : "Manual Adjust: Disabled"}</span>
-              </button>
-            )}
-
-            {toolName !== "Other" && (
-              <button
-                type="button"
-                onClick={() => {
-                  setShowOtherWPs((prev) => !prev);
-                  setRangeSelection(null);
-                  setDragOverCellKey(null);
-                  setIsDirty(true);
-                }}
-                aria-pressed={showOtherWPs}
-                title="Include Other workpackages in this team's allocation scope. Turning this off releases this team's Other allocations in the draft."
-                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold border rounded-lg transition-all cursor-pointer ${
-                  showOtherWPs ? "bg-amber-500/20 text-amber-300 border-amber-400/50" : "bg-slate-800 text-slate-400 border-slate-700"
-                }`}
-              >
-                <span>Include &quot;Other&quot; WPs</span>
               </button>
             )}
 
