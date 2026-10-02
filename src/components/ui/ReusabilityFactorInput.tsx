@@ -1,7 +1,7 @@
 import React from "react";
 import { ThemeContext, DEFAULT_REUSABILITY_FACTORS } from "../../constants";
 import type { FactorMap, NumericInput } from "../../types";
-import { normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
+import { normalizeReusability, parseReusabilityFactor } from "../../utils/reusability";
 
 export function ReusabilityFactorInput({ value, onChange, factors = DEFAULT_REUSABILITY_FACTORS, maintenanceAvailable = false, applyToMaintenance = false, onMaintenanceChange }: {
   value: NumericInput;

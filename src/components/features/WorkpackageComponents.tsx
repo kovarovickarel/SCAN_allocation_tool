@@ -1,4 +1,5 @@
-import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, memo } from "react";
+import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
+import { useWorkpackageCardLayout } from "../../hooks/useWorkpackageCardLayout";
 import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
 import type { EditCardContentProps, FunctionCardProps, ManagementOverheadsProps, ToolRowProps, UnassignedPoolProps } from './componentTypes';
 import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon } from '../ui/icons';
@@ -398,93 +399,13 @@ export const FunctionCard = memo(function FunctionCard({
     : toolTheme.dragging;
 
   const isAssigned = projectId !== "pool" && Boolean(card.projectId);
-  const [hideCompactEffort, setHideCompactEffort] = useState(false);
-  const compactHeaderRef = useRef<HTMLDivElement>(null);
-  const compactCategoryRef = useRef<HTMLSpanElement>(null);
-  const compactCategoryTextRef = useRef<HTMLSpanElement>(null);
-  const compactMilestoneRef = useRef<HTMLSpanElement>(null);
-  const compactEffortRef = useRef<HTMLSpanElement>(null);
-  const compactCostRef = useRef<HTMLSpanElement>(null);
-  const compactDeleteRef = useRef<HTMLButtonElement>(null);
-
-  useLayoutEffect(() => {
-    if (!isCompact || !isAssigned || card._editing || !hasAllocatedCost(card._allocationCost)) {
-      setHideCompactEffort(false);
-      return;
-    }
-    const header = compactHeaderRef.current;
-    const category = compactCategoryRef.current;
-    const text = compactCategoryTextRef.current;
-    const effort = compactEffortRef.current;
-    const cost = compactCostRef.current;
-    const deleteButton = compactDeleteRef.current;
-    if (!header || !category || !text || !effort || !cost || !deleteButton) return;
-    let disposed = false;
-    const measure = () => {
-      if (disposed) return;
-      const categoryStyle = getComputedStyle(category);
-      const dot = category.firstElementChild !== text ? category.firstElementChild : null;
-      const categoryWidth = text.scrollWidth
-        + parseFloat(categoryStyle.paddingLeft) + parseFloat(categoryStyle.paddingRight)
-        + parseFloat(categoryStyle.borderLeftWidth) + parseFloat(categoryStyle.borderRightWidth)
-        + (dot ? dot.getBoundingClientRect().width + (parseFloat(categoryStyle.columnGap) || 0) : 0);
-      const milestone = compactMilestoneRef.current;
-      const leftWidth = categoryWidth + (milestone
-        ? milestone.getBoundingClientRect().width + (parseFloat(getComputedStyle(category.parentElement).columnGap) || 0) : 0);
-      // The invisible effort badge still measures its full width, so hiding it cannot
-      // make the next resize measurement bring it back and cause flickering.
-      const rightWidth = effort.getBoundingClientRect().width + cost.getBoundingClientRect().width
-        + deleteButton.getBoundingClientRect().width
-        + 2 * (parseFloat(getComputedStyle(deleteButton.parentElement).columnGap) || 0);
-      const requiredWidth = leftWidth + rightWidth + (parseFloat(getComputedStyle(header).columnGap) || 0);
-      setHideCompactEffort(requiredWidth > header.getBoundingClientRect().width + 0.5);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    [header, text, effort, cost, deleteButton].forEach((element) => observer.observe(element));
-    void document.fonts.ready.then(measure);
-    return () => {
-      disposed = true;
-      observer.disconnect();
-    };
-  }, [isCompact, isAssigned, card, isRetro, isBasic, isBasicMode]);
-  const [shortReusabilityLabel, setShortReusabilityLabel] = useState(false);
-  const nameRowRef = useRef<HTMLDivElement>(null);
-  const nameTextRef = useRef<HTMLSpanElement>(null);
-  const reusabilityTagRef = useRef<HTMLSpanElement>(null);
-  const fullReusabilityLabelRef = useRef<HTMLSpanElement>(null);
-
-  useLayoutEffect(() => {
-    if (isCompact || card._editing || normalizeReusability(card, reusabilityFactors).reusability !== "Other") {
-      setShortReusabilityLabel(false);
-      return;
-    }
-    const row = nameRowRef.current;
-    const name = nameTextRef.current;
-    const tag = reusabilityTagRef.current;
-    const fullLabel = fullReusabilityLabelRef.current;
-    if (!row || !name || !tag || !fullLabel) return;
-    let disposed = false;
-    const measure = () => {
-      if (disposed) return;
-      const style = getComputedStyle(tag);
-      // Measure the full label independently of the displayed short version.
-      const fullTagWidth = fullLabel.getBoundingClientRect().width
-        + parseFloat(style.paddingLeft) + parseFloat(style.paddingRight)
-        + parseFloat(style.borderLeftWidth) + parseFloat(style.borderRightWidth);
-      const requiredWidth = name.getBoundingClientRect().width + fullTagWidth
-        + (parseFloat(getComputedStyle(row).columnGap) || 0);
-      setShortReusabilityLabel(requiredWidth > row.getBoundingClientRect().width + 0.5);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    [row, name, fullLabel].forEach((element) => observer.observe(element));
-    void document.fonts.ready.then(measure);
-    return () => {
-      disposed = true;
-      observer.disconnect();
-    };
-  }, [isCompact, card, reusabilityFactors, isRetro, isBasic]);
+  const {
+    hideCompactEffort, compactHeaderRef, compactCategoryRef, compactCategoryTextRef,
+    compactMilestoneRef, compactEffortRef, compactCostRef, compactDeleteRef,
+    shortReusabilityLabel, nameRowRef, nameTextRef, reusabilityTagRef, fullReusabilityLabelRef,
+  } = useWorkpackageCardLayout({
+    card, reusabilityFactors, isCompact, isAssigned, isRetro, isBasic, isBasicMode,
+  });
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
   const allocatedMembers = isAssigned && !isCompact ? teamMembers.filter((member) =>
     Number(card.memberAssignments?.[member.id]) > 0 ||

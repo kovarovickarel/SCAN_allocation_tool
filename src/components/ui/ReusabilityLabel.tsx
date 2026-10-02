@@ -1,7 +1,6 @@
-import React from "react";
 import { DEFAULT_REUSABILITY_FACTORS } from "../../constants";
 import type { FactorMap, WorkpackageCard } from "../../types";
-import { getReusabilityFactor, getReusabilityLabel, normalizeReusability } from "../../utils/helpers";
+import { getReusabilityFactor, getReusabilityLabel, normalizeReusability } from "../../utils/reusability";
 
 export function ReusabilityLabel({ card, factors = DEFAULT_REUSABILITY_FACTORS, factorOnly = false, shortLabel = false }: {
   card: WorkpackageCard;

@@ -893,7 +893,7 @@ export function TeamTimelineModal({
     setCellInputValue("");
   }, [rangeSelection, selectedMonthIndices, projects, cards, toolName, resetMemberMonth, onSaveMgmtMonthlyAssignments, onSaveMonthlyAssignments]);
 
-  const handleDropMemberOnTarget = useCallback((member, target, singleMonthIdx = null, displayFTE = null, activityMonths: number[] | null = null) => {
+  const handleDropMemberOnTarget = useCallback((member, target, singleMonthIdx = null, _displayFTE = null, activityMonths: number[] | null = null) => {
     if (!member) return;
     const isMgmt = Boolean(target._isMgmt);
     if (!isMgmt && !isCardInTeamScope(target.card)) return;
@@ -1582,7 +1582,7 @@ export function TeamTimelineModal({
                                   alignedCells={mgmtRow.alignedMgmtCells}
                                   dragOverCellKey={dragOverCellKey}
                                   isActivityDropEnabled={Boolean(draggedMember && (draggedMember.role === "management" || draggedMember.role === "both"))}
-                                  onActivityDrop={(e, monthIndices) => {
+                                  onActivityDrop={(_event, monthIndices) => {
                                     handleDropMemberOnTarget(draggedMember, { _isMgmt: true, project, mgmtRow, syntheticCard: mgmtRow.syntheticCard }, null, null, monthIndices);
                                     setDraggedMember(null); setDragOverCellKey(null);
                                   }}
@@ -2019,7 +2019,7 @@ export function TeamTimelineModal({
                                   dragOverCellKey={dragOverCellKey}
                                   isNegated={isNegated}
                                   isActivityDropEnabled={Boolean(draggedMember && draggedMember.role !== "management" && !isNegated)}
-                                  onActivityDrop={(e, monthIndices) => {
+                                  onActivityDrop={(_event, monthIndices) => {
                                     handleDropMemberOnTarget(draggedMember, { card, project }, null, null, monthIndices);
                                     setDraggedMember(null); setDragOverCellKey(null);
                                   }}

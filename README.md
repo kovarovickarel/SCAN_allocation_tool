@@ -40,6 +40,16 @@ pnpm test:e2e
 
 Playwright starts a separate Vite server on port 5174. The tests cover the main screens, interactions, form factors, themes, and visual snapshots. Snapshot files are kept with the test suites under `tests/`.
 
+`pnpm test:e2e` uses `playwright.current-ui.config.ts` and the screenshots in
+`tests/current-ui-snapshots/`. These were captured from the current app before
+refactoring, so they check that the cleanup preserves the approved UI. The suite
+also covers allocation limits, both optimizers, priorities, costs, currencies,
+maintenance preferences, external members, RFQ, and responsive card badges.
+
+The original screenshots are retained separately. `pnpm test:e2e:historical`
+compares against those references; several differ from the current app because
+they predate the later requested features. Do not overwrite them to hide failures.
+
 ## Project layout
 
 ```text

@@ -281,16 +281,23 @@ test("non-overlapping projects do not consume each other's member headroom", asy
   expect(Math.max(...values)).toBeLessThanOrEqual(0.6);
 });
 
-test("hidden Other workpackage rows still reserve member capacity", async ({ page }) => {
+test("excluding Other workpackages releases member capacity without restoring old allocations", async ({ page }) => {
   const timeline = await setup(page, [...packages, "Config Manager"]);
-  await timeline.getByRole("button", { name: "Show Other WPs", exact: true }).click();
+  const includeOther = timeline.getByRole("button", { name: 'Include "Other" WPs', exact: true });
+  await includeOther.click();
   await drop(timeline, "Alex Novak", "Config Manager");
   const other = await allocationValues(timeline, "Config Manager", "tm_1");
   expect(other.some((value) => value > 0)).toBe(true);
-  await timeline.getByRole("button", { name: "Other WPs: Shown", exact: true }).click();
+  await includeOther.click();
+  await expect(timeline.getByText("Config Manager", { exact: true })).toBeHidden();
   const dialog = await assignDialog(page, timeline, "Lane Detection KPI");
   await member(dialog, "Alex Novak").getByRole("button", { name: "100%", exact: true }).click();
   await dialog.getByRole("button", { name: "Save Allocations", exact: true }).click();
   const lane = await allocationValues(timeline, "Lane Detection KPI", "tm_1");
-  for (let month = 0; month < 18; month++) expect(lane[month] + other[month]).toBeLessThanOrEqual(0.600001);
+  expect(lane.some((value, month) => value + other[month] > 0.600001)).toBe(true);
+  for (const value of lane) expect(value).toBeLessThanOrEqual(0.600001);
+  await includeOther.click();
+  expect(await allocationValues(timeline, "Config Manager", "tm_1")).toEqual([]);
+  const otherDialog = await assignDialog(page, timeline, "Config Manager");
+  await expect(member(otherDialog, "Alex Novak").locator("input")).toHaveValue("");
 });

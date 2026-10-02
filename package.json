@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --config playwright.current-ui.config.ts",
+    "test:e2e:historical": "playwright test tests/screens-and-interactions.spec.ts tests/visual.spec.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

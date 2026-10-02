@@ -55,7 +55,12 @@ The project began as a client-provided monolithic TSX application. Its original 
 - `src/hooks/useTimelineRangeSelection.ts`: shared drag-to-select mechanics for month cells.
 - `src/hooks/useProjectTimelineRangeEditing.ts`: project timeline edit/reset rules built on the shared selection hook. Keep these rules separate from team timeline rules in `TeamTimelineModal.tsx`.
 - `src/hooks/useEscapeKey.ts`: Escape-key handling for dialogs.
-- `src/utils/helpers.ts`: milestone normalization, effort calculations, timeline calculations, activity segmentation, and allocation/coverage display helpers.
+- `src/utils/helpers.ts`: milestone normalization, effort calculations, timelines, activity segmentation, and compatibility re-exports for the focused calculation modules below.
+- `src/utils/reusability.ts`: custom factor validation, preset normalization, maintenance/support multipliers, and labels.
+- `src/utils/memberAllocations.ts`: legacy monthly allocation resolution, cross-team identity, and workpackage/management coverage.
+- `src/utils/allocationCosts.ts`: hourly rate validation, monthly/workpackage pricing, cost aggregation, and availability checks.
+- `src/utils/automaticAllocation.ts`: shared coverage-first, priority-aware, minimum-cost optimization for both Magic Wands.
+- `src/hooks/useWorkpackageCardLayout.ts`: responsive card badge measurements. Preserve its hidden full-label measurements, observer cleanup, and existing JSX refs when editing layout behavior.
 - `src/index.css` and Tailwind configuration: global CSS and utility-class scanning. Most product styling is expressed as Tailwind classes directly in component JSX.
 
 ## Domain notes
@@ -104,7 +109,7 @@ The project began as a client-provided monolithic TSX application. Its original 
 - For extraction/refactoring work, keep JSX structure, wrappers, Tailwind classes, and inline styles unchanged unless the user explicitly requests otherwise.
 - Keep shared timeline selection mechanics in `useTimelineRangeSelection`, but keep project and team edit semantics in their respective consumers.
 - Prefer a focused change in the existing feature component or helper over broad cleanup while implementing a feature. Avoid adding dependencies without a clear need.
-- Keep new shared domain types in `src/types/index.ts`, static defaults in `src/constants/index.ts`, pure calculation logic in `src/utils/helpers.ts`, and reusable UI under `src/components/ui/`.
+- Keep new shared domain types in `src/types/index.ts`, static defaults in `src/constants/index.ts`, pure calculations in the appropriate `src/utils/` module, and reusable UI under `src/components/ui/`. The helper barrel retains existing imports; focused modules should import their dependencies directly to avoid cycles.
 - Existing screenshot snapshots are visual regression references. Do not update them merely to make a change pass; update them only when a visual change was requested and reviewed.
 - Avoid assuming application data survives a reload. Currently, only the compact-layout flags persist.
 
@@ -127,6 +132,8 @@ pnpm test:e2e
 ```
 
 Playwright is configured in `playwright.config.ts` to run Chromium against a Vite server on `127.0.0.1:5174`. `tests/visual.spec.ts` checks the original baseline; `tests/screens-and-interactions.spec.ts` covers screens, themes, sizes, and common dialogs; `tests/timeline-editing.spec.ts` covers timeline range editing and allocation capacity; `tests/workpackage-drop.spec.ts` covers workpackage, subactivity, and cell drops plus manual allocation limits; `tests/member-assignment.spec.ts` covers the Assign Members dialog; `tests/adjust-member-allocation.spec.ts` covers individual percentages, maintenance preferences, selective warnings, and staged Save/Discard behavior. Chromium can be installed with `pnpm exec playwright install chromium` when needed.
+
+`pnpm test:e2e` uses `playwright.current-ui.config.ts`, retaining the same browser/server configuration while comparing against `tests/current-ui-snapshots/`. These references were captured before the October 2026 refactoring and include all previously approved features. Historical snapshots remain unchanged and can be checked separately with `pnpm test:e2e:historical`; expected differences from later feature additions must not be mistaken for refactoring regressions. `tests/workpackage-layout.spec.ts` mounts production cards in a test-only harness and checks priced compact headers, reusability shortening, resizing in both directions, all three themes, and both app modes. `tests/allocation-costs-and-reusability.spec.ts` and `tests/recent-features.spec.ts` cover calculation edge cases and the corresponding newer UI workflows.
 
 The normal app dev server uses `127.0.0.1:5173`. The Playwright server uses port `5174` so it does not collide with the interactive app.
 

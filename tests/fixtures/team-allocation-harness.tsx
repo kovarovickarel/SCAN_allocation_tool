@@ -1,5 +1,5 @@
 // Test-only host: mounts the production timeline with reproducible large datasets.
-import React, { useState } from "react";
+import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { TeamTimelineModal } from "../../src/components/features/TeamTimelineModal";
 import { ThemeContext, DEFAULT_TOOL_FTE_RATES, DEFAULT_FTE_RATES, DEFAULT_MGMT_SETTINGS } from "../../src/constants";

@@ -346,7 +346,7 @@ test("a manual cell adjustment warns even when all activity months still have al
 
 test("Other workpackage excludes maintenance and never allocates outside its active months", async ({ page }) => {
   const timeline = await setup(page, [...names, "Config Manager"]);
-  await timeline.getByRole("button", { name: "Show Other WPs", exact: true }).click();
+  await timeline.getByRole("button", { name: 'Include "Other" WPs', exact: true }).click();
   const demand = await demands(timeline, "Config Manager");
   expect(demand.some((month) => month.maintenance)).toBe(true);
   await drop(timeline, "Alex Novak", "Config Manager");

@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { FOOTPRINT_MAP, ThemeContext, WORKING_HOURS_PER_MONTH } from "../../constants";
 import type { WorkpackageAllocationCost } from "../../types";
-import { hasAllocatedCost } from "../../utils/helpers";
+import { hasAllocatedCost } from "../../utils/allocationCosts";
 
 export function WorkpackageCostLabel({ cost, className = "", compact = false, tone = "cost" }: {
   cost?: WorkpackageAllocationCost;
