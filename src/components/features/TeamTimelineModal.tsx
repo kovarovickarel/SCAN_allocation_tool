@@ -320,7 +320,8 @@ export function TeamTimelineModal({
       const normMilestones = normalizeMilestones(p.milestones, pDur);
 
       return { project: p, pDur, pOffset, normMilestones, workpackages: visibleWorkpackages,
-        displayedWorkpackages: workpackages.filter((wp) => wp.card.tool === toolName || showOtherWPs),
+        displayedWorkpackages: [...visibleWorkpackages,
+          ...workpackages.filter((wp) => showOtherWPs && !isCardInTeamScope(wp.card))],
         excludedOtherWorkpackages: workpackages.filter((wp) => !isCardInTeamScope(wp.card)),
         mgmtRow, totalProjectTeamMonthlyFTE, totalProjectTeamFTE };
     });
@@ -1861,9 +1862,9 @@ export function TeamTimelineModal({
                           const { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells } = wp;
                           if (!isCardInTeamScope(card)) {
                             return (
-                              <div key={card.id} className="grid grid-cols-[300px_1fr] items-center min-h-[46px] border-b border-slate-100 last:border-b-0 bg-slate-50">
-                                <div className="p-2 pl-7 border-r border-slate-200 flex items-center justify-between gap-2 h-full min-w-0">
-                                  <span className="text-[11px] font-bold text-slate-400 truncate" title={card.name}>{card.name}</span>
+                              <div key={card.id} className="grid grid-cols-[300px_1fr] items-center min-h-[28px] border-b border-slate-100 last:border-b-0 bg-slate-50">
+                                <div className="px-2 py-0.5 pl-7 border-r border-slate-200 flex items-center justify-between gap-2 h-full min-w-0">
+                                  <span className="text-[10px] font-medium text-slate-400 truncate" title={card.name}>{card.name}</span>
                                   <button
                                     type="button"
                                     onClick={() => toggleOtherWorkpackage(card.id)}
@@ -1876,7 +1877,7 @@ export function TeamTimelineModal({
                                     Include
                                   </button>
                                 </div>
-                                <div className="px-3 text-[10px] text-slate-400">Excluded from this team</div>
+                                <div className="px-3 text-[9px] text-slate-400">Excluded from this team</div>
                               </div>
                             );
                           }
@@ -1979,7 +1980,7 @@ export function TeamTimelineModal({
                                         }}
                                         aria-label={`Exclude ${card.name} from ${toolName} team`}
                                         title="Exclude this Other workpackage and release this team's allocation"
-                                        className={`text-[9px] font-semibold mr-1 px-1.5 py-0.5 border cursor-pointer shrink-0 ${isRetro
+                                        className={`text-[9px] font-semibold -ml-5 mr-1 px-1.5 py-0.5 border cursor-pointer shrink-0 ${isRetro
                                           ? "bg-[#c0c0c0] text-black font-mono border-t-white border-l-white border-b-black border-r-black"
                                           : "text-slate-500 border-slate-200 hover:text-red-600 hover:border-red-200 rounded"}`}
                                       >
