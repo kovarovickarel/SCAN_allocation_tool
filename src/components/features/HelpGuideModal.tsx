@@ -212,6 +212,9 @@ export function HelpGuideModal({
                   <li>
                     <strong>Detailed Tooltips:</strong> Hovering over any personal monthly cell lists the exact itemized breakdown of project workpackages and management support consuming their hours in that month.
                   </li>
+                  <li>
+                    <strong>External Members:</strong> Select External in the member form and enter a monthly salary cost before saving. The salary keeps its saved currency and is reserved for future recurring costs; it does not affect current FTE cost calculations or allocations.
+                  </li>
                 </ul>
               </div>
 
@@ -270,6 +273,7 @@ export function HelpGuideModal({
                 <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                   <li>Other projects retain their allocations, and their commitments reduce the capacity available to the selected project.</li>
                   <li>The wand respects member roles, monthly capacity, other teams&apos; assignments, and saved maintenance exclusions. Other workpackages are included only when <strong>Include &quot;Other&quot; WPs</strong> is enabled.</li>
+                  <li>Coverage comes first. Among staffing combinations with the same coverage, the wand minimizes cost using each member&apos;s location hourly rate. Members with missing rates are still available if needed for coverage, but are not treated as free. External monthly salaries are not included.</li>
                   <li>Existing selective allocations in the optimized project may be replaced. Review the result before choosing <strong>Save &amp; Close</strong>.</li>
                 </ul>
               </div>
@@ -283,6 +287,7 @@ export function HelpGuideModal({
                   <li>Choose a priority for each project. <strong>1 is highest</strong>; higher priority effort is covered before lower priority effort.</li>
                   <li>Give projects the same priority to optimize them together as one group. This maximizes their combined covered effort; it does not require an equal split between projects.</li>
                   <li>Click <strong>Auto-allocate team</strong> in the dialog. Members may be reassigned to improve coverage while preserving the coverage achieved for higher priority groups. The same role, capacity, and maintenance limits apply as for a single project.</li>
+                  <li>After maximizing coverage at each priority, the app chooses the cheapest staffing combination using location hourly rates. Savings never reduce the coverage achieved for any priority group.</li>
                   <li>Review the live <strong>Project coverage</strong> summary in the footer and inspect any remaining uncovered cells. If capacity or eligible members are insufficient, some work will remain uncovered.</li>
                 </ol>
               </div>
@@ -558,6 +563,24 @@ export function HelpGuideModal({
                 </p>
               </div>
 
+              <div className={`p-4 shadow-2xs ${
+                isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+              }`}>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">FTE costs by Location</h3>
+                <p className="text-slate-600 leading-relaxed mb-2">
+                  Default hourly rates in EUR: Troy 115, Bietigheim 80, Prague 60, Tokyo 55, Chennai 20, and Cairo 40. Reset to Defaults restores these rates and the EUR currency.
+                </p>
+                <p className="text-slate-600 leading-relaxed">
+                  Open Defaults and select <strong>FTE costs</strong> to set an hourly rate for each resource location. Changing currency automatically converts entered rates using Frankfurter&apos;s latest published exchange rate, rounded to 2 decimals. The rate and its date appear after conversion. Conversion needs an internet connection; if it fails, the previous currency and values are kept. Blank rates are unconfigured; values must be 0 or more. <strong>Save Configuration</strong> keeps the rates for this session, while Cancel discards edits.
+                </p>
+                <p className="text-slate-600 leading-relaxed mt-2">
+                  Project workpackages show their total resource cost in a yellow tag beside effort in cards and on workpackage rows in the team timeline: <strong>monthly allocated FTE × 160 working hours × the member&apos;s location hourly rate</strong>, summed across all members and active months. Tool section headers sum their workpackage costs and the management support cost for that tool and project, beside FTE/yr. Individual management support rows show their own costs; the overall management support header shows only FTE. Amounts use k for thousands and M for millions. Collapsed cost tags omit currency and show whole thousands or at most one decimal for millions; hover for the full amount and currency. Collapsed project cards hide the effort tag when both tags would crowd the workpackage type, keeping the cost tag visible. Hover over a member&apos;s monthly allocation cell to see its cost, allocated hours, and hourly rate, including management support cells. Allocated maintenance and support are included. Cost tags appear only when a positive allocated cost exists. Workpackages, management support, and tool totals hide tags with no allocations, zero cost, or no configured rates for any allocated member. Team timeline workpackage rows omit the FTE summary. Missing rates for some members show a partial cost; hover over the cost for details. Team timeline costs reflect the draft until Save &amp; Close.
+                </p>
+                <p className="text-slate-600 leading-relaxed mt-2">
+                  The project header shows <strong>Cost:</strong> below Total in purple, including management support. Its outlined amount button follows the same tool scope as Total and displays the full rounded amount with a yellow € before the number; rates in another currency are converted automatically to EUR.
+                </p>
+              </div>
+
             </div>
           )}
 
@@ -578,6 +601,7 @@ export function HelpGuideModal({
                   <li>The left panel splits into the <strong>Workpackage Pool</strong> and the <strong>Team Members Pool</strong>.</li>
                   <li>Clicking the calendar icon (<CalendarGanttIcon size={12} className="inline" />) opens the <strong>Team Combined Timeline</strong> spanning all projects.</li>
                   <li>Toggle compact viewing on pools to maximize screen estate (2-column for workpackages, 4-column initial badges for team members).</li>
+                  <li>Select <strong>RFQ (Request for Quotation)</strong> when creating or editing a project that has not yet been won or nominated by the client. The RFQ tag appears beside its product type in project cards and timelines and does not change calculations or allocations.</li>
                 </ul>
               </div>
 
