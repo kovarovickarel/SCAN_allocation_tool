@@ -477,22 +477,22 @@ export const FunctionCard = memo(function FunctionCard({
         title={`${card.name} (${card.tool}${card.subcategory ? ` → ${card.subcategory}` : ""})`}
       >
         <div className="flex items-center justify-between gap-1 mb-1 min-w-0">
-          <span
-            className={`text-[8.5px] font-black uppercase tracking-tight px-1 py-0.2 rounded truncate shadow-xs flex items-center gap-0.5 min-w-0 ${
-              isRetro
-                ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000] font-mono"
-                : isBasic
-                ? "bg-slate-800 text-blue-200 border border-slate-700"
-                : "bg-slate-900 text-amber-300"
-            }`}
-            title={card.subcategory ? `${card.tool} → ${card.subcategory}` : card.tool}
-          >
-            {!isBasicMode && (
-              <span className={`w-1.5 h-1.5 rounded-full ${cardEffortDot} shrink-0 inline-block`} />
-            )}
-            <span className="truncate">{compactCategoryLabel}</span>
-          </span>
-          <div className="flex items-center gap-1 shrink-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <span
+              className={`text-[8.5px] font-black uppercase tracking-tight px-1 py-0.2 rounded truncate shadow-xs flex items-center gap-0.5 min-w-0 ${
+                isRetro
+                  ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000] font-mono"
+                  : isBasic
+                  ? "bg-slate-800 text-blue-200 border border-slate-700"
+                  : "bg-slate-900 text-amber-300"
+              }`}
+              title={card.subcategory ? `${card.tool} → ${card.subcategory}` : card.tool}
+            >
+              {!isBasicMode && (
+                <span className={`w-1.5 h-1.5 rounded-full ${cardEffortDot} shrink-0 inline-block`} />
+              )}
+              <span className="truncate">{compactCategoryLabel}</span>
+            </span>
             {finishMsDef && (
               <span
                 className="inline-flex items-center shrink-0"
@@ -503,6 +503,8 @@ export const FunctionCard = memo(function FunctionCard({
                 />
               </span>
             )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
             <span className={`font-mono font-bold text-[8px] px-1 py-0.2 rounded border shrink-0 whitespace-nowrap shadow-2xs ${fteBadgeStyle}`}>
               {displayFTEText}
             </span>
@@ -550,19 +552,34 @@ export const FunctionCard = memo(function FunctionCard({
       `}
     >
       <div className="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-black/10 min-w-0">
-        <span
-          className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded truncate shadow-xs flex items-center gap-1 min-w-0 max-w-[70%] ${
-            isRetro
-              ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000] font-mono"
-              : isBasic
-              ? "bg-slate-800 text-blue-200 border border-slate-700"
-              : "bg-slate-900 text-amber-300"
-          }`}
-          title={isAltered ? `Category: ${categoryDisplayName} (Timeline monthly effort manually altered)` : `Category: ${categoryDisplayName}`}
-        >
-          {!isBasicMode && <span className={`w-1.5 h-1.5 rounded-full ${cardEffortDot} shrink-0 inline-block transition-colors duration-200`} />}
-          <span className="truncate">{categoryDisplayName}</span>
-        </span>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <span
+            className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded truncate shadow-xs flex items-center gap-1 min-w-0 max-w-[70%] ${
+              isRetro
+                ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000] font-mono"
+                : isBasic
+                ? "bg-slate-800 text-blue-200 border border-slate-700"
+                : "bg-slate-900 text-amber-300"
+            }`}
+            title={isAltered ? `Category: ${categoryDisplayName} (Timeline monthly effort manually altered)` : `Category: ${categoryDisplayName}`}
+          >
+            {!isBasicMode && <span className={`w-1.5 h-1.5 rounded-full ${cardEffortDot} shrink-0 inline-block transition-colors duration-200`} />}
+            <span className="truncate">{categoryDisplayName}</span>
+          </span>
+          {finishMsDef && (
+            <span
+              className={`inline-flex items-center gap-1 text-[9px] font-black ${
+                isRetro ? "text-black font-mono" : isBasic ? "text-black" : (finishMsDef.textColor || "text-slate-700")
+              } shrink-0`}
+              title={`Finish Target: ${finishMsDef.label} (${finishMsDef.name})`}
+            >
+              <span
+                className={`w-2 h-2 rotate-45 ${finishMsDef.dot} border border-slate-400/60 inline-block shadow-2xs shrink-0`}
+              />
+              <span>{finishMsDef.label}</span>
+            </span>
+          )}
+        </div>
         <div className="flex items-center gap-1 shrink-0">
           {!isBasicMode && (
             <button
@@ -600,19 +617,6 @@ export const FunctionCard = memo(function FunctionCard({
             {card.reusability}
           </span>
         </div>
-        {finishMsDef && (
-          <span
-            className={`inline-flex items-center gap-1 text-[9px] font-black ${
-              isRetro ? "text-black font-mono" : isBasic ? "text-black" : (finishMsDef.textColor || "text-slate-700")
-            } shrink-0 pt-0.5`}
-            title={`Finish Target: ${finishMsDef.label} (${finishMsDef.name})`}
-          >
-            <span
-              className={`w-2 h-2 rotate-45 ${finishMsDef.dot} border border-slate-400/60 inline-block shadow-2xs shrink-0`}
-            />
-            <span>{finishMsDef.label}</span>
-          </span>
-        )}
         {coverageIndicator}
       </div>
 
