@@ -22,7 +22,7 @@ export function ProjectCostSummary({ cost, onOpen }: { cost: WorkpackageAllocati
       <button
         type="button"
         onClick={onOpen}
-        className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-purple-800 bg-transparent px-1 py-0.5 text-sm font-bold text-purple-800 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800"
+        className="inline-flex items-center gap-1 whitespace-nowrap rounded border border-purple-800 bg-purple-900/30 px-1 py-0.5 text-sm font-bold text-purple-800 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800"
         title={tooltip}
         aria-label={`Project cost: ${amount}`}
       >

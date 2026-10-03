@@ -160,3 +160,15 @@ test("production project cost and spending scope agree when Other belongs to a d
   await expect(page.getByRole("dialog").getByText("Config Manager", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("dialog").getByText("€ 0", { exact: true }).first()).toBeVisible();
 });
+
+test("project cost button retains compact yellow content with the subtle purple background", async ({ page }) => {
+  await page.route("**/__spending-test*", (route) => route.fulfill({ contentType: "text/html", body:
+    harnessHtml("/tests/fixtures/project-spending-harness.tsx") }));
+  await page.goto("/__spending-test");
+  const button = page.getByRole("button", { name: /Project cost:/ });
+  await expect(button).toHaveCSS("background-color", "rgba(88, 28, 135, 0.3)");
+  await expect(button).toHaveCSS("border-color", "rgb(107, 33, 168)");
+  await expect(button.locator("span").last()).toHaveCSS("color", "rgb(250, 204, 21)");
+  await button.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
