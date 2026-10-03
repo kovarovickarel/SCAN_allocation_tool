@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, SUBCAT_TOOL_MAP, DEFAULT_MGMT_SETTINGS, DEFAULT_FTE_COSTS, PROJECT_TYPES, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2, genId } from "../../constants";
-import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, calculateWorkpackageAllocationCost, sumWorkpackageAllocationCosts, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
+import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, calculateWorkpackageAllocationCost, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
+import { calculateProjectSpending } from "../../utils/projectSpending";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
@@ -572,12 +573,11 @@ export const ProjectBasket = memo(function ProjectBasket({
     }, project.duration, monthlyEffort, teamMembers, fteCosts)] as const;
   })), [effortSummary.overheads, project, teamMembers, fteCosts]);
 
-  const projectCost = useMemo(() => sumWorkpackageAllocationCosts([
-    ...projectCards.filter((card) => !card._isNegated &&
-      (activeToolView === "all" || card.tool === activeToolView || card.tool === "Other"))
-      .map((card) => card._allocationCost),
-    ...managementAllocationCosts.values(),
-  ], fteCosts.currency), [projectCards, managementAllocationCosts, activeToolView, fteCosts.currency]);
+  const projectCost = useMemo(() => calculateProjectSpending({
+    project, cards: projectCards, members: teamMembers, overheads: effortSummary.overheads,
+    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView,
+  }).totalCost, [project, projectCards, teamMembers, effortSummary.overheads,
+    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView]);
 
   const hiddenTools = project.hiddenTools || [];
   const hiddenSubs = project.hiddenSubcategories || [];

@@ -23,10 +23,46 @@ test("spending reconciles workpackages, members, tools, engineering, management 
   expect(result.tools.find((tool) => tool.tool === "Simulation")!.monthlyCosts[0].totalCost).toBe(3840);
 });
 
-test("tool-specific scope includes Other and only supplied tool overhead", () => {
+test("tool-specific scope includes allocated Other workpackages and only supplied tool overhead", () => {
   const result = calculateProjectSpending({ ...options, activeToolView: "KPI", overheads: spendingOverheads.slice(0, 1) });
   expect(result.tools.map((tool) => tool.tool)).toEqual(["KPI", "Other"]);
   expect(result.totalCost.totalCost).toBe(37920);
+});
+
+test("Other scope follows positive active allocations from the selected team", () => {
+  const other = spendingCards.find((card) => card.tool === "Other")!;
+  const cases = [
+    { memberAssignments: {}, memberMonthlyAssignments: {}, included: false },
+    { memberAssignments: {}, memberMonthlyAssignments: { germany: { 0: 0.25 } }, included: false },
+    { memberAssignments: { prague: 0.25 }, memberMonthlyAssignments: {}, included: true },
+    { memberAssignments: { prague: 0.25 }, memberMonthlyAssignments: { prague: { 0: 0, 1: 0, 2: 0 } }, included: false },
+    { memberAssignments: {}, memberMonthlyAssignments: { prague: { 4: 0.25 } }, included: false },
+    { memberAssignments: {}, memberMonthlyAssignments: { prague: { 1: 0.25 }, germany: { 0: 0.25 } }, included: true },
+    { memberAssignments: { unknown: 0.25 }, memberMonthlyAssignments: {}, included: false },
+  ];
+  for (const { included, ...assignments } of cases) {
+    const card = { ...other, ...assignments };
+    const scoped = calculateProjectSpending({ ...options, cards: [card], overheads: [], activeToolView: "KPI" });
+    const overall = calculateProjectSpending({ ...options, cards: [card], overheads: [] });
+    expect(scoped.tools.map((tool) => tool.tool)).toEqual(included ? ["Other"] : []);
+    expect(scoped.workpackageCount).toBe(included ? 1 : 0);
+    expect(scoped.totalCost.totalCost).toBe(included ? overall.totalCost.totalCost : 0);
+    expect(overall.workpackageCount).toBe(1);
+    expect(overall.tools.map((tool) => tool.tool)).toEqual(["Other"]);
+  }
+});
+
+test("Other visibility depends on allocation rather than whether the hourly rate is priced", () => {
+  for (const hourlyRate of [0, null]) {
+    const result = calculateProjectSpending({ ...options, activeToolView: "KPI", overheads: [],
+      fteCosts: { currency: "EUR", hourlyRates: { PRA: hourlyRate } } });
+    expect(result.tools.map((tool) => tool.tool)).toEqual(["KPI", "Other"]);
+    expect(result.tools.find((tool) => tool.tool === "Other")!.totalCost.allocatedHours).toBe(120);
+  }
+  const simulation = calculateProjectSpending({ ...options, activeToolView: "Simulation",
+    overheads: spendingOverheads.filter((item) => item.tool === "Simulation") });
+  expect(simulation.tools.map((tool) => tool.tool)).toEqual(["Simulation"]);
+  expect(simulation.totalCost.totalCost).toBe(23040);
 });
 
 test("hidden, negated, foreign and unallocated workpackages cannot add spending", () => {

@@ -123,3 +123,40 @@ test("spending summary rows use averages, complete total badges and compact mill
   await expect(monthly.getByText("EUR", { exact: true })).toHaveCount(18);
   await expect(dialog.getByText("Heatmap Scale:", { exact: true })).toHaveCount(0);
 });
+
+test("Other spending appears only for an allocated team in both timeline and graphs", async ({ page }) => {
+  let dialog = await openSpending(page, "tool=Simulation");
+  await expect(dialog.getByText("Other Work", { exact: true })).toHaveCount(0);
+  await expect(dialog.getByRole("button", { name: "Other", exact: true })).toHaveCount(0);
+  await expect(dialog.getByText("€ 23,040", { exact: true }).first()).toBeVisible();
+  await dialog.getByRole("button", { name: "Graph View", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: /Focus Other/ })).toHaveCount(0);
+  dialog = await openSpending(page, "tool=KPI");
+  await expect(dialog.getByText("Other Work", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("€ 37,920", { exact: true }).first()).toBeVisible();
+});
+
+test("production project cost and spending scope agree when Other belongs to a different team", async ({ page }) => {
+  await page.goto("/");
+  await page.locator('[draggable="true"]').filter({ hasText: "Config Manager" }).first()
+    .dragTo(page.getByRole("heading", { name: "GM", exact: true }));
+  await page.getByRole("button", { name: "Confirm & Place in Project", exact: true }).click();
+  await page.getByTitle("KPI Team View").click();
+  await page.getByRole("button", { name: "Open KPI Combined Team Timeline" }).click();
+  const timeline = page.getByRole("dialog");
+  await timeline.getByRole("button", { name: 'Include "Other" WPs', exact: true }).click();
+  await timeline.getByTitle("Drag and drop Alex Novak onto any activity above to allocate", { exact: true })
+    .dragTo(timeline.getByText("Config Manager", { exact: true }));
+  await timeline.getByRole("button", { name: "Save & Close", exact: true }).click();
+  const button = page.getByRole("button", { name: /Project cost:/ }).first();
+  const allocatedCost = await button.innerText();
+  expect(allocatedCost).not.toBe("€0");
+  await button.click();
+  await expect(page.getByRole("dialog").getByText("Config Manager", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Close project spending", exact: true }).click();
+  await page.getByTitle("Simulation Team View").click();
+  await expect(button).toHaveText("€0");
+  await button.click();
+  await expect(page.getByRole("dialog").getByText("Config Manager", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("dialog").getByText("€ 0", { exact: true }).first()).toBeVisible();
+});

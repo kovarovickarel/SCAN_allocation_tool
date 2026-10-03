@@ -65,7 +65,10 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
     const required = lifecycle.map((month, index) => round2((card.customCoreFTE?.[index] ?? month.totalFTE) +
       (support === 0 ? 0 : round2((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings)))));
     return buildTrack(card, required, project, members, fteCosts);
-  });
+  }).filter((track) => activeToolView === "all" || track.tool !== "Other" ||
+    track.members.some(({ member }) => member?.tool === activeToolView));
+  // Member tracks contain only positive allocations during active workpackage months.
+  const workpackageCount = tracks.length;
   // The parent supplies the same scoped overheads that feed its total cost badge.
   for (const overhead of overheads) {
     const required = Array.from({ length: project.duration }, (_, month) => project.customMgmtMonthlyFTE?.[overhead.tool]?.[month] ?? overhead.fte);
@@ -94,5 +97,5 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
   const managementMonthlyCosts = Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
     tracks.filter((track) => track.isManagement).map((track) => track.monthlyCosts[month]), fteCosts.currency));
   return { tools, monthlyCosts, cumulativeCosts, engineeringCostsByTool, engineeringMonthlyCosts, managementMonthlyCosts,
-    totalCost, workpackageCount: scopedCards.length };
+    totalCost, workpackageCount };
 }
