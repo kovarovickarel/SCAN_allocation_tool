@@ -728,7 +728,7 @@ export const FunctionCard = memo(function FunctionCard({
             Unused (0 FTE)
           </span>
         )}
-        {allocatedMembers.length > 0 && (
+        {!isBasicMode && allocatedMembers.length > 0 && (
           <div className="ml-auto flex flex-wrap items-center justify-end gap-0.5 min-w-0 max-w-full">
             {allocatedMembers.map((member) => (
               <span
@@ -835,7 +835,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
                   </span>
                 </div>
               </div>
-              {allocatedMembers.length > 0 && (
+              {!isBasicMode && allocatedMembers.length > 0 && (
                 <div className="flex flex-wrap items-center justify-end gap-0.5 mt-1 min-w-0">
                   {allocatedMembers.map((member) => (
                     <span key={member.id} className={`inline-flex items-center gap-0.5 px-0.5 py-0.5 text-[10.5px] font-bold tracking-tight shrink-0 ${rowTextColor}`} title={`${member.firstName} ${member.lastName}`}>

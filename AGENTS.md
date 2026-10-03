@@ -36,7 +36,7 @@ The project began as a client-provided monolithic TSX application. Its original 
 
 ### Feature components
 
-- `src/components/features/WorkpackageComponents.tsx`: workpackage cards and editing, tool rows, unassigned pool, and management overhead summaries. Basic app mode hides allocated-member silhouettes and coverage status icons in workpackage cards and management support summaries while retaining member initials and existing expanded coverage percentages. Compact cards omit the empty coverage indicator in Basic mode.
+- `src/components/features/WorkpackageComponents.tsx`: workpackage cards and editing, tool rows, unassigned pool, and management overhead summaries. Basic app mode hides allocated-member silhouettes, member initials, and coverage status icons in workpackage cards and management support summaries while retaining existing expanded coverage percentages. Compact cards omit the empty coverage indicator in Basic mode.
 - `src/components/features/ProjectComponents.tsx`: project cards/basket, project creation, hidden-tool/subcategory controls, and assignment of custom `Other` workpackages.
 - `src/components/features/TeamComponents.tsx`: team member pool and add/edit member dialog.
 - `src/components/features/ProjectTimelineModal.tsx`: project-level monthly staffing and effort timeline.
