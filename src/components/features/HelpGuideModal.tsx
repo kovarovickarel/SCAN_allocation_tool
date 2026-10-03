@@ -120,7 +120,7 @@ export function HelpGuideModal({
                   <span>3-Level Drag-and-Drop Staffing Allocations</span>
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-3">
-                  In the Team Combined Timeline, you can drag any team member from the <strong>Personal Staffing Capacity</strong> section at the bottom onto workpackages using three distinct precision levels:
+                  In the Team Combined Timeline, you can drag any team member from the <strong>Personal Staffing</strong> section at the bottom onto workpackages using three distinct precision levels:
                 </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 text-slate-600">
                   <div className={`p-3 ${isRetro ? "bg-white border border-black shadow-[1px_1px_0px_#000]" : "rounded-lg bg-emerald-50/80 border border-emerald-200"}`}>
@@ -180,7 +180,7 @@ export function HelpGuideModal({
               }`}>
                 <h3 className="font-bold text-slate-900 text-sm mb-1.5 flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-purple-700 inline-block" />
-                  <span>Personal Staffing Capacity Heatmap</span>
+                  <span>Personal Staffing Heatmap</span>
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-2.5">
                   Placed directly below all projects in the combined timeline, this section provides an individual month-by-month workload audit for every member in the team:
@@ -331,7 +331,7 @@ export function HelpGuideModal({
                   <li><strong>Total Team Staffing Needed:</strong> Below 95% of team capacity uses the usual color. From 95% through 105%, inclusive, the number is orange. Above 105%, the number is red and the cell has a red tint.</li>
                   <li><strong>Project rows:</strong> Required monthly FTE is red when it exceeds the team&apos;s total capacity.</li>
                   <li><strong>Workpackage cells:</strong> Show the percentage covered and remaining FTE. A dot marks months with no workpackage effort, using the same appearance as months outside the project.</li>
-                  <li><strong>Personal Staffing Capacity:</strong> Shows the team&apos;s used capacity every month, including 0% when there are no allocations. Individual member cells show their own utilization; hover for the project and activity breakdown.</li>
+                  <li><strong>Personal Staffing:</strong> Shows the team&apos;s used capacity every month, including 0% when there are no allocations. Individual member cells show their own utilization; hover for the project and activity breakdown.</li>
                 </ul>
               </div>
               <div className={`p-4 shadow-2xs ${

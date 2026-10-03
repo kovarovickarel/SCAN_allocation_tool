@@ -416,14 +416,14 @@ export const FunctionCard = memo(function FunctionCard({
   const isNegated = Boolean(card._isNegated);
   const isAltered = Boolean(card._isAltered);
   const finishMsDef = card.otherFinishMilestone ? MILESTONE_MAP[card.otherFinishMilestone] : null;
-  const coverageIndicator = isAssigned ? (
+  const coverageIndicator = isAssigned && (!isBasicMode || !isCompact) ? (
     <span className={`inline-flex items-center justify-center gap-1 shrink-0 ${isCompact ? "p-0.5" : ""}`} title={`Overall workpackage coverage: ${card._coveragePct ?? 0}%`}>
       {!isCompact && (
         <span className={`text-[11px] font-mono font-bold ${isRetro ? "text-black" : "text-slate-700"}`}>
           {card._coveragePct ?? 0}%
         </span>
       )}
-      <WorkpackageCoverageBadge coveragePct={card._coveragePct ?? 0} isMaintenanceOnlyUncovered={card._isMaintenanceOnlyUncovered} size={isCompact ? 11 : 16} />
+      {!isBasicMode && <WorkpackageCoverageBadge coveragePct={card._coveragePct ?? 0} isMaintenanceOnlyUncovered={card._isMaintenanceOnlyUncovered} size={isCompact ? 11 : 16} />}
     </span>
   ) : null;
 
@@ -736,7 +736,7 @@ export const FunctionCard = memo(function FunctionCard({
                 className={`inline-flex items-center gap-0.5 px-0.5 py-0.5 text-[10.5px] font-bold tracking-tight shrink-0 ${isRetro ? "text-black font-mono" : "text-slate-700"}`}
                 title={`${member.firstName} ${member.lastName}`}
               >
-                <PersonIcon role={member.role} toolName={member.tool} size={14} isCrossTeam={crossTeamMemberIds.has(member.id)} />
+                {!isBasicMode && <PersonIcon role={member.role} toolName={member.tool} size={14} isCrossTeam={crossTeamMemberIds.has(member.id)} />}
                 <span>{`${member.firstName?.[0] || ""}${member.lastName?.[0] || ""}`.toUpperCase()}</span>
               </span>
             ))}
@@ -831,7 +831,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
                   <WorkpackageCostLabel cost={allocationCost} tone="management" />
                   <span className="inline-flex items-center gap-1 shrink-0" title={`Overall management support coverage: ${coveragePct}%`}>
                     <span className={`text-[11px] font-mono font-bold ${fteTextColor}`}>{coveragePct}%</span>
-                    <WorkpackageCoverageBadge coveragePct={coveragePct} />
+                    {!isBasicMode && <WorkpackageCoverageBadge coveragePct={coveragePct} />}
                   </span>
                 </div>
               </div>
@@ -839,7 +839,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
                 <div className="flex flex-wrap items-center justify-end gap-0.5 mt-1 min-w-0">
                   {allocatedMembers.map((member) => (
                     <span key={member.id} className={`inline-flex items-center gap-0.5 px-0.5 py-0.5 text-[10.5px] font-bold tracking-tight shrink-0 ${rowTextColor}`} title={`${member.firstName} ${member.lastName}`}>
-                      <PersonIcon role={member.role} toolName={member.tool} size={14} isCrossTeam={crossTeamMemberIds.has(member.id)} />
+                      {!isBasicMode && <PersonIcon role={member.role} toolName={member.tool} size={14} isCrossTeam={crossTeamMemberIds.has(member.id)} />}
                       <span>{`${member.firstName?.[0] || ""}${member.lastName?.[0] || ""}`.toUpperCase()}</span>
                     </span>
                   ))}

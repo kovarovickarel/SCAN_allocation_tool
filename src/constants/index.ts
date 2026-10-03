@@ -495,3 +495,18 @@ export const PHASE_LABEL_MAP = Object.freeze({
   Mgmt: "MGMT",
 });
 
+
+// Compact tool names used in team timeline staffing headers.
+export const TOOL_ABBREVIATIONS: Record<string, string> = {
+  KPI: "KPI",
+  "Data Factory": "DF",
+  "Vehicle Tooling": "Vehicle",
+  Visualization: "VISU",
+  Reprocessing: "REPROC",
+  "Range & Accuracy": "R & A",
+  "SYS.4": "SYS.4",
+  "SYS.5": "SYS.5",
+  "SysVal Operations": "SYV OPS",
+  Simulation: "SIMUL",
+  Other: "Other",
+};

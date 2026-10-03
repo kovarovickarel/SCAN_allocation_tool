@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, round2 } from "../../constants";
+import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, round2 } from "../../constants";
 import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, calculateWorkpackageAllocationCost, formatMemberMonthlyAllocationCost, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
 import { DEFAULT_FTE_COSTS } from "../../constants";
 import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
@@ -2351,7 +2351,7 @@ export function TeamTimelineModal({
                     </button>
                     <span className={`w-2 h-2 ${isRetro ? "bg-black" : "rounded-full bg-cyan-400 animate-pulse"} inline-block shrink-0`} />
                     <span className={`text-[11px] font-black uppercase tracking-wider ${isRetro ? "text-black font-mono" : "text-cyan-300"} truncate`}>
-                      PERSONAL STAFFING CAPACITY ({toolName.toUpperCase()})
+                      PERSONAL STAFFING ({(TOOL_ABBREVIATIONS[toolName] || toolName).toUpperCase()})
                     </span>
                   </div>
                 </div>
