@@ -102,6 +102,7 @@ test("switching views preserves timeline expansion and the toggle keeps matching
   expect(t.x).toBeGreaterThan(e.x);
   expect(c.x).toBeGreaterThan(t.x);
   await expand.click();
+  await page.getByRole("button", { name: "Expanded Spending", exact: true }).click();
   await toggle.click();
   await expect(page.getByRole("button", { name: "Timeline View", exact: true }).locator("svg rect")).toHaveCount(1);
   await page.getByRole("button", { name: "Timeline View", exact: true }).click();

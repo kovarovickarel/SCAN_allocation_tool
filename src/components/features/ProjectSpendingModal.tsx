@@ -1,10 +1,10 @@
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { ThemeContext, DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, PROJECT_TYPE_COLORS, TOOL_MAP, MILESTONES_DEF, COMPLEXITY_COLORS } from "../../constants";
+import { ThemeContext, DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, PROJECT_TYPE_COLORS, TOOL_MAP, TOOL_ICON_COLORS, MILESTONES_DEF, COMPLEXITY_COLORS, FOOTPRINT_MAP } from "../../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
   TeamMemberRecord, WorkpackageAllocationCost, WorkpackageCard } from "../../types";
 import { calculateProjectSpending } from "../../utils/projectSpending";
 import { getCrossTeamMemberIds } from "../../utils/memberAllocations";
-import { computeWorkpackageLifecycleTimeline, getFTEGradientStyle, normalizeMilestones } from "../../utils/helpers";
+import { computeWorkpackageLifecycleTimeline, normalizeMilestones } from "../../utils/helpers";
 import { useEuroCostConversion } from "../../hooks/useEuroCostConversion";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { CalendarGanttIcon, ChevronDownIcon, ChevronRightIcon, ManagementIcon, ToolIcon } from "../ui/icons";
@@ -12,6 +12,7 @@ import { PersonIcon } from "../ui/PersonIcon";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { ProjectSpendingCharts } from "../ui/ProjectSpendingCharts";
+import { SpendingCellAmount } from "../ui/SpendingCellAmount";
 
 interface ProjectSpendingModalProps {
   project: AllocationProject;
@@ -43,6 +44,9 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
   const [collapsedTools, setCollapsedTools] = useState<Set<string>>(new Set());
   const [expandedTracks, setExpandedTracks] = useState<Set<string>>(new Set());
   const [graphView, setGraphView] = useState(false);
+  const memberTracks = spending.tools.flatMap((tool) => tool.tracks.filter((track) => track.members.length > 0));
+  const allSpendingExpanded = memberTracks.length > 0 && memberTracks.every((track) => expandedTracks.has(track.id));
+  const allSpendingCollapsed = memberTracks.every((track) => !expandedTracks.has(track.id));
   const crossTeamIds = useMemo(() => getCrossTeamMemberIds(members), [members]);
   const monthLabels = useMemo(() => {
     const [year, month] = (project.startDate || "2026-01").split("-").map(Number);
@@ -60,20 +64,28 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
     return [card.id, computeWorkpackageLifecycleTimeline(card, project, rates, options.reusabilityFactors, options.stabilityFactors, false, project.duration)];
   })), [options.cards, options.toolFteRates, options.fteRates, options.reusabilityFactors, options.stabilityFactors, project]);
   const total = spending.totalCost;
+  const averageMonthlyCost = {
+    ...total,
+    totalCost: total.totalCost / project.duration,
+    allocatedHours: total.allocatedHours / project.duration,
+    unpricedHours: total.unpricedHours / project.duration,
+  };
   const peak = Math.max(0, ...spending.monthlyCosts.map((cost) => cost.totalCost));
   const peakIndex = spending.monthlyCosts.findIndex((cost) => cost.totalCost === peak);
   const peakCost = spending.monthlyCosts[peakIndex] || total;
-  const heatmapMax = Math.max(0, ...spending.tools.flatMap((tool) => tool.tracks.flatMap((track) => track.monthlyCosts.map((cost) => cost.totalCost))));
   const buttonClass = isRetro
     ? "px-2.5 py-1 text-[11px] font-bold font-mono bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black cursor-pointer"
     : "px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded cursor-pointer";
 
-  const amount = (cost: WorkpackageAllocationCost, prefix = false) => {
+  const amount = (cost: WorkpackageAllocationCost, prefix = false, abbreviateMillions = false) => {
     if (cost.unpricedHours > 0 && cost.totalCost === 0) return "N/A";
     if (cost.totalCost > 0 && rate === null) return conversionFailed ? "N/A" : "…";
     const value = cost.totalCost * (rate ?? 1);
     if (!Number.isFinite(value)) return "N/A";
-    return `${prefix ? "€ " : ""}${value.toLocaleString("en-US", { maximumFractionDigits: 0 })}${cost.unpricedHours > 0 ? "*" : ""}`;
+    const formattedValue = abbreviateMillions && Math.round(value) >= 1_000_000
+      ? `${(value / 1_000).toLocaleString("en-US", { useGrouping: false, maximumFractionDigits: 0 })}k`
+      : value.toLocaleString("en-US", { maximumFractionDigits: 0 });
+    return `${prefix ? "€ " : ""}${formattedValue}${cost.unpricedHours > 0 ? "*" : ""}`;
   };
   const tooltip = (cost: WorkpackageAllocationCost) => [
     `${cost.allocatedHours.toLocaleString("en-US", { maximumFractionDigits: 2 })} allocated hours.`,
@@ -85,11 +97,12 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
     if (next.has(id)) next.delete(id); else next.add(id);
     return next;
   });
-  const totalBadge = (cost: WorkpackageAllocationCost, management = false, cumulative = false) => <span title={tooltip(cost)}
+  const totalBadge = (cost: WorkpackageAllocationCost, management = false, cumulative = false, workpackage = false) => <span title={tooltip(cost)}
     className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border shrink-0 shadow-2xs whitespace-nowrap ${
-      cumulative ? (isRetro ? "bg-white text-pink-500 border-black shadow-[1px_1px_0px_#000]" : "bg-pink-50 text-pink-500 border-pink-300")
-        : isRetro ? "bg-white text-black border-black shadow-[1px_1px_0px_#000]" : management
-        ? "bg-amber-50 text-purple-800 border-purple-300" : "bg-white/80 border-black/10 text-gray-800"}`}>
+      cumulative ? (isRetro ? "bg-[#fcdae9] text-pink-500 border-black shadow-[1px_1px_0px_#000]" : "bg-[#fcdae9] text-pink-500 border-pink-300")
+        : isRetro ? `${workpackage ? "bg-[#ffffcc]" : "bg-white"} ${management ? "text-purple-800 border-purple-800" : "text-black border-black"} shadow-[1px_1px_0px_#000]` : management
+        ? "bg-amber-100 text-purple-800 border-purple-300" : workpackage
+        ? "bg-amber-100 text-amber-900 border-amber-300" : "bg-white/80 border-black/10 text-gray-800"}`}>
     {amount(cost, true)}
   </span>;
   const moneyCells = (costs: WorkpackageAllocationCost[],
@@ -99,25 +112,20 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
       style={monthGridStyle}>
     {costs.map((cost, index) => {
       const phase = track?.isManagement ? "MGMT" : track ? phases.get(track.id)?.[index]?.shortPhase : undefined;
-      const neighborPhase = (month: number) => track?.isManagement ? "MGMT" : track ? phases.get(track.id)?.[month]?.shortPhase : undefined;
-      const connectedBefore = tone === "track" && Boolean(phase) && index > 0 && costs[index - 1].allocatedHours > 0 && neighborPhase(index - 1) === phase;
-      const connectedAfter = tone === "track" && Boolean(phase) && index < costs.length - 1 && costs[index + 1].allocatedHours > 0 && neighborPhase(index + 1) === phase;
-      const rounded = isRetro ? "rounded-none" : `${connectedBefore ? "rounded-l-none" : "rounded-l-md"} ${connectedAfter ? "rounded-r-none" : "rounded-r-md"}`;
       const cellTitle = `${monthLabels[index]} · ${phase ? `${phase.toUpperCase()} · ` : ""}${tooltip(cost)}`;
       if (tone === "total" || tone === "cumulative" || tone === "tool") return <div key={index} title={cellTitle}
-        className={`p-1.5 text-center flex flex-col items-center justify-center leading-tight font-mono font-bold min-w-0 ${tone === "total" ? "text-[11px]" : "text-[10px]"} ${
-          tone === "cumulative" ? "text-pink-500" : isRetro ? "text-black" : tone === "total" ? "text-emerald-400" : "text-current"}`}>
-        <span className="max-w-full truncate">{amount(cost)}</span>
-        {tone === "total" && <span className={`text-[8px] font-normal ${isRetro ? "text-slate-700" : "text-slate-400"}`}>EUR</span>}
+        className={`p-1.5 text-center flex flex-col items-center justify-center leading-tight font-mono font-bold min-w-0 ${tone === "total" || tone === "cumulative" ? "text-[11px]" : "text-[10px]"} ${
+          tone === "cumulative" ? "text-pink-500" : tone === "total" ? "text-yellow-500" : isRetro ? "text-black" : "text-current"}`}>
+        <span className="max-w-full truncate">{amount(cost, false, true)}</span>
+        {(tone === "total" || tone === "cumulative" || tone === "tool") && <span className={`text-[8px] font-normal ${tone === "cumulative" ? "text-pink-500" : tone === "total" ? "text-yellow-500" : "text-current"}`}>EUR</span>}
       </div>;
-      return <div key={index} className={`h-full flex items-center justify-center p-0.5 ${!connectedAfter && index < costs.length - 1 ? "pr-1" : ""}`}>
+      return <div key={index} className={`h-full flex items-center justify-center p-0.5 ${index < costs.length - 1 ? "pr-1" : ""}`}>
         {cost.allocatedHours === 0 ? <span title={cellTitle} className={`text-[10px] font-mono ${isRetro ? "text-black/40" : "text-slate-300"}`}>·</span> : <div
-          title={cellTitle} style={isRetro ? undefined : getFTEGradientStyle(cost.totalCost, false, heatmapMax || 1, tone === "member")}
-          className={`w-full h-8 ${rounded} border relative flex flex-col items-center justify-center select-none shadow-2xs ${
-            isRetro ? "bg-white text-black border-black font-mono" : ""} ${connectedBefore ? "border-l-0" : ""} ${connectedAfter ? "border-r border-dashed border-white/25" : ""}`}>
-          {(connectedBefore || connectedAfter) && <div className="absolute top-0.5 left-0 right-0 h-[2px] bg-white/45" />}
-          <span className="text-[9px] font-mono font-black leading-none max-w-full px-0.5 truncate">{amount(cost)}</span>
-          {phase && <span className="text-[7px] font-bold uppercase tracking-wider opacity-90 leading-none mt-0.5">{phase}</span>}
+          title={cellTitle}
+          className={`w-full h-8 border flex items-center justify-center select-none shadow-2xs ${
+            isRetro ? "rounded-none bg-[#ffffcc] text-black border-black font-mono" : "rounded-md bg-amber-100 text-amber-900 border-amber-300"}`}>
+          <SpendingCellAmount text={amount(cost, true).replace("€ ", "€")}
+            fontSize={tone === "track" ? 10 : 9} fontWeight={tone === "track" ? 900 : 400} />
         </div>}
       </div>;
     })}
@@ -131,19 +139,23 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
       <div className={`grid items-center min-h-[44px] border-b transition-colors ${isRetro ? "border-black bg-white" : track.isManagement ? "border-purple-100 bg-purple-50/60 hover:bg-purple-100/50" : "border-slate-100 bg-white/60 hover:bg-white/90"}`} style={gridStyle}>
         <div className={`p-2 pl-7 border-r h-full min-w-0 flex flex-col justify-center ${isRetro ? "border-black" : track.isManagement ? "border-slate-200" : tool?.border || "border-slate-200"}`}>
           <div className="flex items-center gap-1.5 min-w-0">
-          {track.members.length > 0 ? <button type="button" className="p-0.5 cursor-pointer shrink-0" aria-expanded={expanded}
-            aria-label={`${expanded ? "Collapse" : "Expand"} spending by member for ${track.name}`} onClick={() => toggle(setExpandedTracks, track.id)}>
-            {expanded ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}
-          </button> : <span className="w-4 shrink-0" />}
           {track.isManagement ? <ManagementIcon size={13} className={isRetro ? "text-black" : "text-purple-700"} /> : <span className={`w-1.5 h-1.5 rounded-full ${complexity?.dot || "bg-blue-500"} shrink-0`} />}
           <span className={`text-[11px] font-bold truncate leading-tight ${isRetro ? "text-black font-mono" : "text-slate-800"}`} title={track.name}>{track.name}</span>
+          {track.members.length > 0 && <button type="button" aria-expanded={expanded}
+            className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 border transition-colors cursor-pointer shrink-0 whitespace-nowrap ${isRetro
+              ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
+              : expanded ? "bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 rounded"
+              : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 rounded"}`}
+            aria-label={`${expanded ? "Collapse" : "Expand"} spending by member for ${track.name}`} onClick={() => toggle(setExpandedTracks, track.id)}>
+            {expanded ? "- Collapse" : "+ Expand"}
+          </button>}
           </div>
           <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0 pl-5">
             {card && <span className={`text-[8.5px] px-1.5 py-0.5 rounded font-semibold border ${isRetro ? "bg-white text-black border-black font-mono" : "bg-white text-gray-700 border-gray-300 shadow-2xs"}`}>
               <ReusabilityLabel card={card} factors={options.reusabilityFactors} factorOnly />
             </span>}
             {card?.subcategory && <span className={`text-[9px] px-1 py-0.5 rounded ${isRetro ? "text-black" : "text-slate-500"}`}>{card.subcategory}</span>}
-            <span className="ml-auto">{totalBadge(track.totalCost, track.isManagement)}</span>
+            <span className="ml-auto">{totalBadge(track.totalCost, track.isManagement, false, true)}</span>
           </div>
         </div>
         {moneyCells(track.monthlyCosts, "track", track)}
@@ -152,8 +164,14 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
         <div className={`pl-11 pr-2 py-1 border-r h-full min-w-0 flex items-center gap-1.5 ${isRetro ? "border-black text-black font-mono" : "border-slate-200 text-slate-700"}`}>
           <PersonIcon size={15} role={person.member?.role} toolName={person.member?.tool || track.tool} isCrossTeam={crossTeamIds.has(person.id)} />
           <span className="text-[10px] font-semibold truncate" title={person.member ? `${person.member.firstName} ${person.member.lastName}` : "Unknown member"}>{person.member ? `${person.member.firstName} ${person.member.lastName}` : "Unknown member"}</span>
-          <span className="text-[9px] font-mono text-slate-400">{person.member?.footprint || "—"}</span>
-          <span className="ml-auto">{totalBadge(person.totalCost)}</span>
+          <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.2 rounded border shrink-0 shadow-2xs ${isRetro
+            ? "bg-[#ffff80] text-black border-black shadow-[1px_1px_0px_#000]"
+            : isBasic ? "bg-slate-100 text-slate-800 border-slate-300"
+            : "bg-amber-100 text-amber-900 border-amber-300"}`}
+            title={`Footprint: ${FOOTPRINT_MAP[person.member?.footprint || ""]?.name || person.member?.footprint || "Unknown location"}`}>
+            {person.member?.footprint || "—"}
+          </span>
+          <span className="ml-auto">{totalBadge(person.totalCost, track.isManagement, false, true)}</span>
         </div>
         {moneyCells(person.monthlyCosts, "member")}
       </div>)}
@@ -175,19 +193,36 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
             </div>
             <p className={`text-xs mt-0.5 ${isRetro ? "text-slate-200" : "text-slate-400"}`}>Timeline: <strong className="text-white">{monthLabels[0]}</strong> → <strong className="text-white">{monthLabels[monthLabels.length - 1]}</strong> ({project.duration} Mo)</p>
             <div className="flex items-center gap-x-4 gap-y-1 flex-wrap mt-1 text-[10px] font-mono text-slate-400">
-              <span title={tooltip(total)}>Total: <strong className="text-emerald-400">{amount(total, true)}</strong></span>
-              <span>Avg/month: <strong className="text-slate-200">{amount({ ...total, totalCost: total.totalCost / project.duration }, true)}</strong></span>
-              <span title={peak > 0 ? monthLabels[peakIndex] : "No priced allocations yet"}>Peak: <strong className="text-slate-200">{amount(peakCost, true)}</strong>{peak > 0 ? ` (${monthLabels[peakIndex]})` : ""}</span>
+              <span title={tooltip(total)}>Total: <strong className="text-pink-500">{amount(total, true)}</strong></span>
+              <span>Avg/month: <strong className="text-yellow-500">{amount({ ...total, totalCost: total.totalCost / project.duration }, true)}</strong></span>
+              <span title={peak > 0 ? monthLabels[peakIndex] : "No priced allocations yet"}>Peak: <strong className="text-red-500">{amount(peakCost, true)}</strong>{peak > 0 ? ` (${monthLabels[peakIndex]})` : ""}</span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {!graphView && <><button type="button" className={buttonClass} onClick={() => {
-            setCollapsedTools(new Set()); setExpandedTracks(new Set(spending.tools.flatMap((tool) => tool.tracks.map((track) => track.id))));
-          }}>Expand All</button>
-          <button type="button" className={buttonClass} onClick={() => {
-            setCollapsedTools(new Set(spending.tools.map((tool) => tool.tool))); setExpandedTracks(new Set());
-          }}>Collapse All</button></>}
+          {!graphView && <>
+          <div role="group" aria-label="Spending tracks" className={`flex items-center p-0.5 text-[10px] ${isRetro
+            ? "bg-[#d4d0c8] border-2 border-t-black border-l-black border-b-white border-r-white text-black font-mono"
+            : "bg-slate-800 rounded-lg border border-slate-700"}`}>
+            <span className={`${isRetro ? "text-black" : "text-slate-400"} px-2 font-bold uppercase tracking-wider text-[9px] whitespace-nowrap`}>Spending Tracks:</span>
+            {[{ expanded: true, label: "Expanded Spending", active: allSpendingExpanded },
+              { expanded: false, label: "Collapsed Spending", active: allSpendingCollapsed }].map((control) => <button
+                key={control.label} type="button" aria-label={control.label} aria-pressed={control.active} disabled={memberTracks.length === 0}
+                onClick={() => setExpandedTracks(new Set(control.expanded ? memberTracks.map((track) => track.id) : []))}
+                title={`${control.expanded ? "Expand" : "Collapse"} individual member spending tracks under every workpackage, including management support`}
+                className={`px-2 py-1 font-bold transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-default ${isRetro
+                  ? control.active ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000]" : "text-black hover:bg-black/10"
+                  : control.active ? "bg-indigo-600 text-white shadow-xs rounded" : "text-slate-300 hover:text-white rounded"}`}>
+                {control.expanded ? "+ Expand" : "- Collapse"}
+              </button>)}
+          </div>
+          <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
+          <button type="button" className={buttonClass} aria-label="Expand All" title="Expand all tool rows" onClick={() => {
+            setCollapsedTools(new Set());
+          }}>+ Expand</button>
+          <button type="button" className={buttonClass} aria-label="Collapse All" title="Collapse all tool rows" onClick={() => {
+            setCollapsedTools(new Set(spending.tools.map((tool) => tool.tool)));
+          }}>- Collapse</button></>}
           <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
           <button type="button" className={`inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 focus-visible:outline-offset-2 ${isRetro
             ? "font-mono bg-purple-950 hover:bg-purple-900 text-yellow-300 border-2 border-t-purple-300 border-l-purple-300 border-b-purple-900 border-r-purple-900 shadow-[1px_1px_0px_#000]"
@@ -237,18 +272,32 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
               })}
             </div>
           </div>
+          <div className={`grid border-b-2 font-bold text-xs ${isRetro ? "bg-[#ffffec] border-black font-mono" : "bg-pink-50 border-pink-200"}`} style={gridStyle}>
+            <div className={`p-2.5 pl-4 border-r flex items-center justify-between gap-2 text-pink-500 ${isRetro ? "border-black" : "border-pink-200"}`}>
+              <span className="text-[11px] font-black uppercase tracking-wider">Cumulative Spending</span>
+              <span className="inline-flex items-center gap-1 shrink-0">
+                <span className="text-[10px] font-mono font-bold">Total</span>
+                {totalBadge(total, false, true)}
+              </span>
+            </div>
+            {moneyCells(spending.cumulativeCosts, "cumulative")}
+          </div>
           <div className={`grid border-b-2 font-bold text-xs sticky top-[81px] z-[15] shadow-sm ${isRetro ? "border-black bg-[#ffffc0] text-black font-mono" : "border-indigo-900 bg-slate-950 text-white"}`} style={gridStyle}>
             <div className={`p-2.5 pl-4 border-r flex items-center justify-between gap-2 ${isRetro ? "border-black bg-[#ffffb0] text-black" : "border-slate-800 bg-slate-950"}`}>
-              <span className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${isRetro ? "text-black" : "text-emerald-400"}`}>
-                <span className={`w-2 h-2 ${isRetro ? "bg-black" : "rounded-full bg-emerald-400 animate-pulse"} inline-block shrink-0`} />Monthly Spending
+              <span className="text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 text-yellow-500">
+                Monthly Spending
               </span>
-              {totalBadge(total)}
+              <span className="inline-flex items-center gap-1 shrink-0">
+                <span className="text-[10px] font-mono font-bold text-yellow-500">Avg</span>
+                <span title={`Average monthly spending over ${project.duration} months. ${tooltip(averageMonthlyCost)}`}
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 border shrink-0 whitespace-nowrap ${isRetro
+                    ? "bg-[#ffffcc] text-black border-black rounded-none shadow-[1px_1px_0px_#000]"
+                    : "bg-amber-100 text-amber-900 border-amber-300 rounded shadow-2xs"}`}>
+                  {amount(averageMonthlyCost, true)}
+                </span>
+              </span>
             </div>
             {moneyCells(spending.monthlyCosts, "total")}
-          </div>
-          <div className={`grid border-b ${isRetro ? "bg-[#ffffec] border-black" : "bg-pink-50 border-pink-200"}`} style={gridStyle}>
-            <div className={`px-4 py-2.5 text-[11px] font-bold border-r flex items-center justify-between text-pink-500 ${isRetro ? "border-black" : "border-pink-200"}`}>Cumulative Spending {totalBadge(total, false, true)}</div>
-            {moneyCells(spending.cumulativeCosts, "cumulative")}
           </div>
           {spending.tools.map((tool) => {
             const definition = TOOL_MAP[tool.tool];
@@ -264,7 +313,12 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
                 <ToolIcon toolName={tool.tool} size={13} className="shrink-0 text-current opacity-85" />
                 <span className="text-xs font-black uppercase tracking-wider truncate">{tool.tool}</span>
                 </span>
-                {totalBadge(tool.totalCost)}
+                <span title={tooltip(tool.totalCost)}
+                  className={`text-[10px] font-mono font-bold px-1.5 py-0.5 border border-current shrink-0 whitespace-nowrap ${(TOOL_ICON_COLORS as Record<string, string>)[tool.tool] || "text-slate-600"} ${isRetro
+                    ? "bg-[#ffffcc] rounded-none shadow-[1px_1px_0px_#000]"
+                    : "bg-amber-100 rounded shadow-2xs"}`}>
+                  {amount(tool.totalCost, true)}
+                </span>
               </button>
               {moneyCells(tool.monthlyCosts, "tool")}
             </div>
@@ -274,18 +328,7 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
           {spending.tools.length === 0 && <div className={`px-5 py-10 text-sm text-slate-500 ${isRetro ? "bg-white" : "bg-slate-50"}`}>No active workpackages in this project view yet.</div>}
         </div>}
       </div>
-      <div className={`flex flex-wrap items-center justify-between gap-3 text-xs shrink-0 ${isRetro ? "bg-[#d4d0c8] border-t-2 border-white px-5 py-3 font-mono text-black" : "bg-slate-50 border-t border-slate-200 px-6 py-3"}`}>
-        <div className="flex flex-col gap-1.5 min-w-0">
-          {!graphView && <div className="flex items-center flex-wrap gap-4">
-            <span className={`font-bold uppercase text-[10px] tracking-wider ${isRetro ? "text-black font-mono" : "text-slate-700"}`}>Heatmap Scale:</span>
-            <div className="flex items-center gap-2" title="Monthly spending per workpackage: green is lower, red is higher. Member rows use purple.">
-              <span className={`text-[11px] font-mono font-bold ${isRetro ? "text-black" : "text-emerald-700"}`}>€ 0</span>
-              <div className={`w-36 h-3 ${isRetro ? "border-2 border-black rounded-none shadow-[1px_1px_0px_#000]" : "rounded-full border border-slate-300 shadow-inner"}`}
-                style={{ background: "linear-gradient(to right, rgb(34, 197, 94), rgb(234, 200, 24) 50%, rgb(239, 68, 68))" }} />
-              <span className={`text-[11px] font-mono font-bold ${isRetro ? "text-black" : "text-red-600"}`}>{amount({ ...total, totalCost: heatmapMax, unpricedHours: 0 }, true)}</span>
-            </div>
-          </div>}
-        </div>
+      <div className={`flex flex-wrap items-center justify-end gap-3 text-xs shrink-0 ${isRetro ? "bg-[#d4d0c8] border-t-2 border-white px-5 py-3 font-mono text-black" : "bg-slate-50 border-t border-slate-200 px-6 py-3"}`}>
         <button type="button" onClick={onClose} className={`font-bold px-4 py-1.5 text-xs transition-colors cursor-pointer ${isRetro ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black hover:bg-[#e0e0e0]" : "bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg"}`}>Close</button>
       </div>
     </div>
