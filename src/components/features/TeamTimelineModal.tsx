@@ -293,7 +293,7 @@ export function TeamTimelineModal({
           mgmtRow = {
             toolName,
             allocationCost: calculateWorkpackageAllocationCost({
-              id: `${p.id}_mgmt_${toolName}`, name: "Management Support Overhead", tool: toolName,
+              id: `${p.id}_mgmt_${toolName}`, name: "Management Support", tool: toolName,
               _isMgmt: true, memberAssignments: mgmtAssignments, memberMonthlyAssignments: mgmtMonthly,
             }, pDur, monthEffort.map((month) => month.totalFTE), allMembers, fteCosts),
             fte: toolOverhead.fte,
@@ -302,7 +302,7 @@ export function TeamTimelineModal({
             alignedMgmtCells,
             syntheticCard: {
               id: `${p.id}_mgmt_${toolName}`,
-              name: "Management Support Overhead",
+              name: "Management Support",
               tool: toolName,
               _fte: toolOverhead.fte,
               _isMgmt: true,
@@ -1195,6 +1195,7 @@ export function TeamTimelineModal({
               <button
                 type="button"
                 onClick={() => setAllMemberTracks(true)}
+                aria-label="Expanded Allocation"
                 aria-pressed={allMemberTracksExpanded}
                 className={`px-2 py-1 font-bold transition-all cursor-pointer ${
                   isRetro
@@ -1207,11 +1208,12 @@ export function TeamTimelineModal({
                 }`}
                 title="Expand individual member allocation tracks under every workpackage, including management support"
               >
-                Expanded Allocation
+                + Expand
               </button>
               <button
                 type="button"
                 onClick={() => setAllMemberTracks(false)}
+                aria-label="Collapsed Allocation"
                 aria-pressed={!allMemberTracksExpanded}
                 className={`px-2 py-1 font-bold transition-all cursor-pointer ${
                   isRetro
@@ -1224,7 +1226,7 @@ export function TeamTimelineModal({
                 }`}
                 title="Collapse individual member allocation tracks under every workpackage, including management support"
               >
-                Collapsed Allocation
+                - Collapse
               </button>
             </div>
 
@@ -1233,24 +1235,28 @@ export function TeamTimelineModal({
             <button
               type="button"
               onClick={expandAll}
+              aria-label="Expand All"
+              title="Expand all timeline sections"
               className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
                 isRetro
                   ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
                   : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
               }`}
             >
-              Expand All
+              + Expand
             </button>
             <button
               type="button"
               onClick={collapseAll}
+              aria-label="Collapse All"
+              title="Collapse all timeline sections"
               className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
                 isRetro
                   ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
                   : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
               }`}
             >
-              Collapse All
+              - Collapse
             </button>
 
             <button
@@ -1541,7 +1547,7 @@ export function TeamTimelineModal({
                                         <WorkpackageCoverageBadge coveragePct={mgmtRow.coveragePct} />
                                       </span>
                                       <ManagementIcon size={13} className="text-purple-700 self-center shrink-0" />
-                                      <span className="text-[11px] font-bold text-slate-800 truncate">Management Support Overhead</span>
+                                      <span className="text-[11px] font-bold text-slate-800 truncate">Management Support</span>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0">
                                       {assignedList.length > 0 && (
@@ -1564,7 +1570,7 @@ export function TeamTimelineModal({
                                           aria-label={isMgmtExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
                                           aria-expanded={isMgmtExpanded}
                                         >
-                                          {isMgmtExpanded ? "- Collapse Allocation" : "+ Expand Allocation"}
+                                          {isMgmtExpanded ? "- Collapse" : "+ Expand"}
                                         </button>
                                       )}
                                     </div>
@@ -1985,7 +1991,7 @@ export function TeamTimelineModal({
                                         aria-label={isWPExpanded ? "Collapse allocated team member rows" : `Expand ${assignedList.length} allocated team member row(s)`}
                                         aria-expanded={isWPExpanded}
                                       >
-                                        {isWPExpanded ? "- Collapse Allocation" : "+ Expand Allocation"}
+                                        {isWPExpanded ? "- Collapse" : "+ Expand"}
                                       </button>
                                     )}
                                   </div>
@@ -2687,14 +2693,14 @@ export function TeamTimelineModal({
             }`}>
               <div>
                 <strong>{roleWarning.memberName}</strong> cannot be allocated to{" "}
-                <strong>{roleWarning.targetType === "management" ? "Management Support Overhead" : "Engineering Workpackages"}</strong>.
+                <strong>{roleWarning.targetType === "management" ? "Management Support" : "Engineering Workpackages"}</strong>.
               </div>
               <div className={`p-2 rounded-lg border font-medium ${
                 isRetro ? "bg-white border-black" : "bg-white/80 border-rose-300/80 text-rose-900"
               }`}>
                 {roleWarning.targetType === "management"
                   ? `Only team members with Management capability (role: MGMT or ENG & MGMT) can be assigned to management overhead. ${roleWarning.memberName} currently has role ENG (Engineering only).`
-                  : `Team members with role MGMT (Management only, like ${roleWarning.memberName}) cannot be allocated to engineering workpackages. They can only be assigned to Management Support Overhead. To assign to engineering, change their role to ENG or ENG & MGMT in the team members pool.`}
+                  : `Team members with role MGMT (Management only, like ${roleWarning.memberName}) cannot be allocated to engineering workpackages. They can only be assigned to Management Support. To assign to engineering, change their role to ENG or ENG & MGMT in the team members pool.`}
               </div>
             </div>
 

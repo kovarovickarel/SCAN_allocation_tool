@@ -566,7 +566,7 @@ export const ProjectBasket = memo(function ProjectBasket({
     const monthlyEffort = Array.from({ length: project.duration }, (_, monthIdx) =>
       project.customMgmtMonthlyFTE?.[overhead.tool]?.[monthIdx] ?? overhead.fte);
     return [overhead.tool, calculateWorkpackageAllocationCost({
-      id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support Overhead", tool: overhead.tool,
+      id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support", tool: overhead.tool,
       _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
       memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {},
     }, project.duration, monthlyEffort, teamMembers, fteCosts)] as const;

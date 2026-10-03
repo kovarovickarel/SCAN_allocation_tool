@@ -149,19 +149,19 @@ test("an already covered workpackage cannot gain another member allocation", asy
 
 test("management allocations reserve engineering capacity and enforce roles", async ({ page }) => {
   const timeline = await setup(page);
-  const names = ["Lane Detection KPI", "Management Support Overhead"];
+  const names = ["Lane Detection KPI", "Management Support"];
   const demands = await Promise.all(names.map((name) => demandValues(timeline, name)));
   await drop(timeline, "Alex Novak", "Lane Detection KPI");
-  const dialog = await assignDialog(page, timeline, "Management Support Overhead");
+  const dialog = await assignDialog(page, timeline, "Management Support");
   await expect(member(dialog, "Elena Russo").locator("input")).toBeDisabled();
   await dialog.getByRole("button", { name: "Split Evenly", exact: true }).click();
   await dialog.getByRole("button", { name: "Save Allocations", exact: true }).click();
   await checkLimits(timeline, names, demands);
-  const reopened = await assignDialog(page, timeline, "Management Support Overhead");
+  const reopened = await assignDialog(page, timeline, "Management Support");
   expect(Number(await member(reopened, "Marcus Vogel").locator("input").inputValue())).toBeGreaterThan(0);
   await reopened.getByRole("button", { name: "Clear", exact: true }).click();
   await reopened.getByRole("button", { name: "Save Allocations", exact: true }).click();
-  expect(await allocationValues(timeline, "Management Support Overhead", "tm_3")).toEqual([]);
+  expect(await allocationValues(timeline, "Management Support", "tm_3")).toEqual([]);
 });
 
 test("Cancel and Escape discard only the nested dialog draft", async ({ page }) => {

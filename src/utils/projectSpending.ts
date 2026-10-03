@@ -69,7 +69,7 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
   // The parent supplies the same scoped overheads that feed its total cost badge.
   for (const overhead of overheads) {
     const required = Array.from({ length: project.duration }, (_, month) => project.customMgmtMonthlyFTE?.[overhead.tool]?.[month] ?? overhead.fte);
-    tracks.push(buildTrack({ id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support Overhead", tool: overhead.tool,
+    tracks.push(buildTrack({ id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support", tool: overhead.tool,
       projectId: project.id, _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
       memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {} }, required, project, members, fteCosts));
   }

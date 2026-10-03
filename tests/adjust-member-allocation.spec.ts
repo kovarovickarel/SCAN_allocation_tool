@@ -244,9 +244,9 @@ test("overlapping projects reserve monthly member capacity", async ({ page }) =>
 
 test("management commitments limit the engineering percentage ceiling", async ({ page }) => {
   const timeline = await setup(page);
-  await drop(timeline, "Alex Novak", "Management Support Overhead");
+  await drop(timeline, "Alex Novak", "Management Support");
   await drop(timeline, "Alex Novak", "Lane Detection KPI");
-  const mgmt = await values(timeline, "Management Support Overhead", "Alex Novak");
+  const mgmt = await values(timeline, "Management Support", "Alex Novak");
   const dialog = await editor(page, timeline, "Lane Detection KPI", "Alex Novak");
   await expect(dialog.getByRole("button", { name: "75%", exact: true })).toBeDisabled();
   await dialog.getByRole("button", { name: /^Max / }).click();
@@ -257,18 +257,18 @@ test("management commitments limit the engineering percentage ceiling", async ({
 
 test("management percentage edits obey demand and retain their maintenance preference", async ({ page }) => {
   let timeline = await setup(page);
-  const demand = await demands(timeline, "Management Support Overhead");
-  await drop(timeline, "Marcus Vogel", "Management Support Overhead");
-  let dialog = await editor(page, timeline, "Management Support Overhead", "Marcus Vogel");
+  const demand = await demands(timeline, "Management Support");
+  await drop(timeline, "Marcus Vogel", "Management Support");
+  let dialog = await editor(page, timeline, "Management Support", "Marcus Vogel");
   await expect(dialog.getByRole("button", { name: "50%", exact: true })).toBeDisabled();
   await dialog.getByRole("checkbox").uncheck();
   await dialog.getByRole("button", { name: "25%", exact: true }).click();
   await save(dialog);
-  expect(await values(timeline, "Management Support Overhead", "Marcus Vogel"))
+  expect(await values(timeline, "Management Support", "Marcus Vogel"))
     .toEqual(demand.map((month) => Math.min(0.13, month.fte)));
   await timeline.getByRole("button", { name: "Save & Close", exact: true }).click();
   timeline = await reopenTimeline(page);
-  dialog = await editor(page, timeline, "Management Support Overhead", "Marcus Vogel");
+  dialog = await editor(page, timeline, "Management Support", "Marcus Vogel");
   await expect(dialog.getByRole("checkbox")).not.toBeChecked();
   await expect(dialog.getByText("Result:", { exact: false })).toContainText("0.13 FTE");
 });

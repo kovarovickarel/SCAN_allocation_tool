@@ -608,6 +608,7 @@ export function ProjectTimelineModal({
               <button
                 type="button"
                 onClick={() => setAllSupportCollapsed(false)}
+                aria-label="Expand support tracks"
                 className={`px-2 py-1 font-bold transition-all cursor-pointer ${
                   isRetro
                     ? !globalSupportCollapsed
@@ -619,11 +620,12 @@ export function ProjectTimelineModal({
                 }`}
                 title="Separate Dev Support & Weekly Meetings as individual tracks under each workpackage"
               >
-                Itemized &amp; Separated
+                + Expand
               </button>
               <button
                 type="button"
                 onClick={() => setAllSupportCollapsed(true)}
+                aria-label="Collapse support tracks"
                 className={`px-2 py-1 font-bold transition-all cursor-pointer ${
                   isRetro
                     ? globalSupportCollapsed
@@ -635,7 +637,7 @@ export function ProjectTimelineModal({
                 }`}
                 title="Collapse support tracks into the core phase and add their FTEs directly into the core monthly cells"
               >
-                Collapsed into Core
+                - Collapse
               </button>
             </div>
 
@@ -644,24 +646,28 @@ export function ProjectTimelineModal({
             <button
               type="button"
               onClick={expandAll}
+              aria-label="Expand All"
+              title="Expand all timeline sections"
               className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
                 isRetro
                   ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
                   : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
               }`}
             >
-              Expand All
+              + Expand
             </button>
             <button
               type="button"
               onClick={collapseAll}
+              aria-label="Collapse All"
+              title="Collapse all timeline sections"
               className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
                 isRetro
                   ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
                   : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
               }`}
             >
-              Collapse All
+              - Collapse
             </button>
             <button
               type="button"
@@ -893,7 +899,7 @@ export function ProjectTimelineModal({
                                   <div className="flex items-center gap-1.5 min-w-0">
                                     <ManagementIcon size={13} className={isRetro ? "text-black" : "text-purple-700"} />
                                     <span className={`text-[11px] font-bold ${isRetro ? "text-black font-mono font-bold" : "text-slate-800"} truncate leading-tight`}>
-                                      Management Support Overhead
+                                      Management Support
                                       {mgmtRow.hasAnyMgmtOverride && <span className="text-red-600 font-black ml-1" title="Manually modified">*</span>}
                                     </span>
                                   </div>
@@ -1156,7 +1162,7 @@ export function ProjectTimelineModal({
                                                 : "Support is separated into distinct rows. Click to collapse into core phase."
                                             }
                                           >
-                                            {isWPCollapsed ? "+ Expand Support" : "- Collapse Support"}
+                                            {isWPCollapsed ? "+ Expand" : "- Collapse"}
                                           </button>
                                         )}
                                       </div>

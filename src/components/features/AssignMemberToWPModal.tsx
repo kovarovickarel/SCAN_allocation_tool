@@ -319,7 +319,7 @@ export function AssignMemberToWPModal({
                         }`}
                         title={
                           isMgmt
-                            ? `${member.firstName} ${member.lastName} has role ENG and cannot be allocated to Management Support Overhead.`
+                            ? `${member.firstName} ${member.lastName} has role ENG and cannot be allocated to Management Support.`
                             : `${member.firstName} ${member.lastName} has role MGMT (Management only) and cannot be allocated to engineering workpackages.`
                         }
                       >
