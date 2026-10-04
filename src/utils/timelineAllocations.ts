@@ -71,9 +71,9 @@ export function reconcileProjectTimelineAllocations(
       calcCardFTE(card, owner, config.fteRates, config.reusabilityFactors, config.stabilityFactors, config.toolFteRates);
     return { effort, card: { ...card, _fte: fte } };
   };
-  const oldSummaries = new Map(cards.filter((card) => card.projectId === project.id)
+  const oldSummaries = new Map(cards.filter((card) => card.projectId === project.id && card.kind !== "non-fte")
     .map((card) => [card.id, summarize(card, project)]));
-  const newSummaries = new Map(updatedCards.filter((card) => card.projectId === project.id)
+  const newSummaries = new Map(updatedCards.filter((card) => card.projectId === project.id && card.kind !== "non-fte")
     .map((card) => [card.id, summarize(card, updatedProject)]));
 
   const reconciledCards = updatedCards.map((card) => {

@@ -109,7 +109,7 @@ export function calcCardFTE(
   stabilityFactors = DEFAULT_STABILITY_FACTORS,
   toolFteRates = null
 ) {
-  if (!project || project.duration <= 0) return 0;
+  if (card.kind === "non-fte" || !project || project.duration <= 0) return 0;
   const reusabilityMultiplier = getReusabilityFactor(card, reusabilityFactors);
   const maintenanceMultiplier = getMaintenanceReusabilityFactor(card, reusabilityFactors);
   const stabilityMultiplier = stabilityFactors[project.stability] ?? 1.0;
@@ -171,6 +171,7 @@ export function calculateProjectEffort(projectCards, mgmtSettings = DEFAULT_MGMT
 
   for (let i = 0; i < projectCards.length; i++) {
     const card = projectCards[i];
+    if (card.kind === "non-fte") continue;
     const fte = card._fte ?? 0;
     engFTE += fte;
     toolSums.set(card.tool, (toolSums.get(card.tool) || 0) + fte);
@@ -264,7 +265,7 @@ export function getFTEGradientStyle(fte, isNegated = false, maxFTE = 3.0, isSupp
 }
 
 export function computeWorkpackageLifecycleTimeline(card, project, rates, reusabilityFactors, stabilityFactors, isNegated, totalDuration) {
-  if (isNegated || !project || project.duration <= 0 || (!rates && card.tool !== "Other")) {
+  if (card.kind === "non-fte" || isNegated || !project || project.duration <= 0 || (!rates && card.tool !== "Other")) {
     const dummyStyle = getFTEGradientStyle(0, true, 3.0);
     return Array.from({ length: totalDuration }, () => ({
       phaseName: "Unused / Negated",

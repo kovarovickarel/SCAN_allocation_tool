@@ -1,5 +1,11 @@
 import React from "react";
-import type { FteCostSettings, ThemeContextValue } from "../types";
+import type { FteCostSettings, ThemeContextValue, SupplierRecord } from "../types";
+
+export const DEFAULT_SUPPLIERS: readonly SupplierRecord[] = Object.freeze([
+  { id: "supplier-luxoft", name: "Luxoft" }, { id: "supplier-ts", name: "T&S" },
+  { id: "supplier-akoddis", name: "Akoddis" }, { id: "supplier-rprocess", name: "rProcess" },
+]);
+export const PURCHASE_TYPES = ["License", "Workstation", "Hardware", "Contracted workpackage"] as const;
 
 export const ThemeContext = React.createContext<ThemeContextValue>({
   theme: "vibrant",

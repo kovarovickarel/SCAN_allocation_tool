@@ -49,7 +49,7 @@ export function calculateWorkpackageAllocationCost(
   const result: WorkpackageAllocationCost = {
     currency: settings.currency, totalCost: 0, allocatedHours: 0, unpricedHours: 0, missingLocations: [],
   };
-  if (isNegated) return result;
+  if (isNegated || card.kind === "non-fte") return result;
   const memberIndex = new Map(members.map((member) => [member.id, member]));
   const allocations = resolveMonthlyMemberAllocations(card, projectDuration, requiredEffort, members);
   const missingLocations = new Set<string>();
@@ -70,12 +70,13 @@ export function calculateWorkpackageAllocationCost(
     }
   }
   result.totalCost = round2(result.totalCost);
+  if (result.purchaseCostEUR !== undefined) result.purchaseCostEUR = round2(result.purchaseCostEUR);
   result.missingLocations = [...missingLocations].sort();
   return result;
 }
 
 export function hasAllocatedCost(cost?: WorkpackageAllocationCost): cost is WorkpackageAllocationCost {
-  return Boolean(cost && cost.allocatedHours > 0 && Number.isFinite(cost.totalCost) && cost.totalCost > 0);
+  return Boolean(cost && ((cost.purchaseCostEUR ?? 0) > 0 || (cost.allocatedHours > 0 && Number.isFinite(cost.totalCost) && cost.totalCost > 0)));
 }
 
 export function sumWorkpackageAllocationCosts(
@@ -89,11 +90,13 @@ export function sumWorkpackageAllocationCosts(
   for (const cost of costs) {
     if (!cost) continue;
     result.totalCost += cost.totalCost;
+    if (cost.purchaseCostEUR !== undefined) result.purchaseCostEUR = (result.purchaseCostEUR ?? 0) + cost.purchaseCostEUR;
     result.allocatedHours += cost.allocatedHours;
     result.unpricedHours += cost.unpricedHours;
     cost.missingLocations.forEach((location) => missingLocations.add(location));
   }
   result.totalCost = round2(result.totalCost);
+  if (result.purchaseCostEUR !== undefined) result.purchaseCostEUR = round2(result.purchaseCostEUR);
   result.missingLocations = [...missingLocations].sort();
   return result;
 }

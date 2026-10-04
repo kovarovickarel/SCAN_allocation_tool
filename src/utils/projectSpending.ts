@@ -1,3 +1,4 @@
+import { purchaseMonthlyCosts as scheduledPurchaseCosts, purchaseCostSummary, purchaseSubcategory } from "./nonFteWorkpackages";
 import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, round2 } from "../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
   ProjectSpendingTool, TeamMemberRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
@@ -51,10 +52,18 @@ function buildTrack(card: WorkpackageCard, requiredEffort: number[], project: Al
 export function calculateProjectSpending({ project, cards, members, overheads, fteCosts,
   fteRates = DEFAULT_FTE_RATES, toolFteRates, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   stabilityFactors = DEFAULT_STABILITY_FACTORS, activeToolView = "all" }: ProjectSpendingOptions) {
-  const scopedCards = cards.filter((card) => card.projectId === project.id && !card._isNegated &&
-    !(project.hiddenTools || []).includes(card.tool) && !(card.subcategory && (project.hiddenSubcategories || []).includes(card.subcategory)) &&
-    (activeToolView === "all" || card.tool === activeToolView || card.tool === "Other"));
-  const tracks = scopedCards.map((card) => {
+  const scopedCards = cards.filter((card) => {
+    const subcategory = card.kind === "non-fte" ? purchaseSubcategory(card) : card.subcategory;
+    return card.projectId === project.id && !card._isNegated &&
+      !(project.hiddenTools || []).includes(card.tool) && !(subcategory && (project.hiddenSubcategories || []).includes(subcategory)) &&
+      (activeToolView === "all" || card.tool === activeToolView || card.tool === "Other");
+  });
+  const tracks = scopedCards.map((card): ProjectSpendingTrack => {
+    if (card.kind === "non-fte") {
+      const monthlyCosts = scheduledPurchaseCosts(card, project, reusabilityFactors).map(value => purchaseCostSummary(value, fteCosts.currency));
+      return { id: card.id, name: card.name, tool: card.tool, isManagement: false, isNonFte: true,
+        members: [], monthlyCosts, totalCost: sumWorkpackageAllocationCosts(monthlyCosts, fteCosts.currency) };
+    }
     const complexity = card.tool === "KPI" ? card.complexity || "Supporting" : "Point Cloud";
     const rates = toolFteRates?.[card.tool]?.[complexity] ?? fteRates[complexity] ?? DEFAULT_FTE_RATES["Point Cloud"];
     const lifecycle = computeWorkpackageLifecycleTimeline(card, project, rates, reusabilityFactors, stabilityFactors, false, project.duration);
@@ -90,12 +99,14 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
   const engineeringCostsByTool = tools.map(({ tool, tracks: toolTracks }) => ({
     tool,
     monthlyCosts: Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
-      toolTracks.filter((track) => !track.isManagement).map((track) => track.monthlyCosts[month]), fteCosts.currency)),
+      toolTracks.filter((track) => !track.isManagement && !track.isNonFte).map((track) => track.monthlyCosts[month]), fteCosts.currency)),
   }));
   const engineeringMonthlyCosts = Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
-    tracks.filter((track) => !track.isManagement).map((track) => track.monthlyCosts[month]), fteCosts.currency));
+    tracks.filter((track) => !track.isManagement && !track.isNonFte).map((track) => track.monthlyCosts[month]), fteCosts.currency));
   const managementMonthlyCosts = Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
     tracks.filter((track) => track.isManagement).map((track) => track.monthlyCosts[month]), fteCosts.currency));
-  return { tools, monthlyCosts, cumulativeCosts, engineeringCostsByTool, engineeringMonthlyCosts, managementMonthlyCosts,
+  const purchaseMonthlyCosts = Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
+    tracks.filter(track => track.isNonFte).map(track => track.monthlyCosts[month]), fteCosts.currency));
+  return { purchaseMonthlyCosts, tools, monthlyCosts, cumulativeCosts, engineeringCostsByTool, engineeringMonthlyCosts, managementMonthlyCosts,
     totalCost, workpackageCount };
 }

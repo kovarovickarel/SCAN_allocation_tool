@@ -46,7 +46,14 @@ export interface WorkpackageAllocationCost {
   allocatedHours: number;
   unpricedHours: number;
   missingLocations: string[];
+  /** Purchases are entered in EUR, independently of the FTE rate currency. */
+  purchaseCostEUR?: number;
 }
+
+export interface SupplierRecord { id: string; name: string; }
+export type PurchaseType = "License" | "Workstation" | "Hardware" | "Contracted workpackage";
+export type WorkpackageView = "fte" | "non-fte" | "both";
+export type PurchasePaymentMode = "at-once" | "even" | "split";
 
 export interface ProjectSpendingMember {
   id: string;
@@ -60,6 +67,7 @@ export interface ProjectSpendingTrack {
   name: string;
   tool: string;
   isManagement: boolean;
+  isNonFte?: boolean;
   monthlyCosts: WorkpackageAllocationCost[];
   totalCost: WorkpackageAllocationCost;
   members: ProjectSpendingMember[];
@@ -76,6 +84,17 @@ export interface WorkpackageCard {
   id: string;
   name: string;
   tool: string;
+  kind?: "fte" | "non-fte";
+  purchaseType?: PurchaseType;
+  purchasePriceEUR?: number;
+  supplierId?: string;
+  supplierName?: string;
+  purchaseMilestone?: string | null;
+  /** One-based project months. */
+  purchaseMonths?: number[];
+  purchasePaymentMode?: PurchasePaymentMode;
+  /** Fractions of the final price keyed by one-based project month. */
+  purchasePaymentShares?: NumericMap;
   complexity?: string | null;
   reusability?: string;
   customReusabilityFactor?: NumericInput;

@@ -17,7 +17,7 @@ export function getMaintenanceReusabilityFactor(card: WorkpackageCard, factors: 
 }
 
 export function getSupportReusabilityFactor(card: WorkpackageCard, factors: FactorMap = DEFAULT_REUSABILITY_FACTORS): number {
-  return getReusabilityFactor(card, factors) === 0 ? 0 : 1;
+  return card.kind === "non-fte" || getReusabilityFactor(card, factors) === 0 ? 0 : 1;
 }
 
 export function hasWorkpackageMaintenance(card: Pick<WorkpackageCard, "tool" | "complexity" | "otherHasMaintenance">, fteRates = DEFAULT_FTE_RATES, toolFteRates = null): boolean {
