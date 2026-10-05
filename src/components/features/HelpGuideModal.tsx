@@ -28,6 +28,7 @@ export function HelpGuideModal({
   const tabs = [
     { id: "team", label: "Team Staffing & Combined Timeline" },
     { id: "automatic", label: "Automatic Allocation" },
+    { id: "purchases", label: "Non-FTE Purchases" },
     { id: "indicators", label: "Visual Cues & Project Reordering" },
     { id: "timeline", label: "Gantt Timeline & Range Editing" },
     { id: "milestones", label: "Milestones & 'Other' Workpackages" },
@@ -109,6 +110,18 @@ export function HelpGuideModal({
         <div className={`p-6 overflow-y-auto flex-1 min-h-0 space-y-4 text-xs ${
           isRetro ? "bg-[#d4d0c8] font-mono text-black" : "bg-slate-50/50 text-slate-700"
         }`}>
+          {activeTab === "purchases" && <div className="space-y-4">
+            <section className="p-4 bg-white border border-purple-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Purchase workpackages</h3>
+              <p>Switch the Workpackage Pool to <strong>Non-FTE</strong>, then add a License, Workstation, Hardware, or Contracted workpackage. Choose its tool and subtool (such as SIL or PIL), supplier, EUR price, and reusability. Reusability scales the price using the same presets and custom factors as FTE workpackages.</p>
+              <p className="mt-2">Use the project header icons to show FTE workpackages, non-FTE purchases, or both. Manage the supplier list in <strong>Defaults → Suppliers</strong>. Suppliers can only be removed when no non-FTE workpackages use them. The cost dot is green through €50,000, yellow through €200,000, and red above €200,000.</p>
+            </section>
+            <section className="p-4 bg-white border border-amber-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Schedule payments</h3>
+              <p>Drag a purchase into a project, choose a payment deadline, and click or drag across the schedule preview to select at least one payment month. Click a selected month or drag from it to remove payments. One month uses At once. Multiple months default to Evenly distributed. Choose Split, or deselect Evenly distributed, to enter each month’s EUR payment. The remaining balance limits each entry, and the full price must be assigned before saving. A milestone deadline allows only months through that milestone, including the milestone month; otherwise payments are due by project end.</p>
+              <p className="mt-2">Purchases appear within their tool, below FTE workpackages. Click <strong>Payments</strong> to show or hide the monthly payment receipt. Use the calendar button to change payment months or the pencil to edit the purchase in the expanded card view. Payments are included in project and tool costs and spending views. They use no staffing capacity and are excluded from automatic team allocation and management effort.</p>
+            </section>
+          </div>}
           {/* Tab 1: Team Staffing & Combined Timeline */}
           {activeTab === "team" && (
             <div className="space-y-4">

@@ -1,8 +1,8 @@
 import { defineConfig } from "@playwright/test";
 import base from "./playwright.config";
 
-// Historical screenshots remain unchanged. These references were captured from
-// the approved current app before refactoring, including the priced cards.
+// Historical screenshots remain unchanged. Current references include reviewed
+// feature additions; update them only for requested visual changes.
 export default defineConfig({
   ...base,
   snapshotPathTemplate: "{testDir}/current-ui-snapshots/{testFilePath}/{arg}-{projectName}-{platform}{ext}",
