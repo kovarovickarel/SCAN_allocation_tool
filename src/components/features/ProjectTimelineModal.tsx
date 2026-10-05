@@ -219,7 +219,7 @@ export function ProjectTimelineModal({
     setCollapsedCategories(next);
   }, []);
 
-  const projectCards = useMemo(() => localCards.filter((c) => c.projectId === localProject.id), [localCards, localProject.id]);
+  const projectCards = useMemo(() => localCards.filter((c) => c.projectId === localProject.id && c.kind !== "non-fte"), [localCards, localProject.id]);
 
   const mgmtEffortSummary = useMemo(() => {
     return calculateProjectEffort(projectCards, mgmtSettings, localProject);

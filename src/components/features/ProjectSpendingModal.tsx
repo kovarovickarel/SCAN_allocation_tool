@@ -1,3 +1,4 @@
+import { costInEUR } from "../../utils/nonFteWorkpackages";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ThemeContext, DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, PROJECT_TYPE_COLORS, TOOL_MAP, TOOL_ICON_COLORS, MILESTONES_DEF, COMPLEXITY_COLORS, FOOTPRINT_MAP } from "../../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
@@ -67,20 +68,21 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
   const averageMonthlyCost = {
     ...total,
     totalCost: total.totalCost / project.duration,
+    purchaseCostEUR: total.purchaseCostEUR === undefined ? undefined : total.purchaseCostEUR / project.duration,
     allocatedHours: total.allocatedHours / project.duration,
     unpricedHours: total.unpricedHours / project.duration,
   };
-  const peak = Math.max(0, ...spending.monthlyCosts.map((cost) => cost.totalCost));
-  const peakIndex = spending.monthlyCosts.findIndex((cost) => cost.totalCost === peak);
+  const peak = Math.max(0, ...spending.monthlyCosts.map((cost) => costInEUR(cost, rate) ?? 0));
+  const peakIndex = spending.monthlyCosts.findIndex((cost) => costInEUR(cost, rate) === peak);
   const peakCost = spending.monthlyCosts[peakIndex] || total;
   const buttonClass = isRetro
     ? "px-2.5 py-1 text-[11px] font-bold font-mono bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black cursor-pointer"
     : "px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded cursor-pointer";
 
   const amount = (cost: WorkpackageAllocationCost, prefix = false, abbreviateMillions = false) => {
-    if (cost.unpricedHours > 0 && cost.totalCost === 0) return "N/A";
+    if (cost.unpricedHours > 0 && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0)) return "N/A";
     if (cost.totalCost > 0 && rate === null) return conversionFailed ? "N/A" : "…";
-    const value = cost.totalCost * (rate ?? 1);
+    const value = costInEUR(cost, rate) ?? NaN;
     if (!Number.isFinite(value)) return "N/A";
     const formattedValue = abbreviateMillions && Math.round(value) >= 1_000_000
       ? `${(value / 1_000).toLocaleString("en-US", { useGrouping: false, maximumFractionDigits: 0 })}k`
@@ -88,8 +90,9 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
     return `${prefix ? "€ " : ""}${formattedValue}${cost.unpricedHours > 0 ? "*" : ""}`;
   };
   const tooltip = (cost: WorkpackageAllocationCost) => [
+    cost.purchaseCostEUR !== undefined ? "Includes scheduled non-FTE payments." : "",
     `${cost.allocatedHours.toLocaleString("en-US", { maximumFractionDigits: 2 })} allocated hours.`,
-    rate !== null ? `Cost: € ${(cost.totalCost * rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : "EUR conversion unavailable.",
+    costInEUR(cost, rate) !== null ? `Cost: € ${costInEUR(cost, rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : "EUR conversion unavailable.",
     cost.unpricedHours > 0 ? `${cost.unpricedHours.toFixed(2)} hours have no rate: ${cost.missingLocations.join(", ")}. Priced allocations only.` : "",
   ].filter(Boolean).join(" ");
   const toggle = (setter: typeof setExpandedTracks, id: string) => setter((previous) => {
@@ -111,7 +114,8 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
         isRetro ? "divide-x divide-black/20" : tone === "total" ? "divide-x divide-slate-800" : tone === "tool" ? "divide-x divide-black/10 py-2 px-1.5" : "divide-x divide-slate-150/60"}`}
       style={monthGridStyle}>
     {costs.map((cost, index) => {
-      const phase = track?.isManagement ? "MGMT" : track ? phases.get(track.id)?.[index]?.shortPhase : undefined;
+      const isPaymentMonth = track?.isNonFte && cardIndex.get(track.id)?.purchaseMonths?.includes(index + 1);
+      const phase = track?.isNonFte ? "Payment" : track?.isManagement ? "MGMT" : track ? phases.get(track.id)?.[index]?.shortPhase : undefined;
       const cellTitle = `${monthLabels[index]} · ${phase ? `${phase.toUpperCase()} · ` : ""}${tooltip(cost)}`;
       if (tone === "total" || tone === "cumulative" || tone === "tool") return <div key={index} title={cellTitle}
         className={`p-1.5 text-center flex flex-col items-center justify-center leading-tight font-mono font-bold min-w-0 ${tone === "total" || tone === "cumulative" ? "text-[11px]" : "text-[10px]"} ${
@@ -120,7 +124,7 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
         {(tone === "total" || tone === "cumulative" || tone === "tool") && <span className={`text-[8px] font-normal ${tone === "cumulative" ? "text-pink-500" : tone === "total" ? "text-yellow-500" : "text-current"}`}>EUR</span>}
       </div>;
       return <div key={index} className={`h-full flex items-center justify-center p-0.5 ${index < costs.length - 1 ? "pr-1" : ""}`}>
-        {cost.allocatedHours === 0 ? <span title={cellTitle} className={`text-[10px] font-mono ${isRetro ? "text-black/40" : "text-slate-300"}`}>·</span> : <div
+        {cost.allocatedHours === 0 && !(cost.purchaseCostEUR > 0) && !isPaymentMonth ? <span title={cellTitle} className={`text-[10px] font-mono ${isRetro ? "text-black/40" : "text-slate-300"}`}>·</span> : <div
           title={cellTitle}
           className={`w-full h-8 border flex items-center justify-center select-none shadow-2xs ${
             isRetro ? "rounded-none bg-[#ffffcc] text-black border-black font-mono" : "rounded-md bg-amber-100 text-amber-900 border-amber-300"}`}>
@@ -154,6 +158,7 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
             {card && <span className={`text-[8.5px] px-1.5 py-0.5 rounded font-semibold border ${isRetro ? "bg-white text-black border-black font-mono" : "bg-white text-gray-700 border-gray-300 shadow-2xs"}`}>
               <ReusabilityLabel card={card} factors={options.reusabilityFactors} factorOnly />
             </span>}
+            {track.isNonFte && <span className="text-[9px] text-purple-700">Non-FTE · {card?.supplierName}</span>}
             {card?.subcategory && <span className={`text-[9px] px-1 py-0.5 rounded ${isRetro ? "text-black" : "text-slate-500"}`}>{card.subcategory}</span>}
             <span className="ml-auto">{totalBadge(track.totalCost, track.isManagement, false, true)}</span>
           </div>
@@ -194,7 +199,7 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
             <p className={`text-xs mt-0.5 ${isRetro ? "text-slate-200" : "text-slate-400"}`}>Timeline: <strong className="text-white">{monthLabels[0]}</strong> → <strong className="text-white">{monthLabels[monthLabels.length - 1]}</strong> ({project.duration} Mo)</p>
             <div className="flex items-center gap-x-4 gap-y-1 flex-wrap mt-1 text-[10px] font-mono text-slate-400">
               <span title={tooltip(total)}>Total: <strong className="text-pink-500">{amount(total, true)}</strong></span>
-              <span>Avg/month: <strong className="text-yellow-500">{amount({ ...total, totalCost: total.totalCost / project.duration }, true)}</strong></span>
+              <span>Avg/month: <strong className="text-yellow-500">{amount(averageMonthlyCost, true)}</strong></span>
               <span title={peak > 0 ? monthLabels[peakIndex] : "No priced allocations yet"}>Peak: <strong className="text-red-500">{amount(peakCost, true)}</strong>{peak > 0 ? ` (${monthLabels[peakIndex]})` : ""}</span>
             </div>
           </div>
@@ -244,6 +249,7 @@ export function ProjectSpendingModal({ onClose, ...options }: ProjectSpendingMod
         {graphView ? <ProjectSpendingCharts monthLabels={monthLabels} monthlyCosts={spending.monthlyCosts}
           cumulativeCosts={spending.cumulativeCosts} rate={rate} conversionFailed={conversionFailed}
           engineeringCostsByTool={spending.engineeringCostsByTool} managementMonthlyCosts={spending.managementMonthlyCosts}
+            purchaseMonthlyCosts={spending.purchaseMonthlyCosts}
           costsByTool={spending.tools}
           engineeringMonthlyCosts={spending.engineeringMonthlyCosts}
           activeToolView={activeToolView} milestones={milestones} formatAmount={amount} costTooltip={tooltip} /> : <div className={`${isRetro ? "bg-white border-2 border-t-black border-l-black border-b-white border-r-white shadow-none" : "bg-white border border-slate-200 rounded-xl shadow-xs"} overflow-hidden`} style={{ minWidth: minTableWidth }}>

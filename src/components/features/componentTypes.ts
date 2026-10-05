@@ -1,5 +1,6 @@
 import type React from 'react';
-import type { AllocationProject, FactorMap, ManagementOverhead, MemberMaintenancePreferences, MilestoneMap, MonthlyNumericMap, NumericMap, NumericInput, TeamMemberRecord, ToolDefinition, WorkpackageCard, WorkpackageAllocationMonth, WorkpackageAllocationCost, FteCostSettings } from '../../types';
+import type { WorkpackageView } from '../../types';
+import type { AllocationProject, FactorMap, ManagementOverhead, MemberMaintenancePreferences, MilestoneMap, MonthlyNumericMap, NumericMap, NumericInput, TeamMemberRecord, ToolDefinition, WorkpackageCard, WorkpackageAllocationMonth, WorkpackageAllocationCost, FteCostSettings, SupplierRecord } from '../../types';
 import type { DEFAULT_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_OTHER_SETTINGS, DEFAULT_TOOL_FTE_RATES } from '../../constants';
 
 export interface SvgIconProps {
@@ -58,6 +59,9 @@ export interface ManagementOverheadsProps {
 }
 
 export interface ToolRowProps extends ReusabilityRatesProps {
+  project?: AllocationProject;
+  workpackageView?: WorkpackageView;
+  suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;
   managementAllocationCost?: WorkpackageAllocationCost;
   tool: ToolDefinition;
@@ -89,6 +93,9 @@ export interface SubcategoryManagerModalProps {
 }
 
 export interface UnassignedPoolProps extends ReusabilityRatesProps {
+  suppliers?: readonly SupplierRecord[];
+  workpackageKind?: "fte" | "non-fte";
+  onChangeWorkpackageKind?: (kind: "fte" | "non-fte") => void;
   cards: WorkpackageCard[];
   reusabilityFactors?: FactorMap;
   onEdit: CardEditHandler;
@@ -253,6 +260,7 @@ export interface TeamAllocationPriorityModalProps {
 }
 
 export interface ProjectBasketProps {
+  suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;
   project: AllocationProject;
   cards: WorkpackageCard[];

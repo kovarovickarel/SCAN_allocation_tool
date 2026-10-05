@@ -1,3 +1,4 @@
+import { purchaseDeadline } from "../../utils/nonFteWorkpackages";
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, SUBCAT_TOOL_MAP, DEFAULT_MGMT_SETTINGS, DEFAULT_FTE_COSTS, PROJECT_TYPES, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2, genId } from "../../constants";
 import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, calculateWorkpackageAllocationCost, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
@@ -10,6 +11,8 @@ import { ProjectTimelineModal } from './ProjectTimelineModal';
 import { ProjectRFQBadge } from '../ui/ProjectRFQBadge';
 import { ProjectCostSummary } from '../ui/ProjectCostSummary';
 import { ProjectSpendingModal } from './ProjectSpendingModal';
+import type { WorkpackageView } from '../../types';
+import { StaffingIcon, ReceiptIcon, BothWorkpackagesIcon } from '../ui/icons';
 
 export function SubcategoryManagerModal({ project, onClose, onToggleSubcategory, onToggleTool, onResetSubcategories, activeToolView = "all" }: SubcategoryManagerModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
@@ -475,6 +478,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
 }
 
 export const ProjectBasket = memo(function ProjectBasket({
+  suppliers,
   project,
   cards,
   teamMembers = [],
@@ -513,6 +517,8 @@ export const ProjectBasket = memo(function ProjectBasket({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [milestoneError, setMilestoneError] = useState(null);
   const [isCompact, setIsCompact] = useState(false);
+  const [workpackageView, setWorkpackageView] = useState<WorkpackageView>("both");
+  const effectiveWorkpackageView = isBasicMode ? "both" : workpackageView;
   const [headerDraft, setHeaderDraft] = useState({
     name: project.name,
     type: project.type || "Lidar",
@@ -530,7 +536,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   const projectCards = useMemo(() => cards.filter((c) => c.projectId === project.id), [cards, project.id]);
 
   const boundOtherWPs = useMemo(() => {
-    return projectCards.filter((c) => c.tool === "Other" && Boolean(c.otherFinishMilestone));
+    return projectCards.filter((c) => c.kind !== "non-fte" && c.tool === "Other" && Boolean(c.otherFinishMilestone));
   }, [projectCards]);
 
   const projectCardsByTool = useMemo(() => {
@@ -627,7 +633,7 @@ export const ProjectBasket = memo(function ProjectBasket({
     let minRequiredDuration = Math.max(6, minMonths.SSSR);
     for (let i = 0; i < projectCards.length; i++) {
       const c = projectCards[i];
-      if (c.tool === "Other" && !c.otherFinishMilestone) {
+      if (c.kind !== "non-fte" && c.tool === "Other" && !c.otherFinishMilestone) {
         const dur = Math.max(1, parseInt(c.otherDuration, 10) || 1);
         if (dur > minRequiredDuration) minRequiredDuration = dur;
       }
@@ -768,7 +774,7 @@ export const ProjectBasket = memo(function ProjectBasket({
     let minRequiredDuration = Math.max(6, minMonths.SSSR);
     for (let i = 0; i < projectCards.length; i++) {
       const c = projectCards[i];
-      if (c.tool === "Other" && !c.otherFinishMilestone) {
+      if (c.kind !== "non-fte" && c.tool === "Other" && !c.otherFinishMilestone) {
         const dur = Math.max(1, parseInt(c.otherDuration, 10) || 1);
         if (dur > minRequiredDuration) minRequiredDuration = dur;
       }
@@ -785,6 +791,14 @@ export const ProjectBasket = memo(function ProjectBasket({
     finalMilestones.EFV = Math.max(finalMilestones.EFV, finalMilestones.FFV);
     finalMilestones.AFV = Math.max(finalMilestones.AFV, finalMilestones.EFV, finalMilestones.FFV + 1);
     finalMilestones.SSSR = Math.max(finalMilestones.SSSR, finalMilestones.AFV, finalMilestones.EFV + 1);
+
+    const revisedProject = { ...project, duration: d, milestones: finalMilestones };
+    const blockedPurchase = projectCards.find(card => card.kind === "non-fte" &&
+      (card.purchaseMonths || []).some(month => month > purchaseDeadline(card, revisedProject)));
+    if (blockedPurchase) {
+      setMilestoneError(`"${blockedPurchase.name}" has a payment after the proposed deadline. Cancel this edit and move its payment months first.`);
+      return;
+    }
 
     onUpdateProject(project.id, {
       name: headerDraft.name.trim() || project.name,
@@ -1006,7 +1020,7 @@ export const ProjectBasket = memo(function ProjectBasket({
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between gap-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_40px_minmax(0,1fr)] items-center gap-2">
               <div className="flex items-center gap-2 min-w-0">
                 <h2 className={`font-bold text-sm tracking-tight text-white flex items-center gap-1.5 truncate ${isRetro ? "font-mono font-black" : ""}`}>
                   {project.name}
@@ -1041,7 +1055,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                 <GripHorizontalIcon size={16} className="group-hover/grip:scale-110 transition-transform pointer-events-none" />
               </div>
 
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center justify-end gap-1 shrink-0">
                 {!isBasicMode && (
                   <button
                     type="button"
@@ -1125,6 +1139,19 @@ export const ProjectBasket = memo(function ProjectBasket({
                 <ProjectCostSummary cost={projectCost} onOpen={() => setShowSpendingModal(true)} />
               </div>
 
+              <div className={`flex flex-col items-end ${isBasicMode ? "justify-end" : "justify-between"} self-stretch gap-1 shrink-0`}>
+                {!isBasicMode && <div className="flex items-center gap-1" role="group" aria-label="Project workpackage view">
+                  {([
+                    { value: "fte", label: "Show FTE workpackages", Icon: StaffingIcon, colour: "text-amber-300 hover:text-amber-200" },
+                    { value: "non-fte", label: "Show non-FTE workpackages", Icon: ReceiptIcon, colour: "text-red-300 hover:text-red-200" },
+                    { value: "both", label: "Show FTE and non-FTE workpackages", Icon: BothWorkpackagesIcon, colour: "text-amber-300" },
+                  ] as const).map(({ value, label, Icon, colour }) => (
+                    <button key={value} type="button" onClick={() => setWorkpackageView(value)} title={label} aria-label={label} aria-pressed={workpackageView === value}
+                      className={`group w-[22px] h-[22px] inline-flex items-center justify-center transition-colors cursor-pointer ${workpackageView === value ? colour : "text-slate-400 hover:text-white"}`}>
+                      {value === "both" ? <BothWorkpackagesIcon size={16} active={workpackageView === "both"} /> : <Icon size={value === "fte" ? 18 : 16} />}
+                    </button>
+                  ))}
+                </div>}
               <div className="flex items-center gap-1.5 shrink-0">
                 {!isBasicMode && totalUnusedCount > 0 && (
                   <button
@@ -1140,12 +1167,13 @@ export const ProjectBasket = memo(function ProjectBasket({
                 <button
                   type="button"
                   onClick={() => setShowTimelineModal(true)}
-                  className={`inline-flex items-center gap-1.5 px-2 py-1 ${isRetro ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white" : "rounded text-sky-400 hover:text-sky-300 hover:bg-slate-800/80"} transition-colors cursor-pointer group`}
+                  className={`inline-flex items-center gap-1.5 pl-2 py-1 ${isRetro ? "pr-px bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white" : "pr-[3px] rounded text-sky-400 hover:text-sky-300 hover:bg-slate-800/80"} transition-colors cursor-pointer group`}
                   title="View Project Timeline (Gantt Chart)"
                 >
                   <span className={`text-xs font-bold ${isRetro ? "text-black" : "text-sky-400 group-hover:text-sky-300"}`}>View timeline</span>
                   <CalendarGanttIcon size={16} className={`${isRetro ? "text-black" : "text-sky-400 group-hover:text-sky-300"} transition-transform group-hover:scale-110`} />
                 </button>
+              </div>
               </div>
             </div>
           </div>
@@ -1159,10 +1187,13 @@ export const ProjectBasket = memo(function ProjectBasket({
       </div>
 
       <div className="flex flex-col gap-3 p-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-        <ManagementOverheads overheads={effortSummary.overheads} project={project} teamMembers={teamMembers} isCompact={isCompact} allocationCosts={managementAllocationCosts} />
+        {effectiveWorkpackageView !== "non-fte" && <ManagementOverheads overheads={effortSummary.overheads} project={project} teamMembers={teamMembers} isCompact={isCompact} allocationCosts={managementAllocationCosts} />}
 
         {visibleTools.map((tool) => (
           <ToolRow
+            project={project}
+            workpackageView={effectiveWorkpackageView}
+            suppliers={suppliers}
             fteCosts={fteCosts}
             managementAllocationCost={managementAllocationCosts.get(tool.name)}
             key={tool.name}

@@ -48,7 +48,7 @@ export function TeamTimelineModal({
 
   // Allocation editors update the local draft until Save & Close is selected.
   const [projects, setLocalProjects] = useState<AllocationProject[]>(() => deepClone(sourceProjects));
-  const [cards, setLocalCards] = useState<WorkpackageCard[]>(() => deepClone(sourceCards));
+  const [cards, setLocalCards] = useState<WorkpackageCard[]>(() => deepClone(sourceCards.filter(card => card.kind !== "non-fte")));
   const [isDirty, setIsDirty] = useState(false);
   const [showAllocationSummary, setShowAllocationSummary] = useState(false);
   const [showAllocationPriorities, setShowAllocationPriorities] = useState(false);
@@ -189,7 +189,7 @@ export function TeamTimelineModal({
       const pOffset = py * 12 + (pm - 1) - minStartAbs;
       const pDur = Math.max(1, p.duration || 12);
 
-      const allProjectCards = cards.filter((c) => c.projectId === p.id);
+      const allProjectCards = cards.filter((c) => c.projectId === p.id && c.kind !== "non-fte");
       const pCards = allProjectCards.filter(
         (c) => c.tool === toolName || c.tool === "Other"
       );

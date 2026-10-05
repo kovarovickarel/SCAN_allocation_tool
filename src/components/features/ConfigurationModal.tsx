@@ -4,6 +4,8 @@ import {
   COMPLEXITY_TYPES,
   DEFAULT_FTE_RATES,
   DEFAULT_FTE_COSTS,
+  DEFAULT_SUPPLIERS,
+  genId,
   DEFAULT_MGMT_SETTINGS,
   DEFAULT_OTHER_SETTINGS,
   DEFAULT_REUSABILITY_FACTORS,
@@ -15,11 +17,13 @@ import {
   deepClone,
 } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
-import type { FteCostSettings } from "../../types";
+import type { FteCostSettings, SupplierRecord } from "../../types";
 import { parseFteHourlyRate } from "../../utils/helpers";
 import { convertHourlyRateInputs, fetchLatestExchangeRate } from "../../utils/currencyRates";
+import { retainUsedSuppliers } from "../../utils/nonFteWorkpackages";
 
 type ConfigurationModalConfig = {
+  suppliers?: SupplierRecord[];
   fteRates: typeof DEFAULT_FTE_RATES;
   fteCosts: FteCostSettings;
   toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
@@ -33,6 +37,7 @@ type ConfigurationIconProps = { size?: number; className?: string };
 
 interface ConfigurationModalProps {
   config: ConfigurationModalConfig;
+  usedSupplierIds?: ReadonlySet<string>;
   onSave: (newConfig: ConfigurationModalConfig) => void;
   onClose: () => void;
   SettingsIcon: React.ComponentType<ConfigurationIconProps>;
@@ -42,6 +47,7 @@ interface ConfigurationModalProps {
 
 export function ConfigurationModal({
   config,
+  usedSupplierIds = new Set<string>(),
   onSave,
   onClose,
   SettingsIcon,
@@ -49,7 +55,7 @@ export function ConfigurationModal({
   RotateCcwIcon,
 }: ConfigurationModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
-  const [draft, setDraft] = useState(() => deepClone({ ...config, fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
+  const [draft, setDraft] = useState(() => deepClone({ ...config, suppliers: config.suppliers ?? [...DEFAULT_SUPPLIERS], fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
   const [hourlyRateInputs, setHourlyRateInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(config.fteCosts?.hourlyRates?.[location.code] ?? "")])));
   const hasInvalidHourlyRates = FOOTPRINTS.some((location) => parseFteHourlyRate(hourlyRateInputs[location.code]) === undefined);
@@ -58,6 +64,7 @@ export function ConfigurationModal({
   const [conversionError, setConversionError] = useState<string | null>(null);
   const currencyRequest = useRef<AbortController | null>(null);
   const currencyRequestId = useRef(0);
+  const [supplierName, setSupplierName] = useState("");
   const [activeTab, setActiveTab] = useState("tools");
   const [selectedTool, setSelectedTool] = useState(TOOLS[0].name);
   const [selectedComplexity, setSelectedComplexity] = useState("Supporting");
@@ -179,6 +186,7 @@ export function ConfigurationModal({
     setConversionNotice(null);
     setConversionError(null);
     setDraft({
+      suppliers: retainUsedSuppliers(DEFAULT_SUPPLIERS, config.suppliers ?? DEFAULT_SUPPLIERS, usedSupplierIds),
       fteRates: deepClone(DEFAULT_FTE_RATES),
       fteCosts: deepClone(DEFAULT_FTE_COSTS),
       toolFteRates: deepClone(DEFAULT_TOOL_FTE_RATES),
@@ -238,6 +246,7 @@ export function ConfigurationModal({
           {[
             { key: "tools", label: "Tool Phase Rates & Durations" },
             { key: "costs", label: "FTE costs" },
+            { key: "suppliers", label: "Suppliers" },
             { key: "management", label: "Management Support" },
             { key: "reusability", label: "Reusability Factors" },
             { key: "stability", label: "Stability Factors" },
@@ -624,6 +633,19 @@ export function ConfigurationModal({
             </div>
           )}
 
+          {activeTab === "suppliers" && <div className="flex flex-col gap-3">
+            <h3 className="text-sm font-bold text-slate-900">Non-FTE suppliers</h3>
+            <p className="text-xs text-slate-500">Suppliers can only be removed when no non-FTE workpackages use them.</p>
+            {draft.suppliers.map(supplier => <div key={supplier.id} className="flex items-center justify-between border border-slate-200 rounded p-2 text-xs"><span>{supplier.name}</span><button type="button" disabled={usedSupplierIds.has(supplier.id)} title={usedSupplierIds.has(supplier.id) ? "Used by existing non-FTE workpackages" : undefined} onClick={() => {
+              if (usedSupplierIds.has(supplier.id)) return;
+              setDraft(current => ({ ...current, suppliers: current.suppliers.filter(item => item.id !== supplier.id) }));
+            }} className="text-rose-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" aria-label={`Remove supplier ${supplier.name}`}>Remove</button></div>)}
+            <form className="flex gap-2" onSubmit={event => { event.preventDefault(); const name = supplierName.trim(); if (!name || draft.suppliers.some(item => item.name.toLowerCase() === name.toLowerCase())) return; setDraft(current => ({ ...current, suppliers: [...current.suppliers, { id: genId(), name }] })); setSupplierName(""); }}>
+              <input aria-label="New supplier name" value={supplierName} onChange={event => setSupplierName(event.target.value)} className="flex-1 min-w-0 px-2 py-1.5 border border-slate-300 rounded text-xs" placeholder="Supplier name" />
+              <button type="submit" disabled={!supplierName.trim() || draft.suppliers.some(item => item.name.toLowerCase() === supplierName.trim().toLowerCase())} className="px-3 py-1.5 text-xs bg-blue-600 text-white rounded cursor-pointer disabled:opacity-40">Add Supplier</button>
+            </form>
+          </div>}
+
           {activeTab === "costs" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-4">
@@ -796,7 +818,7 @@ export function ConfigurationModal({
               type="button"
               onClick={() => {
                 if (hasInvalidHourlyRates || currencyRequest.current) return;
-                onSave({ ...draft, fteCosts: { ...draft.fteCosts, hourlyRates: Object.fromEntries(FOOTPRINTS.map((location) =>
+                onSave({ ...draft, suppliers: retainUsedSuppliers(draft.suppliers, config.suppliers ?? DEFAULT_SUPPLIERS, usedSupplierIds), fteCosts: { ...draft.fteCosts, hourlyRates: Object.fromEntries(FOOTPRINTS.map((location) =>
                   [location.code, parseFteHourlyRate(hourlyRateInputs[location.code]) ?? null])) } });
                 onClose();
               }}

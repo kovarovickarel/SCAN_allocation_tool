@@ -1,6 +1,29 @@
 import { memo } from "react";
 import type { SvgIconProps, ToolIconProps } from '../features/componentTypes';
 
+export const StaffingIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <circle cx="12" cy="8" r="4" />
+    <path d="M12 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+  </svg>
+));
+
+export const ReceiptIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M5 3l2 1 2-1 3 1 3-1 2 1 2-1v18l-2-1-2 1-3-1-3 1-2-1-2 1zM9 8h6M9 12h6M9 16h4" />
+  </svg>
+));
+
+export const BothWorkpackagesIcon = memo(({ size = 14, className = "", active = false }: SvgIconProps & { active?: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path className={active ? "text-red-300 group-hover:text-red-200 transition-colors" : undefined} d="M13 3l2 1 2-1 2 1 2-1v18l-2-1-2 1-2-1M16 8h2M16 12h2" />
+    <g className={active ? "text-amber-300 group-hover:text-amber-200 transition-colors" : undefined}>
+      <circle cx="7" cy="8" r="3" />
+      <path d="M7 14c-2 0-5 1-5 3v3h10v-3c0-2-3-3-5-3z" />
+    </g>
+  </svg>
+));
+
 export const MagicWandIcon = memo(({ size = 16, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <path d="m4 17 12-12 4 4L8 21z" />

@@ -1,8 +1,10 @@
+import { purchaseSubcategory } from "../../utils/nonFteWorkpackages";
+import { NonFteWorkpackageCard } from "./NonFteWorkpackageCard";
 import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { useWorkpackageCardLayout } from "../../hooks/useWorkpackageCardLayout";
 import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
 import type { EditCardContentProps, FunctionCardProps, ManagementOverheadsProps, ToolRowProps, UnassignedPoolProps } from './componentTypes';
-import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon } from '../ui/icons';
+import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon, StaffingIcon, ReceiptIcon } from '../ui/icons';
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
@@ -600,7 +602,7 @@ export const FunctionCard = memo(function FunctionCard({
       <div className="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-black/10 min-w-0">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           <span
-            className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded truncate shadow-xs flex items-center gap-1 min-w-0 max-w-[70%] ${
+            className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded shadow-xs flex items-center gap-1 min-w-0 max-w-full ${
               isRetro
                 ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000] font-mono"
                 : isBasic
@@ -610,7 +612,7 @@ export const FunctionCard = memo(function FunctionCard({
             title={isAltered ? `Category: ${fullCategoryName} (Timeline monthly effort manually altered)` : `Category: ${fullCategoryName}`}
           >
             {!isBasicMode && <span className={`w-1.5 h-1.5 rounded-full ${cardEffortDot} shrink-0 inline-block transition-colors duration-200`} />}
-            <span className="truncate">{categoryDisplayName}</span>
+            <span className="min-w-0 whitespace-normal break-words">{categoryDisplayName}</span>
           </span>
           {finishMsDef && (
             <span
@@ -854,6 +856,9 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
 });
 
 export const ToolRow = memo(function ToolRow({
+  project,
+  workpackageView = "both",
+  suppliers,
   tool,
   fteCosts = DEFAULT_FTE_COSTS,
   managementAllocationCost,
@@ -881,7 +886,7 @@ export const ToolRow = memo(function ToolRow({
   const isMatch = useCallback(
     (sub) => {
       if (!draggedCard || draggedCard.tool !== tool.name) return false;
-      return tool.subcategories ? draggedCard.subcategory === sub : true;
+      return !tool.subcategories || (draggedCard.kind === "non-fte" ? purchaseSubcategory(draggedCard) : draggedCard.subcategory) === sub;
     },
     [draggedCard, tool]
   );
@@ -910,14 +915,29 @@ export const ToolRow = memo(function ToolRow({
     return allSubcategories.filter((s) => hiddenSet.has(s));
   }, [hasMultipleSlots, allSubcategories, hiddenSet]);
 
+  const purchaseCards = toolCards.filter(card => card.kind === "non-fte" && workpackageView !== "fte");
+  const renderPurchases = (purchases: typeof toolCards) => purchases.length > 0 && (
+    <section className={`${hasMultipleSlots ? "mt-2" : "mx-[18px] mb-2.5"} min-w-0 border-t border-dashed border-purple-200 pt-2`}>
+      {workpackageView !== "non-fte" && <h3 className={`flex items-center gap-1.5 text-[10px] uppercase font-bold mb-2 ${tool.text}`}>
+        {!isBasicMode && <ReceiptIcon size={13} className="shrink-0" />}
+        NON-FTE
+      </h3>}
+      <div className={isCompact
+        ? `grid ${hasMultipleSlots && visibleSlots.length > 1 ? "grid-cols-2" : "grid-cols-3"} gap-1.5 content-start`
+        : "flex flex-col gap-1.5"}>
+        {purchases.map(card => <NonFteWorkpackageCard project={project} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} onSchedule={() => onDrop?.(card.id, projectId)} />)}
+      </div>
+    </section>
+  );
   const cardsBySlot = useMemo(() => {
+    const fteCards = toolCards.filter(card => card.kind !== "non-fte");
     const map = new Map();
     if (!hasMultipleSlots) {
-      map.set(null, toolCards);
+      map.set(null, fteCards);
       return map;
     }
     for (const sub of allSubcategories) map.set(sub, []);
-    for (const c of toolCards) {
+    for (const c of fteCards) {
       const list = map.get(c.subcategory);
       if (list) list.push(c);
       else map.set(c.subcategory, [c]);
@@ -975,6 +995,12 @@ export const ToolRow = memo(function ToolRow({
         </div>
       </div>
 
+      {workpackageView !== "non-fte" && !hasMultipleSlots && purchaseCards.length > 0 && (
+        <div className={`flex items-center gap-1.5 px-4 pt-2 text-[10px] font-bold uppercase ${tool.text}`}>
+          {!isBasicMode && <StaffingIcon size={13} className="shrink-0" />}
+          FTE
+        </div>
+      )}
       {hasMultipleSlots && visibleSlots.length === 0 ? (
         <div className="p-3 bg-white/50 text-center flex flex-col items-center justify-center gap-1 border-b border-gray-200">
           <span className="text-[11px] text-gray-500 italic">All subcategories marked as unused for this project</span>
@@ -994,19 +1020,21 @@ export const ToolRow = memo(function ToolRow({
             </div>
           )}
         </div>
-      ) : (
+      ) : !hasMultipleSlots && workpackageView === "non-fte" && purchaseCards.length > 0 ? null : (
         <div
           className={
             hasMultipleSlots
               ? visibleSlots.length > 2
                 ? "grid grid-cols-2 p-2.5 gap-2.5 w-full"
                 : "grid grid-flow-col auto-cols-fr p-2.5 gap-2.5 w-full"
-              : "p-2.5 flex flex-col gap-2"
+              : `p-2.5 ${purchaseCards.length > 0 ? "pt-0" : ""} flex flex-col gap-2`
           }
         >
           {visibleSlots.map((sub, idx) => {
-            const slotCards = cardsBySlot.get(sub) || [];
-            const slotTotalFTE = slotCards.reduce((sum, c) => sum + (c._fte ?? 0), 0);
+            const allSlotCards = cardsBySlot.get(sub) || [];
+            const slotCards = workpackageView === "non-fte" ? [] : allSlotCards;
+            const slotPurchases = hasMultipleSlots ? purchaseCards.filter(card => purchaseSubcategory(card) === sub) : [];
+            const slotTotalFTE = allSlotCards.reduce((sum, c) => sum + (c._fte ?? 0), 0);
             const isTarget = isMatch(sub);
 
             const spanClass = visibleSlots.length === 3 && idx === 2 ? "col-span-2" : "";
@@ -1092,7 +1120,13 @@ export const ToolRow = memo(function ToolRow({
                   </div>
                 )}
 
-                <div
+                {hasMultipleSlots && workpackageView !== "non-fte" && slotPurchases.length > 0 && (
+                  <h3 className={`flex items-center gap-1.5 text-[10px] uppercase font-bold mb-2 ${tool.text}`}>
+                    {!isBasicMode && <StaffingIcon size={13} className="shrink-0" />}
+                    FTE
+                  </h3>
+                )}
+                {!(workpackageView === "non-fte" && slotPurchases.length > 0) && <div
                   className={`flex-1 w-full min-w-0 h-auto transition-all duration-200 ${
                     slotCards.length === 0
                       ? "flex flex-col flex-1 h-full"
@@ -1122,7 +1156,7 @@ export const ToolRow = memo(function ToolRow({
                       draggedCard={draggedCard}
                     />
                   ))}
-                  {slotCards.length === 0 && (
+                  {slotCards.length === 0 && slotPurchases.length === 0 && (
                     <div
                       className={`flex-1 min-h-[44px] flex items-center justify-center border-2 border-dashed rounded-md p-1.5 text-center ${
                         isTarget
@@ -1135,12 +1169,15 @@ export const ToolRow = memo(function ToolRow({
                       </span>
                     </div>
                   )}
-                </div>
+                </div>}
+                {hasMultipleSlots && renderPurchases(slotPurchases)}
               </div>
             );
           })}
         </div>
       )}
+
+      {!hasMultipleSlots && renderPurchases(purchaseCards)}
 
       {!isBasicMode && hasMultipleSlots && visibleSlots.length > 0 && unusedInThisTool.length > 0 && (
         <div className="px-2.5 py-1.5 bg-amber-50/90 border-t border-amber-200/90 flex items-center flex-wrap gap-1 text-[10px]">
@@ -1168,6 +1205,9 @@ export const ToolRow = memo(function ToolRow({
 });
 
 export const UnassignedPool = memo(function UnassignedPool({
+  suppliers,
+  workpackageKind = "fte",
+  onChangeWorkpackageKind,
   cards,
   reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   fteRates,
@@ -1184,7 +1224,7 @@ export const UnassignedPool = memo(function UnassignedPool({
   isCompact = false,
   onToggleCompact,
 }: UnassignedPoolProps) {
-  const { isRetro } = React.useContext(ThemeContext);
+  const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => {
@@ -1193,11 +1233,11 @@ export const UnassignedPool = memo(function UnassignedPool({
 
   const poolCards = useMemo(() => {
     return cards.filter((c) => {
-      if (c.projectId) return false;
+      if (c.projectId || (c.kind === "non-fte" ? "non-fte" : "fte") !== workpackageKind) return false;
       if (activeToolView === "all") return true;
       return c.tool === activeToolView || c.tool === "Other";
     });
-  }, [cards, activeToolView]);
+  }, [cards, activeToolView, workpackageKind]);
 
   const handleDrop = (e) => {
     e.preventDefault();
@@ -1226,7 +1266,7 @@ export const UnassignedPool = memo(function UnassignedPool({
         ${isDragOver ? "border-blue-500 ring-4 ring-blue-400/40 shadow-2xl" : ""}
       `}
     >
-      <div className={`${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] border-b-2 border-black" : "bg-slate-900 border-b border-slate-800 rounded-t-xl"} text-white px-3 py-1.5 shrink-0 ${isSplitView ? "h-[74px] min-h-[74px]" : "h-[82px] min-h-[82px]"} flex flex-col`}>
+      <div className={`${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] border-b-2 border-black" : "bg-slate-900 border-b border-slate-800 rounded-t-xl"} text-white px-3 py-1.5 shrink-0 ${isSplitView ? "h-[108px] min-h-[108px]" : "h-[116px] min-h-[116px]"} flex flex-col`}>
         <div className="flex-1 flex items-center justify-between gap-1.5">
           <h2 className={`font-bold text-sm tracking-tight text-white flex items-center gap-1.5 truncate ${isRetro ? "font-mono font-black" : ""}`}>
             Workpackage Pool
@@ -1263,6 +1303,12 @@ export const UnassignedPool = memo(function UnassignedPool({
             </button>
           </div>
         </div>
+        <div role="group" aria-label="Workpackage type" className="flex rounded border border-slate-600 overflow-hidden my-1 shrink-0">
+          {(["fte", "non-fte"] as const).map(kind => <button key={kind} type="button" aria-pressed={workpackageKind === kind} onClick={() => onChangeWorkpackageKind?.(kind)} className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1 cursor-pointer ${workpackageKind === kind ? kind === "fte" ? "bg-amber-300 text-slate-900" : "bg-red-300 text-slate-900" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}>
+            {!isBasicMode && (kind === "fte" ? <StaffingIcon size={13} className="shrink-0" /> : <ReceiptIcon size={13} className="shrink-0" />)}
+            {kind === "fte" ? "FTE" : "Non-FTE"}
+          </button>)}
+        </div>
       </div>
 
       <div
@@ -1274,7 +1320,7 @@ export const UnassignedPool = memo(function UnassignedPool({
             : "flex flex-col gap-2"
         }`}
       >
-        {poolCards.map((card) => (
+        {poolCards.map((card) => card.kind === "non-fte" ? <NonFteWorkpackageCard suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} /> : (
           <FunctionCard
             key={card.id}
             card={card}
@@ -1296,7 +1342,7 @@ export const UnassignedPool = memo(function UnassignedPool({
               isCompact ? "col-span-2" : ""
             }`}
           >
-            <span className={`text-xs ${isRetro ? "text-black font-mono" : "text-slate-400"} italic`}>All workpackages assigned to projects</span>
+            <span className={`text-xs ${isRetro ? "text-black font-mono" : "text-slate-400"} italic`}>{workpackageKind === "non-fte" ? "No unassigned purchases. Add a non-FTE workpackage to start." : "All workpackages assigned to projects"}</span>
           </div>
         )}
       </div>

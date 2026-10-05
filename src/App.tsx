@@ -1,3 +1,6 @@
+import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
+import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
+import { purchaseCost, purchaseCostSummary, validPurchaseMonths, purchaseDeadline, purchaseSubcategory, retainUsedSuppliers, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AllocationProject, MemberMaintenancePreferences, TeamMemberRecord, WorkpackageCard } from "./types";
@@ -10,6 +13,7 @@ import {
   TOOL_VIEW_SWITCHER_STYLES,
   DEFAULT_FTE_RATES,
   DEFAULT_FTE_COSTS,
+  DEFAULT_SUPPLIERS,
   DEFAULT_TOOL_FTE_RATES,
   DEFAULT_MGMT_SETTINGS,
   DEFAULT_OTHER_SETTINGS,
@@ -149,6 +153,8 @@ export default function App() {
     },
   ]);
 
+  const [workpackageKind, setWorkpackageKind] = useState<"fte" | "non-fte">("fte");
+  const [pendingPurchase, setPendingPurchase] = useState<{card: WorkpackageCard; project: AllocationProject; edited?: boolean} | null>(null);
   const [showAddFunction, setShowAddFunction] = useState(false);
   const [showAddProject, setShowAddProject] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -175,6 +181,7 @@ export default function App() {
   });
 
   const [config, setConfig] = useState({
+    suppliers: DEFAULT_SUPPLIERS.map(supplier => ({ ...supplier })),
     fteRates: deepClone(DEFAULT_FTE_RATES),
     fteCosts: deepClone(DEFAULT_FTE_COSTS),
     toolFteRates: deepClone(DEFAULT_TOOL_FTE_RATES),
@@ -184,9 +191,14 @@ export default function App() {
     stabilityFactors: DEFAULT_STABILITY_FACTORS,
   });
 
+  const usedSupplierIds = useMemo(() => new Set(functions
+    .filter(card => card.kind === "non-fte" && card.supplierId)
+    .map(card => card.supplierId!)), [functions]);
+
   const handleSaveConfig = useCallback((newConfig) => {
-    setConfig(newConfig);
-  }, []);
+    setConfig(current => ({ ...newConfig, suppliers: retainUsedSuppliers(
+      newConfig.suppliers ?? DEFAULT_SUPPLIERS, current.suppliers, usedSupplierIds) }));
+  }, [usedSupplierIds]);
 
   useEffect(() => {
     const handleGlobalDragEnd = () => {
@@ -219,6 +231,15 @@ export default function App() {
 
   const functionsWithFTE = useMemo(() => {
     return functions.map((f) => {
+      if (f.kind === "non-fte") {
+        const project = projectIndex.get(f.projectId);
+        const subcategory = purchaseSubcategory(f);
+        const negated = Boolean(project && (project.toolSet.has(f.tool) || (subcategory && project.subSet.has(subcategory))));
+        return { ...f, subcategory, _fte: 0, _nominalFte: 0, _isNegated: negated, _isAltered: false,
+          _allocationCost: project && !negated && validPurchaseMonths(f, project).length > 0
+            ? purchaseCostSummary(purchaseCost(f, config.reusabilityFactors), config.fteCosts.currency) : undefined };
+      }
+
       const nominalFte = calcCardFTE(
         f,
         NOMINAL_BASELINE_PROJECT,
@@ -321,7 +342,7 @@ export default function App() {
     if (!project) return;
     const editedCards = functions.map((f) => {
       const updated = updatedCards.find((c) => c.id === f.id);
-      if (!updated || f.projectId !== projectId) return f;
+      if (!updated || f.projectId !== projectId || f.kind === "non-fte") return f;
       return {
         ...f,
         otherStartMonth: updated.otherStartMonth,
@@ -339,7 +360,7 @@ export default function App() {
     setFunctions((prev) =>
       prev.map((f) => {
         const updated = reconciled.cards.find((c) => c.id === f.id);
-        if (!updated || f.projectId !== projectId) return f;
+        if (!updated || f.projectId !== projectId || f.kind === "non-fte") return f;
         return {
           ...f,
           otherStartMonth: updated.otherStartMonth,
@@ -357,6 +378,10 @@ export default function App() {
     if (targetProjectId !== "pool") {
       const targetCard = functions.find((f) => f.id === cardId);
       const targetProj = projects.find((p) => p.id === targetProjectId);
+      if (targetCard?.kind === "non-fte" && targetProj) {
+        setPendingPurchase({ card: { ...targetCard, subcategory: purchaseSubcategory(targetCard) }, project: targetProj });
+        return;
+      }
       if (targetCard && targetCard.tool === "Other" && targetProj) {
         const duration = Math.max(1, parseInt(targetCard.otherDuration, 10) || 6);
         const normMilestones = normalizeMilestones(targetProj.milestones, targetProj.duration);
@@ -404,6 +429,9 @@ export default function App() {
           return {
             ...f,
             projectId: null,
+            purchaseMonths: f.kind === "non-fte" ? [] : f.purchaseMonths,
+            purchasePaymentMode: f.kind === "non-fte" ? undefined : f.purchasePaymentMode,
+            purchasePaymentShares: f.kind === "non-fte" ? undefined : f.purchasePaymentShares,
             otherStartMonth: f.tool === "Other" ? null : f.otherStartMonth,
           };
         }
@@ -438,6 +466,18 @@ export default function App() {
   const handleDragEnd = useCallback(() => setDraggedCard(null), []);
 
   const handleEdit = useCallback((cardId, startEditing, draft) => {
+    const card = functions.find(item => item.id === cardId);
+    if (!startEditing && draft && card?.kind === "non-fte") {
+      const updated = { ...card, ...draft, kind: "non-fte" as const, subcategory: purchaseSubcategory({ ...card, ...draft }), _editing: false };
+      const project = projects.find(project => project.id === updated.projectId);
+      if (project && (validPurchaseMonths(updated, project).length === 0 ||
+          validPurchaseMonths(updated, project).length !== (updated.purchaseMonths || []).length)) {
+        setPendingPurchase({ card: updated, project, edited: true });
+      } else {
+        setFunctions(current => current.map(item => item.id === cardId ? updated : item));
+      }
+      return;
+    }
     setFunctions((prev) =>
       prev.map((f) => {
         if (f.id !== cardId) return f;
@@ -454,7 +494,7 @@ export default function App() {
         return { ...f, _editing: false };
       })
     );
-  }, []);
+  }, [functions, projects]);
 
   const handleDelete = useCallback((cardId) => {
     setFunctions((prev) => prev.filter((f) => f.id !== cardId));
@@ -469,8 +509,18 @@ export default function App() {
   }, []);
 
   const handleUpdateProject = useCallback((projectId, updates) => {
+    const current = projects.find(project => project.id === projectId);
+    if (current) {
+      const next = { ...current, ...updates };
+      const invalid = functions.find(card => card.projectId === projectId && card.kind === "non-fte" &&
+        (card.purchaseMonths || []).some(month => month > purchaseDeadline(card, next)));
+      if (invalid) {
+        setAssignmentWarning({ isProjectEdit: true, cardName: invalid.name, projectName: current.name, reason: "This change would place an existing purchase payment after its deadline. Move its payment months first, then adjust the project." });
+        return;
+      }
+    }
     setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, ...updates } : p)));
-  }, []);
+  }, [projects, functions]);
 
   const handleDeleteProject = useCallback((projectId) => {
     setProjects((prev) => prev.filter((p) => p.id !== projectId));
@@ -736,6 +786,9 @@ export default function App() {
         <main className="flex-1 flex flex-row gap-5 p-4 md:p-5 overflow-hidden items-start min-h-0">
           {activeToolView === "all" ? (
             <UnassignedPool
+              suppliers={config.suppliers}
+              workpackageKind={workpackageKind}
+              onChangeWorkpackageKind={setWorkpackageKind}
               cards={functionsWithFTE}
               reusabilityFactors={config.reusabilityFactors}
               fteRates={config.fteRates}
@@ -756,6 +809,9 @@ export default function App() {
             <div className="w-80 shrink-0 flex flex-col gap-3 h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]">
               <div className="flex-1 min-h-0 flex flex-col">
                 <UnassignedPool
+                  suppliers={config.suppliers}
+                  workpackageKind={workpackageKind}
+                  onChangeWorkpackageKind={setWorkpackageKind}
                   cards={functionsWithFTE}
                   reusabilityFactors={config.reusabilityFactors}
                   fteRates={config.fteRates}
@@ -859,6 +915,7 @@ export default function App() {
                     className="w-full h-full"
                   >
                     <ProjectBasket
+                      suppliers={config.suppliers}
                       project={project}
                       cards={functionsWithFTE}
                       teamMembers={teamMembers}
@@ -909,7 +966,25 @@ export default function App() {
         </main>
 
         {/* Modals */}
-        {showAddFunction && (
+        {showAddFunction && workpackageKind === "non-fte" && <NonFteWorkpackageModal
+          suppliers={config.suppliers} activeToolView={activeToolView}
+          reusabilityFactors={config.reusabilityFactors} onClose={() => setShowAddFunction(false)}
+          onSave={card => {
+            handleAddFunction(card);
+            setShowAddFunction(false);
+          }} />}
+        {pendingPurchase && <AssignNonFteModal card={pendingPurchase.card} project={pendingPurchase.project}
+          factors={config.reusabilityFactors} onClose={() => setPendingPurchase(null)}
+          onConfirm={(months, milestone, mode, shares) => {
+            const { card, project } = pendingPurchase;
+            const valid = validPurchaseMonths({ ...card, purchaseMilestone: milestone, purchaseMonths: months }, project);
+            if (valid.length === 0 || valid.length !== months.length || (mode === "split" && !hasValidPurchasePaymentShares(valid, shares))) return;
+            setFunctions(current => current.map(item => item.id === card.id ? { ...(pendingPurchase.edited ? card : item), projectId: project.id, subcategory: purchaseSubcategory(card), purchaseMilestone: milestone, purchaseMonths: valid,
+              purchasePaymentMode: mode, purchasePaymentShares: mode === "split" ? shares : undefined } : item));
+            setPendingPurchase(null);
+          }} />}
+
+        {showAddFunction && workpackageKind === "fte" && (
           <AddFunctionModal
             onClose={() => setShowAddFunction(false)}
             reusabilityFactors={config.reusabilityFactors}
@@ -949,6 +1024,7 @@ export default function App() {
         {showConfigModal && (
           <ConfigurationModal
             config={config}
+            usedSupplierIds={usedSupplierIds}
             onSave={handleSaveConfig}
             onClose={() => setShowConfigModal(false)}
             SettingsIcon={SettingsIcon}
@@ -977,7 +1053,7 @@ export default function App() {
             members={teamMembers.filter((m) => m.tool === activeToolView)}
             allMembers={teamMembers}
             projects={projects}
-            cards={functionsWithFTE}
+            cards={functionsWithFTE.filter(card => card.kind !== "non-fte")}
             toolFteRates={config.toolFteRates}
             fteRates={config.fteRates}
             fteCosts={config.fteCosts}
@@ -1016,14 +1092,14 @@ export default function App() {
                   ⚠️
                 </div>
                 <div>
-                  <h2 className="text-base font-bold text-slate-900">Cannot Assign Workpackage</h2>
+                  <h2 className="text-base font-bold text-slate-900">{assignmentWarning.isProjectEdit ? "Cannot Update Project" : "Cannot Assign Workpackage"}</h2>
                   <p className="text-xs text-slate-500 font-medium">Constraint Violation</p>
                 </div>
               </div>
 
               <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-950 leading-relaxed flex flex-col gap-2">
                 <div>
-                  Workpackage <strong>&quot;{assignmentWarning.cardName}&quot;</strong> cannot be added to project <strong>&quot;{assignmentWarning.projectName}&quot;</strong>.
+                  {assignmentWarning.isProjectEdit ? <>Scheduled purchase <strong>{assignmentWarning.cardName}</strong> prevents this update to <strong>{assignmentWarning.projectName}</strong>.</> : <>Workpackage <strong>&quot;{assignmentWarning.cardName}&quot;</strong> cannot be added to project <strong>&quot;{assignmentWarning.projectName}&quot;</strong>.</>}
                 </div>
                 <div className="p-2 bg-white/80 rounded-lg border border-amber-300/80 font-medium text-amber-900">
                   {assignmentWarning.reason}

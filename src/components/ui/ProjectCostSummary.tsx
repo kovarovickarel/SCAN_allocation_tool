@@ -1,15 +1,24 @@
+import { useContext } from "react";
+import { ThemeContext } from "../../constants";
+import { costInEUR } from "../../utils/nonFteWorkpackages";
 import type { WorkpackageAllocationCost } from "../../types";
 import { useEuroCostConversion } from "../../hooks/useEuroCostConversion";
 
 export function ProjectCostSummary({ cost, onOpen }: { cost: WorkpackageAllocationCost; onOpen?: () => void }) {
+  const { isBasicMode, isRetro } = useContext(ThemeContext);
   const { needsConversion, rate, conversionFailed, date } = useEuroCostConversion(cost.currency, cost.totalCost);
-  const eurCost = rate === null ? null : cost.totalCost * rate;
+  const eurCost = costInEUR(cost, rate);
   const unpriced = cost.unpricedHours > 0;
-  const unavailable = (unpriced && cost.totalCost === 0) || (eurCost !== null && !Number.isFinite(eurCost));
+  const unavailable = (unpriced && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0)) || (eurCost !== null && !Number.isFinite(eurCost));
   const amount = unavailable || (needsConversion && conversionFailed) ? "N/A"
     : eurCost === null ? "…" : `€ ${eurCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+  const fteCostEUR = costInEUR({ ...cost, purchaseCostEUR: 0 }, rate);
+  const fteAmount = (unpriced && cost.totalCost === 0) || (needsConversion && conversionFailed)
+    ? "N/A" : fteCostEUR === null ? "…"
+    : Number.isFinite(fteCostEUR) ? fteCostEUR.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A";
+  const nonFteAmount = (cost.purchaseCostEUR ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
   const tooltip = [
-    "Allocated resource cost over the project, including management support.",
+    "Project cost, including allocated resources, management support, and scheduled non-FTE purchases.",
     unpriced ? `Partial cost: ${cost.unpricedHours.toFixed(2)} hours have no configured hourly rate (${cost.missingLocations.join(", ")}).` : "",
     needsConversion && rate !== null ? `Converted using 1 ${cost.currency} = ${rate} EUR (${date}).` : "",
     needsConversion && conversionFailed ? "EUR conversion is currently unavailable." : "",
@@ -30,6 +39,11 @@ export function ProjectCostSummary({ cost, onOpen }: { cost: WorkpackageAllocati
           <><span className="text-yellow-400">€</span><span className="text-yellow-400">{amount.slice(2)}</span></>
         ) : amount}
       </button>
+      {!isBasicMode && (
+        <span className={`text-[10px] ${isRetro ? "text-slate-200" : "text-slate-400"} font-normal`}>
+          (FTE: {fteAmount} + Non-FTE: {nonFteAmount})
+        </span>
+      )}
     </div>
   );
 }
