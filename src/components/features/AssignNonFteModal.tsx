@@ -13,17 +13,19 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
   const { isRetro } = useContext(ThemeContext);
   const backdropPressRef = useRef(false);
   useEscapeKey(onClose);
-  const [months, setMonths] = useState<number[]>(() => card.projectId === project.id ? validPurchaseMonths(card, project) : []);
+  const [months, setMonths] = useState<number[]>(() => card.projectId === project.id ? validPurchaseMonths(card, project).filter(month => month <= purchaseDeadline(card, project)) : []);
   const [selectedMilestone, setSelectedMilestone] = useState(card.purchaseMilestone || "");
-  const [splitPayments, setSplitPayments] = useState(card.projectId === project.id && card.purchasePaymentMode === "split");
+  const [splitPayments, setSplitPayments] = useState(card.projectId === project.id && (card.purchasePaymentMode === "split" || Boolean(card.purchasePaymentOverrides)));
   const [paymentInputs, setPaymentInputs] = useState<Record<number, string>>(() => {
-    if (card.projectId !== project.id || card.purchasePaymentMode !== "split") return {};
+    if (card.projectId !== project.id || (card.purchasePaymentMode !== "split" && !card.purchasePaymentOverrides)) return {};
     const costs = purchaseMonthlyCosts(card, project, factors);
     return Object.fromEntries(validPurchaseMonths(card, project).map(month => [month, costs[month - 1].toFixed(2)]));
   });
   const milestones = useMemo(() => normalizeMilestones(project.milestones, project.duration), [project.milestones, project.duration]);
   const mode: PurchasePaymentMode = months.length === 1 ? "at-once" : splitPayments ? "split" : "even";
-  const scheduledCard = { ...card, purchaseMilestone: selectedMilestone || null, purchaseMonths: months, purchasePaymentMode: mode };
+  const scheduledCard = { ...card, purchaseMilestone: selectedMilestone || null, purchaseMonths: months, purchasePaymentMode: mode,
+    purchasePaymentOverrides: undefined,
+    ...(card.purchasePaymentOverrides ? { purchasePriceEUR: purchaseCost(card, factors), reusability: "Other", customReusabilityFactor: 1 } : {}) };
   const deadline = purchaseDeadline(scheduledCard, project);
   const total = purchaseCost(card, factors);
   const totalCents = Math.round(total * 100);

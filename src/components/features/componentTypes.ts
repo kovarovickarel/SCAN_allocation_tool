@@ -1,5 +1,5 @@
 import type React from 'react';
-import type { WorkpackageView } from '../../types';
+import type { PurchasePaymentDrafts, WorkpackageView } from '../../types';
 import type { AllocationProject, FactorMap, ManagementOverhead, MemberMaintenancePreferences, MilestoneMap, MonthlyNumericMap, NumericMap, NumericInput, TeamMemberRecord, ToolDefinition, WorkpackageCard, WorkpackageAllocationMonth, WorkpackageAllocationCost, FteCostSettings, SupplierRecord } from '../../types';
 import type { DEFAULT_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_OTHER_SETTINGS, DEFAULT_TOOL_FTE_RATES } from '../../constants';
 
@@ -283,6 +283,7 @@ export interface ProjectBasketProps {
   onToggleTool: (projectId: string, toolName: string) => void;
   onResetSubcategories: (projectId: string) => void;
   onSaveTimeline: ProjectTimelineModalProps["onSaveTimeline"];
+  onSavePurchasePayments?: (projectId: string, drafts: PurchasePaymentDrafts) => boolean;
   stabilityFactors?: FactorMap;
   reusabilityFactors?: FactorMap;
   mgmtSettings?: typeof DEFAULT_MGMT_SETTINGS;

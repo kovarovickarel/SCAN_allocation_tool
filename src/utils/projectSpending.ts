@@ -1,7 +1,7 @@
 import { purchaseMonthlyCosts as scheduledPurchaseCosts, purchaseCostSummary, purchaseSubcategory } from "./nonFteWorkpackages";
 import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, round2 } from "../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
-  ProjectSpendingTool, TeamMemberRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
+  ProjectSpendingTool, PurchasePaymentDrafts, TeamMemberRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
 import { calculateMemberMonthlyAllocationCost, calculateWorkpackageAllocationCost, sumWorkpackageAllocationCosts } from "./allocationCosts";
 import { resolveMonthlyMemberAllocations } from "./memberAllocations";
 import { computeWorkpackageLifecycleTimeline } from "./helpers";
@@ -18,6 +18,7 @@ interface ProjectSpendingOptions {
   reusabilityFactors?: FactorMap;
   stabilityFactors?: FactorMap;
   activeToolView?: string;
+  purchasePaymentDrafts?: PurchasePaymentDrafts;
 }
 
 // Retain unrounded monthly values; round only the displayed/aggregate totals.
@@ -51,7 +52,7 @@ function buildTrack(card: WorkpackageCard, requiredEffort: number[], project: Al
 
 export function calculateProjectSpending({ project, cards, members, overheads, fteCosts,
   fteRates = DEFAULT_FTE_RATES, toolFteRates, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
-  stabilityFactors = DEFAULT_STABILITY_FACTORS, activeToolView = "all" }: ProjectSpendingOptions) {
+  stabilityFactors = DEFAULT_STABILITY_FACTORS, activeToolView = "all", purchasePaymentDrafts }: ProjectSpendingOptions) {
   const scopedCards = cards.filter((card) => {
     const subcategory = card.kind === "non-fte" ? purchaseSubcategory(card) : card.subcategory;
     return card.projectId === project.id && !card._isNegated &&
@@ -60,7 +61,9 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
   });
   const tracks = scopedCards.map((card): ProjectSpendingTrack => {
     if (card.kind === "non-fte") {
-      const monthlyCosts = scheduledPurchaseCosts(card, project, reusabilityFactors).map(value => purchaseCostSummary(value, fteCosts.currency));
+      const draft = purchasePaymentDrafts?.[card.id];
+      const monthlyCosts = (draft ? Array.from({ length: project.duration }, (_, index) => (draft[index + 1] ?? 0) / 100)
+        : scheduledPurchaseCosts(card, project, reusabilityFactors)).map(value => purchaseCostSummary(value, fteCosts.currency));
       return { id: card.id, name: card.name, tool: card.tool, isManagement: false, isNonFte: true,
         members: [], monthlyCosts, totalCost: sumWorkpackageAllocationCosts(monthlyCosts, fteCosts.currency) };
     }

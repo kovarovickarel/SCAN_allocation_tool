@@ -1,9 +1,9 @@
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
 import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
-import { purchaseCost, purchaseCostSummary, validPurchaseMonths, purchaseDeadline, purchaseSubcategory, retainUsedSuppliers, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
+import { purchaseCost, purchaseCostSummary, purchaseMonthlyCosts, purchasePaymentSchedule, purchaseScheduleExceedsProject, isPurchasePaymentAltered, validPurchaseMonths, purchaseSubcategory, retainUsedSuppliers, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import type { AllocationProject, MemberMaintenancePreferences, TeamMemberRecord, WorkpackageCard } from "./types";
+import type { AllocationProject, MemberMaintenancePreferences, PurchasePaymentDrafts, TeamMemberRecord, WorkpackageCard } from "./types";
 import {
   ThemeContext,
   DEFAULT_STABILITY_FACTORS,
@@ -235,7 +235,7 @@ export default function App() {
         const project = projectIndex.get(f.projectId);
         const subcategory = purchaseSubcategory(f);
         const negated = Boolean(project && (project.toolSet.has(f.tool) || (subcategory && project.subSet.has(subcategory))));
-        return { ...f, subcategory, _fte: 0, _nominalFte: 0, _isNegated: negated, _isAltered: false,
+        return { ...f, subcategory, _fte: 0, _nominalFte: 0, _isNegated: negated, _isAltered: Boolean(project && isPurchasePaymentAltered(f, project, config.reusabilityFactors)),
           _allocationCost: project && !negated && validPurchaseMonths(f, project).length > 0
             ? purchaseCostSummary(purchaseCost(f, config.reusabilityFactors), config.fteCosts.currency) : undefined };
       }
@@ -430,6 +430,7 @@ export default function App() {
             ...f,
             projectId: null,
             purchaseMonths: f.kind === "non-fte" ? [] : f.purchaseMonths,
+            purchasePaymentOverrides: f.kind === "non-fte" ? undefined : f.purchasePaymentOverrides,
             purchasePaymentMode: f.kind === "non-fte" ? undefined : f.purchasePaymentMode,
             purchasePaymentShares: f.kind === "non-fte" ? undefined : f.purchasePaymentShares,
             otherStartMonth: f.tool === "Other" ? null : f.otherStartMonth,
@@ -470,7 +471,7 @@ export default function App() {
     if (!startEditing && draft && card?.kind === "non-fte") {
       const updated = { ...card, ...draft, kind: "non-fte" as const, subcategory: purchaseSubcategory({ ...card, ...draft }), _editing: false };
       const project = projects.find(project => project.id === updated.projectId);
-      if (project && (validPurchaseMonths(updated, project).length === 0 ||
+      if (project && !updated.purchasePaymentOverrides && (validPurchaseMonths(updated, project).length === 0 ||
           validPurchaseMonths(updated, project).length !== (updated.purchaseMonths || []).length)) {
         setPendingPurchase({ card: updated, project, edited: true });
       } else {
@@ -500,6 +501,21 @@ export default function App() {
     setFunctions((prev) => prev.filter((f) => f.id !== cardId));
   }, []);
 
+  const handleSavePurchasePayments = useCallback((projectId: string, drafts: PurchasePaymentDrafts) => {
+    const project = projects.find(item => item.id === projectId);
+    if (!project) return false;
+    const schedules = Object.entries(drafts).map(([id, payments]) => {
+      const card = functions.find(item => item.id === id);
+      if (!card || card._isNegated || project.hiddenTools?.includes(card.tool) ||
+          project.hiddenSubcategories?.includes(purchaseSubcategory(card) || "")) return null;
+      return purchasePaymentSchedule(card, project, payments, config.reusabilityFactors);
+    });
+    if (!schedules.length || schedules.some(schedule => !schedule)) return false;
+    const updates = new Map(schedules.map(schedule => [schedule!.id, schedule!]));
+    setFunctions(current => current.map(card => updates.has(card.id) ? { ...card, ...updates.get(card.id) } : card));
+    return true;
+  }, [projects, functions, config.reusabilityFactors]);
+
   const handleAddFunction = useCallback((newFn) => {
     setFunctions((prev) => [{ ...newFn, _editing: false, customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {} }, ...prev]);
   }, []);
@@ -513,7 +529,7 @@ export default function App() {
     if (current) {
       const next = { ...current, ...updates };
       const invalid = functions.find(card => card.projectId === projectId && card.kind === "non-fte" &&
-        (card.purchaseMonths || []).some(month => month > purchaseDeadline(card, next)));
+        purchaseScheduleExceedsProject(card, next));
       if (invalid) {
         setAssignmentWarning({ isProjectEdit: true, cardName: invalid.name, projectName: current.name, reason: "This change would place an existing purchase payment after its deadline. Move its payment months first, then adjust the project." });
         return;
@@ -937,6 +953,7 @@ export default function App() {
                       onToggleTool={handleToggleTool}
                       onResetSubcategories={handleResetSubcategories}
                       onSaveTimeline={handleSaveTimelineEdits}
+                      onSavePurchasePayments={handleSavePurchasePayments}
                       stabilityFactors={config.stabilityFactors}
                       reusabilityFactors={config.reusabilityFactors}
                       mgmtSettings={config.management}
@@ -977,10 +994,15 @@ export default function App() {
           factors={config.reusabilityFactors} onClose={() => setPendingPurchase(null)}
           onConfirm={(months, milestone, mode, shares) => {
             const { card, project } = pendingPurchase;
-            const valid = validPurchaseMonths({ ...card, purchaseMilestone: milestone, purchaseMonths: months }, project);
+            const valid = validPurchaseMonths({ ...card, purchaseMilestone: milestone, purchaseMonths: months, purchasePaymentOverrides: undefined }, project);
             if (valid.length === 0 || valid.length !== months.length || (mode === "split" && !hasValidPurchasePaymentShares(valid, shares))) return;
+            const scheduled = { ...card, projectId: project.id, purchaseMilestone: milestone, purchaseMonths: valid,
+              purchasePaymentMode: mode, purchasePaymentShares: mode === "split" ? shares : undefined, purchasePaymentOverrides: undefined };
+            const overrides = card.purchasePaymentOverrides ? Object.fromEntries(purchaseMonthlyCosts({ ...scheduled,
+              purchasePriceEUR: purchaseCost(card, config.reusabilityFactors), reusability: "Other", customReusabilityFactor: 1 }, project, config.reusabilityFactors)
+              .map((value, index) => [index + 1, value])) : undefined;
             setFunctions(current => current.map(item => item.id === card.id ? { ...(pendingPurchase.edited ? card : item), projectId: project.id, subcategory: purchaseSubcategory(card), purchaseMilestone: milestone, purchaseMonths: valid,
-              purchasePaymentMode: mode, purchasePaymentShares: mode === "split" ? shares : undefined } : item));
+              purchasePaymentMode: mode, purchasePaymentShares: mode === "split" ? shares : undefined, purchasePaymentOverrides: overrides } : item));
             setPendingPurchase(null);
           }} />}
 

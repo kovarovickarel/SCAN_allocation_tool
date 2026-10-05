@@ -4,6 +4,10 @@ export type NumericInput = number | string;
 
 export type NumericMap = Record<string, number>;
 
+/** One-based purchase months mapped to integer EUR cents, scoped by workpackage ID. */
+export type PurchasePaymentDrafts = Record<string, NumericMap>;
+export type PurchasePaymentSchedule = Pick<WorkpackageCard, "id" | "purchasePaymentOverrides">;
+
 export type MonthlyNumericMap = Record<string, NumericMap>;
 
 export type MemberMaintenancePreferences = Record<string, boolean>;
@@ -92,6 +96,8 @@ export interface WorkpackageCard {
   purchaseMilestone?: string | null;
   /** One-based project months. */
   purchaseMonths?: number[];
+  /** Absolute EUR payments by one-based project month, manually overridden in Spending. */
+  purchasePaymentOverrides?: NumericMap;
   purchasePaymentMode?: PurchasePaymentMode;
   /** Fractions of the final price keyed by one-based project month. */
   purchasePaymentShares?: NumericMap;

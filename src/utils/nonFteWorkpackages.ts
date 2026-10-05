@@ -1,5 +1,5 @@
 import { DEFAULT_REUSABILITY_FACTORS, TOOL_MAP, round2 } from "../constants";
-import type { AllocationProject, FactorMap, SupplierRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
+import type { AllocationProject, FactorMap, NumericMap, PurchasePaymentSchedule, SupplierRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
 import { normalizeMilestones } from "./helpers";
 import { getReusabilityFactor } from "./reusability";
 
@@ -16,6 +16,7 @@ export function purchaseSubcategory(card: Pick<WorkpackageCard, "tool" | "subcat
 }
 
 export function purchaseCost(card: WorkpackageCard, factors: FactorMap = DEFAULT_REUSABILITY_FACTORS): number {
+  if (card.purchasePaymentOverrides) return round2(Object.values(card.purchasePaymentOverrides).reduce((sum, value) => sum + value, 0));
   const price = Number(card.purchasePriceEUR);
   return Number.isFinite(price) && price >= 0 ? round2(price * getReusabilityFactor(card, factors)) : 0;
 }
@@ -25,13 +26,23 @@ export function purchaseDeadline(card: WorkpackageCard, project: AllocationProje
   return card.purchaseMilestone ? milestones[card.purchaseMilestone] ?? project.duration : project.duration;
 }
 
+export function purchaseScheduleExceedsProject(card: WorkpackageCard, project: AllocationProject): boolean {
+  return card.purchasePaymentOverrides
+    ? Object.entries(card.purchasePaymentOverrides).some(([month, value]) => value > 0 && Number(month) > project.duration)
+    : (card.purchaseMonths || []).some(month => month > purchaseDeadline(card, project));
+}
+
 export function validPurchaseMonths(card: WorkpackageCard, project: AllocationProject): number[] {
+  if (card.purchasePaymentOverrides) return Object.entries(card.purchasePaymentOverrides)
+    .filter(([month, value]) => value > 0 && Number(month) >= 1 && Number(month) <= project.duration)
+    .map(([month]) => Number(month)).sort((a, b) => a - b);
   const deadline = purchaseDeadline(card, project);
   return [...new Set(card.purchaseMonths || [])].filter(month => Number.isInteger(month) && month >= 1 && month <= deadline)
     .sort((a, b) => a - b);
 }
 
 export function purchaseMonthlyCosts(card: WorkpackageCard, project: AllocationProject, factors?: FactorMap): number[] {
+  if (card.purchasePaymentOverrides) return Array.from({ length: project.duration }, (_, index) => card.purchasePaymentOverrides![index + 1] ?? 0);
   const months = validPurchaseMonths(card, project);
   const cents = Math.round(purchaseCost(card, factors) * 100);
   const values = Array(project.duration).fill(0);
@@ -66,6 +77,27 @@ export function parsePurchasePaymentAmount(value: string): number | null {
   if (!/^(?:\d+(?:\.\d{0,2})?|\.\d{1,2})$/.test(normalized)) return null;
   const amount = Number(normalized);
   return Number.isFinite(amount) && amount >= 0 && amount <= Number.MAX_SAFE_INTEGER / 100 ? Math.round(amount * 100) : null;
+}
+
+export function isPurchasePaymentAltered(card: WorkpackageCard, project: AllocationProject, factors?: FactorMap): boolean {
+  if (!card.purchasePaymentOverrides) return false;
+  const defaults = purchaseMonthlyCosts({ ...card, purchasePaymentOverrides: undefined }, project, factors);
+  return purchaseMonthlyCosts(card, project, factors).some((value, index) => Math.round(value * 100) !== Math.round(defaults[index] * 100));
+}
+
+/** Manual payments may change both the total price and the milestone-bound schedule. */
+export function purchasePaymentSchedule(card: WorkpackageCard, project: AllocationProject, centsByMonth: NumericMap,
+  factors?: FactorMap): PurchasePaymentSchedule | null {
+  if (!isNonFte(card) || card.projectId !== project.id) return null;
+  const entries = Object.entries(centsByMonth);
+  if (!entries.length || entries.some(([key, cents]) => {
+    const month = Number(key);
+    return !Number.isInteger(month) || String(month) !== key || month < 1 || month > project.duration ||
+      !Number.isSafeInteger(cents) || cents < 0;
+  })) return null;
+  if (!Number.isSafeInteger(entries.reduce((sum, [, cents]) => sum + cents, 0))) return null;
+  const overrides = Object.fromEntries(entries.map(([month, cents]) => [month, cents / 100]));
+  return { id: card.id, purchasePaymentOverrides: isPurchasePaymentAltered({ ...card, purchasePaymentOverrides: overrides }, project, factors) ? overrides : undefined };
 }
 
 export function purchaseCostSummary(value: number, currency: string): WorkpackageAllocationCost {

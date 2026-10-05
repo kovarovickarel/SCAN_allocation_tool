@@ -85,7 +85,8 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
   const preview = { ...draft, purchasePriceEUR: roundedPrice,
     ...normalizeReusability({ ...draft, reusabilityAppliesToMaintenance: false }, reusabilityFactors) };
   const finalCost = purchaseCost(preview, reusabilityFactors);
-  const validFinalCost = Number.isFinite(finalCost) && finalCost > 0;
+  const configuredFinalCost = purchaseCost({ ...preview, purchasePaymentOverrides: undefined }, reusabilityFactors);
+  const validFinalCost = Number.isFinite(configuredFinalCost) && configuredFinalCost > 0;
   const valid = draft.name.trim() && validPrice && supplier && validReusability && validFinalCost;
   const selectedTool = TOOL_MAP[draft.tool] || TOOL_MAP.Other;
   const inputClass = `w-full ${inline ? "px-1.5 py-0.5 text-slate-800 font-medium" : "px-2.5 py-1.5"} text-xs border ${isRetro ? "border-black rounded-none bg-white font-mono" : "border-slate-300 rounded bg-white"}`;

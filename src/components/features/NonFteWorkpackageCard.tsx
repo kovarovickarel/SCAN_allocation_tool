@@ -24,10 +24,11 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
   const toolCardTheme = TOOL_CARD_THEMES[card.tool] || TOOL_CARD_THEMES.Other;
   const subcategory = purchaseSubcategory(card);
   const abbreviatedSubcategory = subcategory === "Trace Checker" ? "TC" : subcategory;
-  const fullCategoryName = subcategory ? `${card.tool} → ${subcategory}` : card.tool;
-  const expandedCategoryName = card.projectId && subcategory ? subcategory : fullCategoryName;
-  const abbreviatedCategoryName = card.projectId && subcategory ? abbreviatedSubcategory
-    : subcategory ? `${TOOL_ABBREVIATIONS[card.tool] || card.tool} → ${abbreviatedSubcategory}` : TOOL_ABBREVIATIONS[card.tool] || card.tool;
+  const alterationSuffix = card._isAltered ? "*" : "";
+  const fullCategoryName = subcategory ? `${card.tool}${alterationSuffix} → ${subcategory}` : `${card.tool}${alterationSuffix}`;
+  const expandedCategoryName = card.projectId && subcategory ? `${subcategory}${alterationSuffix}` : fullCategoryName;
+  const abbreviatedCategoryName = (card.projectId && subcategory ? abbreviatedSubcategory
+    : subcategory ? `${TOOL_ABBREVIATIONS[card.tool] || card.tool} → ${abbreviatedSubcategory}` : TOOL_ABBREVIATIONS[card.tool] || card.tool) + alterationSuffix;
   const headerRef = useRef<HTMLDivElement>(null);
   const categoryRef = useRef<HTMLSpanElement>(null);
   const fullCategoryRef = useRef<HTMLSpanElement>(null);
@@ -103,7 +104,7 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
     return () => { disposed = true; observer.disconnect(); document.fonts.removeEventListener("loadingdone", measure); };
   }, [isCompact, card._editing, expandedCategoryName, abbreviatedCategoryName, card.purchaseType, card.purchaseMilestone, onSchedule, isRetro, isBasic, isBasicMode]);
   const categoryName = isCompact
-    ? subcategory === "Trace Checker" ? "TC" : subcategory || TOOL_ABBREVIATIONS[card.tool] || card.tool
+    ? (subcategory === "Trace Checker" ? "TC" : subcategory || TOOL_ABBREVIATIONS[card.tool] || card.tool) + alterationSuffix
     : useToolAbbreviation ? abbreviatedCategoryName : expandedCategoryName;
   const finishMsDef = card.purchaseMilestone ? MILESTONE_MAP[card.purchaseMilestone] : null;
   const total = purchaseCost(card, reusabilityFactors);
@@ -124,7 +125,7 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
     style={{ borderTopWidth: 5, borderBottomStyle: "dashed" }}>
     <div ref={headerRef} className="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-black/10 min-w-0">
       <div className={`flex items-center min-w-0 flex-1 ${isCompact ? "gap-1.5" : "gap-2"}`}>
-      <span ref={categoryRef} title={`${fullCategoryName} · Non-FTE purchase · Cost after reusability: € ${price}. Green: ≤ €50k; yellow: ≤ €200k; red: > €200k.`} className={`relative font-black uppercase rounded shadow-xs flex items-center min-w-0 ${useToolAbbreviation || (card.projectId && subcategory) ? "shrink-0" : ""} text-red-300 ${isCompact ? "text-[8.5px] tracking-tight px-1 py-0.2 gap-0.5" : "text-[9px] tracking-wider px-1.5 py-0.5 gap-1 max-w-full"} ${isRetro ? "bg-[#000080] border border-black shadow-[1px_1px_0px_#000] font-mono" : isBasic ? "bg-slate-800 border border-slate-700" : "bg-slate-900"}`}>
+      <span ref={categoryRef} title={`${fullCategoryName} · Non-FTE purchase${card._isAltered ? " (Timeline monthly payments manually altered)" : ""} · Cost: € ${price}. Green: ≤ €50k; yellow: ≤ €200k; red: > €200k.`} className={`relative font-black uppercase rounded shadow-xs flex items-center min-w-0 ${useToolAbbreviation || (card.projectId && subcategory) ? "shrink-0" : ""} text-red-300 ${isCompact ? "text-[8.5px] tracking-tight px-1 py-0.2 gap-0.5" : "text-[9px] tracking-wider px-1.5 py-0.5 gap-1 max-w-full"} ${isRetro ? "bg-[#000080] border border-black shadow-[1px_1px_0px_#000] font-mono" : isBasic ? "bg-slate-800 border border-slate-700" : "bg-slate-900"}`}>
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${purchaseCostDot(total)}`} /><span className={isCompact ? "truncate" : useToolAbbreviation || (card.projectId && subcategory) ? "whitespace-nowrap" : "min-w-0 whitespace-normal break-words"}>{categoryName}</span>
         {!isCompact && <span ref={fullCategoryRef} aria-hidden="true" className="absolute invisible whitespace-nowrap pointer-events-none">{expandedCategoryName}</span>}
       </span>
@@ -188,7 +189,7 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
       {isCompact
         ? <h3 title={card.name} className={`min-w-0 flex-1 truncate text-[11px] font-bold text-slate-900 ${card._isNegated ? "line-through" : ""}`}>{card.name}</h3>
         : <span className={`text-[9px] font-bold ${isRetro ? "text-black font-mono" : "text-gray-600"} uppercase shrink-0`}>TOTAL COST:</span>}
-      <WorkpackageCostLabel cost={purchaseCostSummary(card._isNegated ? 0 : total, "EUR")} compact={isCompact} title={`Purchase cost after reusability: ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`} />
+      <WorkpackageCostLabel cost={purchaseCostSummary(card._isNegated ? 0 : total, "EUR")} compact={isCompact} title={`${card._isAltered ? "Manually adjusted purchase cost" : "Purchase cost after reusability"}: ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`} />
     </div>
   </article>;
 }

@@ -1,4 +1,4 @@
-import { purchaseDeadline } from "../../utils/nonFteWorkpackages";
+import { purchaseScheduleExceedsProject } from "../../utils/nonFteWorkpackages";
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, SUBCAT_TOOL_MAP, DEFAULT_MGMT_SETTINGS, DEFAULT_FTE_COSTS, PROJECT_TYPES, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2, genId } from "../../constants";
 import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, calculateWorkpackageAllocationCost, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
@@ -500,6 +500,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   onToggleTool,
   onResetSubcategories,
   onSaveTimeline,
+  onSavePurchasePayments,
   stabilityFactors = DEFAULT_STABILITY_FACTORS,
   reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   mgmtSettings = DEFAULT_MGMT_SETTINGS,
@@ -794,7 +795,7 @@ export const ProjectBasket = memo(function ProjectBasket({
 
     const revisedProject = { ...project, duration: d, milestones: finalMilestones };
     const blockedPurchase = projectCards.find(card => card.kind === "non-fte" &&
-      (card.purchaseMonths || []).some(month => month > purchaseDeadline(card, revisedProject)));
+      purchaseScheduleExceedsProject(card, revisedProject));
     if (blockedPurchase) {
       setMilestoneError(`"${blockedPurchase.name}" has a payment after the proposed deadline. Cancel this edit and move its payment months first.`);
       return;
@@ -1306,6 +1307,7 @@ export const ProjectBasket = memo(function ProjectBasket({
           stabilityFactors={stabilityFactors}
           activeToolView={activeToolView}
           onClose={() => setShowSpendingModal(false)}
+          onSavePayments={onSavePurchasePayments ? drafts => onSavePurchasePayments(project.id, drafts) : undefined}
         />
       )}
 

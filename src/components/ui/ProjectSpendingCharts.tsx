@@ -144,7 +144,7 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
             className={`${engineeringColorClass} font-mono`}>{formatAmount(engineeringMonthlyCosts[activeMonth], true)}</strong></span>
           <span title={costTooltip(managementMonthlyCosts[activeMonth])}>Management support: <strong className="text-purple-700 font-mono">{formatAmount(managementMonthlyCosts[activeMonth], true)}</strong></span>
         </>}
-        {hasPurchases && <span title={costTooltip(purchaseMonthlyCosts![activeMonth])}>Non-FTEs: <strong className="text-amber-600 font-mono">{formatAmount(purchaseMonthlyCosts![activeMonth], true)}</strong></span>}
+        {hasPurchases && <span title={costTooltip(purchaseMonthlyCosts![activeMonth])}>Non-FTEs: <strong className="text-red-300 font-mono">{formatAmount(purchaseMonthlyCosts![activeMonth], true)}</strong></span>}
       </>}
     </div>
     <div className="overflow-x-auto pb-1 space-y-4">
