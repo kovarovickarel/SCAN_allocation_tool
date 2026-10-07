@@ -92,7 +92,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
       </header>
 
       <div aria-live="polite" className={`text-xs p-3 flex flex-col gap-1.5 ${isRetro ? "bg-[#ffffec] border-2 border-black text-black font-mono shadow-[2px_2px_0px_#000]" : "text-slate-600 bg-slate-50 rounded-xl border border-slate-200"}`}>
-        <div className="flex items-center justify-between"><span className="font-semibold">Total cost:</span><span className="font-bold font-mono text-yellow-400">€ {total.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span></div>
+        <div className="flex items-center justify-between"><span className="font-semibold">Total cost:</span><span className="font-bold font-mono text-yellow-600">€ {total.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span></div>
         <div className="flex items-center justify-between"><span className="font-semibold">Payment months:</span><span className="font-bold font-mono">{months.length}{months.length > 0 && mode !== "split" && ` · approx. € ${(total / months.length).toLocaleString("en-US", { maximumFractionDigits: 2 })}/month`}</span></div>
         <div className="grid grid-cols-3 gap-1 mt-1" role="group" aria-label="Payment type">
           <button type="button" disabled={months.length !== 1} aria-pressed={mode === "at-once"} className={`${targetClass(mode === "at-once")} disabled:opacity-40 disabled:cursor-not-allowed`}>At once</button>

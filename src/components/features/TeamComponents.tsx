@@ -7,9 +7,10 @@ import { MAX_EXTERNAL_PAYMENT_DELAY_MONTHS } from "../../utils/externalSalaries"
 import { ExternalMemberBadge } from "../ui/ExternalMemberBadge";
 import { MemberSupplierBadge } from "../ui/MemberSupplierBadge";
 import { ResponsiveMemberName } from "../ui/ResponsiveMemberName";
+import { ResponsiveTeamName } from "../ui/ResponsiveTeamName";
 import type { TeamMemberRole } from "../../types";
 import type { TeamMembersPoolProps, AddTeamMemberModalProps } from './componentTypes';
-import { PencilIcon, CalendarGanttIcon, TrashIcon, PlusIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
+import { PencilIcon, CalendarGanttIcon, TrashIcon, PlusIcon, Minimize2Icon, Maximize2Icon, ToolIcon, StaffingIcon } from '../ui/icons';
 
 export const TeamMembersPool = memo(function TeamMembersPool({
   toolName,
@@ -81,36 +82,31 @@ export const TeamMembersPool = memo(function TeamMembersPool({
     }`}>
       <div className={`${headerBg} ${isRetro ? "" : "rounded-t-xl"} px-3 py-1.5 shrink-0 h-[74px] min-h-[74px] flex flex-col justify-center transition-colors`}>
         <div className="flex-1 flex items-center justify-between gap-1.5">
-          <div className="flex items-center gap-1.5 min-w-0">
+          <div className="flex flex-1 items-center gap-1.5 min-w-0">
             {!isBasicMode && (
               <div className={`p-1 rounded-md ${isRetro ? "bg-[#000050] text-white border border-black" : isBasic ? "bg-slate-800/80 text-blue-300 border border-slate-700" : `bg-white/70 border ${tool.border}`} flex items-center justify-center shrink-0 shadow-2xs`}>
                 <ToolIcon toolName={toolName} size={14} className={`${iconClass} shrink-0`} />
               </div>
             )}
-            <h2 className={`font-bold text-sm tracking-tight truncate ${isRetro ? "font-mono font-black" : ""}`}>
-              {toolName} Team
-            </h2>
+            <ResponsiveTeamName toolName={toolName} className={`font-bold text-sm tracking-tight ${isRetro ? "font-mono font-black" : ""}`} />
           </div>
-          <button
-            type="button"
-            onClick={onAddClick}
-            className={`flex items-center gap-1 font-bold px-2 py-1 text-[11px] transition-colors cursor-pointer shrink-0 ${
-              isRetro
-                ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white shadow-none hover:bg-[#d4d0c8]"
-                : isBasic
-                ? "bg-blue-600 hover:bg-blue-500 text-white rounded shadow-2xs"
-                : `bg-white/90 hover:bg-white ${tool.text} border ${tool.border} rounded shadow-2xs`
-            }`}
-          >
-            <PlusIcon size={12} /> Add Member
-          </button>
-        </div>
-        <div className={`flex-1 flex items-center justify-between text-[11px] font-medium ${isRetro ? "font-mono text-white" : ""}`}>
-          <span className="opacity-80">{members.length} Member{members.length === 1 ? "" : "s"}</span>
           <div className="flex items-center gap-1.5 shrink-0">
-            <span className="font-mono text-[11px]">
-              Team Capacity: <strong className="font-bold">{totalCapacity.toFixed(2)} FTE</strong>
-            </span>
+            <button
+              type="button"
+              onClick={onOpenTimeline}
+              className={`p-1 px-1.5 rounded-md border transition-all duration-150 cursor-pointer flex items-center justify-center gap-1 text-[11px] font-bold whitespace-nowrap group shadow-2xs hover:scale-105 active:scale-95 ${
+                isRetro
+                  ? "text-black bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#ffff80] hover:shadow-[1px_1px_0px_#000]"
+                  : isBasic
+                  ? (TEAM_TIMELINE_BTN_STYLES[toolName]?.basic || "text-blue-400 bg-slate-800 border-slate-700 hover:bg-blue-600 hover:text-white")
+                  : (TEAM_TIMELINE_BTN_STYLES[toolName]?.vibrant || "text-slate-800 bg-white/70 border-slate-300 hover:bg-slate-700 hover:text-white")
+              }`}
+              title={`Open ${toolName} Combined Team Timeline`}
+              aria-label={`Open ${toolName} Combined Team Timeline`}
+            >
+              <span>View staffing</span>
+              <CalendarGanttIcon size={14} className="shrink-0 transition-transform group-hover:scale-110" />
+            </button>
             <button
               type="button"
               onClick={onToggleCompact}
@@ -132,22 +128,29 @@ export const TeamMembersPool = memo(function TeamMembersPool({
             >
               {isCompact ? <Maximize2Icon size={12} /> : <Minimize2Icon size={12} />}
             </button>
-            <button
-              type="button"
-              onClick={onOpenTimeline}
-              className={`p-1 px-1.5 rounded-md border transition-all duration-150 cursor-pointer flex items-center justify-center group shadow-2xs hover:scale-105 active:scale-95 ${
-                isRetro
-                  ? "text-black bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#ffff80] hover:shadow-[1px_1px_0px_#000]"
-                  : isBasic
-                  ? (TEAM_TIMELINE_BTN_STYLES[toolName]?.basic || "text-blue-400 bg-slate-800 border-slate-700 hover:bg-blue-600 hover:text-white")
-                  : (TEAM_TIMELINE_BTN_STYLES[toolName]?.vibrant || "text-slate-800 bg-white/70 border-slate-300 hover:bg-slate-700 hover:text-white")
-              }`}
-              title={`Open ${toolName} Combined Team Timeline`}
-              aria-label={`Open ${toolName} Combined Team Timeline`}
-            >
-              <CalendarGanttIcon size={14} className="transition-transform group-hover:scale-110" />
-            </button>
           </div>
+        </div>
+        <div className={`flex-1 flex items-center justify-between text-[11px] font-medium ${isRetro ? "font-mono text-white" : ""}`}>
+          <div className="flex flex-col min-w-0">
+            <span className="opacity-80">{members.length} Member{members.length === 1 ? "" : "s"}</span>
+            <span className="font-mono text-[11px]">
+              Team Capacity: <strong className="font-bold">{totalCapacity.toFixed(2)} FTE</strong>
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={onAddClick}
+            className={`flex items-center gap-1 font-bold px-2 py-1 text-[11px] transition-colors cursor-pointer shrink-0 ${
+              isRetro
+                ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white shadow-none hover:bg-[#d4d0c8]"
+                : isBasic
+                ? "bg-blue-600 hover:bg-blue-500 text-white rounded shadow-2xs"
+                : `bg-white/90 hover:bg-white ${tool.text} border ${tool.border} rounded shadow-2xs`
+            }`}
+          >
+            <span className="flex items-center"><PlusIcon size={12} />{!isBasicMode && <StaffingIcon size={12} className="shrink-0" />}</span> Add Member
+          </button>          </div>
         </div>
       </div>
 

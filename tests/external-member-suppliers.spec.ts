@@ -61,6 +61,17 @@ test("configured member suppliers survive editing and reset and are released for
 
 test("empty supplier lists block external saving while internal members need no supplier", async ({ page }) => {
   await page.goto("/");
+  // Remove supplier-backed demo records before testing an empty configuration.
+  for (const [tool, memberName, purchases] of [
+    ["KPI", "Nina Weber", ["KPI Analysis License"]],
+    ["Data Factory", "Daniel Costa", ["Data Processing Workstation"]],
+    ["Reprocessing", "Priya Sharma", ["HIL Test Bench Hardware", "Server Maintenance Service"]],
+  ] as const) {
+    await page.getByTitle(`${tool} Team View`, { exact: true }).click();
+    await page.getByTitle(`Delete ${memberName}`, { exact: true }).click();
+    await page.getByRole("button", { name: "Non-FTE", exact: true }).click();
+    for (const name of purchases) await page.getByRole("button", { name: `Delete ${name}`, exact: true }).click();
+  }
   let dialog = await suppliers(page);
   for (const name of ["Luxoft", "T&S", "Akoddis", "rProcess"])
     await dialog.getByRole("button", { name: `Remove supplier ${name}`, exact: true }).click();

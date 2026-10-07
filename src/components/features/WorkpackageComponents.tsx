@@ -2,7 +2,7 @@ import { purchaseSubcategory } from "../../utils/nonFteWorkpackages";
 import { NonFteWorkpackageCard } from "./NonFteWorkpackageCard";
 import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { useWorkpackageCardLayout } from "../../hooks/useWorkpackageCardLayout";
-import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
+import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
 import type { EditCardContentProps, FunctionCardProps, ManagementOverheadsProps, ToolRowProps, UnassignedPoolProps } from './componentTypes';
 import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon, StaffingIcon, ReceiptIcon } from '../ui/icons';
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
@@ -12,6 +12,7 @@ import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { getCrossTeamMemberIds, calculateManagementCoverage, hasAllocatedCost, sumWorkpackageAllocationCosts, getReusabilityFactor, getReusabilityLabel, getMaintenanceReusabilityFactor, hasWorkpackageMaintenance, normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
 import { DEFAULT_FTE_COSTS } from "../../constants";
 import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
+import { ResponsiveToolTagLabel } from "../ui/ResponsiveToolTagLabel";
 
 export function EditCardContent({ card, onEdit, projectDuration, projectMilestones, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates, toolFteRates }: EditCardContentProps) {
   const { isBasic, isRetro } = React.useContext(ThemeContext);
@@ -585,6 +586,9 @@ export const FunctionCard = memo(function FunctionCard({
   const fullCategoryName = card.subcategory ? `${toolWithStar} → ${card.subcategory}` : toolWithStar;
   const categoryDisplayName = isAssigned && card.subcategory
     ? `${card.subcategory}${isAltered ? "*" : ""}` : fullCategoryName;
+  const abbreviatedTool = `${TOOL_ABBREVIATIONS[card.tool] || card.tool}${isAltered ? "*" : ""}`;
+  const abbreviatedCategoryName = isAssigned && card.subcategory ? categoryDisplayName
+    : card.subcategory ? `${abbreviatedTool} → ${card.subcategory}` : abbreviatedTool;
 
   return (
     <div
@@ -612,7 +616,7 @@ export const FunctionCard = memo(function FunctionCard({
             title={isAltered ? `Category: ${fullCategoryName} (Timeline monthly effort manually altered)` : `Category: ${fullCategoryName}`}
           >
             {!isBasicMode && <span className={`w-1.5 h-1.5 rounded-full ${cardEffortDot} shrink-0 inline-block transition-colors duration-200`} />}
-            <span className="min-w-0 whitespace-normal break-words">{categoryDisplayName}</span>
+            <ResponsiveToolTagLabel fullLabel={categoryDisplayName} abbreviatedLabel={abbreviatedCategoryName} />
           </span>
           {finishMsDef && (
             <span
@@ -1271,22 +1275,6 @@ export const UnassignedPool = memo(function UnassignedPool({
           <h2 className={`font-bold text-sm tracking-tight text-white flex items-center gap-1.5 truncate ${isRetro ? "font-mono font-black" : ""}`}>
             Workpackage Pool
           </h2>
-          <button
-            type="button"
-            onClick={onAddClick}
-            className={`flex items-center gap-1 font-bold px-2 py-1 text-[11px] transition-all cursor-pointer shrink-0 ${
-              isRetro
-                ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white shadow-none hover:bg-[#d4d0c8]"
-                : "bg-emerald-600 hover:bg-emerald-500 text-white rounded shadow"
-            }`}
-          >
-            <PlusIcon size={12} /> Add Workpackage
-          </button>
-        </div>
-        <div className={`flex-1 flex items-center justify-between text-[11px] ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>
-          <span className="truncate">
-            {poolCards.length} WP {activeToolView !== "all" ? `(${activeToolView})` : ""} - Drag to assign
-          </span>
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               type="button"
@@ -1302,6 +1290,22 @@ export const UnassignedPool = memo(function UnassignedPool({
               {isCompact ? <Maximize2Icon size={13} /> : <Minimize2Icon size={13} />}
             </button>
           </div>
+        </div>
+        <div className={`flex-1 flex items-center justify-between text-[11px] ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>
+          <span className="truncate">
+            {poolCards.length} WP {activeToolView !== "all" ? `(${activeToolView})` : " - Drag to assign"}
+          </span>
+          <button
+            type="button"
+            onClick={onAddClick}
+            className={`flex items-center gap-1 font-bold px-2 py-1 text-[11px] transition-all cursor-pointer shrink-0 ${
+              isRetro
+                ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white shadow-none hover:bg-[#d4d0c8]"
+                : "bg-emerald-600 hover:bg-emerald-500 text-white rounded shadow"
+            }`}
+          >
+            <span className="flex items-center"><PlusIcon size={12} />{!isBasicMode && <ToolIcon toolName="Other" size={12} className="shrink-0" />}</span> Add Workpackage
+          </button>
         </div>
         <div role="group" aria-label="Workpackage type" className="flex rounded border border-slate-600 overflow-hidden my-1 shrink-0">
           {(["fte", "non-fte"] as const).map(kind => <button key={kind} type="button" aria-pressed={workpackageKind === kind} onClick={() => onChangeWorkpackageKind?.(kind)} className={`flex-1 flex items-center justify-center gap-1.5 text-[11px] font-bold py-1 cursor-pointer ${workpackageKind === kind ? kind === "fte" ? "bg-amber-300 text-slate-900" : "bg-red-300 text-slate-900" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}>

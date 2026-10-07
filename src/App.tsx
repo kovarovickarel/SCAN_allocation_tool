@@ -1,3 +1,4 @@
+import { ProjectIcon } from "./components/ui/icons";
 import { SummaryDashboard } from "./components/features/SummaryDashboard";
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
 import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
@@ -836,7 +837,7 @@ export default function App() {
                   : "bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow"
               }`}
             >
-              <PlusIcon size={13} /> Add Project
+              <span className="flex items-center"><PlusIcon size={13} />{!isBasicMode && <ProjectIcon size={16} className="shrink-0" />}</span> Add Project
             </button>
           </div>
         </header>
