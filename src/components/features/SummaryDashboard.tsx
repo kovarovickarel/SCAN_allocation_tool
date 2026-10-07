@@ -1,3 +1,4 @@
+import { getCoverageGradientStyle } from "../../utils/helpers";
 import { useContext, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { ThemeContext, FOOTPRINT_MAP, TOOL_ICON_COLORS, PROJECT_TYPE_COLORS } from "../../constants";
 import type { SupplierRecord, WorkpackageAllocationCost, AllocationProject } from "../../types";
@@ -30,6 +31,7 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
   const { rate, salaryRates, conversionFailed } = useEuroCostConversion(summary.portfolioCost.currency, summary.portfolioCost.totalCost, summary.portfolioCost);
   const number = (value: number) => value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const percent = (value: number | null) => value === null ? "—" : `${Math.round(value * 100)}%`;
+  const coverageColor = (value: number | null) => value === null ? undefined : getCoverageGradientStyle(value, 1).backgroundColor;
   const amount = (cost: WorkpackageAllocationCost) => {
     const value = costInEUR(cost, rate, salaryRates);
     if (value === null) return conversionFailed ? "N/A" : "…";
@@ -47,12 +49,12 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
   };
   const totalValue = costInEUR(summary.totalCost, rate, salaryRates);
   const costShare = (cost: WorkpackageAllocationCost) => { const value = costInEUR(cost, rate, salaryRates); return totalValue && value !== null ? `${Math.round(value / totalValue * 100)}% of total` : "—"; };
-  const bars = (values: Record<string, number>, label: (key: string) => string, colors = false) => {
+  const bars = (values: Record<string, number>, label: (key: string) => string, colors = false, supplierBars = false) => {
     const entries = Object.entries(values).filter(([, value]) => value > 0.000001).sort((a, b) => b[1] - a[1]);
     const total = entries.reduce((sum, [, value]) => sum + value, 0);
     return entries.length ? <div className="space-y-3 mt-4">{entries.map(([key, value]) => <div key={key}>
       <div className="flex items-center justify-between gap-3 text-[11px] mb-1"><span>{label(key)}</span><span className="font-mono whitespace-nowrap">{number(value)} · {percent(value / total)}</span></div>
-      <div className="h-2 rounded bg-slate-100 overflow-hidden"><div className={`h-full rounded ${colors ? (TOOL_ICON_COLORS[key] || "text-blue-500") : key === "unstaffed" ? "text-slate-400" : "text-blue-500"}`} style={{ width: `${value / total * 100}%`, backgroundColor: "currentColor" }} /></div>
+      <div className="h-2 rounded bg-slate-100 overflow-hidden"><div className={`h-full rounded ${colors ? (TOOL_ICON_COLORS[key] || "text-blue-500") : key === "unstaffed" ? "text-slate-400" : (supplierBars || key.startsWith("supplier:")) ? "text-red-300" : key.startsWith("location:") ? "text-[#82E600]" : "text-blue-500"}`} style={{ width: `${value / total * 100}%`, backgroundColor: "currentColor" }} /></div>
     </div>)}</div> : <p className="mt-5 text-xs text-slate-400 italic">No effort in this view yet.</p>;
   };
   const month = (start: string, offset = 0) => { const [year, m] = start.split("-").map(Number); const date = new Date(year, m - 1 + offset, 1); return `${String(date.getMonth() + 1).padStart(2, "0")}/${date.getFullYear()}`; };
@@ -80,7 +82,7 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
       </div>
       <div role="group" aria-label="Project status" className="flex gap-2 flex-wrap">{([['all', 'All projects'], ['nominated', 'Nominated'], ['rfq', 'RFQ'], ['selected', 'Selected projects']] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={filter === key} onClick={() => { setSpendingProject(null); setFilter(key); }} className={`${button} ${filter === key ? selectedFilterStyles[key] : ""}`}>{label}</button>)}</div>
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-3">{metrics.map(metric => <div key={metric.label} className={`${panel} p-3 min-w-0`}>
-        <div className="text-[11px] text-slate-600">{metric.label}</div><div className={`text-xl font-bold mt-1 ${metric.label === "Staffed" && (summary.coverage ?? 1) < 0.95 ? "text-red-600" : metric.label === "Externalised" ? "text-teal-700" : ""}`}>{metric.value}</div><p className="text-[10px] text-slate-500 mt-1">{metric.detail}</p>
+        <div className="text-[11px] text-slate-600">{metric.label}</div><div className={`text-xl font-bold mt-1 ${metric.label === "Externalised" ? "text-teal-700" : ""}`} style={{ color: metric.label === "Staffed" ? coverageColor(summary.coverage) : undefined }}>{metric.value}</div><p className="text-[10px] text-slate-500 mt-1">{metric.detail}</p>
       </div>)}</div>
       {(summary.totalCost.unpricedHours > 0 || conversionFailed) && <p role="status" className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded p-3">{conversionFailed ? "EUR conversion is unavailable. " : ""}{summary.totalCost.unpricedHours > 0 ? `* Partial totals: ${number(summary.totalCost.unpricedHours)} allocated hours have missing rates or salaries (${summary.totalCost.missingLocations.join(", ")}).` : ""}</p>}
       <div className={`${panel} p-4`}>
@@ -95,7 +97,7 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
             <th scope="row" className="py-3 pr-4">{filter === "selected" && <input type="checkbox" className="accent-blue-600 mr-3 align-middle cursor-pointer" aria-label={`Include project ${row.project.name}`} checked={selectedProjectIds === null || selectedProjectIds.includes(row.project.id)} onChange={() => toggleProject(row.project.id)} />}<span className="font-bold mr-2">{row.project.name}</span><span className={`text-[9px] rounded px-1.5 py-0.5 ${PROJECT_TYPE_COLORS[row.project.type]?.bg || "bg-slate-200"}`}>{row.project.type}</span></th>
             <td className="pr-4">{row.project.isRFQ ? <ProjectRFQBadge /> : <span className="text-[10px] font-semibold rounded px-2 py-1 bg-blue-100 text-blue-800 border border-blue-300">Nominated</span>}</td>
             <td className="pr-4 text-slate-600">{month(row.project.startDate)} – {month(row.project.startDate, row.project.duration - 1)} · {row.project.duration} mo</td>
-            <td className="pr-4 font-mono">{number(row.effort.totalFTE)}</td><td className="pr-4 font-mono">{percent(row.coverage)}</td><td className="pr-4 font-mono">{percent(row.externalisation)}</td>
+            <td className="pr-4 font-mono">{number(row.effort.totalFTE)}</td><td className="pr-4 font-mono" style={{ color: coverageColor(row.coverage) }}>{percent(row.coverage)}</td><td className="pr-4 font-mono">{percent(row.externalisation)}</td>
             <td className="pr-4 font-mono">{amount(row.labourCost)}</td><td className="pr-4 font-mono">{amount(row.nonFteCost)}</td><td className="pr-4 font-mono font-bold">{amount(row.spending.totalCost)}</td>
             <td><button type="button" aria-label={`View spending for ${row.project.name}`} className="text-blue-700 font-semibold hover:underline cursor-pointer" onClick={() => setSpendingProject(row.project)}>Spending →</button></td>
           </tr>)}</tbody>
@@ -105,7 +107,7 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         <div className={`${panel} p-4`}><h2 className="text-sm font-bold">FTE by team</h2><p className="text-[10px] text-slate-500 mt-1">Required engineering and management effort</p>{bars(summary.byTeam, key => key, true)}</div>
         <div className={`${panel} p-4`}><h2 className="text-sm font-bold">FTE by location &amp; supplier</h2><p className="text-[10px] text-slate-500 mt-1">Engineering and management effort by location or supplier</p>{bars(summary.byDelivery, key => key === "unstaffed" ? "Unstaffed" : key.startsWith("supplier:") ? supplierName(key.slice(9)) : FOOTPRINT_MAP[key.slice(9)]?.name || key.slice(9))}</div>
-        <div className={`${panel} p-4`}><h2 className="text-sm font-bold">Externalisation</h2><p className="text-[10px] text-slate-500 mt-1">External share of staffed effort, weighted by project duration</p><div className="text-3xl font-bold mt-4 text-teal-700">{percent(summary.externalisation)}</div>{Object.keys(summary.bySupplier).length ? bars(summary.bySupplier, supplierName) : <p className="text-xs italic text-slate-400 mt-3">No external suppliers staffed yet.</p>}</div>
+        <div className={`${panel} p-4`}><h2 className="text-sm font-bold">Externalisation</h2><p className="text-[10px] text-slate-500 mt-1">External share of staffed effort, weighted by project duration</p><div className="text-3xl font-bold mt-4 text-teal-700">{percent(summary.externalisation)}</div>{Object.keys(summary.bySupplier).length ? bars(summary.bySupplier, supplierName, false, true) : <p className="text-xs italic text-slate-400 mt-3">No external suppliers staffed yet.</p>}</div>
         <div className={`${panel} p-4`}><h2 className="text-sm font-bold">Non-FTE distribution</h2><p className="text-[10px] text-slate-500 mt-1">Purchases and allocated external salaries</p><div className="space-y-3 mt-4">{Object.entries(summary.distribution).map(([category, cost]) => <div key={category} className="flex justify-between gap-3 text-xs"><span>{category}</span><strong className="font-mono whitespace-nowrap">{amount(cost)}</strong></div>)}</div>{!Object.keys(summary.distribution).length && <p className="text-xs italic text-slate-400 mt-5">No Non-FTE spending yet.</p>}</div>
       </div>
       <ExternalSalaryUtilization monthlyCosts={summary.capacityMonthlyCosts} monthLabels={summary.capacityMonthLabels} members={[...options.members]} formatAmount={amount} />
