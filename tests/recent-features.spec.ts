@@ -64,12 +64,13 @@ test("external members require a supplier and salary and retain both when editin
   await expect(save).toBeDisabled();
   await dialog.getByLabel("Supplier *", { exact: true }).selectOption("supplier-luxoft");
   await save.click();
-  await expect(page.getByTitle("External team member", { exact: true })).toBeVisible();
-  const supplierTag = page.getByTitle("Supplier: Luxoft", { exact: true });
+  const memberCard = page.locator('.group[title="External Tester"]');
+  await expect(memberCard.getByTitle("External team member", { exact: true })).toBeVisible();
+  const supplierTag = memberCard.getByTitle("Supplier: Luxoft", { exact: true });
   await expect(supplierTag).toBeVisible();
   await expect(supplierTag.locator("xpath=preceding-sibling::*[1]")).toHaveText("PRA");
   await page.getByRole("button", { name: "Open KPI Combined Team Timeline", exact: true }).click();
-  await expect(page.getByRole("dialog").getByTitle("Supplier: Luxoft", { exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog").getByTitle("Drag and drop External Tester onto any activity above to allocate", { exact: true }).getByTitle("Supplier: Luxoft", { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByTitle("Edit External Tester", { exact: true }).click();
   await expect(page.getByRole("dialog").getByLabel("Monthly salary cost *", { exact: true })).toHaveValue("5000.25");
@@ -83,7 +84,7 @@ test("RFQ creates an informational badge beside the product tag", async ({ page 
   await dialog.getByPlaceholder("e.g. Robotaxi L4 Sprint").fill("Quotation Project");
   await dialog.getByRole("checkbox", { name: "RFQ", exact: true }).check();
   await dialog.getByRole("button", { name: "Add Project", exact: true }).click();
-  await expect(page.getByTitle("Request for Quotation - not yet officially nominated", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Quotation Project", exact: true }).locator("..").getByTitle("Request for Quotation - not yet officially nominated", { exact: true })).toBeVisible();
 });
 
 test("custom reusability validates its factor, normalizes presets and defaults maintenance off", async ({ page }) => {

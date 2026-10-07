@@ -25,6 +25,7 @@ import {
   round2,
   genId,
   INITIAL_FUNCTIONS,
+  INITIAL_NON_FTE_WORKPACKAGES,
 } from "./constants";
 import { useAppViewState } from "./hooks/useAppViewState";
 import { useProjectReordering } from "./hooks/useProjectReordering";
@@ -80,7 +81,7 @@ export default function App() {
     isBasicMode,
   } = useAppViewState();
   const [functions, setFunctions] = useState<WorkpackageCard[]>(() =>
-    INITIAL_FUNCTIONS.map((f) => ({
+    [...INITIAL_FUNCTIONS, ...INITIAL_NON_FTE_WORKPACKAGES].map((f) => ({
       ...f,
       projectId: null,
       _editing: false,
@@ -106,6 +107,9 @@ export default function App() {
     { id: "tm_11", firstName: "Pavel", lastName: "Kral", tool: "SYS.5", fte: 1.0, role: "both", footprint: "PRA" },
     { id: "tm_12", firstName: "Maya", lastName: "Patel", tool: "SysVal Operations", fte: 1.0, role: "engineering", footprint: "CHE" },
     { id: "tm_13", firstName: "Lucas", lastName: "Dubois", tool: "Simulation", fte: 1.0, role: "both", footprint: "CAI" },
+    { id: "tm_ext_kpi", firstName: "Nina", lastName: "Weber", tool: "KPI", fte: 1.0, role: "engineering", footprint: "BIE", isExternal: true, supplierId: "supplier-luxoft", monthlySalaryCost: 6000, monthlySalaryCurrency: "EUR" },
+    { id: "tm_ext_df", firstName: "Daniel", lastName: "Costa", tool: "Data Factory", fte: 0.8, role: "both", footprint: "PRA", isExternal: true, supplierId: "supplier-ts", monthlySalaryCost: 4800, monthlySalaryCurrency: "EUR" },
+    { id: "tm_ext_reproc", firstName: "Priya", lastName: "Sharma", tool: "Reprocessing", fte: 1.0, role: "engineering", footprint: "CHE", isExternal: true, supplierId: "supplier-akoddis", monthlySalaryCost: 4500, monthlySalaryCurrency: "EUR", deferredPayment: true, paymentDelayMonths: 12 },
   ]);
 
   const [showAddMember, setShowAddMember] = useState(false);
@@ -150,6 +154,19 @@ export default function App() {
       duration: 12,
       stability: "Ideal",
       milestones: getDefaultMilestones(12),
+      hiddenSubcategories: [],
+      hiddenTools: [],
+      customMgmtMonthlyFTE: {},
+    },
+    {
+      id: genId(),
+      name: "BMW",
+      type: "SRR",
+      isRFQ: true,
+      startDate: "2026-03",
+      duration: 18,
+      stability: "Average",
+      milestones: getDefaultMilestones(18),
       hiddenSubcategories: [],
       hiddenTools: [],
       customMgmtMonthlyFTE: {},

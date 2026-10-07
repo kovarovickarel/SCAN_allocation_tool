@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
 async function openTimeline(page: Page, workpackages = ["Lane Detection KPI"]) {
+  await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto("/");
   await page.waitForLoadState("networkidle");
   for (const name of workpackages) {
@@ -40,10 +41,10 @@ async function memberValues(timeline: Locator, name: string, memberId: string) {
   if (await memberRow.count() === 0) {
     await row.getByRole("button", { name: /Expand .* allocated team member row/ }).click();
   }
-  const cells = memberRow.locator('[title*=" FTE to "]');
+  const cells = memberRow.locator(":scope > div");
   await expect(cells.first()).toBeVisible();
   return cells.evaluateAll((elements) => elements.map((element) =>
-    Number(element.getAttribute("title")?.match(/: ([\d.]+) FTE to /)?.[1] ?? 0)
+    Number((element.querySelector('[title*=" FTE to "]') || element).getAttribute("title")?.match(/: ([\d.]+) FTE to /)?.[1] ?? 0)
   ));
 }
 
@@ -333,7 +334,7 @@ test("full-project management subactivity drops respect engineering usage and ro
   await expect(supportingRow.getByTitle(/^Drop member onto INT phase label/)).toHaveCount(0);
   await expect(supportingRow.getByTitle(/^Drop member onto entire IMP subactivity/)).toHaveCount(1);
   const mgmtDemand = await requiredEffort(timeline, "Management Support");
-  expect(await activityMonths(timeline, "Management Support", "MGMT")).toEqual(mgmtDemand.map((_, index) => index));
+  expect(await activityMonths(timeline, "Management Support", "MGMT")).toEqual(mgmtDemand.flatMap((value, index) => value > 0 ? [index] : []));
   expect(Math.max(...mgmtDemand)).toBeGreaterThan(0);
   await timeline.getByText("Lane Detection KPI", { exact: true }).click();
   const assignment = page.getByRole("dialog").last();

@@ -75,8 +75,8 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`summary navigation, sta
   await expect(page.getByRole("button", { name: "Summary dashboard", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTitle("Default Global Overview", { exact: true })).not.toHaveClass(/bg-blue-600|bg-\[#000080\]/);
   const dashboard = page.getByRole("region", { name: "Summary dashboard", exact: true });
-  await expect(dashboard.getByRole("row")).toHaveCount(3);
-  await expect(dashboard.getByText("2 Nominated · 0 RFQ", { exact: true })).toBeVisible();
+  await expect(dashboard.getByRole("row")).toHaveCount(4);
+  await expect(dashboard.getByText("2 Nominated · 1 RFQ", { exact: true })).toBeVisible();
   if (theme === "vibrant") {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(dashboard.getByRole("heading", { name: "Summary dashboard", exact: true })).toBeVisible();
@@ -84,22 +84,24 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`summary navigation, sta
     await page.setViewportSize({ width: 1280, height: 720 });
   }
   await dashboard.getByRole("button", { name: "RFQ", exact: true }).click();
-  await expect(dashboard.getByText("No projects in this view.", { exact: true })).toBeVisible();
+  await expect(dashboard.getByRole("row")).toHaveCount(2);
+  await expect(dashboard.getByRole("row").filter({ hasText: "BMW" })).toContainText("SRR");
+  await expect(dashboard.getByText("0 Nominated · 1 RFQ", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Add Project", exact: true }).click();
   const form = page.getByRole("dialog");
   await form.getByPlaceholder("e.g. Robotaxi L4 Sprint").fill("Summary RFQ");
   await form.getByRole("checkbox", { name: "RFQ", exact: true }).check();
   await form.getByRole("button", { name: "Add Project", exact: true }).click();
-  await expect(dashboard.getByRole("row")).toHaveCount(2);
-  await expect(dashboard.getByText("0 Nominated · 1 RFQ", { exact: true })).toBeVisible();
+  await expect(dashboard.getByRole("row")).toHaveCount(3);
+  await expect(dashboard.getByText("0 Nominated · 2 RFQ", { exact: true })).toBeVisible();
   await dashboard.getByRole("button", { name: "All projects", exact: true }).click();
   await expect(dashboard.getByRole("checkbox")).toHaveCount(0);
   await dashboard.getByRole("button", { name: "Selected projects", exact: true }).click();
-  await expect(dashboard.getByRole("checkbox")).toHaveCount(3);
+  await expect(dashboard.getByRole("checkbox")).toHaveCount(4);
   await expect(dashboard.getByRole("checkbox", { name: "Include project GM", exact: true })).toBeChecked();
   await expect(dashboard.getByRole("checkbox", { name: "Include project Summary RFQ", exact: true })).toBeChecked();
   await dashboard.getByRole("button", { name: "Select none", exact: true }).click();
-  await expect(dashboard.getByRole("row")).toHaveCount(4);
+  await expect(dashboard.getByRole("row")).toHaveCount(5);
   await expect(dashboard.getByText("0 Nominated · 0 RFQ", { exact: true })).toBeVisible();
   const gmRow = dashboard.getByRole("row").filter({ has: page.getByRole("checkbox", { name: "Include project GM", exact: true }) });
   await expect(gmRow).toHaveClass(/opacity-40/);
@@ -110,11 +112,11 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`summary navigation, sta
   await expect(dashboard.getByText("2 Nominated · 0 RFQ", { exact: true })).toBeVisible();
   await dashboard.getByRole("button", { name: "RFQ", exact: true }).click();
   await expect(dashboard.getByRole("checkbox")).toHaveCount(0);
-  await expect(dashboard.getByText("0 Nominated · 1 RFQ", { exact: true })).toBeVisible();
+  await expect(dashboard.getByText("0 Nominated · 2 RFQ", { exact: true })).toBeVisible();
   await dashboard.getByRole("button", { name: "Nominated", exact: true }).click();
   await expect(dashboard.getByText("2 Nominated · 0 RFQ", { exact: true })).toBeVisible();
   await dashboard.getByRole("button", { name: "All projects", exact: true }).click();
-  await expect(dashboard.getByText("2 Nominated · 1 RFQ", { exact: true })).toBeVisible();
+  await expect(dashboard.getByText("2 Nominated · 2 RFQ", { exact: true })).toBeVisible();
   await dashboard.getByRole("button", { name: "Selected projects", exact: true }).click();
   await expect(dashboard.getByRole("checkbox", { name: "Include project GM", exact: true })).toBeChecked();
   await expect(dashboard.getByRole("checkbox", { name: "Include project MBAG", exact: true })).toBeChecked();
@@ -122,7 +124,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`summary navigation, sta
   await expect(dashboard.getByText("2 Nominated · 0 RFQ", { exact: true })).toBeVisible();
   await dashboard.getByRole("button", { name: "Select all", exact: true }).click();
   await expect(dashboard.getByRole("checkbox", { name: "Include project Summary RFQ", exact: true })).toBeChecked();
-  await expect(dashboard.getByText("2 Nominated · 1 RFQ", { exact: true })).toBeVisible();
+  await expect(dashboard.getByText("2 Nominated · 2 RFQ", { exact: true })).toBeVisible();
   await dashboard.getByRole("button", { name: "View spending for Summary RFQ", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Summary RFQ Project Spending", exact: true })).toBeVisible();
   await page.keyboard.press("Escape");

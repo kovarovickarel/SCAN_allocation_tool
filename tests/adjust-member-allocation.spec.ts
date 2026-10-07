@@ -4,6 +4,7 @@ const names = ["Lane Detection KPI", "Object Distance KPI", "Reflectivity Check"
 const ids: Record<string, string> = { "Alex Novak": "tm_1", "Elena Russo": "tm_2", "Marcus Vogel": "tm_3" };
 
 async function setup(page: Page, packages = names, locations: Record<string, string> = {}) {
+  await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto("/");
   await page.waitForLoadState("networkidle");
   for (const name of packages) {
@@ -43,13 +44,13 @@ async function memberRow(timeline: Locator, name: string, member: string) {
 }
 async function values(timeline: Locator, name: string, member: string) {
   const row = await memberRow(timeline, name, member);
-  return row.locator('[title*=" FTE to "]').evaluateAll((cells) => cells.map((cell) =>
-    Number(cell.getAttribute("title")?.match(/: ([\d.]+) FTE to /)?.[1] || 0)));
+  return row.locator(":scope > div").evaluateAll((cells) => cells.map((cell) =>
+    Number((cell.querySelector('[title*=" FTE to "]') || cell).getAttribute("title")?.match(/: ([\d.]+) FTE to /)?.[1] || 0)));
 }
-async function editor(page: Page, timeline: Locator, name: string, member: string, silhouette = false) {
+async function editor(page: Page, timeline: Locator, name: string, member: string) {
   const row = await memberRow(timeline, name, member);
   const label = row.locator("..").locator(":scope > div").first();
-  await label.getByRole("button", { name: silhouette ? `Adjust allocation for ${member}` : member, exact: true }).click();
+  await label.getByRole("button", { name: `Adjust allocation for ${member}`, exact: true }).click();
   const dialog = page.getByRole("dialog").last();
   await expect(dialog.getByRole("heading", { name: member, exact: true })).toBeVisible();
   return dialog;
@@ -76,7 +77,7 @@ test("percentage input, slider and presets stay within workpackage demand", asyn
   const timeline = await setup(page);
   const demand = await demands(timeline, "Object Distance KPI");
   await drop(timeline, "Elena Russo", "Object Distance KPI");
-  const dialog = await editor(page, timeline, "Object Distance KPI", "Elena Russo", true);
+  const dialog = await editor(page, timeline, "Object Distance KPI", "Elena Russo");
   const max = Number(await dialog.getByRole("spinbutton").getAttribute("max"));
   expect(max).toBe(68);
   await expect(dialog.getByRole("button", { name: "75%", exact: true })).toBeDisabled();
@@ -238,7 +239,8 @@ test("overlapping projects reserve monthly member capacity", async ({ page }) =>
   await dialog.getByRole("button", { name: /^Max / }).click();
   await save(dialog);
   const after = await values(timeline, "Object Distance KPI", "Alex Novak");
-  expect(after).toHaveLength(12);
+  expect(after).toHaveLength(lane.length);
+  expect(after.slice(12).every(fte => fte === 0)).toBe(true);
   after.forEach((fte, index) => expect(fte + (lane[index] || 0)).toBeLessThanOrEqual(0.600001));
 });
 
@@ -320,7 +322,8 @@ for (const cap of ["0.25"]) {
     await dialog.getByRole("button", { name: /^Max / }).click();
     await save(dialog);
     const actual = await values(timeline, "Object Distance KPI", "Elena Russo");
-    expect(actual).toHaveLength(18);
+    expect(actual).toHaveLength((await demands(timeline, "Object Distance KPI")).length);
+    expect(actual.slice(18).every(fte => fte === 0)).toBe(true);
     expect(Math.max(...actual)).toBe(0.25);
   });
 }
@@ -336,7 +339,8 @@ test("a manual cell adjustment warns even when all activity months still have al
   await input.fill("0.1");
   await input.press("Enter");
   const before = await values(timeline, "Object Distance KPI", "Elena Russo");
-  expect(before.every((fte) => fte > 0)).toBe(true);
+  expect(before.slice(0, 18).every((fte) => fte > 0)).toBe(true);
+  expect(before.slice(18).every((fte) => fte === 0)).toBe(true);
   expect(before[2]).toBe(0.1);
   const dialog = await editor(page, timeline, "Object Distance KPI", "Elena Russo");
   await expect(dialog.getByText("Selective allocation active", { exact: true })).toBeVisible();

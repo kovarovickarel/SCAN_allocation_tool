@@ -157,8 +157,11 @@ test("used suppliers cannot be removed from defaults and unused ones can", async
   const config = page.getByRole("dialog");
   await config.getByRole("button", { name: "Suppliers", exact: true }).click();
   await expect(config.getByRole("button", { name: "Remove supplier Luxoft", exact: true })).toBeDisabled();
-  await config.getByRole("button", { name: "Remove supplier T&S", exact: true }).click();
-  await expect(config.getByText("T&S", { exact: true })).toHaveCount(0);
+  await expect(config.getByRole("button", { name: "Remove supplier T&S", exact: true })).toBeDisabled();
+  await config.getByRole("textbox", { name: "New supplier name" }).fill("Unused vendor");
+  await config.getByRole("button", { name: "Add Supplier", exact: true }).click();
+  await config.getByRole("button", { name: "Remove supplier Unused vendor", exact: true }).click();
+  await expect(config.getByText("Unused vendor", { exact: true })).toHaveCount(0);
   await config.getByRole("textbox", { name: "New supplier name" }).fill("New vendor");
   await config.getByRole("button", { name: "Add Supplier", exact: true }).click();
   await expect(config.getByRole("button", { name: "Remove supplier New vendor" })).toBeEnabled();
@@ -166,7 +169,7 @@ test("used suppliers cannot be removed from defaults and unused ones can", async
   await page.getByRole("button", { name: "Default's Configuration" }).click();
   await config.getByRole("button", { name: "Suppliers", exact: true }).click();
   await expect(config.getByRole("button", { name: "Remove supplier Luxoft", exact: true })).toBeDisabled();
-  await expect(config.getByText("T&S", { exact: true })).toHaveCount(0);
+  await expect(config.getByText("Unused vendor", { exact: true })).toHaveCount(0);
   await expect(config.getByText("New vendor", { exact: true })).toBeVisible();
 });
 

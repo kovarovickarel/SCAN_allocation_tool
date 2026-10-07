@@ -12,6 +12,9 @@ test("team staffing colors use inclusive 95–105% warning thresholds", async ({
   await memberDialog.locator('input[inputmode="decimal"]').fill("0.5");
   await memberDialog.getByRole("button", { name: "Save Changes", exact: true }).click();
 
+  // Keep this threshold fixture at 2 FTE regardless of the added demo external.
+  await page.getByTitle("Delete Nina Weber", { exact: true }).click();
+
   await page.getByTitle("View Project Timeline (Gantt Chart)").first().click();
   const projectTimeline = page.getByRole("dialog");
   await projectTimeline.getByRole("button", { name: "Manual Adjust: Disabled" }).click();

@@ -1,5 +1,5 @@
 import React from "react";
-import type { FteCostSettings, ThemeContextValue, SupplierRecord } from "../types";
+import type { FteCostSettings, ThemeContextValue, SupplierRecord, WorkpackageCard } from "../types";
 
 export const DEFAULT_SUPPLIERS: readonly SupplierRecord[] = Object.freeze([
   { id: "supplier-luxoft", name: "Luxoft" }, { id: "supplier-ts", name: "T&S" },
@@ -472,6 +472,14 @@ export const INITIAL_FUNCTIONS = [
     otherHasMaintenance: true,
     otherMaintenanceEffort: 0.05,
   },
+];
+
+// Unassigned examples let users try purchase scheduling without creating cards first.
+export const INITIAL_NON_FTE_WORKPACKAGES: WorkpackageCard[] = [
+  { id: genId(), name: "KPI Analysis License", tool: "KPI", kind: "non-fte", purchaseType: "License", purchasePriceEUR: 4800, supplierId: "supplier-luxoft", supplierName: "Luxoft", reusability: "New", subcategory: null },
+  { id: genId(), name: "Data Processing Workstation", tool: "Data Factory", kind: "non-fte", purchaseType: "Workstation", purchasePriceEUR: 6500, supplierId: "supplier-ts", supplierName: "T&S", reusability: "New", subcategory: "Pipeline" },
+  { id: genId(), name: "HIL Test Bench Hardware", tool: "Reprocessing", kind: "non-fte", purchaseType: "Hardware", purchasePriceEUR: 18000, supplierId: "supplier-akoddis", supplierName: "Akoddis", reusability: "New", subcategory: "HIL" },
+  { id: genId(), name: "Server Maintenance Service", tool: "Reprocessing", kind: "non-fte", purchaseType: "Contracted workpackage", purchasePriceEUR: 12000, supplierId: "supplier-rprocess", supplierName: "rProcess", reusability: "New", subcategory: "SIL" },
 ];
 
 
