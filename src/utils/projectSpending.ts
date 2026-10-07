@@ -48,7 +48,7 @@ function buildTrack(card: WorkpackageCard, requiredEffort: number[], project: Al
     return { id, member, monthlyCosts, totalCost: sumWorkpackageAllocationCosts(monthlyCosts, settings.currency) };
   }).filter((track) => track.totalCost.allocatedHours > 0);
   return {
-    id: card.id, name: card.name, tool: card.tool, isManagement: Boolean(card._isMgmt), members: memberTracks,
+    id: card.id, name: card.name, tool: card.tool, isManagement: Boolean(card._isMgmt), members: memberTracks, requiredEffort,
     monthlyCosts: requiredEffort.map((_, month) => combineMonthlyCosts(memberTracks.map((member) => member.monthlyCosts[month]), settings.currency)),
     totalCost: calculateWorkpackageAllocationCost(card, project.duration, requiredEffort, members, settings, false, project.startDate),
   };

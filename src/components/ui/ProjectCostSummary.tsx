@@ -19,7 +19,7 @@ export function ProjectCostSummary({ cost, onOpen }: { cost: WorkpackageAllocati
   const nonFteCost = costInEUR({ ...cost, totalCost: 0 }, 1, salaryRates);
   const nonFteAmount = nonFteCost === null ? conversionFailed ? "N/A" : "…" : nonFteCost.toLocaleString("en-US", { maximumFractionDigits: 0 });
   const tooltip = [
-    "Project cost, including allocated resources, management support, and non-FTE purchases and external monthly salaries.",
+    "Project cost, including allocated resources, management support, non-FTE purchases, and external salary for allocated effort. Unused external salary is tracked separately in Summary dashboard.",
     unpriced ? `Partial cost: ${cost.unpricedHours.toFixed(2)} hours have no configured hourly rate (${cost.missingLocations.join(", ")}).` : "",
     cost.totalCost > 0 && cost.currency !== "EUR" && rate !== null ? `Converted using 1 ${cost.currency} = ${rate} EUR (${date}).` : "",
     needsConversion && conversionFailed ? "EUR conversion is currently unavailable." : "",

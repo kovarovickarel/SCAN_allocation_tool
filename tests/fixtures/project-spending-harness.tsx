@@ -1,9 +1,10 @@
+import { SummaryDashboard } from "../../src/components/features/SummaryDashboard";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { ProjectSpendingModal } from "../../src/components/features/ProjectSpendingModal";
 import { ProjectCostSummary } from "../../src/components/ui/ProjectCostSummary";
 import { calculateProjectSpending } from "../../src/utils/projectSpending";
-import { ThemeContext, DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS } from "../../src/constants";
+import { ThemeContext, DEFAULT_MGMT_SETTINGS, DEFAULT_SUPPLIERS, DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS } from "../../src/constants";
 import { spendingProject, spendingCards, spendingMembers, spendingOverheads, spendingRates } from "./project-spending-data";
 import "../../src/index.css";
 
@@ -21,7 +22,9 @@ const options = { project: params.has("dense") ? { ...spendingProject, duration:
 function Harness() {
   const [open, setOpen] = useState(false);
   return <ThemeContext.Provider value={{ theme, mode: "extended", isRetro: theme === "retro", isBasic: theme === "basic", isBasicMode: false }}>
-    <ProjectCostSummary cost={calculateProjectSpending(options).totalCost} onOpen={() => setOpen(true)} />
+    {params.has("summary") ? <SummaryDashboard suppliers={DEFAULT_SUPPLIERS} options={{ ...options, mgmtSettings: DEFAULT_MGMT_SETTINGS,
+      projects: [{ ...options.project, customMgmtMonthlyFTE: { KPI: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.1])), Simulation: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.2])) } }],
+      cards: options.cards.map(card => ({ ...card, _fte: card.tool === "Other" ? 0.25 : 0.5 })) }} /> : <ProjectCostSummary cost={calculateProjectSpending(options).totalCost} onOpen={() => setOpen(true)} />}
     {open && <ProjectSpendingModal {...options} onClose={() => setOpen(false)} />}
   </ThemeContext.Provider>;
 }

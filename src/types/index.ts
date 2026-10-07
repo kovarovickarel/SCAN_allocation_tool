@@ -82,6 +82,7 @@ export interface ProjectSpendingTrack {
   tool: string;
   isManagement: boolean;
   isNonFte?: boolean;
+  requiredEffort?: number[];
   monthlyCosts: WorkpackageAllocationCost[];
   totalCost: WorkpackageAllocationCost;
   members: ProjectSpendingMember[];

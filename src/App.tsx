@@ -1,3 +1,4 @@
+import { SummaryDashboard } from "./components/features/SummaryDashboard";
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
 import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
 import { purchaseCost, purchaseCostSummary, purchaseMonthlyCosts, purchasePaymentSchedule, purchaseScheduleExceedsProject, isPurchasePaymentAltered, validPurchaseMonths, purchaseSubcategory, retainUsedSuppliers, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
@@ -344,9 +345,15 @@ export default function App() {
     members: teamMembers, fteCosts: config.fteCosts, mgmtSettings: config.management, fteRates: config.fteRates,
     toolFteRates: config.toolFteRates, reusabilityFactors: config.reusabilityFactors, stabilityFactors: config.stabilityFactors }),
     [projects, baseFunctionsWithFTE, teamMembers, config]);
+  const [showSummaryDashboard, setShowSummaryDashboard] = useState(false);
   const functionsWithFTE = useMemo(() => baseFunctionsWithFTE.map(card => ({ ...card,
     _allocationCost: card._allocationCost ? applySalaryTotals(card._allocationCost, salaryAllocationTotals) : undefined })),
     [baseFunctionsWithFTE, salaryAllocationTotals]);
+
+  const summaryOptions = useMemo(() => ({ projects, cards: functionsWithFTE, members: teamMembers,
+    fteCosts: config.fteCosts, mgmtSettings: config.management, fteRates: config.fteRates,
+    toolFteRates: config.toolFteRates, reusabilityFactors: config.reusabilityFactors, stabilityFactors: config.stabilityFactors }),
+    [projects, functionsWithFTE, teamMembers, config]);
 
   const handleSaveTimelineEdits = useCallback((projectId, customMgmtMonthlyFTE, updatedCards) => {
     const project = projects.find((p) => p.id === projectId);
@@ -634,7 +641,7 @@ export default function App() {
     <ThemeContext.Provider value={{ theme, isBasic, isRetro, setTheme, mode: appMode, isBasicMode }}>
       <div className={`min-h-screen ${isRetro ? "bg-[#008080] font-sans" : "bg-slate-950"} flex flex-col text-slate-800 select-none`}>
         <header className={`${isRetro ? "bg-[#c0c0c0] border-b-2 border-black shadow-[0_2px_0px_#fff]" : "bg-slate-900 border-b border-slate-800 shadow-lg"} px-4 md:px-5 py-3 flex items-center gap-5 shrink-0`}>
-          <div className="w-80 shrink-0 flex items-center gap-3 min-w-0">
+          <div className="w-[278px] min-[1400px]:w-80 shrink-0 flex items-center gap-3 min-w-0">
             <div className={`w-8 h-8 ${isRetro ? "bg-purple-900 border-2 border-t-white border-l-white border-b-black border-r-black" : "rounded-lg"} flex items-center justify-center shadow shrink-0`}>
               <img src="/app-icon.svg" alt="SCAN" className="w-full h-full" />
             </div>
@@ -698,15 +705,23 @@ export default function App() {
 
           {/* Test Tool View Switcher */}
           <div className={`flex items-center gap-1.5 p-1 ${isRetro ? "bg-[#d4d0c8] border-2 border-t-black border-l-black border-b-white border-r-white" : "bg-slate-950/80 rounded-xl border border-slate-800"} shrink-0`}>
+            <button type="button" aria-label="Summary dashboard" title="Summary dashboard" aria-pressed={showSummaryDashboard}
+              onClick={() => setShowSummaryDashboard(true)}
+              className={`w-9 h-9 flex items-center justify-center transition-colors cursor-pointer border ${isRetro
+                ? showSummaryDashboard ? "bg-[#000080] text-white border-2 border-t-black border-l-black border-b-white border-r-white" : "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black"
+                : showSummaryDashboard ? "bg-blue-600 text-white border-transparent shadow-md ring-2 ring-blue-400 rounded-lg" : "bg-transparent text-slate-400 border-transparent hover:text-white hover:bg-slate-800 rounded-lg"}`}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+            </button>
+
             <button
               type="button"
-              onClick={() => setActiveToolView("all")}
+              onClick={() => { setShowSummaryDashboard(false); setActiveToolView("all"); }}
               className={`w-9 h-9 flex items-center justify-center transition-colors cursor-pointer outline-none focus:outline-none border ${
                 isRetro
-                  ? activeToolView === "all"
+                  ? !showSummaryDashboard && activeToolView === "all"
                     ? "bg-[#000080] text-white border-2 border-t-black border-l-black border-b-white border-r-white font-mono"
                     : "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
-                  : activeToolView === "all"
+                  : !showSummaryDashboard && activeToolView === "all"
                   ? "bg-blue-600 text-white border-transparent shadow-md ring-2 ring-blue-400 rounded-lg"
                   : "bg-transparent text-slate-400 border-transparent hover:text-white hover:bg-slate-800 rounded-lg"
               }`}
@@ -719,7 +734,7 @@ export default function App() {
               {/* Row 1: KPI, Data Factory, Vehicle Tooling, Visualization, Reprocessing */}
               <div className="flex items-center gap-1">
                 {TEST_TOOLS.slice(0, 5).map((tool) => {
-                  const isActive = activeToolView === tool.name;
+                  const isActive = !showSummaryDashboard && activeToolView === tool.name;
                   const style = TOOL_VIEW_SWITCHER_STYLES[tool.name];
                   
                   const btnClass = isRetro
@@ -738,7 +753,7 @@ export default function App() {
                     <button
                       key={tool.name}
                       type="button"
-                      onClick={() => setActiveToolView(tool.name)}
+                      onClick={() => { setShowSummaryDashboard(false); setActiveToolView(tool.name); }}
                       className={`w-4 h-4 ${isRetro ? "rounded-none" : "rounded"} flex items-center justify-center transition-colors cursor-pointer outline-none focus:outline-none ${btnClass}`}
                       title={`${tool.name} Team View`}
                     >
@@ -751,7 +766,7 @@ export default function App() {
               {/* Row 2: Range & Accuracy, SYS.4, SYS.5, SysVal Operations, Simulation */}
               <div className="flex items-center gap-1">
                 {TEST_TOOLS.slice(5, 10).map((tool) => {
-                  const isActive = activeToolView === tool.name;
+                  const isActive = !showSummaryDashboard && activeToolView === tool.name;
                   const style = TOOL_VIEW_SWITCHER_STYLES[tool.name];
 
                   const btnClass = isRetro
@@ -770,7 +785,7 @@ export default function App() {
                     <button
                       key={tool.name}
                       type="button"
-                      onClick={() => setActiveToolView(tool.name)}
+                      onClick={() => { setShowSummaryDashboard(false); setActiveToolView(tool.name); }}
                       className={`w-4 h-4 ${isRetro ? "rounded-none" : "rounded"} flex items-center justify-center transition-colors cursor-pointer outline-none focus:outline-none ${btnClass}`}
                       title={`${tool.name} Team View`}
                     >
@@ -811,6 +826,8 @@ export default function App() {
 
         {/* Main Content View */}
         <main className="flex-1 flex flex-row gap-5 p-4 md:p-5 overflow-hidden items-start min-h-0">
+          {showSummaryDashboard ? <SummaryDashboard options={summaryOptions} suppliers={config.suppliers}
+            onSavePayments={handleSavePurchasePayments} /> : <>
           {activeToolView === "all" ? (
             <UnassignedPool
               suppliers={config.suppliers}
@@ -993,6 +1010,7 @@ export default function App() {
               <span className="font-bold text-xs">New Project</span>
             </button>
           </div>
+          </>}
         </main>
 
         {/* Modals */}

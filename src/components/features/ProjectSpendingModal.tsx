@@ -14,7 +14,6 @@ import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { ProjectSpendingCharts } from "../ui/ProjectSpendingCharts";
 import { SpendingCellAmount } from "../ui/SpendingCellAmount";
-import { ExternalSalaryUtilization } from "../ui/ExternalSalaryUtilization";
 
 interface ProjectSpendingModalProps {
   salaryAllocationTotals?: Record<string, number>;
@@ -127,7 +126,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     return `${prefix ? "€ " : ""}${formattedValue}${cost.unpricedHours > 0 ? "*" : ""}`;
   };
   const tooltip = (cost: WorkpackageAllocationCost) => [
-    cost.purchaseCostEUR !== undefined || cost.externalSalaryCharges ? "Includes non-FTE purchases or external monthly salaries." : "",
+    cost.purchaseCostEUR !== undefined || cost.externalSalaryCharges ? "Includes non-FTE purchases or external salary for allocated effort." : "",
     `${cost.allocatedHours.toLocaleString("en-US", { maximumFractionDigits: 2 })} allocated hours.`,
     costInEUR(cost, rate, salaryRates) !== null ? `Cost: € ${costInEUR(cost, rate, salaryRates).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : "EUR conversion unavailable.",
     cost.unpricedHours > 0 ? `${cost.unpricedHours.toFixed(2)} hours have no rate: ${cost.missingLocations.join(", ")}. Priced allocations only.` : "",
@@ -265,7 +264,8 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
         {moneyCells(track.monthlyCosts, "track", track)}
       </div>
       {expanded && track.members.map((person) => <div key={person.id} className={`grid items-center min-h-[36px] border-t border-dashed ${isRetro ? "bg-[#d8d4cc] border-black/40" : "bg-indigo-50/30 hover:bg-indigo-50/50 border-indigo-100"}`} style={gridStyle}>
-        <div className={`pl-11 pr-2 py-1 border-r h-full min-w-0 flex items-center gap-1.5 ${isRetro ? "border-black text-black font-mono" : "border-slate-200 text-slate-700"}`}>
+        <div className={`pl-11 pr-2 py-1 border-r h-full min-w-0 ${person.member?.isExternal ? "flex flex-col items-stretch justify-center gap-1" : "flex items-center gap-1.5"} ${isRetro ? "border-black text-black font-mono" : "border-slate-200 text-slate-700"}`}>
+          <div className={person.member?.isExternal ? "flex items-center gap-1.5 min-w-0" : "contents"}>
           <PersonIcon size={15} role={person.member?.role} toolName={person.member?.tool || track.tool} isCrossTeam={crossTeamIds.has(person.id)} />
           <span className="text-[10px] font-semibold truncate" title={person.member ? `${person.member.firstName} ${person.member.lastName}` : "Unknown member"}>{person.member ? `${person.member.firstName} ${person.member.lastName}` : "Unknown member"}</span>
           <span className={`text-[8.5px] font-mono font-bold px-1.5 py-0.2 rounded border shrink-0 shadow-2xs ${isRetro
@@ -275,7 +275,8 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
             title={`Footprint: ${FOOTPRINT_MAP[person.member?.footprint || ""]?.name || person.member?.footprint || "Unknown location"}`}>
             {person.member?.footprint || "—"}
           </span>
-          {person.member?.isExternal && <span className="text-[8px] font-bold text-red-600">Non-FTE</span>}
+          {person.member?.isExternal && <span className={`ml-auto text-[9px] px-1.5 py-0.2 font-semibold shrink-0 whitespace-nowrap bg-red-300 text-red-950 border border-red-300 ${isRetro ? "rounded-none font-mono shadow-[1px_1px_0px_#000]" : "rounded shadow-2xs"}`}>Non-FTE</span>}
+          </div>
           <span className="ml-auto">{totalBadge(person.totalCost, track.isManagement, false, true)}</span>
         </div>
         {moneyCells(person.monthlyCosts, "member")}
@@ -461,7 +462,6 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
           })}
           {spending.tools.length === 0 && <div className={`px-5 py-10 text-sm text-slate-500 ${isRetro ? "bg-white" : "bg-slate-50"}`}>No active workpackages in this project view yet.</div>}
         </div>}
-        <ExternalSalaryUtilization monthlyCosts={spending.monthlyCosts} monthLabels={monthLabels} members={members} formatAmount={amount} />
       </div>
       <div className={`flex flex-wrap items-center justify-end gap-3 text-xs shrink-0 ${isRetro ? "bg-[#d4d0c8] border-t-2 border-white px-5 py-3 font-mono text-black" : "bg-slate-50 border-t border-slate-200 px-6 py-3"}`}>
         <button type="button" onClick={onClose} className={`font-bold px-4 py-1.5 text-xs transition-colors cursor-pointer ${isRetro ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black hover:bg-[#e0e0e0]" : "bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg"}`}>{dirty ? "Discard & Close" : "Close"}</button>

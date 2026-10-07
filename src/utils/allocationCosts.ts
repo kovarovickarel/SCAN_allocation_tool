@@ -36,7 +36,7 @@ export function formatMemberMonthlyAllocationCost(
   const { location, hourlyRate, hours, totalCost } = calculateMemberMonthlyAllocationCost(allocationFTE, member, settings);
   if (member.isExternal) return !(allocationFTE > 0) ? "External salary: no allocation this month." :
     totalCost === null ? "External salary: unavailable (monthly salary not set)." :
-      `Non-FTE monthly salary: ${member.monthlySalaryCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${member.monthlySalaryCurrency || settings.currency}. Paid in full; shared across this month's allocations. ${hours.toFixed(2)} allocated hours.`;
+      `Non-FTE monthly salary: ${member.monthlySalaryCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${member.monthlySalaryCurrency || settings.currency}. Task cost: monthly salary × allocated FTE ÷ member FTE. Unused salary is tracked separately in Summary dashboard. ${hours.toFixed(2)} allocated hours.`;
   if (totalCost === null) return `Allocation cost: unavailable (hourly rate not set for ${location}).`;
   const amount = totalCost.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   return `Allocation cost: ${amount} ${settings.currency}${hourlyRate !== null

@@ -109,8 +109,8 @@ export function costInEUR(cost: WorkpackageAllocationCost, rate: number | null, 
   let salaryCost = 0;
   for (const charge of Object.values(cost.externalSalaryCharges || {})) {
     const salaryRate = charge.currency === "EUR" ? 1 : salaryRates[charge.currency] ?? (charge.currency === cost.currency && cost.totalCost > 0 ? rate : null);
-    if (charge.salary > 0 && salaryRate === null) return null;
-    salaryCost += charge.salary * charge.allocatedFTE / (charge.totalAllocatedFTE || charge.allocatedFTE) * (salaryRate ?? 1);
+    if (!(charge.capacityFTE > 0) || (charge.salary > 0 && salaryRate === null)) return null;
+    salaryCost += charge.salary * charge.allocatedFTE / charge.capacityFTE * (salaryRate ?? 1);
   }
   return cost.totalCost * (rate ?? 1) + (cost.purchaseCostEUR ?? 0) + salaryCost;
 }

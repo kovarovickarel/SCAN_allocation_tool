@@ -11,7 +11,7 @@ export function externalSalaryCharge(member: TeamMemberRecord, allocation: numbe
 export function salaryCostsByCurrency(cost: WorkpackageAllocationCost) {
   const totals: Record<string, number> = {};
   for (const charge of Object.values(cost.externalSalaryCharges || {})) {
-    const share = charge.allocatedFTE / (charge.totalAllocatedFTE || charge.allocatedFTE);
+    const share = charge.capacityFTE > 0 ? charge.allocatedFTE / charge.capacityFTE : 0;
     totals[charge.currency] = (totals[charge.currency] || 0) + charge.salary * share;
   }
   return totals;
@@ -41,7 +41,7 @@ export function externalSalaryUtilization(cost: WorkpackageAllocationCost) {
     paidFTE += charge.capacityFTE * share;
     allocatedFTE += charge.allocatedFTE;
     unusedFTE += Math.max(0, charge.capacityFTE - total) * share;
-    unusedCharges[key] = { ...charge, salary: charge.capacityFTE > 0 ? charge.salary * Math.max(0, charge.capacityFTE - total) / charge.capacityFTE : 0 };
+    unusedCharges[key] = { ...charge, allocatedFTE: Math.max(0, charge.capacityFTE - total) * share };
   }
   return { paidFTE, allocatedFTE, unusedFTE, unusedCost: { ...cost, totalCost: 0, purchaseCostEUR: 0,
     externalSalaryCharges: unusedCharges, allocatedHours: 0, unpricedHours: 0, missingLocations: [] } };

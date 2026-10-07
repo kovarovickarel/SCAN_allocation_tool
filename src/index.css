@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Keep the header width stable when switching between long and short views. */
+html {
+  overflow-y: scroll;
+}

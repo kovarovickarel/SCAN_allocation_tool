@@ -41,7 +41,7 @@ export function WorkpackageCostLabel({ cost, className = "", compact = false, to
     <span
       className={`inline-flex items-center shrink-0 whitespace-nowrap normal-case px-1 py-0.2 border font-mono ${tone === "receipt" ? "font-normal" : "font-bold"} ${compact ? "text-[8px]" : "text-[10px]"} ${colorClasses} ${className}`}
       style={tone === "receipt" ? { fontFamily: '"Courier New", Courier, monospace' } : undefined}
-      title={title ?? (includesPurchase ? `Project tool cost: ${amount} EUR, including non-FTE purchases or external salaries.${isPartial ? " Partial cost; some resource rates are missing." : ""}` : tooltip)}
+      title={title ?? (includesPurchase ? `Project tool cost: ${amount} EUR, including non-FTE purchases or external salary × allocated FTE ÷ member FTE.${isPartial ? " Partial cost; some resource rates are missing." : ""}` : tooltip)}
     >
       {pending ? conversion.conversionFailed ? "N/A" : "…" : `${shortAmount}${unit}${compact ? "" : ` ${currency}`}${isPartial ? " (partial)" : ""}`}
     </span>
