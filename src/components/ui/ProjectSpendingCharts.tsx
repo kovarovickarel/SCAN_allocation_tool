@@ -87,6 +87,10 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
   const barColorClass = "text-yellow-500";
   const totalToolSeries = costsByTool.filter((series) => series.monthlyCosts.some((cost) => cost.allocatedHours > 0 || cost.purchaseCostEUR > 0));
   const hasPurchases = purchaseMonthlyCosts?.some(cost => cost.purchaseCostEUR > 0 || Object.values(cost.externalSalaryCharges || {}).some(charge => charge.salary > 0));
+  const purchasesOnly = purchaseMonthlyCosts?.map(cost => ({ ...cost, externalSalaryCharges: undefined }));
+  const externalSalariesOnly = purchaseMonthlyCosts?.map(cost => ({ ...cost, purchaseCostEUR: undefined }));
+  const hasPurchasePayments = purchasesOnly?.some(cost => (cost.purchaseCostEUR ?? 0) > 0);
+  const hasExternalSalaries = externalSalariesOnly?.some(cost => Object.values(cost.externalSalaryCharges || {}).some(charge => charge.allocatedFTE > 0));
   const monthlySeries = activeToolView === "all" ? (totalToolSeries.length ? totalToolSeries.map((series) => ({
     id: `tool:${series.tool}`, label: series.tool, monthlyCosts: series.monthlyCosts, color: toolColor(series.tool),
   })) : [{ id: "total", label: "All tools", monthlyCosts, color: barColorClass }]) : [
@@ -94,7 +98,8 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
       id: `engineering:${series.tool}`, label: `${series.tool} engineering`, monthlyCosts: series.monthlyCosts, color: toolColor(series.tool),
     })) : [{ id: "engineering", label: "Engineering", monthlyCosts: engineeringMonthlyCosts, color: barColorClass }]),
     { id: "management", label: "Management support", monthlyCosts: managementMonthlyCosts, color: "text-purple-600" },
-    ...(hasPurchases ? [{ id: "purchases", label: "Non-FTE spending", monthlyCosts: purchaseMonthlyCosts!, color: "text-amber-500" }] : []),
+    ...(hasPurchasePayments ? [{ id: "purchases", label: "Non-FTE", monthlyCosts: purchasesOnly!, color: "text-red-300" }] : []),
+    ...(hasExternalSalaries ? [{ id: "external-salaries", label: "External salaries", monthlyCosts: externalSalariesOnly!, color: "text-red-500" }] : []),
   ];
   const focusedCategory = monthlySeries.some((series) => series.id === selectedCategory) ? selectedCategory : null;
   const stackedSeries = focusedCategory === null ? monthlySeries : [
@@ -197,7 +202,7 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
         <svg viewBox={`0 0 ${width} 360`} width={width} height={360} preserveAspectRatio="xMinYMid meet" className="block w-full min-w-0 flex-1" role="img"
           aria-label={activeToolView === "all"
             ? "Monthly spending stacked by tool, including each tool's management support and purchase costs. Hover or focus a month for its breakdown."
-            : "Monthly spending stacked by engineering tool, management support, and non-FTE purchases. Engineering uses each tool's color; management support is purple. Hover or focus a month for its breakdown."}>
+            : "Monthly spending stacked by engineering tool, management support, non-FTE purchases, and external salaries. Engineering uses each tool's color; management support is purple. Hover or focus a month for its breakdown."}>
           {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((tick) => {
             const value = monthlyAxisMax * tick / 10;
             return <g key={tick}>
@@ -231,7 +236,7 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
                   className={`${segment.color} transition-[transform,opacity] ease-in-out motion-reduce:transition-none`}
                   opacity={focusedCategory !== null ? segment.id === focusedCategory ? 1 : 0.2 : activeMonth === month ? 1 : 0.85}
                   style={{ transform: `translateY(${monthlyY(position.end)}px)`, transitionDuration: `${categoryTransitionMs}ms, ${categoryFadeMs}ms` }}
-                  onClick={() => selectCategory(segment.id)} />;
+                  onClick={() => selectCategory(segment.id)}><title>{`${label}\n${segment.label}: ${formatAmount(segment.cost, true)} · ${costTooltip(segment.cost)}`}</title></rect>;
               })}
               {monthlyValues[month] === null && <text x={x(month)} y={bottom - 8} textAnchor="middle" fill="#94a3b8" fontSize="10">N/A</text>}
               <text x={x(month)} y={bottom + 21} textAnchor="middle" fill={activeMonth === month ? "#000000" : "#475569"} fontSize="10" fontWeight={activeMonth === month ? "bold" : "normal"}>{label}</text>

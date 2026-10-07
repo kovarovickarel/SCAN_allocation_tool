@@ -1,6 +1,6 @@
 import { costInEUR, parsePurchasePaymentAmount, purchaseMonthlyCosts, purchasePaymentSchedule } from "../../utils/nonFteWorkpackages";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { ThemeContext, DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, PROJECT_TYPE_COLORS, TOOL_MAP, TOOL_ICON_COLORS, MILESTONES_DEF, COMPLEXITY_COLORS, FOOTPRINT_MAP } from "../../constants";
+import { ThemeContext, WORKING_HOURS_PER_MONTH, DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, PROJECT_TYPE_COLORS, TOOL_MAP, TOOL_ICON_COLORS, MILESTONES_DEF, COMPLEXITY_COLORS, FOOTPRINT_MAP } from "../../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
   PurchasePaymentDrafts, TeamMemberRecord, WorkpackageAllocationCost, WorkpackageCard } from "../../types";
 import { calculateProjectSpending } from "../../utils/projectSpending";
@@ -126,8 +126,10 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     return `${prefix ? "€ " : ""}${formattedValue}${cost.unpricedHours > 0 ? "*" : ""}`;
   };
   const tooltip = (cost: WorkpackageAllocationCost) => [
-    cost.purchaseCostEUR !== undefined || cost.externalSalaryCharges ? "Includes non-FTE purchases or external salary for allocated effort." : "",
-    `${cost.allocatedHours.toLocaleString("en-US", { maximumFractionDigits: 2 })} allocated hours.`,
+    cost.purchaseCostEUR !== undefined ? "Non-FTE purchases: scheduled payments in EUR." : "",
+    cost.externalSalaryCharges ? "External salaries: monthly salary × allocated FTE ÷ member FTE capacity. Unused salary is excluded." : "",
+    cost.allocatedHours > 0 || cost.externalSalaryCharges || cost.purchaseCostEUR === undefined
+      ? `${(cost.allocatedHours || Object.values(cost.externalSalaryCharges || {}).reduce((sum, charge) => sum + charge.allocatedFTE * WORKING_HOURS_PER_MONTH, 0)).toLocaleString("en-US", { maximumFractionDigits: 2 })} allocated hours.` : "",
     costInEUR(cost, rate, salaryRates) !== null ? `Cost: € ${costInEUR(cost, rate, salaryRates).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : "EUR conversion unavailable.",
     cost.unpricedHours > 0 ? `${cost.unpricedHours.toFixed(2)} hours have no rate: ${cost.missingLocations.join(", ")}. Priced allocations only.` : "",
   ].filter(Boolean).join(" ");
