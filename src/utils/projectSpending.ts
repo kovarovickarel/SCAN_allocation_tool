@@ -79,7 +79,7 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
     const stability = stabilityFactors[project.stability] ?? 1;
     const dev = card.tool === "Other" ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stability * support);
     const meetings = card.tool === "Other" ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stability * support);
-    const required = lifecycle.map((month, index) => round2((card.customCoreFTE?.[index] ?? month.totalFTE) +
+    const required = lifecycle.map((month, index) => card.tool !== "Other" && month.phaseName === "Inactive" ? 0 : round2((card.customCoreFTE?.[index] ?? month.totalFTE) +
       (support === 0 ? 0 : round2((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings)))));
     return buildTrack(card, required, project, members, fteCosts);
   });

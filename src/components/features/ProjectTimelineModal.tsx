@@ -301,6 +301,12 @@ export function ProjectTimelineModal({
         const meetingsMonths = [];
 
         for (let m = 0; m < duration; m++) {
+          if (!isToolOther && defaultCoreMonths[m]?.phaseName === "Inactive") {
+            const inactive = { ...defaultCoreMonths[m], totalFTE: 0, defaultFTE: 0, isOverridden: false };
+            devSupportMonths.push(inactive);
+            meetingsMonths.push(inactive);
+            continue;
+          }
           const customDev = isNegated || supportMultiplier === 0 ? undefined : c.customDevSupportFTE?.[m];
           const isDevOverridden = customDev !== undefined && Math.abs(customDev - defaultDevFunctionsRate) > 0.001;
           if (isDevOverridden) hasAnyDevOverride = true;
@@ -339,6 +345,7 @@ export function ProjectTimelineModal({
         }
 
         const mergedCoreMonths = defaultCoreMonths.map((m, mIdx) => {
+          if (!isToolOther && m.phaseName === "Inactive") return { ...m, defaultMergedFTE: 0, totalWPMonthlyFTE: 0, hasOverride: false, isCoreOverridden: false, coreOnlyFTE: 0, defaultCoreOnlyFTE: 0, effDevRate: 0, effMeetingsRate: 0, mergedStyle: m.style, coreOnlyStyle: m.style };
           const effDevRate = devSupportMonths[mIdx]?.totalFTE ?? defaultDevFunctionsRate;
           const effMeetingsRate = meetingsMonths[mIdx]?.totalFTE ?? defaultMeetingsRate;
           const combinedEffSupportRate = round2(effDevRate + effMeetingsRate);

@@ -120,6 +120,10 @@ export interface WorkpackageCard {
   reusabilityAppliesToMaintenance?: boolean;
   subcategory?: string | null;
   projectId?: string | null;
+  /** Deadline for standard FTE pre-maintenance phases; Other retains otherFinishMilestone. */
+  finishMilestone?: string | null;
+  /** Project-relative first active month for standard FTE workpackages. */
+  startMonth?: NumericInput | null;
   otherEffort?: NumericInput;
   otherDuration?: NumericInput;
   otherStartMonth?: NumericInput | null;
@@ -148,6 +152,8 @@ export interface AllocationProject {
   name: string;
   type: string;
   isRFQ?: boolean;
+  /** Defaults to true for projects created before this setting existed. */
+  autoStartFte?: boolean;
   startDate: string;
   duration: number;
   stability: string;

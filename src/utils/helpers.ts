@@ -152,13 +152,14 @@ export function calcCardFTE(
     rates.Integration * pd.Integration;
   const devFTEMonths = baseDevFTEMonths * reusabilityMultiplier;
 
-  const maintenanceDuration = Math.max(0, project.duration - devDuration);
+  const activeDuration = Math.max(0, project.duration - (Math.max(1, parseInt(card.startMonth, 10) || 1) - 1));
+  const maintenanceDuration = Math.max(0, activeDuration - devDuration);
   const initialMaint = Math.min(maintenanceDuration, 6) * (rates.initialMaintenance ?? 0);
   const residualMaint = Math.max(0, maintenanceDuration - 6) * (rates.residualMaintenance ?? 0);
   const maintenanceFTEMonths = (initialMaint + residualMaint) * maintenanceMultiplier;
 
   const monthlySupportRate = ((rates.devFunctionsSupport ?? 0) + (rates.weeklyMeetings ?? 0)) * getSupportReusabilityFactor(card, reusabilityFactors);
-  const supportFTEMonths = monthlySupportRate * project.duration;
+  const supportFTEMonths = monthlySupportRate * activeDuration;
 
   const totalFTEMonths = devFTEMonths + maintenanceFTEMonths + supportFTEMonths;
 
@@ -283,6 +284,20 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
   const reusabilityMultiplier = getReusabilityFactor(card, reusabilityFactors);
   const maintenanceMultiplier = getMaintenanceReusabilityFactor(card, reusabilityFactors);
   const stabilityMultiplier = stabilityFactors[project.stability] ?? 1.0;
+
+  if (card.tool !== "Other") {
+    const startIdx = Math.max(1, parseInt(card.startMonth, 10) || 1) - 1;
+    if (startIdx > 0) {
+      const inactive = Array.from({ length: Math.min(startIdx, totalDuration) }, (_, index) => ({
+        phaseName: "Inactive", shortPhase: "", phaseRate: 0, totalFTE: 0,
+        phaseSpan: startIdx, phaseMonthIndex: index + 1,
+        isPhaseStart: index === 0, isPhaseEnd: index === startIdx - 1,
+        style: getFTEGradientStyle(0, true, 3.0),
+      }));
+      return [...inactive, ...computeWorkpackageLifecycleTimeline({ ...card, startMonth: 1 }, project,
+        rates, reusabilityFactors, stabilityFactors, isNegated, Math.max(0, totalDuration - startIdx))];
+    }
+  }
 
   if (card.tool === "Other") {
     const startMonth = Math.max(1, parseInt(card.otherStartMonth, 10) || 1);

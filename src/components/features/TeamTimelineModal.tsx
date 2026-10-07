@@ -217,6 +217,7 @@ export function TeamTimelineModal({
         const defaultMeetingsRate = isNegated || card.tool === "Other" ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier * supportMultiplier);
 
         const mergedMonthsInProject = defaultCoreMonths.map((m, mIdx) => {
+          if (card.tool !== "Other" && m.phaseName === "Inactive") return { ...m, coreFTE: 0, totalWPMonthlyFTE: 0 };
           const effDevRate = supportMultiplier === 0 ? 0 : card.customDevSupportFTE?.[mIdx] ?? defaultDevRate;
           const effMeetingsRate = supportMultiplier === 0 ? 0 : card.customMeetingsFTE?.[mIdx] ?? defaultMeetingsRate;
           const supportSum = round2(effDevRate + effMeetingsRate);

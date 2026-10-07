@@ -1,3 +1,5 @@
+import { workpackageDevelopmentMonths, workpackageFinishTarget } from "../../utils/workpackageFinishTargets";
+import { DEFAULT_FTE_RATES } from "../../constants";
 import { applySalaryTotals } from "../../utils/externalSalaries";
 import { purchaseScheduleExceedsProject } from "../../utils/nonFteWorkpackages";
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
@@ -1059,6 +1061,18 @@ export const ProjectBasket = memo(function ProjectBasket({
               </div>
 
               <div className="flex items-center justify-end gap-1 shrink-0">
+                {!isBasicMode && <button
+                  type="button"
+                  aria-label={`Automatically start FTE workpackages at project start: ${project.name}`}
+                  aria-pressed={project.autoStartFte !== false}
+                  onClick={() => onUpdateProject(project.id, { autoStartFte: project.autoStartFte === false })}
+                  className={`p-1 rounded transition-colors cursor-pointer ${project.autoStartFte !== false ? "text-sky-300 bg-sky-500/20 hover:bg-sky-500/30" : "text-slate-400 hover:text-white"}`}
+                  title={`Automatic FTE start: ${project.autoStartFte !== false ? "On — new FTE workpackages start at M1" : "Off — choose the start month when assigning FTE workpackages"}`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 4v16M8 12h12m-5-5 5 5-5 5" />
+                  </svg>
+                </button>}
                 {!isBasicMode && (
                   <button
                     type="button"
@@ -1370,16 +1384,20 @@ export const ProjectBasket = memo(function ProjectBasket({
   );
 });
 
-export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS }) {
+export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates = DEFAULT_FTE_RATES, toolFteRates = null }) {
   const { isRetro } = React.useContext(ThemeContext);
-  const duration = Math.max(1, parseInt(card.otherDuration, 10) || 6);
+  const isOther = card.tool === "Other";
+  const duration = workpackageDevelopmentMonths(card, fteRates, toolFteRates);
+  const complexity = card.tool === "KPI" ? card.complexity || "Supporting" : "Point Cloud";
+  const rates = toolFteRates?.[card.tool]?.[complexity] ?? fteRates[complexity] ?? fteRates["Point Cloud"];
+  const hasMaintenance = isOther ? Boolean(card.otherHasMaintenance) : Boolean(rates?.initialMaintenance || rates?.residualMaintenance);
   const projectDuration = project.duration;
 
   const rawEffort = parseFloat(card.otherEffort) || 0.3;
   const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
   const finalEffort = round2(rawEffort * reusabilityMult);
 
-  const [selectedMilestone, setSelectedMilestone] = useState(card.otherFinishMilestone || "");
+  const [selectedMilestone, setSelectedMilestone] = useState(workpackageFinishTarget(card) || "");
 
   const milestones = useMemo(
     () => normalizeMilestones(project.milestones, projectDuration),
@@ -1393,10 +1411,10 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
 
   const maxValidStart = Math.max(1, milestoneBoundaryMonth - duration + 1);
 
-  const initialStart = selectedMilestone && milestones?.[selectedMilestone]
+  const initialStart = card.projectId !== project.id && selectedMilestone && milestones?.[selectedMilestone]
     ? maxValidStart
     : Math.min(
-        Math.max(1, parseInt(card.otherStartMonth, 10) || 1),
+        Math.max(1, parseInt(isOther ? card.otherStartMonth : card.startMonth, 10) || 1),
         maxValidStart
       );
 
@@ -1504,7 +1522,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
   const isDurationTooLong = duration > milestoneBoundaryMonth;
 
   if (isDurationTooLong) {
-    errorMessage = `The activity duration (${duration} months) exceeds the available timeline before ${selectedMilestone || "project end"} (${milestoneBoundaryMonth} months). Please reduce the workpackage duration first.`;
+    errorMessage = `The activity duration (${duration} months) exceeds the available timeline before ${selectedMilestone || "project end"} (${milestoneBoundaryMonth} months). Choose a later finish target or reduce the workpackage duration.`;
   } else if (isNaN(startMonth) || startMonthInput.trim() === "") {
     errorMessage = "Please enter a valid start month number.";
   } else if (startMonth < 1) {
@@ -1540,11 +1558,11 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
             <div className={`w-7 h-7 flex items-center justify-center shadow-xs ${
               isRetro ? "bg-[#000050] border border-black text-amber-300" : "rounded-lg bg-slate-900 text-amber-300"
             }`}>
-              <ToolIcon toolName="Other" size={14} className="text-amber-300" />
+              <ToolIcon toolName={card.tool} size={14} className="text-amber-300" />
             </div>
             <div>
               <h2 className={`text-sm font-bold ${isRetro ? "text-white font-mono font-black" : "text-slate-900"}`}>
-                Schedule Other Workpackage
+                Schedule {isOther ? "Other" : "FTE"} Workpackage
               </h2>
               <p className={`text-[11px] ${isRetro ? "text-slate-200 font-mono" : "text-slate-500 font-medium"} truncate max-w-[280px]`}>
                 {card.name} &rarr; {project.name}
@@ -1571,15 +1589,15 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
             : "text-slate-600 bg-slate-50 rounded-xl border border-slate-200"
         }`}>
           <div className="flex items-center justify-between">
-            <span className={`font-semibold ${isRetro ? "text-black" : "text-slate-500"}`}>Activity Duration:</span>
+            <span className={`font-semibold ${isRetro ? "text-black" : "text-slate-500"}`}>{isOther ? "Activity Duration:" : "Pre-maintenance Duration:"}</span>
             <span className={`font-bold font-mono ${isRetro ? "text-black font-black" : "text-slate-800"}`}>
-              {finalEffort.toFixed(2)} FTE / {duration} months
+              {isOther ? `${finalEffort.toFixed(2)} FTE / ` : ""}{duration} months
             </span>
           </div>
           <div className="flex items-center justify-between">
             <span className={`font-semibold ${isRetro ? "text-black" : "text-slate-500"}`}>Maintenance Phase:</span>
             <span className={`font-bold font-mono ${isRetro ? "text-black font-black" : "text-slate-800"}`}>
-              {card.otherHasMaintenance
+              {!isOther ? (hasMaintenance ? "Configured rates until project end" : "None") : card.otherHasMaintenance
                 ? `${round2(Math.max(0, Number(card.otherMaintenanceEffort ?? 0.05) || 0) * getMaintenanceReusabilityFactor(card, reusabilityFactors)).toFixed(2)} FTE/mo until project end`
                 : "None"}
             </span>
@@ -1648,6 +1666,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
             <input
               autoFocus
               type="number"
+              aria-label="Workpackage Starting Month"
               min="1"
               max={maxValidStart}
               value={startMonthInput}
@@ -1737,7 +1756,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
               >
                 {monthDetails.map(({ mNum, dateLabel }) => {
                   const isExec = previewStartMonth !== null && mNum >= previewStartMonth && mNum <= previewEndMonth;
-                  const isMaint = previewEndMonth !== null && card.otherHasMaintenance && mNum > previewEndMonth;
+                  const isMaint = previewEndMonth !== null && hasMaintenance && mNum > previewEndMonth;
                   const isHighlightedStart = previewStartMonth !== null && mNum === previewStartMonth;
                   const msList = milestonesByMonth.get(mNum) || [];
                   const hasMilestone = msList.length > 0;
@@ -1787,7 +1806,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
                         `Click or drag to set starting month to M${mNum} (${dateLabel})\n` +
                         (mNum > maxValidStart
                           ? `Exceeds timeline: will auto-allocate starting month to M${maxValidStart} (M${maxValidStart}–${maxValidStart + duration - 1})`
-                          : `${isExec ? `Month ${mNum} (${dateLabel}): Execution` : isMaint ? `Month ${mNum} (${dateLabel}): Maintenance` : `Month ${mNum} (${dateLabel}): Inactive`}`) +
+                          : `${isExec ? `Month ${mNum} (${dateLabel}): ${isOther ? "Execution" : "Pre-maintenance"}` : isMaint ? `Month ${mNum} (${dateLabel}): Maintenance` : `Month ${mNum} (${dateLabel}): Inactive`}`) +
                         (hasMilestone ? `\nMilestone: ${msList.map((x) => `${x.label} - ${x.name}`).join(", ")}` : "") +
                         (isTargetMilestoneMonth ? `\n[Selected Finish Deadline: ${selectedMilestone}]` : "")
                       }
@@ -1804,9 +1823,9 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
           <div className={`flex flex-col gap-1.5 mt-2.5 pt-2 ${isRetro ? "border-t-2 border-black" : "border-t border-slate-200"}`}>
             <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] justify-center ${isRetro ? "text-black font-mono font-bold" : "text-slate-600"}`}>
               <span className="flex items-center gap-1 font-medium">
-                <span className={`w-2.5 h-2.5 ${isRetro ? "bg-[#000080] border border-black" : "rounded-xs bg-blue-600"} inline-block`} /> Execution
+                <span className={`w-2.5 h-2.5 ${isRetro ? "bg-[#000080] border border-black" : "rounded-xs bg-blue-600"} inline-block`} /> {isOther ? "Execution" : "Pre-maintenance"}
               </span>
-              {card.otherHasMaintenance && (
+              {hasMaintenance && (
                 <span className="flex items-center gap-1 font-medium">
                   <span className={`w-2.5 h-2.5 ${isRetro ? "bg-[#ffff80] border border-black" : "rounded-xs bg-amber-400"} inline-block`} /> Maintenance
                 </span>

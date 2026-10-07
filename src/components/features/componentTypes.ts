@@ -143,6 +143,7 @@ export interface AddFunctionModalProps extends ReusabilityRatesProps {
 }
 
 export interface AddFunctionDraft {
+  finishMilestone?: string | null;
   name: string;
   tool: string;
   complexity: string | null;

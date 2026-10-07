@@ -60,7 +60,7 @@ export function reconcileProjectTimelineAllocations(
     const supportMultiplier = getSupportReusabilityFactor(card, config.reusabilityFactors);
     const dev = isNegated || card.tool === "Other" ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stability * supportMultiplier);
     const meetings = isNegated || card.tool === "Other" ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stability * supportMultiplier);
-    const effort = core.map((month, index) => isNegated ? 0 : round2(
+    const effort = core.map((month, index) => isNegated || (card.tool !== "Other" && month.phaseName === "Inactive") ? 0 : round2(
       (card.customCoreFTE?.[index] ?? month.totalFTE) +
       round2(((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings)) * supportMultiplier)));
     const isAltered = core.some((month, index) =>

@@ -1,5 +1,6 @@
-import { ProjectIcon } from "./components/ui/icons";
+import { workpackageFinishViolation } from "./utils/workpackageFinishTargets";
 import { SummaryDashboard } from "./components/features/SummaryDashboard";
+import { ProjectIcon } from "./components/ui/icons";
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
 import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
 import { purchaseCost, purchaseCostSummary, purchaseMonthlyCosts, purchasePaymentSchedule, purchaseScheduleExceedsProject, isPurchasePaymentAltered, validPurchaseMonths, purchaseSubcategory, retainUsedSuppliers, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
@@ -32,7 +33,6 @@ import { useAppViewState } from "./hooks/useAppViewState";
 import { useProjectReordering } from "./hooks/useProjectReordering";
 import {
   getDefaultMilestones,
-  normalizeMilestones,
   calcCardFTE,
   computeWorkpackageLifecycleTimeline,
   calculateWorkpackageCoverage,
@@ -181,6 +181,7 @@ export default function App() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [pendingOtherAssignment, setPendingOtherAssignment] = useState(null);
+  const [manualRescheduleQueue, setManualRescheduleQueue] = useState([]);
   const [draggedCard, setDraggedCard] = useState(null);
   const [draggedProjectIndex, setDraggedProjectIndex] = useState(null);
   const [targetProjectIndex, setTargetProjectIndex] = useState(null);
@@ -211,6 +212,38 @@ export default function App() {
     reusabilityFactors: DEFAULT_REUSABILITY_FACTORS,
     stabilityFactors: DEFAULT_STABILITY_FACTORS,
   });
+
+  useEffect(() => {
+    const invalid = functions.flatMap(card => {
+      const project = projects.find(item => item.id === card.projectId);
+      if (!project || card.kind === "non-fte") return [];
+      const reason = workpackageFinishViolation(card, project, config.fteRates, config.toolFteRates);
+      return reason ? [{ card, project, reason }] : [];
+    });
+    if (!invalid.length) return;
+    const ids = new Set(invalid.map(item => item.card.id));
+    setFunctions(current => current.map(card => ids.has(card.id) ? {
+      ...card, projectId: null, startMonth: null, otherStartMonth: null, _editing: false,
+      memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
+      customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {},
+    } : card));
+    const automatic = invalid.filter(item => !isBasicMode && item.project.autoStartFte !== false);
+    const manual = invalid.filter(item => isBasicMode || item.project.autoStartFte === false);
+    if (manual.length) setManualRescheduleQueue(current => [...current, ...manual]);
+    if (automatic.length) setAssignmentWarning({ cardName: automatic.map(item => item.card.name).join(", "),
+      projectName: [...new Set(automatic.map(item => item.project.name))].join(", "),
+      reason: automatic.map(item => `"${item.card.name}": ${item.reason}`).join("\n"),
+    });
+  }, [functions, projects, config.fteRates, config.toolFteRates, isBasicMode]);
+
+  useEffect(() => {
+    if (pendingOtherAssignment || !manualRescheduleQueue.length) return;
+    const next = manualRescheduleQueue[0];
+    const project = projects.find(item => item.id === next.project.id);
+    const card = functions.find(item => item.id === next.card.id);
+    if (project && card) setPendingOtherAssignment({ card, project });
+    setManualRescheduleQueue(current => current.slice(1));
+  }, [pendingOtherAssignment, manualRescheduleQueue, projects, functions]);
 
   const usedSupplierIds = useMemo(() => new Set([
     ...functions.filter(card => card.kind === "non-fte" && card.supplierId).map(card => card.supplierId!),
@@ -323,6 +356,10 @@ export default function App() {
       const coverageMonths: { shortPhase?: string; totalWPMonthlyFTE: number }[] = [];
 
       for (let m = 0; m < project.duration; m++) {
+        if (!isOther && defaultMonths[m]?.phaseName === "Inactive") {
+          coverageMonths.push({ shortPhase: "", totalWPMonthlyFTE: 0 });
+          continue;
+        }
         const defCore = defaultMonths[m]?.totalFTE || 0;
         const customCore = f.customCoreFTE?.[m];
         const customDev = isOther || supportMultiplier === 0 ? undefined : f.customDevSupportFTE?.[m];
@@ -418,38 +455,22 @@ export default function App() {
         setPendingPurchase({ card: { ...targetCard, subcategory: purchaseSubcategory(targetCard) }, project: targetProj });
         return;
       }
-      if (targetCard && targetCard.tool === "Other" && targetProj) {
-        const duration = Math.max(1, parseInt(targetCard.otherDuration, 10) || 6);
-        const normMilestones = normalizeMilestones(targetProj.milestones, targetProj.duration);
-        const finishMs = targetCard.otherFinishMilestone;
-        const boundaryMonth = finishMs && normMilestones?.[finishMs]
-          ? normMilestones[finishMs]
-          : targetProj.duration;
-
-        if (duration > boundaryMonth) {
-          const reason = finishMs
-            ? `Its duration (${duration} months) exceeds the deadline for milestone ${finishMs} (Month ${boundaryMonth} in "${targetProj.name}"). To finish on or before ${finishMs}, it would have to start before project start (Month 1).`
-            : `Its duration (${duration} months) exceeds the total project duration (${targetProj.duration} months in "${targetProj.name}").`;
-
-          setAssignmentWarning({
-            cardName: targetCard.name,
-            projectName: targetProj.name,
-            duration,
-            boundaryMonth,
-            milestone: finishMs,
-            reason,
-          });
-
-          setFunctions((prev) =>
-            prev.map((f) =>
-              f.id === cardId
-                ? { ...f, projectId: null, otherStartMonth: null }
-                : f
-            )
-          );
+      if (targetCard && targetProj && (isBasicMode || targetProj.autoStartFte === false)) {
+        setPendingOtherAssignment({ card: targetCard, project: targetProj });
+        return;
+      }
+      if (targetCard && targetProj) {
+        const reason = workpackageFinishViolation({ ...targetCard, projectId: null, startMonth: 1 }, targetProj, config.fteRates, config.toolFteRates);
+        if (reason) {
+          setAssignmentWarning({ cardName: targetCard.name, projectName: targetProj.name, reason });
+          setFunctions(prev => prev.map(card => card.id === cardId ? {
+            ...card, projectId: null, startMonth: null, otherStartMonth: null, memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
+            customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {},
+          } : card));
           return;
         }
-
+      }
+      if (targetCard && targetCard.tool === "Other" && targetProj) {
         setPendingOtherAssignment({
           card: targetCard,
           project: targetProj,
@@ -470,30 +491,36 @@ export default function App() {
             purchasePaymentMode: f.kind === "non-fte" ? undefined : f.purchasePaymentMode,
             purchasePaymentShares: f.kind === "non-fte" ? undefined : f.purchasePaymentShares,
             otherStartMonth: f.tool === "Other" ? null : f.otherStartMonth,
+            startMonth: null,
           };
         }
-        return { ...f, projectId: targetProjectId };
+        return { ...f, projectId: targetProjectId, startMonth: 1 };
       })
     );
-  }, [functions, projects]);
+  }, [functions, projects, config.fteRates, config.toolFteRates, isBasicMode]);
 
   const handleConfirmOtherAssignment = useCallback((startMonth, finishMilestone) => {
     if (!pendingOtherAssignment) return;
-    const { card, project } = pendingOtherAssignment;
+    const { card } = pendingOtherAssignment;
+    const project = projects.find(item => item.id === pendingOtherAssignment.project.id);
+    if (!project || !Number.isInteger(startMonth) || startMonth < 1) return;
+    const schedule = card.tool === "Other"
+      ? { otherStartMonth: startMonth, otherFinishMilestone: finishMilestone || null }
+      : { startMonth, finishMilestone: finishMilestone || null };
+    if (workpackageFinishViolation({ ...card, ...schedule, projectId: project.id }, project, config.fteRates, config.toolFteRates)) return;
     setFunctions((prev) =>
       prev.map((f) =>
         f.id === card.id
           ? {
               ...f,
               projectId: project.id,
-              otherStartMonth: startMonth,
-              otherFinishMilestone: finishMilestone || null,
+              ...schedule,
             }
           : f
       )
     );
     setPendingOtherAssignment(null);
-  }, [pendingOtherAssignment]);
+  }, [pendingOtherAssignment, projects, config.fteRates, config.toolFteRates]);
 
   const handleCancelOtherAssignment = useCallback(() => {
     setPendingOtherAssignment(null);
@@ -1143,6 +1170,8 @@ export default function App() {
         {pendingOtherAssignment && (
           <AssignOtherWPModal
             card={pendingOtherAssignment.card}
+            fteRates={config.fteRates}
+            toolFteRates={config.toolFteRates}
             reusabilityFactors={config.reusabilityFactors}
             project={pendingOtherAssignment.project}
             onConfirm={handleConfirmOtherAssignment}
@@ -1157,12 +1186,14 @@ export default function App() {
             aria-modal="true"
           >
             <div
-              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md flex flex-col gap-4 border border-amber-300"
+              className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md flex flex-col gap-4 border border-red-300"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 text-amber-600 flex items-center justify-center shrink-0 shadow-xs text-xl">
-                  ⚠️
+                <div className="w-10 h-10 rounded-xl bg-red-100 border border-red-300 text-red-600 flex items-center justify-center shrink-0 shadow-xs text-xl">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+                    <path d="m6 6 12 12M18 6 6 18" />
+                  </svg>
                 </div>
                 <div>
                   <h2 className="text-base font-bold text-slate-900">{assignmentWarning.isProjectEdit ? "Cannot Update Project" : "Cannot Assign Workpackage"}</h2>
@@ -1170,11 +1201,11 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-950 leading-relaxed flex flex-col gap-2">
+              <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-xs text-red-950 leading-relaxed flex flex-col gap-2">
                 <div>
                   {assignmentWarning.isProjectEdit ? <>Scheduled purchase <strong>{assignmentWarning.cardName}</strong> prevents this update to <strong>{assignmentWarning.projectName}</strong>.</> : <>Workpackage <strong>&quot;{assignmentWarning.cardName}&quot;</strong> cannot be added to project <strong>&quot;{assignmentWarning.projectName}&quot;</strong>.</>}
                 </div>
-                <div className="p-2 bg-white/80 rounded-lg border border-amber-300/80 font-medium text-amber-900">
+                <div className="p-2 bg-white/80 rounded-lg border border-red-300/80 font-medium text-red-900">
                   {assignmentWarning.reason}
                 </div>
               </div>

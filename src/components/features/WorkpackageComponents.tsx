@@ -12,6 +12,7 @@ import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { getCrossTeamMemberIds, calculateManagementCoverage, hasAllocatedCost, sumWorkpackageAllocationCosts, getReusabilityFactor, getReusabilityLabel, getMaintenanceReusabilityFactor, hasWorkpackageMaintenance, normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
 import { DEFAULT_FTE_COSTS } from "../../constants";
 import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
+import { workpackageFinishTarget } from "../../utils/workpackageFinishTargets";
 import { ResponsiveToolTagLabel } from "../ui/ResponsiveToolTagLabel";
 
 export function EditCardContent({ card, onEdit, projectDuration, projectMilestones, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates, toolFteRates }: EditCardContentProps) {
@@ -28,6 +29,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
     otherDuration: card.otherDuration ?? 6,
     otherStartMonth: card.otherStartMonth ?? 1,
     otherFinishMilestone: card.otherFinishMilestone ?? null,
+    finishMilestone: card.finishMilestone ?? null,
     otherHasMaintenance: card.otherHasMaintenance ?? false,
     otherMaintenanceEffort: card.otherMaintenanceEffort ?? 0.05,
   });
@@ -122,6 +124,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
       otherDuration: curDuration,
       otherStartMonth: isOther ? finalStartMonth : null,
       otherFinishMilestone: isOther ? draft.otherFinishMilestone : null,
+      finishMilestone: isOther ? null : draft.finishMilestone,
       otherMaintenanceEffort: Math.max(0, parseFloat(draft.otherMaintenanceEffort) || 0),
     });
   };
@@ -158,6 +161,16 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
           <option key={t.name} value={t.name}>{t.name}</option>
         ))}
       </select>
+      {!isOther && (
+        <div>
+          <label className="text-[9px] text-gray-600 font-bold block mb-0.5">Finish Target / Boundary</label>
+          <select aria-label="Finish Target / Boundary" className="text-xs bg-white border border-gray-300 rounded px-1.5 py-1 w-full font-medium shadow-2xs" value={draft.finishMilestone || ""} onChange={e => setDraft(d => ({ ...d, finishMilestone: e.target.value || null }))}>
+            <option value="">Project End ({projectDuration || "End"} Mo)</option>
+            {MILESTONES_DEF.map(m => <option key={m.key} value={m.key}>{m.label} ({projectMilestones?.[m.key] ? `Month ${projectMilestones[m.key]}` : m.name})</option>)}
+          </select>
+          <p className="text-[9px] text-slate-500 mt-0.5">Pre-maintenance phases must finish by this target.</p>
+        </div>
+      )}
       {selectedTool?.subcategories && (
         <select
           className="text-xs bg-white/90 border border-gray-300 rounded px-1 py-1 w-full font-medium shadow-2xs"
@@ -418,7 +431,8 @@ export const FunctionCard = memo(function FunctionCard({
   const nominalFTE = card._nominalFte ?? 0.35;
   const isNegated = Boolean(card._isNegated);
   const isAltered = Boolean(card._isAltered);
-  const finishMsDef = card.otherFinishMilestone ? MILESTONE_MAP[card.otherFinishMilestone] : null;
+  const finishTarget = workpackageFinishTarget(card);
+  const finishMsDef = finishTarget ? MILESTONE_MAP[finishTarget] : null;
   const coverageIndicator = isAssigned && (!isBasicMode || !isCompact) ? (
     <span className={`inline-flex items-center justify-center gap-1 shrink-0 ${isCompact ? "p-0.5" : ""}`} title={`Overall workpackage coverage: ${card._coveragePct ?? 0}%`}>
       {!isCompact && (

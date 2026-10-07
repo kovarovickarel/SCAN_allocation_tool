@@ -19,6 +19,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
     otherEffort: otherDefaults?.defaultEffort ?? 0.3,
     otherDuration: otherDefaults?.defaultDuration ?? 6,
     otherFinishMilestone: null,
+    finishMilestone: null,
     otherHasMaintenance: otherDefaults?.defaultHasMaintenance ?? false,
     otherMaintenanceEffort: otherDefaults?.defaultMaintenanceEffort ?? 0.05,
   });
@@ -58,6 +59,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
       otherDuration: Math.max(1, parseInt(draft.otherDuration, 10) || 1),
       otherStartMonth: null,
       otherFinishMilestone: draft.otherFinishMilestone || null,
+      finishMilestone: draft.tool === "Other" ? null : draft.finishMilestone || null,
       otherHasMaintenance: Boolean(draft.otherHasMaintenance),
       otherMaintenanceEffort: Math.max(0, parseFloat(draft.otherMaintenanceEffort) || 0),
     });
@@ -154,6 +156,18 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
             )}
           </div>
 
+          {draft.tool !== "Other" && (
+            <div>
+              <label className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
+                Finish Target (Milestone)
+              </label>
+              <select aria-label="Finish Target (Milestone)" className={`px-2.5 py-1.5 w-full text-xs font-medium ${isRetro ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white font-mono text-black font-bold" : "border border-gray-300 rounded bg-white"}`} value={draft.finishMilestone || ""} onChange={e => setDraft(d => ({ ...d, finishMilestone: e.target.value || null }))}>
+                <option value="">Project End (Default)</option>
+                {MILESTONES_DEF.map(m => <option key={m.key} value={m.key}>{m.label} ({m.name})</option>)}
+              </select>
+              <p className="text-[10px] text-slate-500 mt-1">Pre-maintenance phases must finish by this target. Maintenance may continue afterward.</p>
+            </div>
+          )}
           {draft.tool === "Other" && (
             <div className={`flex flex-col gap-2 p-2.5 ${
               isRetro
