@@ -26,6 +26,7 @@ export function HelpGuideModal({
   useEscapeKey(onClose);
 
   const tabs = [
+    { id: "files", label: "Save & Transfer Workspace" },
     { id: "team", label: "Team Staffing & Combined Timeline" },
     { id: "automatic", label: "Automatic Allocation" },
     { id: "purchases", label: "Non-FTE Purchases" },
@@ -110,6 +111,16 @@ export function HelpGuideModal({
         <div className={`p-6 overflow-y-auto flex-1 min-h-0 space-y-4 text-xs ${
           isRetro ? "bg-[#d4d0c8] font-mono text-black" : "bg-slate-50/50 text-slate-700"
         }`}>
+          {activeTab === "files" && <section className={`p-4 ${isRetro ? "bg-white border-2 border-black" : "bg-white border border-slate-200 rounded-xl"}`}>
+            <h3 className="font-bold text-slate-900 text-sm mb-3">Save your work and transfer it between PCs</h3>
+            <ul className="list-disc pl-5 space-y-3 text-slate-600">
+              <li>Use the <strong>Export workspace</strong> down-arrow icon left of Help to name and save a <strong>.json</strong> file. Export opens Save As directly so you can choose the folder and file name. Browsers without this feature use normal downloads; enable their ask-for-location download setting to choose a folder. It includes projects, allocated and unassigned workpackages, members, suppliers, salaries, allocations, payment schedules and all calculation settings.</li>
+              <li>Save changes in workpackage editors and use <strong>Save &amp; Close</strong> in timelines before exporting. Unsaved editor drafts are not part of the file.</li>
+              <li>Copy the file to another PC and use <strong>Import workspace</strong>. Review its contents, then choose <strong>Import &amp; Replace</strong>. You can export a backup of your current workspace from this review before replacing it.</li>
+              <li>Theme, mode, tool view, layout density and summary selections are restored too. Import replaces the current workspace; Cancel and invalid files leave it unchanged.</li>
+              <li>Keep the downloaded file before closing or reloading the app. Workspace files are saved locally and are not automatically backed up.</li>
+            </ul>
+          </section>}
           {activeTab === "purchases" && <div className="space-y-4">
             <section className="p-4 bg-white border border-purple-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2">Purchase workpackages</h3>
@@ -523,6 +534,9 @@ export function HelpGuideModal({
                   </li>
                   <li>
                     <strong>Max 2 Milestones Per Month:</strong> No more than two milestones may occupy the same month.
+                  </li>
+                  <li>
+                    <strong>Workpackage Finish Targets:</strong> Choose a milestone when creating or editing any FTE workpackage, or leave Project End selected. Requirements, implementation, validation and integration must finish on or before that milestone month; maintenance can continue afterward. In extended mode, projects start standard FTE workpackages at M1 by default. In basic mode, automatic start is always off and you choose the schedule when assigning a workpackage. Use the automatic-start button beside project configuration to turn this off and choose the start month and finish target when assigning a workpackage, using the schedule preview. If automatic start is enabled and the configured phases cannot fit, the app warns you and returns the workpackage to the unassigned pool. With automatic start disabled, resolve an infeasible target in the scheduling dialog before confirming. Changes to workpackages, project dates or phase durations also check these deadlines. Returned workpackages retain their finish target but clear their allocations and manual effort overrides.
                   </li>
                   <li>
                     <strong>Boundary Validation:</strong> A workpackage cannot finish after its target milestone. If you attempt to reduce project duration or pull a milestone forward past an active workpackage, the system automatically protects the boundary and displays the earliest allowable month.

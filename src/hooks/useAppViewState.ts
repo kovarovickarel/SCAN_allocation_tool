@@ -41,6 +41,16 @@ export function useAppViewState() {
     });
   }, []);
 
+  const restoreViewPreferences = useCallback((view: { theme: string; mode: string; activeToolView: string; teamCompact: boolean; poolCompact: boolean }) => {
+    setTheme(view.theme); setAppMode(view.mode); setActiveToolView(view.activeToolView);
+    setIsTeamBucketCompact(view.teamCompact); setIsWorkpackagePoolCompact(view.poolCompact);
+    setShowTeamTimeline(false);
+    try {
+      localStorage.setItem("scan_team_bucket_compact", String(view.teamCompact));
+      localStorage.setItem("scan_wp_pool_compact", String(view.poolCompact));
+    } catch {}
+  }, []);
+
   const isBasic = theme === "basic";
   const isRetro = theme === "retro";
   const isBasicMode = appMode === "basic";
@@ -61,5 +71,6 @@ export function useAppViewState() {
     isBasic,
     isRetro,
     isBasicMode,
+    restoreViewPreferences,
   };
 }

@@ -1,3 +1,5 @@
+import { WorkspaceFileControls } from "./components/features/WorkspaceFileControls";
+import type { WorkspaceData, WorkspaceView } from "./utils/workspaceFile";
 import { workpackageFinishViolation } from "./utils/workpackageFinishTargets";
 import { SummaryDashboard } from "./components/features/SummaryDashboard";
 import { ProjectIcon } from "./components/ui/icons";
@@ -80,6 +82,7 @@ export default function App() {
     isBasic,
     isRetro,
     isBasicMode,
+    restoreViewPreferences,
   } = useAppViewState();
   const [functions, setFunctions] = useState<WorkpackageCard[]>(() =>
     [...INITIAL_FUNCTIONS, ...INITIAL_NON_FTE_WORKPACKAGES].map((f) => ({
@@ -401,6 +404,9 @@ export default function App() {
     toolFteRates: config.toolFteRates, reusabilityFactors: config.reusabilityFactors, stabilityFactors: config.stabilityFactors }),
     [projects, baseFunctionsWithFTE, teamMembers, config]);
   const [showSummaryDashboard, setShowSummaryDashboard] = useState(false);
+  const [summaryFilter, setSummaryFilter] = useState<WorkspaceView["summaryFilter"]>("all");
+  const [selectedSummaryProjectIds, setSelectedSummaryProjectIds] = useState<string[] | null>(null);
+  const [workspaceRevision, setWorkspaceRevision] = useState(0);
   const functionsWithFTE = useMemo(() => baseFunctionsWithFTE.map(card => ({ ...card,
     _allocationCost: card._allocationCost ? applySalaryTotals(card._allocationCost, salaryAllocationTotals) : undefined })),
     [baseFunctionsWithFTE, salaryAllocationTotals]);
@@ -682,6 +688,28 @@ export default function App() {
     );
   }, []);
 
+  const getWorkspace = useCallback((): WorkspaceData => ({
+    projects, workpackages: functions, teamMembers, configuration: config, teamOtherWPScopes,
+    view: { theme: theme as WorkspaceView["theme"], mode: appMode as WorkspaceView["mode"], activeToolView,
+      teamCompact: isTeamBucketCompact, poolCompact: isWorkpackagePoolCompact, workpackageKind,
+      summaryOpen: showSummaryDashboard, summaryFilter, selectedProjectIds: selectedSummaryProjectIds },
+  }), [projects, functions, teamMembers, config, teamOtherWPScopes, theme, appMode, activeToolView,
+    isTeamBucketCompact, isWorkpackagePoolCompact, workpackageKind, showSummaryDashboard, summaryFilter, selectedSummaryProjectIds]);
+
+  const importWorkspace = useCallback((data: WorkspaceData) => {
+    stopAutoScroll();
+    setProjects(data.projects); setFunctions(data.workpackages); setTeamMembers(data.teamMembers);
+    setConfig(data.configuration); setTeamOtherWPScopes(data.teamOtherWPScopes);
+    restoreViewPreferences(data.view); setWorkpackageKind(data.view.workpackageKind);
+    setShowSummaryDashboard(data.view.summaryOpen); setSummaryFilter(data.view.summaryFilter);
+    setSelectedSummaryProjectIds(data.view.selectedProjectIds);
+    setShowAddMember(false); setEditingMember(null); setShowAddFunction(false); setShowAddProject(false);
+    setShowConfigModal(false); setShowHelpModal(false); setPendingPurchase(null); setPendingOtherAssignment(null);
+    setManualRescheduleQueue([]); setAssignmentWarning(null); setDraggedCard(null);
+    setDraggedProjectIndex(null); setTargetProjectIndex(null);
+    setWorkspaceRevision(value => value + 1);
+  }, [restoreViewPreferences, stopAutoScroll]);
+
   return (
     <ThemeContext.Provider value={{ theme, isBasic, isRetro, setTheme, mode: appMode, isBasicMode }}>
       <div className={`min-h-screen ${isRetro ? "bg-[#008080] font-sans" : "bg-slate-950"} flex flex-col text-slate-800 select-none`}>
@@ -703,6 +731,7 @@ export default function App() {
           <div className={`w-px h-7 ${isRetro ? "bg-slate-400" : "bg-slate-800"} shrink-0`} />
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <WorkspaceFileControls getWorkspace={getWorkspace} onImport={importWorkspace} />
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -870,8 +899,10 @@ export default function App() {
         </header>
 
         {/* Main Content View */}
-        <main className="flex-1 flex flex-row gap-5 p-4 md:p-5 overflow-hidden items-start min-h-0">
+        <main key={workspaceRevision} className="flex-1 flex flex-row gap-5 p-4 md:p-5 overflow-hidden items-start min-h-0">
           {showSummaryDashboard ? <SummaryDashboard options={summaryOptions} suppliers={config.suppliers}
+            savedFilter={summaryFilter} onFilterChange={setSummaryFilter}
+            savedSelectedProjectIds={selectedSummaryProjectIds} onSelectionChange={setSelectedSummaryProjectIds}
             onSavePayments={handleSavePurchasePayments} /> : <>
           {activeToolView === "all" ? (
             <UnassignedPool

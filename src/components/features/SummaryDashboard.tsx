@@ -1,4 +1,4 @@
-import { useContext, useMemo, useState } from "react";
+import { useContext, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import { ThemeContext, FOOTPRINT_MAP, TOOL_ICON_COLORS, PROJECT_TYPE_COLORS } from "../../constants";
 import type { SupplierRecord, WorkpackageAllocationCost, AllocationProject } from "../../types";
 import { calculateSummaryDashboard, type SummaryDashboardOptions, type ProjectStatusFilter } from "../../utils/summaryDashboard";
@@ -8,13 +8,21 @@ import { ExternalSalaryUtilization } from "../ui/ExternalSalaryUtilization";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ProjectSpendingModal } from "./ProjectSpendingModal";
 
-export function SummaryDashboard({ options, suppliers, onSavePayments }: {
+export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilter, onFilterChange, savedSelectedProjectIds, onSelectionChange }: {
   options: SummaryDashboardOptions; suppliers: readonly SupplierRecord[];
+  savedFilter?: ProjectStatusFilter | "selected";
+  onFilterChange?: Dispatch<SetStateAction<ProjectStatusFilter | "selected">>;
+  savedSelectedProjectIds?: string[] | null;
+  onSelectionChange?: Dispatch<SetStateAction<string[] | null>>;
   onSavePayments?: (projectId: string, drafts: import("../../types").PurchasePaymentDrafts) => boolean;
 }) {
   const { isRetro } = useContext(ThemeContext);
-  const [filter, setFilter] = useState<ProjectStatusFilter | "selected">("all");
-  const [selectedProjectIds, setSelectedProjectIds] = useState<string[] | null>(null);
+  const [localFilter, setLocalFilter] = useState<ProjectStatusFilter | "selected">("all");
+  const [localSelectedIds, setLocalSelectedIds] = useState<string[] | null>(null);
+  const filter = savedFilter ?? localFilter;
+  const setFilter = onFilterChange ?? setLocalFilter;
+  const selectedProjectIds = savedSelectedProjectIds === undefined ? localSelectedIds : savedSelectedProjectIds;
+  const setSelectedProjectIds = onSelectionChange ?? setLocalSelectedIds;
   const [spendingProject, setSpendingProject] = useState<AllocationProject | null>(null);
   const allSummary = useMemo(() => calculateSummaryDashboard(options), [options]);
   const summary = useMemo(() => filter === "all" ? allSummary : calculateSummaryDashboard(options, filter === "selected" ? "all" : filter, filter === "selected" ? selectedProjectIds : null), [options, filter, selectedProjectIds, allSummary]);
