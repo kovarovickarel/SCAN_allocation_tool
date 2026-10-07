@@ -57,14 +57,15 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const allSpendingExpanded = memberTracks.length > 0 && memberTracks.every((track) => expandedTracks.has(track.id));
   const allSpendingCollapsed = memberTracks.every((track) => !expandedTracks.has(track.id));
   const crossTeamIds = useMemo(() => getCrossTeamMemberIds(members), [members]);
+  const paymentDuration = spending.monthlyCosts.length;
   const monthLabels = useMemo(() => {
     const [year, month] = (project.startDate || "2026-01").split("-").map(Number);
-    return Array.from({ length: project.duration }, (_, index) => new Date(year, month - 1 + index, 1)
+    return Array.from({ length: paymentDuration }, (_, index) => new Date(year, month - 1 + index, 1)
       .toLocaleDateString("en-US", { month: "short", year: "2-digit" }).replace(" ", " '"));
-  }, [project.startDate, project.duration]);
+  }, [project.startDate, paymentDuration]);
   const gridStyle = { gridTemplateColumns: "300px 1fr" };
-  const monthGridStyle = { gridTemplateColumns: `repeat(${project.duration}, minmax(52px, 1fr))` };
-  const minTableWidth = Math.max(940, 300 + project.duration * 56);
+  const monthGridStyle = { gridTemplateColumns: `repeat(${paymentDuration}, minmax(52px, 1fr))` };
+  const minTableWidth = Math.max(940, 300 + paymentDuration * 56);
   const milestones = useMemo(() => normalizeMilestones(project.milestones, project.duration), [project.milestones, project.duration]);
   const cardIndex = useMemo(() => new Map(options.cards.map((card) => [card.id, card])), [options.cards]);
   const editableTracks = spending.tools.flatMap(tool => tool.tracks.filter(track => track.isNonFte));
@@ -102,11 +103,11 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const total = spending.totalCost;
   const averageMonthlyCost = {
     ...total,
-    totalCost: total.totalCost / project.duration,
-    purchaseCostEUR: total.purchaseCostEUR === undefined ? undefined : total.purchaseCostEUR / project.duration,
-    externalSalaryCharges: total.externalSalaryCharges ? Object.fromEntries(Object.entries(total.externalSalaryCharges).map(([key, charge]) => [key, { ...charge, salary: charge.salary / project.duration }])) : undefined,
-    allocatedHours: total.allocatedHours / project.duration,
-    unpricedHours: total.unpricedHours / project.duration,
+    totalCost: total.totalCost / paymentDuration,
+    purchaseCostEUR: total.purchaseCostEUR === undefined ? undefined : total.purchaseCostEUR / paymentDuration,
+    externalSalaryCharges: total.externalSalaryCharges ? Object.fromEntries(Object.entries(total.externalSalaryCharges).map(([key, charge]) => [key, { ...charge, salary: charge.salary / paymentDuration }])) : undefined,
+    allocatedHours: total.allocatedHours / paymentDuration,
+    unpricedHours: total.unpricedHours / paymentDuration,
   };
   const peak = Math.max(0, ...spending.monthlyCosts.map((cost) => costInEUR(cost, rate, salaryRates) ?? 0));
   const peakIndex = spending.monthlyCosts.findIndex((cost) => costInEUR(cost, rate, salaryRates) === peak);
@@ -128,6 +129,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const tooltip = (cost: WorkpackageAllocationCost) => [
     cost.purchaseCostEUR !== undefined ? "Non-FTE purchases: scheduled payments in EUR." : "",
     cost.externalSalaryCharges ? "External salaries: monthly salary × allocated FTE ÷ member FTE capacity. Unused salary is excluded." : "",
+    ...[...new Set(Object.values(cost.externalSalaryCharges || {}).filter(charge => (charge.paymentDelayMonths ?? 0) > 0).map(charge => `Salary payment delayed by ${charge.paymentDelayMonths} months from the work month.`))],
     cost.allocatedHours > 0 || cost.externalSalaryCharges || cost.purchaseCostEUR === undefined
       ? `${(cost.allocatedHours || Object.values(cost.externalSalaryCharges || {}).reduce((sum, charge) => sum + charge.allocatedFTE * WORKING_HOURS_PER_MONTH, 0)).toLocaleString("en-US", { maximumFractionDigits: 2 })} allocated hours.` : "",
     costInEUR(cost, rate, salaryRates) !== null ? `Cost: € ${costInEUR(cost, rate, salaryRates).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : "EUR conversion unavailable.",
@@ -158,7 +160,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
       const alterationClass = altered ? "ring-1 ring-red-600 ring-offset-1 ring-offset-white z-10" : "";
       const alterationTitle = altered ? ` · MANUALLY ALTERED — Default: € ${defaultPayment.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "";
       const alterationStar = altered ? <span title="Manually adjusted" className="absolute top-0.5 right-0.5 text-[6.5px] font-black text-red-600 leading-none pointer-events-none">★</span> : null;
-      if (manualAdjust && purchase && onSavePayments) {
+      if (manualAdjust && purchase && onSavePayments && index < project.duration) {
         const isEditing = editingPayment?.id === purchase.id && editingPayment.month === index + 1;
         if (!(cost.purchaseCostEUR > 0) && !isEditing) return <button key={index} type="button"
           aria-label={`Edit ${purchase.name}, ${monthLabels[index]}, payment in EUR`}
@@ -306,7 +308,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
               {project.type && <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded border shadow-2xs ${isRetro ? "bg-[#ffff80] text-black border-black font-mono shadow-[1px_1px_0px_#000]" : PROJECT_TYPE_COLORS[project.type]?.bg || "bg-slate-700"}`}>{project.type}</span>}
               {project.isRFQ && <ProjectRFQBadge />}
             </div>
-            <p className={`text-xs mt-0.5 ${isRetro ? "text-slate-200" : "text-slate-400"}`}>Timeline: <strong className="text-white">{monthLabels[0]}</strong> → <strong className="text-white">{monthLabels[monthLabels.length - 1]}</strong> ({project.duration} Mo)</p>
+            <p className={`text-xs mt-0.5 ${isRetro ? "text-slate-200" : "text-slate-400"}`}>Timeline: <strong className="text-white">{monthLabels[0]}</strong> → <strong className="text-white">{monthLabels[monthLabels.length - 1]}</strong> ({paymentDuration} Mo){paymentDuration > project.duration && <span className="block mt-1">Project ends {monthLabels[project.duration - 1]} · includes deferred salary payments after project end</span>}</p>
             <div className="flex items-center gap-x-4 gap-y-1 flex-wrap mt-1 text-[10px] font-mono text-slate-400">
               <span title={tooltip(total)}>Total: <strong className="text-pink-500">{amount(total, true)}</strong></span>
               <span>Avg/month: <strong className="text-yellow-500">{amount(averageMonthlyCost, true)}</strong></span>
@@ -426,7 +428,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
               </span>
               <span className="inline-flex items-center gap-1 shrink-0">
                 <span className="text-[10px] font-mono font-bold text-yellow-500">Avg</span>
-                <span title={`Average monthly spending over ${project.duration} months. ${tooltip(averageMonthlyCost)}`}
+                <span title={`Average monthly spending over ${paymentDuration} payment-timeline months. ${tooltip(averageMonthlyCost)}`}
                   className={`text-[10px] font-mono font-bold px-1.5 py-0.5 border shrink-0 whitespace-nowrap ${isRetro
                     ? "bg-[#ffffcc] text-black border-black rounded-none shadow-[1px_1px_0px_#000]"
                     : "bg-amber-100 text-amber-900 border-amber-300 rounded shadow-2xs"}`}>

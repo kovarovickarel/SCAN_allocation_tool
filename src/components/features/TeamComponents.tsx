@@ -3,6 +3,7 @@ import { ThemeContext, TOOLS, TOOL_MAP, TEAM_COMPACT_BTN_STYLES, TEAM_TIMELINE_B
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { PersonIcon } from "../ui/PersonIcon";
 import { CrossTeamBadge } from "../ui/CrossTeamBadge";
+import { MAX_EXTERNAL_PAYMENT_DELAY_MONTHS } from "../../utils/externalSalaries";
 import { ExternalMemberBadge } from "../ui/ExternalMemberBadge";
 import { MemberSupplierBadge } from "../ui/MemberSupplierBadge";
 import { ResponsiveMemberName } from "../ui/ResponsiveMemberName";
@@ -299,6 +300,11 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", supplier
   const [fte, setFte] = useState(initialMember ? String(initialMember.fte) : "1.00");
   const [role, setRole] = useState<TeamMemberRole>(initialMember ? initialMember.role : "engineering");
   const [isExternal, setIsExternal] = useState(initialMember?.isExternal ?? false);
+  const [deferredPayment, setDeferredPayment] = useState(initialMember?.deferredPayment ?? false);
+  const [paymentDelayMonths, setPaymentDelayMonths] = useState(String(initialMember?.paymentDelayMonths ?? 12));
+  const parsedPaymentDelay = Number(paymentDelayMonths);
+  const isPaymentDelayValid = /^\d+$/.test(paymentDelayMonths) && Number.isInteger(parsedPaymentDelay) && parsedPaymentDelay >= 1 && parsedPaymentDelay <= MAX_EXTERNAL_PAYMENT_DELAY_MONTHS;
+  const paymentDelayError = isExternal && deferredPayment && !isPaymentDelayValid ? `Enter a whole number of months from 1 to ${MAX_EXTERNAL_PAYMENT_DELAY_MONTHS}.` : null;
   const [supplierId, setSupplierId] = useState(initialMember?.supplierId ?? "");
   const isSupplierValid = suppliers.some(supplier => supplier.id === supplierId);
   const supplierError = isExternal && !isSupplierValid
@@ -402,7 +408,7 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", supplier
     isFteValid &&
     !sameTeamDuplicate &&
     !exceedsCapacity &&
-    (!isExternal || (isSalaryValid && isSupplierValid));
+    (!isExternal || (isSalaryValid && isSupplierValid && (!deferredPayment || isPaymentDelayValid)));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -418,6 +424,8 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", supplier
       footprint,
       isExternal,
       supplierId: isExternal ? supplierId : undefined,
+      deferredPayment: isExternal && deferredPayment,
+      paymentDelayMonths: isExternal && deferredPayment ? parsedPaymentDelay : undefined,
       monthlySalaryCost: isSalaryValid ? round2(parsedSalary) : undefined,
       monthlySalaryCurrency: isSalaryValid ? monthlySalaryCurrency : undefined,
     });
@@ -431,7 +439,7 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", supplier
           isRetro
             ? "bg-[#d4d0c8] rounded-none border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono"
             : "bg-white rounded-xl shadow-2xl border border-slate-300"
-        } p-5 w-full max-w-sm flex flex-col gap-3.5`}
+        } p-5 w-full max-w-sm max-h-[90vh] overflow-y-auto flex flex-col gap-3.5`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`flex items-center justify-between pb-2 ${
@@ -543,6 +551,21 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", supplier
               {salaryError && <p id="member-monthly-salary-error" className="mt-1 text-[10px] text-red-700" role="status">{salaryError}</p>}
             </div>
           )}
+
+          {isExternal && <div className="space-y-2">
+            <label className={`inline-flex items-center gap-2 cursor-pointer text-[11px] font-semibold ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
+              <input type="checkbox" checked={deferredPayment} onChange={event => setDeferredPayment(event.target.checked)} className="w-4 h-4 accent-blue-600 cursor-pointer" />
+              <span>Deferred payment</span>
+            </label>
+            {deferredPayment && <div>
+              <label htmlFor="member-payment-delay" className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>Payment delay (months) *</label>
+              <input id="member-payment-delay" type="number" min={1} max={MAX_EXTERNAL_PAYMENT_DELAY_MONTHS} step={1} required value={paymentDelayMonths}
+                onChange={event => setPaymentDelayMonths(event.target.value)} aria-invalid={Boolean(paymentDelayError)} aria-describedby="member-payment-delay-help"
+                className={`px-2.5 py-1.5 w-full text-xs font-mono focus:outline-none ${isRetro ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black" : "border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"}`} />
+              <p id="member-payment-delay-help" className="mt-1 text-[10px] text-slate-500">Each salary payment is delayed from its work month. Payments may fall after the project ends.</p>
+              {paymentDelayError && <p className="mt-1 text-[10px] text-red-700" role="status">{paymentDelayError}</p>}
+            </div>}
+          </div>}
 
           <div>
             <label className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>Footprint (Location) *</label>

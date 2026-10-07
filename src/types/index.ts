@@ -62,6 +62,8 @@ export interface ExternalSalaryCharge {
   allocatedFTE: number;
   capacityFTE: number;
   totalAllocatedFTE?: number;
+  /** Delay from the earned month to the cash payment; ledger keys remain earned months. */
+  paymentDelayMonths?: number;
 }
 
 export interface SupplierRecord { id: string; name: string; }
@@ -174,6 +176,8 @@ export interface TeamMemberRecord {
   supplierId?: string;
   monthlySalaryCost?: number;
   monthlySalaryCurrency?: string;
+  deferredPayment?: boolean;
+  paymentDelayMonths?: number;
 }
 
 export interface ToolDefinition {
