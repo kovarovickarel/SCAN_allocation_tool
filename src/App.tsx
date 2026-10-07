@@ -191,9 +191,10 @@ export default function App() {
     stabilityFactors: DEFAULT_STABILITY_FACTORS,
   });
 
-  const usedSupplierIds = useMemo(() => new Set(functions
-    .filter(card => card.kind === "non-fte" && card.supplierId)
-    .map(card => card.supplierId!)), [functions]);
+  const usedSupplierIds = useMemo(() => new Set([
+    ...functions.filter(card => card.kind === "non-fte" && card.supplierId).map(card => card.supplierId!),
+    ...teamMembers.filter(member => member.isExternal && member.supplierId).map(member => member.supplierId!),
+  ]), [functions, teamMembers]);
 
   const handleSaveConfig = useCallback((newConfig) => {
     setConfig(current => ({ ...newConfig, suppliers: retainUsedSuppliers(
@@ -847,6 +848,7 @@ export default function App() {
               </div>
               <div className="flex-1 min-h-0 flex flex-col">
                 <TeamMembersPool
+                  suppliers={config.suppliers}
                   toolName={activeToolView}
                   members={teamMembers.filter((m) => m.tool === activeToolView)}
                   allMembers={teamMembers}
@@ -1021,6 +1023,7 @@ export default function App() {
           <AddTeamMemberModal
             toolName={activeToolView}
             defaultCurrency={config.fteCosts.currency}
+            suppliers={config.suppliers}
             initialMember={editingMember}
             allMembers={teamMembers}
             onClose={() => {
@@ -1066,6 +1069,7 @@ export default function App() {
         )}
         {showTeamTimeline && activeToolView !== "all" && (
           <TeamTimelineModal
+            suppliers={config.suppliers}
             toolName={activeToolView}
             initialShowOtherWPs={teamOtherWPScopes[activeToolView]?.included ?? false}
             initialExcludedOtherWPIds={teamOtherWPScopes[activeToolView]?.excludedCardIds ?? []}

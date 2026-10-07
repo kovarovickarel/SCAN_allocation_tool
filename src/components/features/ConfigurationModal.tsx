@@ -634,9 +634,9 @@ export function ConfigurationModal({
           )}
 
           {activeTab === "suppliers" && <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-bold text-slate-900">Non-FTE suppliers</h3>
-            <p className="text-xs text-slate-500">Suppliers can only be removed when no non-FTE workpackages use them.</p>
-            {draft.suppliers.map(supplier => <div key={supplier.id} className="flex items-center justify-between border border-slate-200 rounded p-2 text-xs"><span>{supplier.name}</span><button type="button" disabled={usedSupplierIds.has(supplier.id)} title={usedSupplierIds.has(supplier.id) ? "Used by existing non-FTE workpackages" : undefined} onClick={() => {
+            <h3 className="text-sm font-bold text-slate-900">External suppliers</h3>
+            <p className="text-xs text-slate-500">Suppliers can only be removed when no non-FTE workpackages or external team members use them.</p>
+            {draft.suppliers.map(supplier => <div key={supplier.id} className="flex items-center justify-between border border-slate-200 rounded p-2 text-xs"><span>{supplier.name}</span><button type="button" disabled={usedSupplierIds.has(supplier.id)} title={usedSupplierIds.has(supplier.id) ? "Used by existing non-FTE workpackages or external team members" : undefined} onClick={() => {
               if (usedSupplierIds.has(supplier.id)) return;
               setDraft(current => ({ ...current, suppliers: current.suppliers.filter(item => item.id !== supplier.id) }));
             }} className="text-rose-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" aria-label={`Remove supplier ${supplier.name}`}>Remove</button></div>)}

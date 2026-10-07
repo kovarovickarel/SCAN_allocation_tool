@@ -112,6 +112,7 @@ export interface UnassignedPoolProps extends ReusabilityRatesProps {
 }
 
 export interface TeamMembersPoolProps {
+  suppliers?: readonly SupplierRecord[];
   toolName: string;
   members: TeamMemberRecord[];
   allMembers: TeamMemberRecord[];
@@ -126,6 +127,7 @@ export interface TeamMembersPoolProps {
 export interface AddTeamMemberModalProps {
   toolName: string;
   defaultCurrency?: string;
+  suppliers?: readonly SupplierRecord[];
   initialMember?: TeamMemberRecord | null;
   allMembers?: TeamMemberRecord[];
   onClose: () => void;
@@ -221,6 +223,7 @@ export interface AdjustMemberAllocationModalProps {
 }
 
 export interface TeamTimelineModalProps {
+  suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;
   toolName: string;
   initialShowOtherWPs?: boolean;

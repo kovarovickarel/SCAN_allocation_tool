@@ -160,6 +160,7 @@ export interface TeamMemberRecord {
   role: TeamMemberRole;
   footprint: string;
   isExternal?: boolean;
+  supplierId?: string;
   monthlySalaryCost?: number;
   monthlySalaryCurrency?: string;
 }

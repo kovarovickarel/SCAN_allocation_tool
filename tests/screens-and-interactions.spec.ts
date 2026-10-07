@@ -82,7 +82,7 @@ test.describe("visual coverage across screens and interactions", () => {
     await dialog.getByPlaceholder("e.g. John").fill("Playwright");
     await dialog.getByPlaceholder("e.g. Smith").fill("Member");
     await dialog.getByRole("button", { name: "Add Member", exact: true }).click();
-    await expect(page.getByText("Playwright Member", { exact: false })).toBeVisible();
+    await expect(page.getByLabel("Playwright Member", { exact: true })).toBeVisible();
   });
 
   test("captures add project form and verifies project creation", async ({ page }) => {

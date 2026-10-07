@@ -1,9 +1,11 @@
 import React, { useMemo, useState, memo } from "react";
-import { ThemeContext, TOOLS, TOOL_MAP, TEAM_COMPACT_BTN_STYLES, TEAM_TIMELINE_BTN_STYLES, FOOTPRINTS, FOOTPRINT_MAP, clamp, round2, genId, TOOL_ICON_COLORS } from "../../constants";
+import { ThemeContext, TOOLS, TOOL_MAP, TEAM_COMPACT_BTN_STYLES, TEAM_TIMELINE_BTN_STYLES, FOOTPRINTS, FOOTPRINT_MAP, clamp, round2, genId, TOOL_ICON_COLORS, DEFAULT_SUPPLIERS } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { PersonIcon } from "../ui/PersonIcon";
 import { CrossTeamBadge } from "../ui/CrossTeamBadge";
 import { ExternalMemberBadge } from "../ui/ExternalMemberBadge";
+import { MemberSupplierBadge } from "../ui/MemberSupplierBadge";
+import { ResponsiveMemberName } from "../ui/ResponsiveMemberName";
 import type { TeamMemberRole } from "../../types";
 import type { TeamMembersPoolProps, AddTeamMemberModalProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, PlusIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
@@ -12,6 +14,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
   toolName,
   members = [],
   allMembers = [],
+  suppliers,
   onAddClick,
   onEditMember,
   onDeleteMember,
@@ -200,6 +203,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
             <div
               key={member.id}
               className={`group bg-white ${isRetro ? "border-2 border-black rounded-none shadow-[2px_2px_0px_#000]" : "border border-slate-200 hover:border-slate-400 rounded-lg shadow-2xs"} p-2 flex items-center justify-between gap-2 transition-all`}
+              title={`${member.firstName} ${member.lastName}`}
             >
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {!isBasicMode && (
@@ -211,11 +215,10 @@ export const TeamMembersPool = memo(function TeamMembersPool({
                     starColor={starHexColor}
                   />
                 )}
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 min-w-0 leading-tight">
-                    <span className={`font-bold text-xs ${isRetro ? "text-black font-mono font-black" : "text-slate-900"} truncate`}>
-                      {member.firstName} {member.lastName}
-                    </span>
+                    <ResponsiveMemberName firstName={member.firstName} lastName={member.lastName}
+                      className={`font-bold text-xs ${isRetro ? "text-black font-mono font-black" : "text-slate-900"}`} />
                     <span
                       className={`text-[8.5px] font-mono font-bold px-1.5 py-0.2 rounded border shrink-0 shadow-2xs ${
                         isRetro
@@ -228,6 +231,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
                     >
                       {member.footprint || "PRA"}
                     </span>
+                    <MemberSupplierBadge member={member} suppliers={suppliers} />
                   </div>
                   <div className="flex items-center gap-1.5 leading-tight mt-0.5 min-w-0">
                     <span className={`text-[9.5px] font-semibold ${isRetro ? "text-black font-mono" : "text-slate-500"}`}>
@@ -288,13 +292,18 @@ export const TeamMembersPool = memo(function TeamMembersPool({
   );
 });
 
-export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", initialMember = null, allMembers = [], onClose, onSave }: AddTeamMemberModalProps) {
+export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", suppliers = DEFAULT_SUPPLIERS, initialMember = null, allMembers = [], onClose, onSave }: AddTeamMemberModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
   const [firstName, setFirstName] = useState(initialMember ? initialMember.firstName : "");
   const [lastName, setLastName] = useState(initialMember ? initialMember.lastName : "");
   const [fte, setFte] = useState(initialMember ? String(initialMember.fte) : "1.00");
   const [role, setRole] = useState<TeamMemberRole>(initialMember ? initialMember.role : "engineering");
   const [isExternal, setIsExternal] = useState(initialMember?.isExternal ?? false);
+  const [supplierId, setSupplierId] = useState(initialMember?.supplierId ?? "");
+  const isSupplierValid = suppliers.some(supplier => supplier.id === supplierId);
+  const supplierError = isExternal && !isSupplierValid
+    ? suppliers.length === 0 ? "Add a supplier in Defaults → Suppliers before saving an external member." : "Select a supplier for this external member."
+    : null;
   const [monthlySalaryCost, setMonthlySalaryCost] = useState(initialMember?.monthlySalaryCost !== undefined
     ? String(initialMember.monthlySalaryCost) : "");
   const [monthlySalaryCurrency] = useState(initialMember?.monthlySalaryCurrency || defaultCurrency);
@@ -393,7 +402,7 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", initialM
     isFteValid &&
     !sameTeamDuplicate &&
     !exceedsCapacity &&
-    (!isExternal || isSalaryValid);
+    (!isExternal || (isSalaryValid && isSupplierValid));
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -408,6 +417,7 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", initialM
       role,
       footprint,
       isExternal,
+      supplierId: isExternal ? supplierId : undefined,
       monthlySalaryCost: isSalaryValid ? round2(parsedSalary) : undefined,
       monthlySalaryCurrency: isSalaryValid ? monthlySalaryCurrency : undefined,
     });
@@ -489,6 +499,22 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", initialM
             />
             <span>External team member</span>
           </label>
+
+          {isExternal && (
+            <div>
+              <label htmlFor="member-supplier" className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>Supplier *</label>
+              <select id="member-supplier" required value={isSupplierValid ? supplierId : ""}
+                onChange={event => setSupplierId(event.target.value)}
+                aria-invalid={Boolean(supplierError)} aria-describedby={supplierError ? "member-supplier-error" : undefined}
+                className={`px-2.5 py-1.5 w-full text-xs focus:outline-none ${isRetro
+                  ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white font-mono text-black font-bold"
+                  : "border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"}`}>
+                <option value="">Select supplier</option>
+                {suppliers.map(supplier => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
+              </select>
+              {supplierError && <p id="member-supplier-error" className="mt-1 text-[10px] text-red-700" role="status">{supplierError}</p>}
+            </div>
+          )}
 
           {isExternal && (
             <div>

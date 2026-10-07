@@ -114,7 +114,7 @@ export function HelpGuideModal({
             <section className="p-4 bg-white border border-purple-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2">Purchase workpackages</h3>
               <p>Switch the Workpackage Pool to <strong>Non-FTE</strong>, then add a License, Workstation, Hardware, or Contracted workpackage. Choose its tool and subtool (such as SIL or PIL), supplier, EUR price, and reusability. Reusability scales the price using the same presets and custom factors as FTE workpackages.</p>
-              <p className="mt-2">Use the project header icons to show FTE workpackages, non-FTE purchases, or both. Manage the supplier list in <strong>Defaults → Suppliers</strong>. Suppliers can only be removed when no non-FTE workpackages use them. The cost dot is green through €50,000, yellow through €200,000, and red above €200,000.</p>
+              <p className="mt-2">Use the project header icons to show FTE workpackages, non-FTE purchases, or both. Manage the supplier list in <strong>Defaults → Suppliers</strong>. Suppliers can only be removed when no non-FTE workpackages or external team members use them. The cost dot is green through €50,000, yellow through €200,000, and red above €200,000.</p>
             </section>
             <section className="p-4 bg-white border border-amber-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2">Schedule payments</h3>
@@ -227,7 +227,7 @@ export function HelpGuideModal({
                     <strong>Detailed Tooltips:</strong> Hovering over any personal monthly cell lists the exact itemized breakdown of project workpackages and management support consuming their hours in that month.
                   </li>
                   <li>
-                    <strong>External Members:</strong> Select External in the member form and enter a monthly salary cost before saving. The salary keeps its saved currency and is reserved for future recurring costs; it does not affect current FTE cost calculations or allocations.
+                    <strong>External Members:</strong> Select External in the member form, choose a supplier from Defaults → Suppliers, and enter a monthly salary cost before saving. Suppliers used by external members cannot be removed. The salary keeps its saved currency and is reserved for future recurring costs; it does not affect current FTE cost calculations or allocations.
                   </li>
                 </ul>
               </div>

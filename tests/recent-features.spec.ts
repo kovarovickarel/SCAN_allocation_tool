@@ -48,7 +48,7 @@ test("failed currency conversion and invalid rates cannot silently change saved 
   await expect(dialog.getByRole("button", { name: "Save Configuration", exact: true })).toBeEnabled();
 });
 
-test("external members require a salary, accept decimal commas and retain salary when editing", async ({ page }) => {
+test("external members require a supplier and salary and retain both when editing", async ({ page }) => {
   await openApp(page);
   await page.getByTitle("KPI Team View").click();
   await page.getByRole("button", { name: "Add Member", exact: true }).click();
@@ -61,10 +61,19 @@ test("external members require a salary, accept decimal commas and retain salary
   await dialog.getByLabel("Monthly salary cost *", { exact: true }).fill("-10");
   await expect(save).toBeDisabled();
   await dialog.getByLabel("Monthly salary cost *", { exact: true }).fill("5000,25");
+  await expect(save).toBeDisabled();
+  await dialog.getByLabel("Supplier *", { exact: true }).selectOption("supplier-luxoft");
   await save.click();
   await expect(page.getByTitle("External team member", { exact: true })).toBeVisible();
+  const supplierTag = page.getByTitle("Supplier: Luxoft", { exact: true });
+  await expect(supplierTag).toBeVisible();
+  await expect(supplierTag.locator("xpath=preceding-sibling::*[1]")).toHaveText("PRA");
+  await page.getByRole("button", { name: "Open KPI Combined Team Timeline", exact: true }).click();
+  await expect(page.getByRole("dialog").getByTitle("Supplier: Luxoft", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.getByTitle("Edit External Tester", { exact: true }).click();
   await expect(page.getByRole("dialog").getByLabel("Monthly salary cost *", { exact: true })).toHaveValue("5000.25");
+  await expect(page.getByRole("dialog").getByLabel("Supplier *", { exact: true })).toHaveValue("supplier-luxoft");
 });
 
 test("RFQ creates an informational badge beside the product tag", async ({ page }) => {

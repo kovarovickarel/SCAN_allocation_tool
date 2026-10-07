@@ -10,6 +10,7 @@ import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { CrossTeamBadge } from "../ui/CrossTeamBadge";
 import { ExternalMemberBadge } from "../ui/ExternalMemberBadge";
+import { MemberSupplierBadge } from "../ui/MemberSupplierBadge";
 import { TimelineGanttGrid } from "../ui/TimelineGanttGrid";
 import type { AlignedTimelineGanttCell } from "../ui/TimelineGanttGrid";
 import { useTimelineRangeSelection } from "../../hooks/useTimelineRangeSelection";
@@ -25,6 +26,7 @@ export function TeamTimelineModal({
   toolName,
   members = [],
   allMembers = members,
+  suppliers,
   projects: sourceProjects = [],
   cards: sourceCards = [],
   toolFteRates,
@@ -1698,6 +1700,7 @@ export function TeamTimelineModal({
                                               }`}>
                                                 {member.footprint || "PRA"}
                                               </span>
+                                              <MemberSupplierBadge member={member} suppliers={suppliers} />
                                             </div>
 
                                             <div className="flex items-center gap-1 shrink-0">
@@ -2138,6 +2141,7 @@ export function TeamTimelineModal({
                                               }`}>
                                                 {member.footprint || "PRA"}
                                               </span>
+                                              <MemberSupplierBadge member={member} suppliers={suppliers} />
                                             </div>
 
                                             <div className="flex items-center gap-1 shrink-0">
@@ -2453,6 +2457,7 @@ export function TeamTimelineModal({
                               }`}>
                                 {member.footprint || "PRA"}
                               </span>
+                              <MemberSupplierBadge member={member} suppliers={suppliers} />
                               {hasAnyOverallocation && (
                                 <span className="text-[8.5px] font-black px-1 py-0.2 rounded bg-red-100 text-red-700 border border-red-300 shrink-0">
                                   ⚠️ Over
