@@ -41,7 +41,7 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
   const button = isRetro ? "px-3 py-2 text-xs font-bold bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black cursor-pointer" : "px-3 py-2 text-xs font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer";
   const selectedFilterStyles: Record<ProjectStatusFilter | "selected", string> = {
     all: "ring-2 ring-blue-500",
-    selected: "ring-2 ring-blue-500",
+    selected: "!bg-violet-100 text-violet-800 !border-violet-300 hover:!bg-violet-100 ring-2 ring-violet-500",
     nominated: "!bg-blue-100 text-blue-800 !border-blue-300 hover:!bg-blue-100 ring-2 ring-blue-400",
     rfq: "!bg-pink-100 text-pink-800 !border-pink-300 hover:!bg-pink-100 ring-2 ring-pink-400",
   };
@@ -60,8 +60,8 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
     { label: "Projects", value: String(summary.rows.length), detail: `${summary.nominated} Nominated · ${summary.rfq} RFQ` },
     { label: "Total price", value: amount(summary.totalCost), detail: "Labour + Non-FTE" },
     { label: "Labour", value: amount(summary.labourCost), detail: costShare(summary.labourCost) },
-    { label: "Non-FTE", value: amount(summary.nonFteCost), detail: `${costShare(summary.nonFteCost)} · purchases + allocated salaries` },
-    { label: "Total FTE / yr", value: number(summary.totalFTE), detail: `${number(summary.engineeringFTE)} eng. + ${number(summary.managementFTE)} mgmt.` },
+    { label: "Non-FTE", value: amount(summary.nonFteCost), detail: `${costShare(summary.nonFteCost)} · purchases + external salaries` },
+    { label: "Average FTE / yr", value: number(summary.totalFTE), detail: `${number(summary.engineeringFTE)} eng. + ${number(summary.managementFTE)} mgmt.` },
     { label: "Staffed", value: percent(summary.coverage), detail: `${number(summary.unstaffedFTE)} FTE unstaffed` },
     { label: "Externalised", value: percent(summary.externalisation), detail: `${number(summary.external)} of ${number(summary.staffed)} staffed FTE-months` },
   ];
