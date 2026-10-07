@@ -128,3 +128,36 @@ test("member names abbreviate alongside tags and restore when cards become wider
   await expect.poll(displayed).toBe("Alexandra Montgomery");
   await tagsFollowText();
 });
+
+
+for (const theme of ["vibrant", "basic", "retro"] as const) test(`existing member name remeasures when supplier tags change (${theme})`, async ({ page }) => {
+  await page.goto("/");
+  if (theme !== "vibrant") await page.getByRole("button", { name: "Theme: Vibrant", exact: true }).click();
+  if (theme === "retro") await page.getByRole("button", { name: "Theme: Basic", exact: true }).click();
+  await page.getByTitle("KPI Team View", { exact: true }).click();
+  const card = page.locator('.group[title="Marcus Vogel"]');
+  const name = card.locator('[aria-label="Marcus Vogel"]');
+  // Hold the row width steady while adding/removing a tag: the original
+  // observer missed this because only the space for the name changed.
+  await card.evaluate(element => { element.style.width = "298px"; });
+  const displayed = () => name.evaluate(element => element.firstChild?.textContent);
+  await expect.poll(displayed).toBe("Marcus Vogel");
+  await page.getByTitle("Edit Marcus Vogel", { exact: true }).click();
+  let dialog = page.getByRole("dialog");
+  await dialog.getByRole("checkbox", { name: "External team member", exact: true }).check();
+  await dialog.getByLabel("Monthly salary cost *", { exact: true }).fill("5000");
+  await dialog.getByLabel("Supplier *", { exact: true }).selectOption("supplier-ts");
+  await dialog.getByRole("button", { name: "Save Changes", exact: true }).click();
+  await expect.poll(displayed).toBe("M. Vogel");
+  await expect.poll(() => name.evaluate(element => {
+    const range = document.createRange(); range.selectNode(element.firstChild!);
+    return range.getBoundingClientRect().width <= element.getBoundingClientRect().width + 0.1;
+  })).toBe(true);
+  await expect(name).toHaveAttribute("title", "Marcus Vogel");
+  await expect(card.getByTitle("Supplier: T&S", { exact: true })).toBeVisible();
+  await page.getByTitle("Edit Marcus Vogel", { exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByRole("checkbox", { name: "External team member", exact: true }).uncheck();
+  await dialog.getByRole("button", { name: "Save Changes", exact: true }).click();
+  await expect.poll(displayed).toBe("Marcus Vogel");
+});

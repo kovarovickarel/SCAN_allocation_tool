@@ -29,19 +29,26 @@ export function ResponsiveMemberName({ firstName, lastName, className }: {
       // so shortening it does not make the next measurement expand it again.
       const siblings = Array.from(row.children).filter(child => child !== container);
       const gap = parseFloat(getComputedStyle(row).columnGap) || 0;
-      const available = Math.max(0, row.clientWidth - siblings.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) - gap * siblings.length);
+      const available = Math.max(0, row.getBoundingClientRect().width - siblings.reduce((sum, child) => sum + child.getBoundingClientRect().width, 0) - gap * siblings.length);
       const measuredFullWidth = full.getBoundingClientRect().width;
       const abbreviatedWidth = abbreviated.getBoundingClientRect().width;
-      const showFull = measuredFullWidth <= available + 0.5;
-      const showAbbreviated = abbreviatedWidth <= available + 0.5;
+      const showFull = measuredFullWidth <= available;
+      const showAbbreviated = abbreviatedWidth <= available;
       setDisplayName(showFull ? fullName : showAbbreviated ? abbreviatedName : initials);
       setDisplayWidth(showFull ? measuredFullWidth : showAbbreviated ? abbreviatedWidth : initialLabel.getBoundingClientRect().width);
     };
     measure();
     const observer = new ResizeObserver(measure);
-    [row, full, abbreviated, initialLabel, ...Array.from(row.children).filter(child => child !== container)].forEach(element => observer.observe(element));
+    [row, full, abbreviated, initialLabel, ...Array.from(row.children)].forEach(element => observer.observe(element));
+    // Adding a supplier can shrink the name without resizing its row. Watch
+    // child changes as well, and observe new tags for later label/size changes.
+    const childrenObserver = new MutationObserver(() => {
+      Array.from(row.children).forEach(element => observer.observe(element));
+      measure();
+    });
+    childrenObserver.observe(row, { childList: true });
     void document.fonts.ready.then(measure);
-    return () => { disposed = true; observer.disconnect(); };
+    return () => { disposed = true; observer.disconnect(); childrenObserver.disconnect(); };
   }, [fullName, abbreviatedName, initials, className]);
 
   return <span ref={containerRef} style={{ flexBasis: displayWidth, flexShrink: 1 }} className={`relative min-w-0 truncate ${className || ""}`} title={fullName} aria-label={fullName}>
