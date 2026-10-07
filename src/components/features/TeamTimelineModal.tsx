@@ -20,6 +20,8 @@ import { ChevronRightIcon, ChevronDownIcon, LockIcon, UnlockIcon, ManagementIcon
 import { AssignMemberToWPModal } from "./AssignMemberToWPModal";
 import { AdjustMemberAllocationModal } from "./AdjustMemberAllocationModal";
 import { TeamAllocationPriorityModal } from "./TeamAllocationPriorityModal";
+import { calculatePortfolioSalaryTotals } from "../../utils/projectSpending";
+import { applySalaryTotals } from "../../utils/externalSalaries";
 
 
 export function TeamTimelineModal({
@@ -183,6 +185,9 @@ export function TeamTimelineModal({
     return { minStartAbs: minStart, totalMonths: span, monthLabels: labels };
   }, [projects]);
 
+  const salaryAllocationTotals = useMemo(() => calculatePortfolioSalaryTotals({ projects, cards, members: allMembers,
+    fteCosts, fteRates, toolFteRates, mgmtSettings, reusabilityFactors, stabilityFactors }),
+    [projects, cards, allMembers, fteCosts, fteRates, toolFteRates, mgmtSettings, reusabilityFactors, stabilityFactors]);
   const projectRows = useMemo(() => {
     return projects.map((p) => {
       const parts = (p.startDate || "2026-01").split("-");
@@ -248,8 +253,8 @@ export function TeamTimelineModal({
         for (let m = 0; m < pDur; m++) totalEffortSum += mergedMonthsInProject[m]?.totalWPMonthlyFTE ?? 0;
         const activeCardFTE = isNegated ? 0 : round2(totalEffortSum / pDur);
 
-        const allocationCost = calculateWorkpackageAllocationCost(card, pDur,
-          mergedMonthsInProject.map((month) => month.totalWPMonthlyFTE), allMembers, fteCosts, isNegated);
+        const allocationCost = applySalaryTotals(calculateWorkpackageAllocationCost(card, pDur,
+          mergedMonthsInProject.map((month) => month.totalWPMonthlyFTE), allMembers, fteCosts, isNegated, p.startDate), salaryAllocationTotals);
         return { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells, mergedMonthsInProject, allocationCost };
       });
 
@@ -294,10 +299,10 @@ export function TeamTimelineModal({
 
           mgmtRow = {
             toolName,
-            allocationCost: calculateWorkpackageAllocationCost({
+            allocationCost: applySalaryTotals(calculateWorkpackageAllocationCost({
               id: `${p.id}_mgmt_${toolName}`, name: "Management Support", tool: toolName,
               _isMgmt: true, memberAssignments: mgmtAssignments, memberMonthlyAssignments: mgmtMonthly,
-            }, pDur, monthEffort.map((month) => month.totalFTE), allMembers, fteCosts),
+            }, pDur, monthEffort.map((month) => month.totalFTE), allMembers, fteCosts, false, p.startDate), salaryAllocationTotals),
             fte: toolOverhead.fte,
             coveragePct: mgmtCoveragePct,
             monthEffort,
@@ -339,7 +344,7 @@ export function TeamTimelineModal({
         excludedOtherWorkpackages: workpackages.filter((wp) => !isCardInTeamScope(wp.card)),
         mgmtRow, totalProjectTeamMonthlyFTE, totalProjectTeamFTE };
     });
-  }, [projects, cards, toolName, showOtherWPs, isCardInTeamScope, minStartAbs, totalMonths, toolFteRates, fteRates, reusabilityFactors, stabilityFactors, mgmtSettings, members, allMembers, fteCosts]);
+  }, [projects, cards, toolName, showOtherWPs, isCardInTeamScope, minStartAbs, totalMonths, toolFteRates, fteRates, reusabilityFactors, stabilityFactors, mgmtSettings, members, allMembers, fteCosts, salaryAllocationTotals]);
 
   // Excluded Other workpackages are outside this team's scope. Release only its members,
   // materializing legacy monthly values first so other teams keep their allocations.

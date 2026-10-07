@@ -13,12 +13,12 @@ export function WorkpackageCostLabel({ cost, className = "", compact = false, to
   title?: string;
 }) {
   const { isRetro } = useContext(ThemeContext);
-  const includesPurchase = (cost?.purchaseCostEUR ?? 0) > 0;
-  const conversion = useEuroCostConversion(cost?.currency || "EUR", includesPurchase ? cost?.totalCost || 0 : 0);
+  const includesPurchase = (cost?.purchaseCostEUR ?? 0) > 0 || Boolean(cost?.externalSalaryCharges);
+  const conversion = useEuroCostConversion(cost?.currency || "EUR", includesPurchase ? cost?.totalCost || 0 : 0, cost);
   if (!hasAllocatedCost(cost)) return null;
   const isPartial = cost.unpricedHours > 0;
   const missing = cost.missingLocations.map((code) => FOOTPRINT_MAP[code]?.name || code).join(", ");
-  const totalCost = includesPurchase ? costInEUR(cost, conversion.rate) : cost.totalCost;
+  const totalCost = includesPurchase ? costInEUR(cost, conversion.rate, conversion.salaryRates) : cost.totalCost;
   const currency = includesPurchase ? "EUR" : cost.currency;
   const pending = totalCost === null;
   const pricedAmount = totalCost ?? 0;
@@ -41,7 +41,7 @@ export function WorkpackageCostLabel({ cost, className = "", compact = false, to
     <span
       className={`inline-flex items-center shrink-0 whitespace-nowrap normal-case px-1 py-0.2 border font-mono ${tone === "receipt" ? "font-normal" : "font-bold"} ${compact ? "text-[8px]" : "text-[10px]"} ${colorClasses} ${className}`}
       style={tone === "receipt" ? { fontFamily: '"Courier New", Courier, monospace' } : undefined}
-      title={title ?? (includesPurchase ? `Project tool cost: ${amount} EUR, including scheduled purchases.${isPartial ? " Partial cost; some resource rates are missing." : ""}` : tooltip)}
+      title={title ?? (includesPurchase ? `Project tool cost: ${amount} EUR, including non-FTE purchases or external salaries.${isPartial ? " Partial cost; some resource rates are missing." : ""}` : tooltip)}
     >
       {pending ? conversion.conversionFailed ? "N/A" : "…" : `${shortAmount}${unit}${compact ? "" : ` ${currency}`}${isPartial ? " (partial)" : ""}`}
     </span>

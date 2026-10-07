@@ -1,6 +1,8 @@
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
 import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
 import { purchaseCost, purchaseCostSummary, purchaseMonthlyCosts, purchasePaymentSchedule, purchaseScheduleExceedsProject, isPurchasePaymentAltered, validPurchaseMonths, purchaseSubcategory, retainUsedSuppliers, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
+import { calculatePortfolioSalaryTotals } from "./utils/projectSpending";
+import { applySalaryTotals } from "./utils/externalSalaries";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { AllocationProject, MemberMaintenancePreferences, PurchasePaymentDrafts, TeamMemberRecord, WorkpackageCard } from "./types";
@@ -230,7 +232,7 @@ export default function App() {
     return map;
   }, [projects]);
 
-  const functionsWithFTE = useMemo(() => {
+  const baseFunctionsWithFTE = useMemo(() => {
     return functions.map((f) => {
       if (f.kind === "non-fte") {
         const project = projectIndex.get(f.projectId);
@@ -333,10 +335,18 @@ export default function App() {
         _coveragePct: coverage.coveragePct,
         _isMaintenanceOnlyUncovered: coverage.isMaintenanceOnlyUncovered,
         _allocationCost: calculateWorkpackageAllocationCost(f, project.duration,
-          coverageMonths.map((month) => month.totalWPMonthlyFTE), teamMembers, config.fteCosts),
+          coverageMonths.map((month) => month.totalWPMonthlyFTE), teamMembers, config.fteCosts, false, project.startDate),
       };
     });
   }, [functions, projectIndex, config, teamMembers]);
+
+  const salaryAllocationTotals = useMemo(() => calculatePortfolioSalaryTotals({ projects, cards: baseFunctionsWithFTE,
+    members: teamMembers, fteCosts: config.fteCosts, mgmtSettings: config.management, fteRates: config.fteRates,
+    toolFteRates: config.toolFteRates, reusabilityFactors: config.reusabilityFactors, stabilityFactors: config.stabilityFactors }),
+    [projects, baseFunctionsWithFTE, teamMembers, config]);
+  const functionsWithFTE = useMemo(() => baseFunctionsWithFTE.map(card => ({ ...card,
+    _allocationCost: card._allocationCost ? applySalaryTotals(card._allocationCost, salaryAllocationTotals) : undefined })),
+    [baseFunctionsWithFTE, salaryAllocationTotals]);
 
   const handleSaveTimelineEdits = useCallback((projectId, customMgmtMonthlyFTE, updatedCards) => {
     const project = projects.find((p) => p.id === projectId);
@@ -933,6 +943,7 @@ export default function App() {
                     className="w-full h-full"
                   >
                     <ProjectBasket
+                      salaryAllocationTotals={salaryAllocationTotals}
                       suppliers={config.suppliers}
                       project={project}
                       cards={functionsWithFTE}

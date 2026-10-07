@@ -13,6 +13,7 @@ interface ProjectSpendingChartsProps {
   managementMonthlyCosts: WorkpackageAllocationCost[];
   purchaseMonthlyCosts?: WorkpackageAllocationCost[];
   rate: number | null;
+  salaryRates?: Record<string, number | null>;
   conversionFailed: boolean;
   activeToolView: string;
   milestones: MilestoneMap;
@@ -21,7 +22,7 @@ interface ProjectSpendingChartsProps {
 }
 
 export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCosts, engineeringCostsByTool, costsByTool, engineeringMonthlyCosts, managementMonthlyCosts, purchaseMonthlyCosts, rate,
-  conversionFailed, activeToolView, milestones, formatAmount, costTooltip }: ProjectSpendingChartsProps) {
+  salaryRates = {}, conversionFailed, activeToolView, milestones, formatAmount, costTooltip }: ProjectSpendingChartsProps) {
   const { isRetro } = useContext(ThemeContext);
   const [activeMonth, setActiveMonth] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -29,7 +30,7 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
   const [categoryTransitionMs, setCategoryTransitionMs] = useState(400);
   const categoryFadeMs = Math.max(600, Math.round(categoryTransitionMs * 1.3));
   const panelClass = isRetro ? "bg-white border-2 border-black font-mono" : "bg-white border border-slate-200 rounded-xl shadow-xs";
-  if (rate === null && monthlyCosts.some((cost) => cost.totalCost > 0)) return <div role="status" className={`${panelClass} p-8 text-sm text-slate-600`}>
+  if (monthlyCosts.some(cost => costInEUR(cost, rate, salaryRates) === null)) return <div role="status" className={`${panelClass} p-8 text-sm text-slate-600`}>
     {conversionFailed ? "Charts are unavailable until spending can be converted to EUR. Close and reopen to retry." : "Converting spending to EUR…"}
   </div>;
 
@@ -66,7 +67,7 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
     notation: "compact", maximumFractionDigits: 1,
   }).format(value).replace("K", "k")}`;
   const values = (costs: WorkpackageAllocationCost[]) => costs.map((cost) =>
-    cost.unpricedHours > 0 && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0) ? null : costInEUR(cost, rate));
+    cost.unpricedHours > 0 && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0) && !cost.externalSalaryCharges ? null : costInEUR(cost, rate, salaryRates));
   const monthlyValues = values(monthlyCosts);
   const cumulativeValues = values(cumulativeCosts);
   const max = Math.max(0, ...monthlyValues.map((value) => value ?? 0), ...cumulativeValues.map((value) => value ?? 0));
@@ -85,7 +86,7 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
     : engineeringSeries.length === 1 ? toolColor(engineeringSeries[0].tool) : "text-yellow-500";
   const barColorClass = "text-yellow-500";
   const totalToolSeries = costsByTool.filter((series) => series.monthlyCosts.some((cost) => cost.allocatedHours > 0 || cost.purchaseCostEUR > 0));
-  const hasPurchases = purchaseMonthlyCosts?.some(cost => cost.purchaseCostEUR > 0);
+  const hasPurchases = purchaseMonthlyCosts?.some(cost => cost.purchaseCostEUR > 0 || Object.values(cost.externalSalaryCharges || {}).some(charge => charge.salary > 0));
   const monthlySeries = activeToolView === "all" ? (totalToolSeries.length ? totalToolSeries.map((series) => ({
     id: `tool:${series.tool}`, label: series.tool, monthlyCosts: series.monthlyCosts, color: toolColor(series.tool),
   })) : [{ id: "total", label: "All tools", monthlyCosts, color: barColorClass }]) : [
@@ -93,7 +94,7 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
       id: `engineering:${series.tool}`, label: `${series.tool} engineering`, monthlyCosts: series.monthlyCosts, color: toolColor(series.tool),
     })) : [{ id: "engineering", label: "Engineering", monthlyCosts: engineeringMonthlyCosts, color: barColorClass }]),
     { id: "management", label: "Management support", monthlyCosts: managementMonthlyCosts, color: "text-purple-600" },
-    ...(hasPurchases ? [{ id: "purchases", label: "Non-FTE purchases", monthlyCosts: purchaseMonthlyCosts!, color: "text-amber-500" }] : []),
+    ...(hasPurchases ? [{ id: "purchases", label: "Non-FTE spending", monthlyCosts: purchaseMonthlyCosts!, color: "text-amber-500" }] : []),
   ];
   const focusedCategory = monthlySeries.some((series) => series.id === selectedCategory) ? selectedCategory : null;
   const stackedSeries = focusedCategory === null ? monthlySeries : [
@@ -111,12 +112,12 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
       const previousPositions = new Map<string, number>();
       let previousTotal = 0;
       stackedSeries.forEach((series) => {
-        previousTotal += (costInEUR(series.monthlyCosts[month], rate) ?? 0);
+        previousTotal += (costInEUR(series.monthlyCosts[month], rate, salaryRates) ?? 0);
         previousPositions.set(series.id, monthlyY(previousTotal));
       });
       let nextTotal = 0;
       nextSeries.forEach((series) => {
-        nextTotal += (costInEUR(series.monthlyCosts[month], rate) ?? 0);
+        nextTotal += (costInEUR(series.monthlyCosts[month], rate, salaryRates) ?? 0);
         maxTravel = Math.max(maxTravel, Math.abs(monthlyY(nextTotal) - previousPositions.get(series.id)!));
       });
     });
@@ -138,8 +139,8 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
         <strong className="text-slate-700">{monthLabels[activeMonth]}</strong>
         <span title={costTooltip(monthlyCosts[activeMonth])}>Monthly: <strong className={`${barColorClass} font-mono`}>{formatAmount(monthlyCosts[activeMonth], true)}</strong></span>
         <span title={costTooltip(cumulativeCosts[activeMonth])}>Cumulative: <strong className="text-pink-500 font-mono">{formatAmount(cumulativeCosts[activeMonth], true)}</strong></span>
-        {activeToolView === "all" ? <span title={costTooltip({ ...monthlyCosts[activeMonth], purchaseCostEUR: undefined })}>FTEs: <strong
-          className={`${barColorClass} font-mono`}>{formatAmount({ ...monthlyCosts[activeMonth], purchaseCostEUR: undefined }, true)}</strong></span> : <>
+        {activeToolView === "all" ? <span title={costTooltip({ ...monthlyCosts[activeMonth], purchaseCostEUR: undefined, externalSalaryCharges: undefined })}>FTEs: <strong
+          className={`${barColorClass} font-mono`}>{formatAmount({ ...monthlyCosts[activeMonth], purchaseCostEUR: undefined, externalSalaryCharges: undefined }, true)}</strong></span> : <>
           <span title={costTooltip(engineeringMonthlyCosts[activeMonth])}>Engineering: <strong
             className={`${engineeringColorClass} font-mono`}>{formatAmount(engineeringMonthlyCosts[activeMonth], true)}</strong></span>
           <span title={costTooltip(managementMonthlyCosts[activeMonth])}>Management support: <strong className="text-purple-700 font-mono">{formatAmount(managementMonthlyCosts[activeMonth], true)}</strong></span>
@@ -211,7 +212,7 @@ export function ProjectSpendingCharts({ monthLabels, monthlyCosts, cumulativeCos
             const stackPositions = new Map<string, { start: number; end: number }>();
             stackedSeries.forEach((series) => {
               const start = stackedCost;
-              stackedCost += (costInEUR(series.monthlyCosts[month], rate) ?? 0);
+              stackedCost += (costInEUR(series.monthlyCosts[month], rate, salaryRates) ?? 0);
               stackPositions.set(series.id, { start, end: stackedCost });
             });
             // Keep SVG nodes in their original order; animate only their positions.

@@ -14,8 +14,10 @@ import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { ProjectSpendingCharts } from "../ui/ProjectSpendingCharts";
 import { SpendingCellAmount } from "../ui/SpendingCellAmount";
+import { ExternalSalaryUtilization } from "../ui/ExternalSalaryUtilization";
 
 interface ProjectSpendingModalProps {
+  salaryAllocationTotals?: Record<string, number>;
   project: AllocationProject;
   cards: WorkpackageCard[];
   members: TeamMemberRecord[];
@@ -47,8 +49,8 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     return () => previousFocus?.focus();
   }, []);
   const spending = useMemo(() => calculateProjectSpending({ ...options, purchasePaymentDrafts: paymentDrafts }), [options.project, options.cards, options.members,
-    options.overheads, options.fteCosts, options.fteRates, options.toolFteRates, options.reusabilityFactors, options.stabilityFactors, options.activeToolView, paymentDrafts]);
-  const { rate, conversionFailed } = useEuroCostConversion(spending.totalCost.currency, spending.totalCost.totalCost);
+    options.overheads, options.fteCosts, options.fteRates, options.toolFteRates, options.reusabilityFactors, options.stabilityFactors, options.activeToolView, options.salaryAllocationTotals, paymentDrafts]);
+  const { rate, salaryRates, conversionFailed } = useEuroCostConversion(spending.totalCost.currency, spending.totalCost.totalCost, spending.totalCost);
   const [collapsedTools, setCollapsedTools] = useState<Set<string>>(new Set());
   const [expandedTracks, setExpandedTracks] = useState<Set<string>>(new Set());
   const [graphView, setGraphView] = useState(false);
@@ -103,20 +105,21 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     ...total,
     totalCost: total.totalCost / project.duration,
     purchaseCostEUR: total.purchaseCostEUR === undefined ? undefined : total.purchaseCostEUR / project.duration,
+    externalSalaryCharges: total.externalSalaryCharges ? Object.fromEntries(Object.entries(total.externalSalaryCharges).map(([key, charge]) => [key, { ...charge, salary: charge.salary / project.duration }])) : undefined,
     allocatedHours: total.allocatedHours / project.duration,
     unpricedHours: total.unpricedHours / project.duration,
   };
-  const peak = Math.max(0, ...spending.monthlyCosts.map((cost) => costInEUR(cost, rate) ?? 0));
-  const peakIndex = spending.monthlyCosts.findIndex((cost) => costInEUR(cost, rate) === peak);
+  const peak = Math.max(0, ...spending.monthlyCosts.map((cost) => costInEUR(cost, rate, salaryRates) ?? 0));
+  const peakIndex = spending.monthlyCosts.findIndex((cost) => costInEUR(cost, rate, salaryRates) === peak);
   const peakCost = spending.monthlyCosts[peakIndex] || total;
   const buttonClass = isRetro
     ? "px-2.5 py-1 text-[11px] font-bold font-mono bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black cursor-pointer"
     : "px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded cursor-pointer";
 
   const amount = (cost: WorkpackageAllocationCost, prefix = false, abbreviateMillions = false) => {
-    if (cost.unpricedHours > 0 && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0)) return "N/A";
-    if (cost.totalCost > 0 && rate === null) return conversionFailed ? "N/A" : "…";
-    const value = costInEUR(cost, rate) ?? NaN;
+    if (cost.unpricedHours > 0 && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0) && !cost.externalSalaryCharges) return "N/A";
+    if (costInEUR(cost, rate, salaryRates) === null) return conversionFailed ? "N/A" : "…";
+    const value = costInEUR(cost, rate, salaryRates) ?? NaN;
     if (!Number.isFinite(value)) return "N/A";
     const formattedValue = abbreviateMillions && Math.round(value) >= 1_000_000
       ? `${(value / 1_000).toLocaleString("en-US", { useGrouping: false, maximumFractionDigits: 0 })}k`
@@ -124,9 +127,9 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     return `${prefix ? "€ " : ""}${formattedValue}${cost.unpricedHours > 0 ? "*" : ""}`;
   };
   const tooltip = (cost: WorkpackageAllocationCost) => [
-    cost.purchaseCostEUR !== undefined ? "Includes scheduled non-FTE payments." : "",
+    cost.purchaseCostEUR !== undefined || cost.externalSalaryCharges ? "Includes non-FTE purchases or external monthly salaries." : "",
     `${cost.allocatedHours.toLocaleString("en-US", { maximumFractionDigits: 2 })} allocated hours.`,
-    costInEUR(cost, rate) !== null ? `Cost: € ${costInEUR(cost, rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : "EUR conversion unavailable.",
+    costInEUR(cost, rate, salaryRates) !== null ? `Cost: € ${costInEUR(cost, rate, salaryRates).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.` : "EUR conversion unavailable.",
     cost.unpricedHours > 0 ? `${cost.unpricedHours.toFixed(2)} hours have no rate: ${cost.missingLocations.join(", ")}. Priced allocations only.` : "",
   ].filter(Boolean).join(" ");
   const toggle = (setter: typeof setExpandedTracks, id: string) => setter((previous) => {
@@ -225,7 +228,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     const card = cardIndex.get(track.id);
     const tool = TOOL_MAP[track.tool];
     const complexity = card?.complexity ? COMPLEXITY_COLORS[card.complexity] : undefined;
-    const altered = track.isNonFte && track.monthlyCosts.some((cost, index) => Math.round((cost.purchaseCostEUR ?? 0) * 100) !== Math.round((defaultPayments.get(track.id)?.[index] ?? 0) * 100));
+    const altered = card?.kind === "non-fte" && track.monthlyCosts.some((cost, index) => Math.round((cost.purchaseCostEUR ?? 0) * 100) !== Math.round((defaultPayments.get(track.id)?.[index] ?? 0) * 100));
     return <div key={track.id}>
       <div className={`grid items-center min-h-[44px] border-b transition-colors ${isRetro ? "border-black bg-white" : track.isManagement ? "border-purple-100 bg-purple-50/60 hover:bg-purple-100/50" : "border-slate-100 bg-white/60 hover:bg-white/90"}`} style={gridStyle}>
         <div className={`p-2 pl-7 border-r h-full min-w-0 flex flex-col justify-center ${isRetro ? "border-black" : track.isManagement ? "border-slate-200" : tool?.border || "border-slate-200"}`}>
@@ -272,6 +275,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
             title={`Footprint: ${FOOTPRINT_MAP[person.member?.footprint || ""]?.name || person.member?.footprint || "Unknown location"}`}>
             {person.member?.footprint || "—"}
           </span>
+          {person.member?.isExternal && <span className="text-[8px] font-bold text-red-600">Non-FTE</span>}
           <span className="ml-auto">{totalBadge(person.totalCost, track.isManagement, false, true)}</span>
         </div>
         {moneyCells(person.monthlyCosts, "member")}
@@ -371,7 +375,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
       </div>}
       <div className={`flex-1 overflow-auto min-h-0 p-4 md:p-5 ${isRetro ? "bg-[#808080]" : "bg-slate-100"}`}>
         {graphView ? <ProjectSpendingCharts monthLabels={monthLabels} monthlyCosts={spending.monthlyCosts}
-          cumulativeCosts={spending.cumulativeCosts} rate={rate} conversionFailed={conversionFailed}
+          cumulativeCosts={spending.cumulativeCosts} rate={rate} salaryRates={salaryRates} conversionFailed={conversionFailed}
           engineeringCostsByTool={spending.engineeringCostsByTool} managementMonthlyCosts={spending.managementMonthlyCosts}
             purchaseMonthlyCosts={spending.purchaseMonthlyCosts}
           costsByTool={spending.tools}
@@ -457,6 +461,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
           })}
           {spending.tools.length === 0 && <div className={`px-5 py-10 text-sm text-slate-500 ${isRetro ? "bg-white" : "bg-slate-50"}`}>No active workpackages in this project view yet.</div>}
         </div>}
+        <ExternalSalaryUtilization monthlyCosts={spending.monthlyCosts} monthLabels={monthLabels} members={members} formatAmount={amount} />
       </div>
       <div className={`flex flex-wrap items-center justify-end gap-3 text-xs shrink-0 ${isRetro ? "bg-[#d4d0c8] border-t-2 border-white px-5 py-3 font-mono text-black" : "bg-slate-50 border-t border-slate-200 px-6 py-3"}`}>
         <button type="button" onClick={onClose} className={`font-bold px-4 py-1.5 text-xs transition-colors cursor-pointer ${isRetro ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black hover:bg-[#e0e0e0]" : "bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg"}`}>{dirty ? "Discard & Close" : "Close"}</button>

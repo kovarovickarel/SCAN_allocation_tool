@@ -4,8 +4,9 @@ import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead,
   ProjectSpendingTool, PurchasePaymentDrafts, TeamMemberRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
 import { calculateMemberMonthlyAllocationCost, calculateWorkpackageAllocationCost, sumWorkpackageAllocationCosts } from "./allocationCosts";
 import { resolveMonthlyMemberAllocations } from "./memberAllocations";
-import { computeWorkpackageLifecycleTimeline } from "./helpers";
+import { computeWorkpackageLifecycleTimeline, calculateProjectEffort } from "./helpers";
 import { getSupportReusabilityFactor } from "./reusability";
+import { externalSalaryCharge, salaryMonthKey, applySalaryTotals, withoutSalary } from "./externalSalaries";
 
 interface ProjectSpendingOptions {
   project: AllocationProject;
@@ -19,6 +20,7 @@ interface ProjectSpendingOptions {
   stabilityFactors?: FactorMap;
   activeToolView?: string;
   purchasePaymentDrafts?: PurchasePaymentDrafts;
+  salaryAllocationTotals?: Record<string, number>;
 }
 
 // Retain unrounded monthly values; round only the displayed/aggregate totals.
@@ -37,29 +39,30 @@ function buildTrack(card: WorkpackageCard, requiredEffort: number[], project: Al
       const value = Number(months[month]);
       const fte = effort > 0 && Number.isFinite(value) && value > 0 ? value : 0;
       const priced = calculateMemberMonthlyAllocationCost(fte, member, settings);
+      const charge = member && externalSalaryCharge(member, fte, settings.currency);
       return { currency: settings.currency, totalCost: priced.totalCost ?? 0, allocatedHours: priced.hours,
+        ...(charge ? { externalSalaryCharges: { [salaryMonthKey(id, project.startDate, month)]: charge } } : {}),
         unpricedHours: priced.totalCost === null ? priced.hours : 0,
-        missingLocations: priced.totalCost === null && priced.hours > 0 ? [priced.location] : [] };
+        missingLocations: priced.totalCost === null && priced.hours > 0 ? [member?.isExternal ? `Salary: ${member.firstName} ${member.lastName}` : priced.location] : [] };
     });
     return { id, member, monthlyCosts, totalCost: sumWorkpackageAllocationCosts(monthlyCosts, settings.currency) };
   }).filter((track) => track.totalCost.allocatedHours > 0);
   return {
     id: card.id, name: card.name, tool: card.tool, isManagement: Boolean(card._isMgmt), members: memberTracks,
     monthlyCosts: requiredEffort.map((_, month) => combineMonthlyCosts(memberTracks.map((member) => member.monthlyCosts[month]), settings.currency)),
-    totalCost: calculateWorkpackageAllocationCost(card, project.duration, requiredEffort, members, settings),
+    totalCost: calculateWorkpackageAllocationCost(card, project.duration, requiredEffort, members, settings, false, project.startDate),
   };
 }
 
 export function calculateProjectSpending({ project, cards, members, overheads, fteCosts,
   fteRates = DEFAULT_FTE_RATES, toolFteRates, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
-  stabilityFactors = DEFAULT_STABILITY_FACTORS, activeToolView = "all", purchasePaymentDrafts }: ProjectSpendingOptions) {
+  stabilityFactors = DEFAULT_STABILITY_FACTORS, activeToolView = "all", purchasePaymentDrafts, salaryAllocationTotals }: ProjectSpendingOptions) {
   const scopedCards = cards.filter((card) => {
     const subcategory = card.kind === "non-fte" ? purchaseSubcategory(card) : card.subcategory;
     return card.projectId === project.id && !card._isNegated &&
-      !(project.hiddenTools || []).includes(card.tool) && !(subcategory && (project.hiddenSubcategories || []).includes(subcategory)) &&
-      (activeToolView === "all" || card.tool === activeToolView || card.tool === "Other");
+      !(project.hiddenTools || []).includes(card.tool) && !(subcategory && (project.hiddenSubcategories || []).includes(subcategory));
   });
-  const tracks = scopedCards.map((card): ProjectSpendingTrack => {
+  let tracks = scopedCards.map((card): ProjectSpendingTrack => {
     if (card.kind === "non-fte") {
       const draft = purchasePaymentDrafts?.[card.id];
       const monthlyCosts = (draft ? Array.from({ length: project.duration }, (_, index) => (draft[index + 1] ?? 0) / 100)
@@ -77,10 +80,8 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
     const required = lifecycle.map((month, index) => round2((card.customCoreFTE?.[index] ?? month.totalFTE) +
       (support === 0 ? 0 : round2((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings)))));
     return buildTrack(card, required, project, members, fteCosts);
-  }).filter((track) => activeToolView === "all" || track.tool !== "Other" ||
-    track.members.some(({ member }) => member?.tool === activeToolView));
+  });
   // Member tracks contain only positive allocations during active workpackage months.
-  const workpackageCount = tracks.length;
   // The parent supplies the same scoped overheads that feed its total cost badge.
   for (const overhead of overheads) {
     const required = Array.from({ length: project.duration }, (_, month) => project.customMgmtMonthlyFTE?.[overhead.tool]?.[month] ?? overhead.fte);
@@ -88,6 +89,17 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
       projectId: project.id, _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
       memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {} }, required, project, members, fteCosts));
   }
+  const allCost = sumWorkpackageAllocationCosts(tracks.map(track => track.totalCost), fteCosts.currency);
+  const allocationTotals = salaryAllocationTotals || Object.fromEntries(Object.entries(allCost.externalSalaryCharges || {})
+    .map(([key, charge]) => [key, charge.allocatedFTE]));
+  tracks = tracks.filter(track => activeToolView === "all" || track.tool === activeToolView ||
+    (track.tool === "Other" && track.members.some(({ member }) => member?.tool === activeToolView))).map(track => {
+    const memberTracks = track.members.map(person => ({ ...person,
+      monthlyCosts: person.monthlyCosts.map(cost => applySalaryTotals(cost, allocationTotals)),
+      totalCost: applySalaryTotals(person.totalCost, allocationTotals) }));
+    return { ...track, members: memberTracks, monthlyCosts: track.monthlyCosts.map(cost => applySalaryTotals(cost, allocationTotals)),
+      totalCost: applySalaryTotals(track.totalCost, allocationTotals) };
+  });
   const toolOrder = [...TOOLS.map((tool) => tool.name), ...tracks.map((track) => track.tool)];
   const tools: ProjectSpendingTool[] = [...new Set(toolOrder)].map((tool) => {
     const toolTracks = tracks.filter((track) => track.tool === tool);
@@ -102,14 +114,27 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
   const engineeringCostsByTool = tools.map(({ tool, tracks: toolTracks }) => ({
     tool,
     monthlyCosts: Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
-      toolTracks.filter((track) => !track.isManagement && !track.isNonFte).map((track) => track.monthlyCosts[month]), fteCosts.currency)),
+      toolTracks.filter((track) => !track.isManagement && !track.isNonFte).map((track) => withoutSalary(track.monthlyCosts[month])), fteCosts.currency)),
   }));
   const engineeringMonthlyCosts = Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
-    tracks.filter((track) => !track.isManagement && !track.isNonFte).map((track) => track.monthlyCosts[month]), fteCosts.currency));
+    tracks.filter((track) => !track.isManagement && !track.isNonFte).map((track) => withoutSalary(track.monthlyCosts[month])), fteCosts.currency));
   const managementMonthlyCosts = Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
-    tracks.filter((track) => track.isManagement).map((track) => track.monthlyCosts[month]), fteCosts.currency));
+    tracks.filter((track) => track.isManagement).map((track) => withoutSalary(track.monthlyCosts[month])), fteCosts.currency));
   const purchaseMonthlyCosts = Array.from({ length: project.duration }, (_, month) => combineMonthlyCosts(
-    tracks.filter(track => track.isNonFte).map(track => track.monthlyCosts[month]), fteCosts.currency));
+    tracks.map(track => ({ ...track.monthlyCosts[month], totalCost: 0, allocatedHours: 0, unpricedHours: 0, missingLocations: [] })), fteCosts.currency));
   return { purchaseMonthlyCosts, tools, monthlyCosts, cumulativeCosts, engineeringCostsByTool, engineeringMonthlyCosts, managementMonthlyCosts,
-    totalCost, workpackageCount };
+    totalCost, workpackageCount: tracks.filter(track => !track.isManagement).length };
+}
+
+export function calculatePortfolioSalaryTotals(options: Omit<ProjectSpendingOptions, "project" | "overheads"> & {
+  projects: readonly AllocationProject[];
+  mgmtSettings: Parameters<typeof calculateProjectEffort>[1];
+}) {
+  if (!options.members.some(member => member.isExternal)) return {};
+  const costs = options.projects.map(project => calculateProjectSpending({ ...options, project, activeToolView: "all",
+    overheads: calculateProjectEffort(options.cards.filter(card => card.projectId === project.id && !card._isNegated &&
+      !(project.hiddenTools || []).includes(card.tool) && !(project.hiddenSubcategories || []).includes(card.subcategory)), options.mgmtSettings, project).overheads,
+    salaryAllocationTotals: undefined }).totalCost);
+  const combined = sumWorkpackageAllocationCosts(costs, options.fteCosts.currency);
+  return Object.fromEntries(Object.entries(combined.externalSalaryCharges || {}).map(([key, charge]) => [key, charge.allocatedFTE]));
 }

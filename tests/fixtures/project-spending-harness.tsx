@@ -13,8 +13,9 @@ const activeToolView = params.get("tool") || "all";
 const fteCosts = { ...spendingRates, currency: params.get("currency") || "EUR",
   hourlyRates: params.has("missing") ? { PRA: 60, BIE: null, CHE: 20 }
     : params.has("highCost") ? { ...spendingRates.hourlyRates, BIE: 11500 } : spendingRates.hourlyRates };
-const options = { project: params.has("dense") ? { ...spendingProject, duration: 18 } : spendingProject, cards: spendingCards, members: spendingMembers,
-  overheads: spendingOverheads.filter((item) => activeToolView === "all" || item.tool === activeToolView), fteCosts,
+const options = { project: params.has("dense") ? { ...spendingProject, duration: 18 } : spendingProject, cards: spendingCards,
+  members: spendingMembers.map(member => params.has("external") && member.id === "manager" ? { ...member, isExternal: true, monthlySalaryCurrency: params.get("salaryCurrency") || "EUR" } : member),
+  overheads: params.has("external") ? spendingOverheads : spendingOverheads.filter((item) => activeToolView === "all" || item.tool === activeToolView), fteCosts,
   fteRates: DEFAULT_FTE_RATES, toolFteRates: DEFAULT_TOOL_FTE_RATES, reusabilityFactors: DEFAULT_REUSABILITY_FACTORS,
   stabilityFactors: DEFAULT_STABILITY_FACTORS, activeToolView };
 function Harness() {

@@ -263,6 +263,7 @@ export interface TeamAllocationPriorityModalProps {
 }
 
 export interface ProjectBasketProps {
+  salaryAllocationTotals?: Record<string, number>;
   suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;
   project: AllocationProject;

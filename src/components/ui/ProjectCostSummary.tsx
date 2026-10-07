@@ -6,21 +6,22 @@ import { useEuroCostConversion } from "../../hooks/useEuroCostConversion";
 
 export function ProjectCostSummary({ cost, onOpen }: { cost: WorkpackageAllocationCost; onOpen?: () => void }) {
   const { isBasicMode, isRetro } = useContext(ThemeContext);
-  const { needsConversion, rate, conversionFailed, date } = useEuroCostConversion(cost.currency, cost.totalCost);
-  const eurCost = costInEUR(cost, rate);
+  const { needsConversion, rate, salaryRates, conversionFailed, date } = useEuroCostConversion(cost.currency, cost.totalCost, cost);
+  const eurCost = costInEUR(cost, rate, salaryRates);
   const unpriced = cost.unpricedHours > 0;
-  const unavailable = (unpriced && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0)) || (eurCost !== null && !Number.isFinite(eurCost));
+  const unavailable = (unpriced && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0) && !cost.externalSalaryCharges) || (eurCost !== null && !Number.isFinite(eurCost));
   const amount = unavailable || (needsConversion && conversionFailed) ? "N/A"
     : eurCost === null ? "…" : `€ ${eurCost.toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
-  const fteCostEUR = costInEUR({ ...cost, purchaseCostEUR: 0 }, rate);
-  const fteAmount = (unpriced && cost.totalCost === 0) || (needsConversion && conversionFailed)
-    ? "N/A" : fteCostEUR === null ? "…"
+  const fteCostEUR = costInEUR({ ...cost, purchaseCostEUR: 0, externalSalaryCharges: undefined }, rate);
+  const fteAmount = (unpriced && cost.totalCost === 0)
+    ? "N/A" : fteCostEUR === null ? conversionFailed ? "N/A" : "…"
     : Number.isFinite(fteCostEUR) ? fteCostEUR.toLocaleString("en-US", { maximumFractionDigits: 0 }) : "N/A";
-  const nonFteAmount = (cost.purchaseCostEUR ?? 0).toLocaleString("en-US", { maximumFractionDigits: 0 });
+  const nonFteCost = costInEUR({ ...cost, totalCost: 0 }, 1, salaryRates);
+  const nonFteAmount = nonFteCost === null ? conversionFailed ? "N/A" : "…" : nonFteCost.toLocaleString("en-US", { maximumFractionDigits: 0 });
   const tooltip = [
-    "Project cost, including allocated resources, management support, and scheduled non-FTE purchases.",
+    "Project cost, including allocated resources, management support, and non-FTE purchases and external monthly salaries.",
     unpriced ? `Partial cost: ${cost.unpricedHours.toFixed(2)} hours have no configured hourly rate (${cost.missingLocations.join(", ")}).` : "",
-    needsConversion && rate !== null ? `Converted using 1 ${cost.currency} = ${rate} EUR (${date}).` : "",
+    cost.totalCost > 0 && cost.currency !== "EUR" && rate !== null ? `Converted using 1 ${cost.currency} = ${rate} EUR (${date}).` : "",
     needsConversion && conversionFailed ? "EUR conversion is currently unavailable." : "",
     onOpen ? "Open project spending timeline." : "",
   ].filter(Boolean).join(" ");

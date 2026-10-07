@@ -104,9 +104,15 @@ export function purchaseCostSummary(value: number, currency: string): Workpackag
   return { currency, totalCost: 0, purchaseCostEUR: value, allocatedHours: 0, unpricedHours: 0, missingLocations: [] };
 }
 
-export function costInEUR(cost: WorkpackageAllocationCost, rate: number | null): number | null {
+export function costInEUR(cost: WorkpackageAllocationCost, rate: number | null, salaryRates: Record<string, number | null> = {}): number | null {
   if (cost.totalCost > 0 && rate === null) return null;
-  return cost.totalCost * (rate ?? 1) + (cost.purchaseCostEUR ?? 0);
+  let salaryCost = 0;
+  for (const charge of Object.values(cost.externalSalaryCharges || {})) {
+    const salaryRate = charge.currency === "EUR" ? 1 : salaryRates[charge.currency] ?? (charge.currency === cost.currency && cost.totalCost > 0 ? rate : null);
+    if (charge.salary > 0 && salaryRate === null) return null;
+    salaryCost += charge.salary * charge.allocatedFTE / (charge.totalAllocatedFTE || charge.allocatedFTE) * (salaryRate ?? 1);
+  }
+  return cost.totalCost * (rate ?? 1) + (cost.purchaseCostEUR ?? 0) + salaryCost;
 }
 
 export function purchaseCostDot(value: number): string {

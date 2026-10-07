@@ -10,7 +10,7 @@ export const spendingMembers: TeamMemberRecord[] = [
   { id: "prague", firstName: "Prague", lastName: "Engineer", tool: "KPI", role: "engineering", fte: 1, footprint: "PRA" },
   { id: "germany", firstName: "German", lastName: "Engineer", tool: "Simulation", role: "engineering", fte: 1, footprint: "BIE" },
   { id: "manager", firstName: "Support", lastName: "Manager", tool: "KPI", role: "management", fte: 1, footprint: "CHE",
-    isExternal: true, monthlySalaryCost: 10000, monthlySalaryCurrency: "EUR" },
+    monthlySalaryCost: 10000, monthlySalaryCurrency: "EUR" },
 ];
 const core = { 0: 0.5, 1: 0.5, 2: 0.5, 3: 0.5, 4: 0.5, 5: 0.5 };
 const zero = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };

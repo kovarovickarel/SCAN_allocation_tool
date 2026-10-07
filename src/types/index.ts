@@ -52,6 +52,16 @@ export interface WorkpackageAllocationCost {
   missingLocations: string[];
   /** Purchases are entered in EUR, independently of the FTE rate currency. */
   purchaseCostEUR?: number;
+  /** One charge per external member and calendar month, shared by allocated effort. */
+  externalSalaryCharges?: Record<string, ExternalSalaryCharge>;
+}
+
+export interface ExternalSalaryCharge {
+  currency: string;
+  salary: number;
+  allocatedFTE: number;
+  capacityFTE: number;
+  totalAllocatedFTE?: number;
 }
 
 export interface SupplierRecord { id: string; name: string; }

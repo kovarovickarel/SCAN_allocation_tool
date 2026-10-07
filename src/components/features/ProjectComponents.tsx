@@ -1,3 +1,4 @@
+import { applySalaryTotals } from "../../utils/externalSalaries";
 import { purchaseScheduleExceedsProject } from "../../utils/nonFteWorkpackages";
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, SUBCAT_TOOL_MAP, DEFAULT_MGMT_SETTINGS, DEFAULT_FTE_COSTS, PROJECT_TYPES, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2, genId } from "../../constants";
@@ -479,6 +480,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
 
 export const ProjectBasket = memo(function ProjectBasket({
   suppliers,
+  salaryAllocationTotals,
   project,
   cards,
   teamMembers = [],
@@ -573,18 +575,18 @@ export const ProjectBasket = memo(function ProjectBasket({
   const managementAllocationCosts = useMemo(() => new Map(effortSummary.overheads.map((overhead) => {
     const monthlyEffort = Array.from({ length: project.duration }, (_, monthIdx) =>
       project.customMgmtMonthlyFTE?.[overhead.tool]?.[monthIdx] ?? overhead.fte);
-    return [overhead.tool, calculateWorkpackageAllocationCost({
+    return [overhead.tool, applySalaryTotals(calculateWorkpackageAllocationCost({
       id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support", tool: overhead.tool,
       _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
       memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {},
-    }, project.duration, monthlyEffort, teamMembers, fteCosts)] as const;
-  })), [effortSummary.overheads, project, teamMembers, fteCosts]);
+    }, project.duration, monthlyEffort, teamMembers, fteCosts, false, project.startDate), salaryAllocationTotals || {})] as const;
+  })), [effortSummary.overheads, project, teamMembers, fteCosts, salaryAllocationTotals]);
 
   const projectCost = useMemo(() => calculateProjectSpending({
     project, cards: projectCards, members: teamMembers, overheads: effortSummary.overheads,
-    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView,
+    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView, salaryAllocationTotals,
   }).totalCost, [project, projectCards, teamMembers, effortSummary.overheads,
-    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView]);
+    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView, salaryAllocationTotals]);
 
   const hiddenTools = project.hiddenTools || [];
   const hiddenSubs = project.hiddenSubcategories || [];
@@ -1296,6 +1298,7 @@ export const ProjectBasket = memo(function ProjectBasket({
 
       {showSpendingModal && (
         <ProjectSpendingModal
+          salaryAllocationTotals={salaryAllocationTotals}
           project={project}
           cards={cards}
           members={teamMembers}

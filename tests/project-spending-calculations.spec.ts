@@ -83,7 +83,7 @@ test("zero and missing rates retain allocation metadata without inventing cost",
   expect(missing.tools.find((tool) => tool.tool === "Other")!.totalCost.totalCost).toBe(0);
 });
 
-test("monthly precision is retained and external salary is excluded", () => {
+test("monthly precision is retained and internal salary metadata is excluded", () => {
   const result = calculateProjectSpending({ ...options, fteCosts: { currency: "USD", hourlyRates: { PRA: 0.000013, BIE: 0.000017, CHE: 0.000019 } } });
   expect(result.monthlyCosts[0].totalCost).toBeCloseTo(0.003152, 10);
   expect(result.totalCost.currency).toBe("USD");
