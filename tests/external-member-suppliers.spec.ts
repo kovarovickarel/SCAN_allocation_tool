@@ -88,8 +88,19 @@ test("member names abbreviate alongside tags and restore when cards become wider
   const card = page.locator('.group[title="Alexandra Montgomery"]');
   const name = card.locator('[aria-label="Alexandra Montgomery"]');
   const displayed = () => name.evaluate(element => element.firstChild?.textContent);
+  const tagsFollowText = async () => {
+    await expect.poll(() => name.evaluate(element => {
+      const range = document.createRange();
+      range.selectNode(element.firstChild!);
+      const location = element.nextElementSibling!;
+      const gap = parseFloat(getComputedStyle(element.parentElement!).columnGap);
+      return Math.abs(location.getBoundingClientRect().left - range.getBoundingClientRect().right - gap);
+    })).toBeLessThan(0.8);
+    await expect(card.getByTitle("Supplier: Luxoft", { exact: true })).toBeVisible();
+  };
   await card.evaluate(element => { element.style.width = "600px"; });
   await expect.poll(displayed).toBe("Alexandra Montgomery");
+  await tagsFollowText();
   // Pick a width between the two independently measured name lengths.
   await card.evaluate(element => {
     const label = element.querySelector('[aria-label="Alexandra Montgomery"]')!;
@@ -101,6 +112,7 @@ test("member names abbreviate alongside tags and restore when cards become wider
     element.style.width = `${element.getBoundingClientRect().width - row.getBoundingClientRect().width + siblings + gaps + target}px`;
   });
   await expect.poll(displayed).toBe("A. Montgomery");
+  await tagsFollowText();
   await expect(name).toHaveAttribute("title", "Alexandra Montgomery");
   await expect(card.getByTitle("Supplier: Luxoft", { exact: true })).toBeVisible();
   await card.evaluate(element => {
@@ -111,6 +123,8 @@ test("member names abbreviate alongside tags and restore when cards become wider
     element.style.width = `${element.getBoundingClientRect().width - row.getBoundingClientRect().width + siblings + gaps + 24}px`;
   });
   await expect.poll(displayed).toBe("AM");
+  await tagsFollowText();
   await card.evaluate(element => { element.style.width = "600px"; });
   await expect.poll(displayed).toBe("Alexandra Montgomery");
+  await tagsFollowText();
 });
