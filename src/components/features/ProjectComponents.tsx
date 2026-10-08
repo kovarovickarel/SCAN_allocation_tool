@@ -1066,7 +1066,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                   aria-label={`Automatically start FTE workpackages at project start: ${project.name}`}
                   aria-pressed={project.autoStartFte !== false}
                   onClick={() => onUpdateProject(project.id, { autoStartFte: project.autoStartFte === false })}
-                  className={`p-1 rounded transition-colors cursor-pointer ${project.autoStartFte !== false ? "text-sky-300 bg-sky-500/20 hover:bg-sky-500/30" : "text-slate-400 hover:text-white"}`}
+                  className={`p-1 rounded transition-colors cursor-pointer ${project.autoStartFte !== false ? "text-amber-400 hover:text-amber-300" : "text-slate-400 hover:text-white"}`}
                   title={`Automatic FTE start: ${project.autoStartFte !== false ? "On — new FTE workpackages start at M1" : "Off — choose the start month when assigning FTE workpackages"}`}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
