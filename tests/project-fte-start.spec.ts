@@ -101,6 +101,15 @@ test("manual schedules re-open for deadline correction instead of automatic warn
   dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "MBAG Monthly Staffing Timeline" })).toBeVisible();
   await expect(dialog.getByText("Reschedule test", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Expand support tracks", exact: true }).click();
+  for (const prefix of ["devSupport_", "meetings_"]) {
+    const row = dialog.locator(`[data-timeline-row^="${prefix}"]`);
+    const firstActive = row.locator(":scope > div").nth(2).locator("div.h-5");
+    await expect(firstActive).toHaveCSS("border-top-left-radius", "6px");
+    await expect(firstActive).toHaveCSS("border-bottom-left-radius", "6px");
+    await expect(firstActive).toHaveCSS("border-left-width", "1px");
+    await expect(row.locator(":scope > div").nth(3).locator("div.h-5")).toHaveCSS("border-top-left-radius", "0px");
+  }
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Open KPI Combined Team Timeline", exact: true }).click();
   await expect(page.getByRole("dialog").getByText("Reschedule test", { exact: true })).toBeVisible();
