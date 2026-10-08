@@ -4,6 +4,22 @@ The SCAN Allocation Tool is a React application for modeling tooling workpackage
 
 This repository is being refactored from a client-provided monolithic TSX file. The original file is preserved under [`legacy/`](legacy/Initial_Monolith_SCAN_allocation_tool.tsx) as a reference. The running application is implemented in `src/`.
 
+## Browser access through GitHub Pages
+
+The hosted app is available at https://kovarovickarel.github.io/SCAN_allocation_tool/.
+Each visitor has an independent browser workspace. Use Export/Import workspace
+to save and restore planning data as JSON; hosting does not add cloud storage.
+
+The `Deploy to GitHub Pages` workflow deploys successful builds on pushes to
+`master` and can also be run manually from Actions. Repository Settings → Pages
+must use **GitHub Actions** as the source. The workflow uses Node.js 22, pnpm 10,
+the frozen lockfile, and a TypeScript check before publishing `dist`.
+
+Use `pnpm build:pages` to build with the `/SCAN_allocation_tool/` asset prefix,
+then `pnpm preview` and open that path to check the build locally. Ordinary
+`pnpm build` and `pnpm dev` retain the root path used for local development.
+Browsers without the native Save As picker use the existing download fallback.
+
 ## Requirements
 
 - Node.js 20.19+ or 22.12+ for manual setup

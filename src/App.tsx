@@ -716,7 +716,7 @@ export default function App() {
         <header className={`${isRetro ? "bg-[#c0c0c0] border-b-2 border-black shadow-[0_2px_0px_#fff]" : "bg-slate-900 border-b border-slate-800 shadow-lg"} px-4 md:px-5 py-3 flex items-center gap-5 shrink-0`}>
           <div className="w-[278px] min-[1400px]:w-80 shrink-0 flex items-center gap-3 min-w-0">
             <div className={`w-8 h-8 ${isRetro ? "bg-purple-900 border-2 border-t-white border-l-white border-b-black border-r-black" : "rounded-lg"} flex items-center justify-center shadow shrink-0`}>
-              <img src="/app-icon.svg" alt="SCAN" className="w-full h-full" />
+              <img src={`${import.meta.env.BASE_URL}app-icon.svg`} alt="SCAN" className="w-full h-full" />
             </div>
             <div className="min-w-0">
               <h1 className={`${isRetro ? "text-black font-black font-mono text-sm tracking-tighter" : "text-white font-black text-sm md:text-base tracking-tight"} leading-tight truncate`}>
