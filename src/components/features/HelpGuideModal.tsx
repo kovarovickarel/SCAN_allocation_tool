@@ -32,9 +32,12 @@ export function HelpGuideModal({
     { id: "purchases", label: "Non-FTE Purchases" },
     { id: "indicators", label: "Visual Cues & Project Reordering" },
     { id: "timeline", label: "Gantt Timeline & Range Editing" },
-    { id: "milestones", label: "Milestones & 'Other' Workpackages" },
+    { id: "milestones", label: "Scheduling & Finish Targets" },
     { id: "calc", label: "FTE Calculation & Overheads" },
     { id: "modes", label: "Views, Modes & Themes" },
+    { id: "summary", label: "Summary Dashboard" },
+    { id: "externals", label: "External Members & Salaries" },
+    { id: "spending", label: "Project Spending" },
   ];
 
   return (
@@ -62,7 +65,7 @@ export function HelpGuideModal({
                 SCAN Tooling Calculator Guide
               </h2>
               <p className={`text-xs mt-0.5 ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>
-                Comprehensive guide to staffing allocations, role constraints, Gantt chart controls, and FTE modeling
+                Planning, staffing, purchases, spending, summary metrics, and saving your workspace
               </p>
             </div>
           </div>
@@ -118,20 +121,78 @@ export function HelpGuideModal({
               <li>Save changes in workpackage editors and use <strong>Save &amp; Close</strong> in timelines before exporting. Unsaved editor drafts are not part of the file.</li>
               <li>Copy the file to another PC and use <strong>Import workspace</strong>. Review its contents, then choose <strong>Import &amp; Replace</strong>. You can export a backup of your current workspace from this review before replacing it.</li>
               <li>Theme, mode, tool view, layout density and summary selections are restored too. Import replaces the current workspace; Cancel and invalid files leave it unchanged.</li>
-              <li>Keep the downloaded file before closing or reloading the app. Workspace files are saved locally and are not automatically backed up.</li>
+              <li>Only workspace <strong>.json</strong> files exported in the app’s supported format can be imported. Other file types, invalid JSON, missing fields and unsupported versions are rejected with details identifying the problem. Your current workspace is unchanged when validation fails.</li>
+              <li>Export before closing or reloading the app. Planning data is not automatically saved or backed up; refreshing restores the demo. Keep workspace files somewhere you can find them again.</li>
             </ul>
           </section>}
           {activeTab === "purchases" && <div className="space-y-4">
             <section className="p-4 bg-white border border-purple-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2">Purchase workpackages</h3>
-              <p>Switch the Workpackage Pool to <strong>Non-FTE</strong>, then add a License, Workstation, Hardware, or Contracted workpackage. Choose its tool and subtool (such as SIL or PIL), supplier, EUR price, and reusability. Reusability scales the price using the same presets and custom factors as FTE workpackages.</p>
-              <p className="mt-2">Use the project header icons to show FTE workpackages, non-FTE purchases, or both. Manage the supplier list in <strong>Defaults → Suppliers</strong>. Suppliers can only be removed when no non-FTE workpackages or external team members use them. The cost dot is green through €50,000, yellow through €200,000, and red above €200,000.</p>
+              <p>Switch the Workpackage Pool to <strong>Non-FTE</strong>, then add a License, Workstation, Hardware, or Contracted workpackage. Choose its tool and subtool (such as SIL or PIL), supplier, EUR price, and reusability. Reusability scales the price using the same presets and custom factors as FTE workpackages. Both the base price and final price must be positive; a zero reusability factor cannot be saved for a purchase.</p>
+              <p className="mt-2">In Extended mode, use the project header icons to show FTE workpackages, non-FTE purchases, or both. Basic mode always shows both. These filters change only visibility, not project costs or effort. Manage the supplier list in <strong>Defaults → Suppliers</strong>. Suppliers can only be removed when no non-FTE workpackages or external team members use them. The cost dot is green through €50,000, yellow through €200,000, and red above €200,000.</p>
             </section>
             <section className="p-4 bg-white border border-amber-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2">Schedule payments</h3>
               <p>Drag a purchase into a project, choose a payment deadline, and click or drag across the schedule preview to select at least one payment month. Click a selected month or drag from it to remove payments. One month uses At once. Multiple months default to Evenly distributed. Choose Split, or deselect Evenly distributed, to enter each month’s EUR payment. The remaining balance limits each entry, and the full price must be assigned before saving. A milestone deadline allows only months through that milestone, including the milestone month; otherwise payments are due by project end.</p>
               <p className="mt-2">Purchases appear within their tool, below FTE workpackages. Click <strong>Payments</strong> to show or hide the monthly payment receipt. Use the calendar button to change payment months or the pencil to edit the purchase in the expanded card view. Payments are included in project and tool costs and spending views. They use no staffing capacity and are excluded from automatic team allocation and management effort.</p>
               <p className="mt-2">In the <strong>Project Spending</strong> timeline, enable <strong>Non-FTE Adjust</strong> to freely edit payments in any project month, including empty cells and months after the original milestone. The total cost follows your entered amounts; enter 0 to remove a payment. Altered workpackages have an asterisk, and changed cells have red stars and outlines. <strong>Reset</strong> restores the configured price and payment schedule in the draft. <strong>Save &amp; Close</strong> applies the changes to the payment receipt and totals in the main overview. <strong>Discard &amp; Close</strong>, Escape, the header close button, or closing the backdrop discards the draft.</p>
+            </section>
+          </div>}
+          {activeTab === "summary" && <div className="space-y-4">
+            <section className="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Compare projects and choose your scope</h3>
+              <p>Open <strong>Summary dashboard</strong> from the top-bar view selector. <strong>All projects</strong> includes the whole portfolio; <strong>Nominated</strong> includes projects without RFQ selected; <strong>RFQ</strong> includes requests for quotation. Status is informational and does not change allocations or calculation rules.</p>
+              <p className="mt-2">Choose <strong>Selected projects</strong> to show checkboxes to the left of every project. All projects are included initially. Uncheck a project to fade its row and exclude its values from the cards and charts. Use <strong>Select all</strong> or <strong>Select none</strong> above the list. Your selection is remembered when you switch filters; All projects, Nominated and RFQ keep their own scopes. Click <strong>Spending →</strong> to open a project’s existing spending view.</p>
+            </section>
+            <section className="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">What the numbers mean</h3>
+              <ul className="list-disc pl-5 space-y-2 text-slate-600">
+                <li><strong>Total price</strong> matches the allocated costs already calculated by the app for the projects in scope, in EUR. <strong>Labour</strong> is internal allocated engineering and management cost. <strong>Non-FTE</strong> combines purchases and allocated external salaries. Unallocated internal effort and unused external salary are excluded.</li>
+                <li><strong>Average FTE / yr</strong> sums each included project’s average required effort over its own duration. It includes engineering and management and is not the portfolio’s simultaneous workload or peak demand.</li>
+                <li><strong>Staffed</strong> is allocated effort divided by required effort, weighted by project duration using FTE-months. The unstaffed amount includes both engineering and management. Colour follows the coverage scale, from red at 0% to green at 100%.</li>
+                <li><strong>Externalised</strong> is external allocated effort as a share of all staffed effort, also using FTE-months. A dash means there is no relevant effort to calculate a percentage.</li>
+                <li><strong>FTE by team</strong> groups required engineering and management effort. <strong>FTE by location &amp; supplier</strong> groups internal effort by location and external effort by supplier, with a separate Unstaffed bar. Location bars are green and supplier bars use the Non-FTE tag colour. <strong>Externalisation</strong> shows the suppliers’ shares of external effort; <strong>Non-FTE distribution</strong> separates purchase categories and External salaries.</li>
+                <li>Cost numbers, staffed percentages and externalised percentages are black in the <strong>Basic theme</strong>. Tags, spending links and descriptive text keep their original colours. Theme and Basic/Extended mode are separate settings.</li>
+              </ul>
+            </section>
+            <section className="p-4 bg-white border border-amber-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Unused paid external capacity</h3>
+              <p>The external paid-capacity table always covers <strong>all projects</strong>, regardless of dashboard filters or project selection. It shows salary, paid capacity, allocated effort and cost, and unused effort and salary by member and work month. Deferred payment due months are shown separately. This unused salary is a portfolio cost and is not added to any project’s total price.</p>
+            </section>
+          </div>}
+          {activeTab === "externals" && <div className="space-y-4">
+            <section className="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Create or edit an external team member</h3>
+              <p>In the member form, select <strong>External</strong>, choose a supplier from the configured list, and enter the monthly salary and its currency. The salary applies to that member’s configured FTE capacity. Manage suppliers in <strong>Defaults → Suppliers</strong>; suppliers referenced by members or purchases cannot be removed.</p>
+              <p className="mt-2">External members use the same staffing rules as internal members: roles, monthly capacity, maintenance choices and allocation limits all apply. Their supplier tag follows the location tag. Long member names, team names and tool labels use abbreviations when space is limited; hover to see the full name.</p>
+            </section>
+            <section className="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Allocated salary versus unused salary</h3>
+              <p>External costs use <strong>monthly salary × allocated FTE ÷ member FTE capacity</strong>, rather than the location hourly rate. For a 1.00 FTE member with a €1,000 monthly salary, allocating 0.25 FTE to a workpackage adds €250 to that workpackage and project as Non-FTE spending.</p>
+              <p className="mt-2">Allocations across workpackages and projects charge their own proportional shares. A month with any allocation activates the full monthly salary once across the portfolio; any unused portion is shown in Summary dashboard, outside project totals. In the example, if there are no other allocations that month, 0.75 FTE and €750 are unused. Months with no allocation incur no salary in the current model.</p>
+              <p className="mt-2">The Magic Wand still uses location hourly rates when choosing between equally covered staffing plans; it does not optimise external monthly salaries. Review external staffing and the unused-capacity table after automatic allocation.</p>
+            </section>
+            <section className="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Deferred payment</h3>
+              <p>For an external member, enable <strong>Deferred payment</strong> and choose a delay in whole months, from 1 to 120. The default is <strong>12 months</strong>. Staffing stays in the month when the work is performed; allocated salary appears in spending in the payment month after the delay.</p>
+              <p className="mt-2">Payments may fall after project end. The spending timeline and charts extend to show them without extending the project’s staffing requirement. Deferral changes payment timing, not the project’s total allocated salary cost. External salaries are calculated from allocations and cannot be edited with Non-FTE Adjust.</p>
+            </section>
+          </div>}
+          {activeTab === "spending" && <div className="space-y-4">
+            <section className="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Monthly and cumulative spending</h3>
+              <p>Click a project’s <strong>Cost</strong> amount, or <strong>Spending →</strong> in Summary dashboard. The view follows the current tool scope and shows EUR costs for allocated internal effort, management support, purchases and allocated external salaries. Unallocated effort and unused salary are excluded. Missing rates or salaries are flagged; unavailable currency conversion is not treated as zero cost.</p>
+              <p className="mt-2"><strong>Timeline View</strong> shows monthly and cumulative totals. Expand tools, workpackages and member rows for the breakdown, or use <strong>Expand All</strong> / <strong>Collapse All</strong>. Purchase and external salary rows carry a <strong>Non-FTE</strong> tag. Delayed external payments can extend beyond the project’s final month.</p>
+            </section>
+            <section className="p-4 bg-white border border-slate-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Explore the graphs</h3>
+              <p><strong>Graph View</strong> combines yellow monthly spending bars with a pink cumulative-spending line and milestone markers. Hover or focus a month to see its values. The lower graph has its own monthly scale: the overall view groups costs by tool, including each tool’s management support; tool-specific views separate engineering, management support, <strong>Non-FTE</strong> purchases and <strong>External salaries</strong>.</p>
+              <p className="mt-2">Purchases and external salaries use different red tints related to the supplier tag colour. Their hover descriptions identify the correct cost type. Click a legend category or bar segment to place it at the bottom of the stack and fade the others; click it again to restore the full breakdown. This changes the display only, not any totals. Returning to Timeline View preserves expanded rows.</p>
+            </section>
+            <section className="p-4 bg-white border border-amber-200 rounded-xl">
+              <h3 className="font-bold text-slate-900 text-sm mb-2">Adjust purchase payments</h3>
+              <p>In Timeline View, enable <strong>Non-FTE Adjust</strong> to edit purchase amounts in any project month, including empty months or months after the original payment target. Enter 0 to remove a payment. These edits may change the total purchase cost and are not limited to the original price. External salaries and internal FTE costs remain read-only.</p>
+              <p className="mt-2">Changed cells have red outlines and stars; altered workpackages have an asterisk. <strong>Reset</strong> restores the configured schedule in the draft. <strong>Save &amp; Close</strong> applies the payment changes to receipts, project totals and the dashboard. Discard &amp; Close, Escape, the header close button or the backdrop discards the draft. Save before exporting the workspace.</p>
             </section>
           </div>}
           {/* Tab 1: Team Staffing & Combined Timeline */}
@@ -232,7 +293,7 @@ export function HelpGuideModal({
                     <strong>Member Labels:</strong> Allocated members appear as a silhouette and initials (Alex Novak &rarr; AN). Click the initials, an expanded member&apos;s name, or their silhouette to adjust that member&apos;s allocation.
                   </li>
                   <li>
-                    <strong>Cross-Team Members:</strong> When a person is staffed across multiple domains (e.g., Alex Novak in KPI + Data Factory), their avatar displays an active star (<code className="text-amber-500 font-bold">★</code>) with a <code className="font-semibold text-indigo-700">Cross-Team</code> badge. Total combined capacity across all teams cannot exceed 1.00 FTE.
+                    <strong>Cross-Team Members:</strong> When a person is staffed across multiple domains (e.g., Alex Novak in KPI + Data Factory), their avatar displays an active star (<code className="text-amber-500 font-bold">★</code>) with a <code className="font-semibold text-indigo-700">Cross-Team</code> badge. Total combined capacity across all teams cannot exceed 1.00 FTE for a cross-team member; engineering and management assignments share that capacity.
                   </li>
                   <li>
                     <strong>Detailed Tooltips:</strong> Hovering over any personal monthly cell lists the exact itemized breakdown of project workpackages and management support consuming their hours in that month.
@@ -345,7 +406,7 @@ export function HelpGuideModal({
                   <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={100} /><span><strong>100%:</strong> White check mark in a green circle.</span></li>
                   <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={85} isMaintenanceOnlyUncovered /><span><strong>Only maintenance incomplete:</strong> White check mark in a blue circle; all non-maintenance activities are fully covered.</span></li>
                 </ul>
-                <p className="text-slate-600 leading-relaxed mt-2.5">Hover over an icon for details. Expanded project cards show member silhouettes and initials beside the workpackage tags. Compact cards show the coverage icon without a percentage; management support keeps both.</p>
+                <p className="text-slate-600 leading-relaxed mt-2.5">Hover over an icon for details. In Extended mode, expanded project cards show member silhouettes and initials beside the workpackage tags. Compact cards show the coverage icon without a percentage; management support keeps both. Basic mode hides these silhouettes, initials and coverage icons in workpackage cards and management summaries.</p>
               </div>
 
               <div className={`p-4 shadow-2xs ${
@@ -536,10 +597,10 @@ export function HelpGuideModal({
                     <strong>Max 2 Milestones Per Month:</strong> No more than two milestones may occupy the same month.
                   </li>
                   <li>
-                    <strong>Workpackage Finish Targets:</strong> Choose a milestone when creating or editing any FTE workpackage, or leave Project End selected. Requirements, implementation, validation and integration must finish on or before that milestone month; maintenance can continue afterward. In extended mode, projects start standard FTE workpackages at M1 by default. In basic mode, automatic start is always off and you choose the schedule when assigning a workpackage. Use the automatic-start button beside project configuration to turn this off and choose the start month and finish target when assigning a workpackage, using the schedule preview. If automatic start is enabled and the configured phases cannot fit, the app warns you and returns the workpackage to the unassigned pool. With automatic start disabled, resolve an infeasible target in the scheduling dialog before confirming. Changes to workpackages, project dates or phase durations also check these deadlines. Returned workpackages retain their finish target but clear their allocations and manual effort overrides.
+                    <strong>Workpackage Finish Targets:</strong> Choose a milestone when creating or editing any FTE workpackage, or leave Project End selected. Requirements, implementation, validation and integration must finish on or before that milestone month; maintenance can continue afterward. In extended mode, projects start standard FTE workpackages at M1 by default. In basic mode, automatic start is always off and you choose the schedule when assigning a workpackage. The automatic-start icon immediately left of project configuration is amber when enabled. Turning it off affects new assignments, not existing schedules. Use it to turn automatic start off and choose the start month and finish target when assigning a workpackage, using the schedule preview. If automatic start is enabled and the configured phases cannot fit, the app warns you and returns the workpackage to the unassigned pool. With automatic start disabled, resolve an infeasible target in the scheduling dialog before confirming. Changes to workpackages, project dates or phase durations also check these deadlines. Returned workpackages retain their finish target but clear their allocations and manual effort overrides.
                   </li>
                   <li>
-                    <strong>Boundary Validation:</strong> A workpackage cannot finish after its target milestone. If you attempt to reduce project duration or pull a milestone forward past an active workpackage, the system automatically protects the boundary and displays the earliest allowable month.
+                    <strong>Boundary Validation:</strong> Project milestone editing preserves the milestone order and prevents dates before the earliest allowed boundary for scheduled Other workpackages. Standard FTE workpackages are also rechecked after project, workpackage or phase-duration changes: infeasible automatic schedules return to the pool with an error; manual schedules reopen for rescheduling. Purchase payment deadlines are separate: move affected payments before shortening the project or moving their deadline earlier.
                   </li>
                 </ul>
               </div>
@@ -551,7 +612,7 @@ export function HelpGuideModal({
                   <span>Scheduling &quot;Other&quot; Workpackages</span>
                 </h3>
                 <p className="text-slate-600 leading-relaxed mb-2">
-                  When dragging an &quot;Other&quot; workpackage into a project, an interactive scheduling modal allows you to pick the exact starting month, assign milestone targets, and scrub across a calendar preview.
+                  Other workpackages always use the scheduling dialog. Set their monthly effort, execution duration and optional maintenance when creating or editing them, then choose a starting month and finish target when assigning them. Click or drag across the calendar preview to position execution. Execution must fit by the target month, inclusive; optional maintenance continues afterward until project end. Standard FTE workpackages use the same scheduling workflow when automatic start is off. No effort or cost is applied before their scheduled start.
                 </p>
               </div>
             </div>
@@ -602,7 +663,7 @@ export function HelpGuideModal({
                   Open Defaults and select <strong>FTE costs</strong> to set an hourly rate for each resource location. Changing currency automatically converts entered rates using Frankfurter&apos;s latest published exchange rate, rounded to 2 decimals. The rate and its date appear after conversion. Conversion needs an internet connection; if it fails, the previous currency and values are kept. Blank rates are unconfigured; values must be 0 or more. <strong>Save Configuration</strong> keeps the rates for this session, while Cancel discards edits.
                 </p>
                 <p className="text-slate-600 leading-relaxed mt-2">
-                  Project workpackages show their total resource cost in a yellow tag beside effort in cards and on workpackage rows in the team timeline: <strong>monthly allocated FTE × 160 working hours × the member&apos;s location hourly rate</strong>, summed across all members and active months. Tool section headers sum their workpackage costs and the management support cost for that tool and project, beside FTE/yr. Individual management support rows show their own costs; the overall management support header shows only FTE. Amounts use k for thousands and M for millions. Collapsed cost tags omit currency and show whole thousands or at most one decimal for millions; hover for the full amount and currency. Collapsed project cards hide the effort tag when both tags would crowd the workpackage type, keeping the cost tag visible. Hover over a member&apos;s monthly allocation cell to see its cost, allocated hours, and hourly rate, including management support cells. Allocated maintenance and support are included. Cost tags appear only when a positive allocated cost exists. Workpackages, management support, and tool totals hide tags with no allocations, zero cost, or no configured rates for any allocated member. Team timeline workpackage rows omit the FTE summary. Missing rates for some members show a partial cost; hover over the cost for details. Team timeline costs reflect the draft until Save &amp; Close.
+                  Project workpackages show their total resource cost in a yellow tag beside effort in cards and on workpackage rows in the team timeline: <strong>monthly allocated FTE × 160 working hours × the internal member&apos;s location hourly rate</strong>, summed across internal members and active months. External allocations use the member’s salary instead and count as Non-FTE cost; purchases add their payment amounts. Tool section headers sum their workpackage costs and the management support cost for that tool and project, beside FTE/yr. Individual management support rows show their own costs; the overall management support header shows only FTE. Amounts use k for thousands and M for millions. Collapsed cost tags omit currency and show whole thousands or at most one decimal for millions; hover for the full amount and currency. Collapsed project cards hide the effort tag when both tags would crowd the workpackage type, keeping the cost tag visible. Hover over a member&apos;s monthly allocation cell to see its cost, allocated hours, and hourly rate, including management support cells. Allocated maintenance and support are included. Cost tags appear only when a positive allocated cost exists. Workpackages, management support, and tool totals hide tags with no allocations, zero cost, or no configured rates for any allocated member. Team timeline workpackage rows omit the FTE summary. Missing rates for some members show a partial cost; hover over the cost for details. Team timeline costs reflect the draft until Save &amp; Close.
                 </p>
                 <p className="text-slate-600 leading-relaxed mt-2">
                   The project header shows <strong>Cost:</strong> below Total in purple, including management support. Its outlined amount button follows the same tool scope as Total and displays the full rounded amount with a yellow € before the number; rates in another currency are converted automatically to EUR.
@@ -630,7 +691,7 @@ export function HelpGuideModal({
                 </p>
                 <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                   <li>The left panel splits into the <strong>Workpackage Pool</strong> and the <strong>Team Members Pool</strong>.</li>
-                  <li>Clicking the calendar icon (<CalendarGanttIcon size={12} className="inline" />) opens the <strong>Team Combined Timeline</strong> spanning all projects.</li>
+                  <li>Clicking <strong>View staffing</strong> with the calendar icon (<CalendarGanttIcon size={12} className="inline" />) opens the <strong>Team Combined Timeline</strong> spanning all projects.</li>
                   <li>Toggle compact viewing on pools to maximize screen estate (2-column for workpackages, 4-column initial badges for team members).</li>
                   <li>Select <strong>RFQ (Request for Quotation)</strong> when creating or editing a project that has not yet been won or nominated by the client. The RFQ tag appears beside its product type in project cards and timelines and does not change calculations or allocations.</li>
                 </ul>
@@ -649,15 +710,16 @@ export function HelpGuideModal({
                   </div>
                   <div className={`p-3 ${isRetro ? "bg-white border border-black shadow-[1px_1px_0px_#000]" : "rounded-lg bg-slate-50 border border-slate-200"}`}>
                     <strong className="text-slate-800 block text-xs mb-1">Basic Mode</strong>
-                    <p className="text-[11px] leading-relaxed">Simplified overview with direct in-chart manual editing hidden. Team allocation dialogs and the automatic allocation controls remain available.</p>
+                    <p className="text-[11px] leading-relaxed">Simplified overview with direct in-chart manual editing, workpackage silhouettes, member initials and coverage icons hidden. Automatic FTE start is always off, so assignment opens the scheduling dialog. Project FTE/Non-FTE display filters are hidden and both kinds stay visible. Team allocation dialogs and Magic Wands remain available.</p>
                   </div>
                 </div>
               </div>
               <div className={`p-4 shadow-2xs ${
                 isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
               }`}>
-                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Planning Session &amp; Saved Preferences</h3>
-                <p className="text-slate-600 leading-relaxed">Save &amp; Close applies changes within the current app session. Planning data is not stored across page reloads: refreshing restores the initial projects, workpackages, members, and configuration. Only the compact-layout preferences are remembered across reloads.</p>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">Themes and saved work</h3>
+                <p className="text-slate-600 leading-relaxed mb-2">The <strong>Theme</strong> button cycles Vibrant, Basic and Retro appearance independently of <strong>Mode</strong>. Changing appearance does not change calculations or allocations. The Summary Dashboard, Project Spending and External Members &amp; Salaries guide tabs explain their dedicated views.</p>
+                <p className="text-slate-600 leading-relaxed">Save &amp; Close applies changes within the current app session. Planning data is not stored across page reloads: refreshing restores the initial projects, workpackages, members, and configuration. Only the compact-layout preferences are remembered across reloads. Use <strong>Export workspace</strong> to save your planning data and <strong>Import workspace</strong> to restore it.</p>
               </div>
             </div>
           )}
