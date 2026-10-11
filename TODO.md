@@ -13,3 +13,4 @@
 - [ ] Workpackage details
 
 - [ ] Add new tool categories
+- [ ] Expanding width of Project(?) swimlines

@@ -958,9 +958,11 @@ export const ToolRow = memo(function ToolRow({
   }, [hasMultipleSlots, allSubcategories, hiddenSet]);
 
   const purchaseCards = toolCards.filter(card => card.kind === "non-fte" && workpackageView !== "fte");
-  const renderPurchases = (purchases: typeof toolCards) => purchases.length > 0 && (
-    <section className={`${hasMultipleSlots ? "mt-2" : "mx-[18px] mb-2.5"} min-w-0 border-t border-dashed border-purple-200 pt-2`}>
-      {workpackageView !== "non-fte" && <h3 className={`flex items-center gap-1.5 text-[10px] uppercase font-bold mb-2 ${tool.text}`}>
+  const hasFteCards = workpackageView !== "non-fte" && toolCards.some(card => card.kind !== "non-fte");
+  const showToolCategories = !hasMultipleSlots && hasFteCards && purchaseCards.length > 0;
+  const renderPurchases = (purchases: typeof toolCards, showCategories: boolean) => purchases.length > 0 && (
+    <section className={`${hasMultipleSlots ? (showCategories ? "mt-2" : "") : "mx-[18px] mb-2.5 mt-2"} min-w-0 ${showCategories ? "border-t border-dashed border-purple-200 pt-2" : ""}`}>
+      {showCategories && <h3 className={`flex items-center gap-1.5 text-[10px] uppercase font-bold mb-2 ${tool.text}`}>
         {!isBasicMode && <ReceiptIcon size={13} className="shrink-0" />}
         NON-FTE
       </h3>}
@@ -1038,7 +1040,7 @@ export const ToolRow = memo(function ToolRow({
         </div>
       </div>
 
-      {workpackageView !== "non-fte" && !hasMultipleSlots && purchaseCards.length > 0 && (
+      {showToolCategories && (
         <div className={`flex items-center gap-1.5 px-4 pt-2 text-[10px] font-bold uppercase ${tool.text}`}>
           {!isBasicMode && <StaffingIcon size={13} className="shrink-0" />}
           FTE
@@ -1063,7 +1065,7 @@ export const ToolRow = memo(function ToolRow({
             </div>
           )}
         </div>
-      ) : !hasMultipleSlots && workpackageView === "non-fte" && purchaseCards.length > 0 ? null : (
+      ) : !hasMultipleSlots && !hasFteCards && purchaseCards.length > 0 ? null : (
         <div
           className={
             hasMultipleSlots
@@ -1077,6 +1079,7 @@ export const ToolRow = memo(function ToolRow({
             const allSlotCards = cardsBySlot.get(sub) || [];
             const slotCards = workpackageView === "non-fte" ? [] : allSlotCards;
             const slotPurchases = hasMultipleSlots ? purchaseCards.filter(card => purchaseSubcategory(card) === sub) : [];
+            const showSlotCategories = slotCards.length > 0 && slotPurchases.length > 0;
             const slotTotalFTE = allSlotCards.reduce((sum, c) => sum + (c._fte ?? 0), 0);
             const slotTotalCost = sumWorkpackageAllocationCosts(
               [...allSlotCards, ...slotPurchases]
@@ -1173,13 +1176,13 @@ export const ToolRow = memo(function ToolRow({
                   </div>
                 )}
 
-                {hasMultipleSlots && workpackageView !== "non-fte" && slotPurchases.length > 0 && (
+                {hasMultipleSlots && showSlotCategories && (
                   <h3 className={`flex items-center gap-1.5 text-[10px] uppercase font-bold mb-2 ${tool.text}`}>
                     {!isBasicMode && <StaffingIcon size={13} className="shrink-0" />}
                     FTE
                   </h3>
                 )}
-                {!(workpackageView === "non-fte" && slotPurchases.length > 0) && <div
+                {(slotCards.length > 0 || slotPurchases.length === 0) && <div
                   className={`flex-1 w-full min-w-0 h-auto transition-all duration-200 ${
                     slotCards.length === 0
                       ? "flex flex-col flex-1 h-full"
@@ -1223,14 +1226,14 @@ export const ToolRow = memo(function ToolRow({
                     </div>
                   )}
                 </div>}
-                {hasMultipleSlots && renderPurchases(slotPurchases)}
+                {hasMultipleSlots && renderPurchases(slotPurchases, showSlotCategories)}
               </div>
             );
           })}
         </div>
       )}
 
-      {!hasMultipleSlots && renderPurchases(purchaseCards)}
+      {!hasMultipleSlots && renderPurchases(purchaseCards, showToolCategories)}
 
       {!isBasicMode && hasMultipleSlots && visibleSlots.length > 0 && unusedInThisTool.length > 0 && (
         <div className="px-2.5 py-1.5 bg-amber-50/90 border-t border-amber-200/90 flex items-center flex-wrap gap-1 text-[10px]">
