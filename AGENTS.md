@@ -223,3 +223,22 @@ The normal app dev server uses `127.0.0.1:5173`. The Playwright server uses port
 Assigned FTE cards and tool/subtool headers show total MH, calculated from monthly demand times 160, with main/maintenance/supporting tooltip breakdowns. Pool cards omit MH. Compact card tags abbreviate hours and hide them before FTE when necessary; tool/subtool and management totals retain full values. ManHoursLabel, manHours.ts and useWorkpackageCardLayout own this presentation. Summary dashboard has a portfolio-wide unused external-capacity card in every filter, opening UnusedExternalCapacityModal for affected external members only. The former inline capacity table is removed. Preserve deferred payment dates and black paid / green allocated / bold red unused styling, with bold green for zero unused capacity. Workspace JSON retains both basic-type registries; derived hours remain excluded.
 
 Latest verification for this overview/capacity batch: 308 app tests, TypeScript, the Pages build and both Pages production tests passed. This supersedes earlier suite counts. Contextual feature/test/docs commits are authorized for remote publication; inspect Git state for the final push status.
+
+## Optional workpackage details update (2026-10-11)
+
+Expanded Extended-mode FTE and non-FTE cards have a Plus before Edit that animates
+open a centered selector row. `WorkpackageDetails.tsx` owns description, single-name
+Owner with cross-team autocomplete, and Markdown assumption/deliverable/risk lists.
+Only one section is selected at a time; none is initially selected. Empty list
+items disappear on blur, and text editing suppresses card drag so selection works.
+Basic mode and compact cards hide the controls. Add dialogs show all five fields
+when Extended details is enabled; their drafts save only on Add. `details` is
+optional source data in WorkpackageCard and workspace JSON; exports omit empty
+fields and imports validate known text sections. Details-only edits must preserve
+schedules, allocations and effort overrides.
+
+Same-project workpackage drops do not open scheduling or clear existing data.
+Explicit non-FTE Edit payment months still opens scheduling through editSchedule.
+Receipt hover reveals actions and preserves the dashed bottom edge. See HANDOFF.md
+and the workspace-files/non-fte tests for coverage. Final validation for this batch:
+319 app tests, TypeScript, Pages build and both Pages production tests passed.

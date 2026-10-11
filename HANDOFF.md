@@ -3,6 +3,18 @@
 Updated: 2026-10-11. Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
+## Latest workpackage details batch (2026-10-11)
+
+This section supersedes older verification and publication status below.
+Contextual commits cover optional details and creation forms, receipt hover,
+same-project drop preservation, details JSON transfer, and documentation/current
+visual references. Final validation: all 319 app tests passed, TypeScript passed,
+and the Pages build and both Pages production checks passed. Eleven regression
+tests were added. The pre-batch local and remote master matched at `70afc72`.
+The user authorized pushing after successful checks; compare master and
+origin/master for the final publication SHA. Push success alone does not confirm
+completion of the subsequent Pages deployment.
+
 ## Latest overview and capacity batch (2026-10-11)
 
 This section supersedes older pending-publication and verification counts below.
@@ -204,3 +216,40 @@ activities and individual overrides, removed types, non-FTE names/icons and
 workpackage references. The real browser import/re-export flow also verifies
 the definitions appear in Workpackages configuration. All 39 workspace tests
 passed.
+
+## Optional workpackage details (2026-10-11)
+
+Expanded FTE and non-FTE cards in Extended mode have a faded Plus before Edit.
+It animates open a centered five-icon row, initially with no selection. Only one
+section may be active, and clicking it again deselects it. Detailed Description
+is multiline; Owner is a single name with free entry and suggestions from all
+teams. Assumptions, Deliverables and Risks are Markdown bullet lists in a shared
+box, with category-specific Add controls below. Empty items disappear on blur;
+empty lists have no box. Text selection disables card dragging while editing.
+Basic mode and compact cards hide these controls. Values stay on the card when
+switching sections or collapsing the panel.
+
+Vibrant details use yellow Owner, blue puzzle-piece Assumptions, brown Deliverables
+and red Risks icons, with matching selected backgrounds and list borders/bullets.
+Deliverables text is darker brown. Basic and Retro retain neutral presentation.
+Headings match NOMINAL/EFFORTS and end with colons. Owner has a yellow border in
+Vibrant, while its text stays neutral. Inputs have no blue editing highlight.
+
+Both Add dialogs offer Extended details, hidden by default. Opening it widens the
+form and shows all five fields together. Cancel discards the creation draft;
+Add saves the details. Workspace JSON retains populated optional details for both
+kinds, omits empty fields/objects, validates known string sections, and preserves
+Markdown and line breaks. Older files without details remain compatible.
+Details-only updates preserve allocations, schedules and effort overrides.
+
+Dropping any workpackage within its current project is a no-op without an
+assignment dialog. New-project drops retain scheduling. The explicit non-FTE
+Edit payment months control still opens scheduling. Receipt hover follows the
+tool/theme, reveals faded action icons, and preserves its dashed bottom edge.
+
+Regression checks cover detail editing, cross-team owner suggestions, bullet
+lists and blank removal, drag suppression, creation save/cancel, JSON round trips
+and invalid detail data, same-project drops and explicit payment editing, plus
+receipt hover in all themes. Reviewed current screenshots include the accepted
+Plus controls, creation toggle, receipt actions and previously hidden zero-MH
+badges. Historical screenshots remain unchanged.
