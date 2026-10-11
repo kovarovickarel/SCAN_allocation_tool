@@ -26,7 +26,6 @@ export function WorkpackageDetailsPanel({ card, onEdit, expanded, onTextInteract
   const [selected, setSelected] = useState<keyof WorkpackageDetails | null>(null);
   const id = useId();
   const ownerNames = [...new Set(teamMembers.map(member => [member.firstName, member.lastName].filter(Boolean).join(" ").trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
-  const section = sections.find(item => item.key === selected);
   const { isRetro, isBasic } = useContext(ThemeContext);
   useEffect(() => { if (!expanded) onTextInteraction(false); }, [expanded, onTextInteraction]);
   const headingClass = `block text-[9px] font-bold uppercase mb-1 ${isRetro ? "text-black font-mono" : "text-gray-600"}`;
@@ -46,7 +45,12 @@ export function WorkpackageDetailsPanel({ card, onEdit, expanded, onTextInteract
       </button>)}
     </div>}
     <div className={showAll ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : ""}>
-    {(showAll ? sections : section ? [section] : []).map(section => <div key={section.key} className={`mt-2 min-w-0 ${showAll && section.key === "description" ? "sm:col-span-2" : ""}`} id={`${id}-${section.key}`}>
+    {sections.map(section => {
+      const sectionOpen = showAll || selected === section.key;
+      return <div key={section.key} id={`${id}-${section.key}`} aria-hidden={!sectionOpen} inert={!sectionOpen}
+        className={`min-w-0 ${showAll ? (section.key === "description" ? "sm:col-span-2" : "") : `grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none ${sectionOpen ? "opacity-100" : "opacity-0"}`}`}
+        style={showAll ? undefined : { gridTemplateRows: sectionOpen ? "1fr" : "0fr" }}>
+      <div className="min-h-0 overflow-hidden"><div className="mt-2 min-w-0">
       {section.key === "description" || section.key === "owner" ? <>
         <label htmlFor={`${id}-${section.key}-text`} className={headingClass}>{section.label}:</label>
         {section.key === "owner" ? <OwnerNameInput id={`${id}-${section.key}-text`} names={ownerNames}
@@ -59,7 +63,9 @@ export function WorkpackageDetailsPanel({ card, onEdit, expanded, onTextInteract
             className="block w-full min-w-0 resize-y select-text cursor-text rounded border border-slate-300 bg-white/90 p-2 text-xs text-slate-900 leading-relaxed focus:outline-none" />}
       </> : <MarkdownDetailList label={section.label} headingClass={headingClass} textClass={isBasic || isRetro ? "text-slate-900" : section.key === "deliverables" ? "text-amber-700" : section.color} borderClass={isBasic || isRetro ? "border-slate-300" : section.key === "assumptions" ? "border-blue-400" : section.key === "deliverables" ? "border-amber-600/60" : "border-red-400"} value={card.details?.[section.key] ?? ""}
         onChange={value => onEdit?.(card.id, false, { details: { ...card.details, [section.key]: value } })} />}
-    </div>)}
+      </div></div>
+    </div>;
+    })}
     </div>
     </div></div>
   </div>;

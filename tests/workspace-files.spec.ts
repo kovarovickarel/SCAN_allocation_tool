@@ -98,6 +98,15 @@ for (const kind of ["fte", "purchase"]) test(`details editing preserves schedule
   const group = card.getByRole("group", { name: "Workpackage detail sections" });
   await expect(group.locator('[aria-pressed="true"]')).toHaveCount(0);
   await group.getByRole("button", { name: "Owner", exact: true }).click();
+  const ownerSection = card.locator('input[placeholder="Owner name"]').locator('xpath=ancestor::div[@aria-hidden][1]');
+  await expect(ownerSection).toHaveCSS("transition-duration", "0.3s");
+  await expect(ownerSection).toHaveCSS("opacity", "1");
+  await expect(ownerSection).not.toHaveAttribute("inert");
+  await group.getByRole("button", { name: "Owner", exact: true }).click();
+  await expect(ownerSection).toHaveAttribute("inert");
+  await expect(ownerSection).toHaveCSS("opacity", "0");
+  await expect.poll(() => ownerSection.evaluate(element => element.getBoundingClientRect().height)).toBe(0);
+  await group.getByRole("button", { name: "Owner", exact: true }).click();
   await card.getByRole("combobox", { name: "Owner:" }).fill("Cross");
   await page.getByRole("option", { name: "Cross Team" }).click();
   await group.getByRole("button", { name: "Assumptions", exact: true }).click();
