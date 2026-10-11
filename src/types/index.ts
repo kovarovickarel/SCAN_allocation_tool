@@ -162,6 +162,10 @@ export interface WorkpackageCard {
   _isAltered?: boolean;
   _isMgmt?: boolean;
   _isNegated?: boolean;
+  _nominalManHoursBreakdown?: ManHoursBreakdown;
+  _manHoursBreakdown?: ManHoursBreakdown;
+  _nominalManHours?: number;
+  _manHours?: number;
   _nominalFte?: number;
   _fte?: number;
   _coveragePct?: number;
@@ -247,3 +251,5 @@ declare module "react" {
     title?: string;
   }
 }
+
+export interface ManHoursBreakdown { main: number; maintenance: number; supporting: number; }

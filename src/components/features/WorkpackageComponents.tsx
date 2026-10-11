@@ -13,6 +13,9 @@ import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { getCrossTeamMemberIds, calculateManagementCoverage, hasAllocatedCost, sumWorkpackageAllocationCosts, getReusabilityFactor, getReusabilityLabel, getMaintenanceReusabilityFactor, hasWorkpackageMaintenance, normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
 import { DEFAULT_FTE_COSTS } from "../../constants";
+import { sumManHoursBreakdowns } from "../../utils/manHours";
+import { ManHoursLabel, WORKPACKAGE_EFFORT_BADGE_SIZE } from "../ui/ManHoursLabel";
+import { WORKING_HOURS_PER_MONTH, NOMINAL_BASELINE_PROJECT } from "../../constants";
 import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
 import { workpackageFinishTarget } from "../../utils/workpackageFinishTargets";
 import { ResponsiveToolTagLabel } from "../ui/ResponsiveToolTagLabel";
@@ -424,8 +427,8 @@ export const FunctionCard = memo(function FunctionCard({
 
   const isAssigned = projectId !== "pool" && Boolean(card.projectId);
   const {
-    hideCompactEffort, compactHeaderRef, compactCategoryRef, compactCategoryTextRef,
-    compactMilestoneRef, compactEffortRef, compactCostRef, compactDeleteRef,
+    hideCompactEffort, hideCompactManHours, compactHeaderRef, compactCategoryRef, compactCategoryTextRef,
+    compactMilestoneRef, compactEffortRef, compactCostRef, compactManHoursRef, compactDeleteRef,
     shortReusabilityLabel, nameRowRef, nameTextRef, reusabilityTagRef, fullReusabilityLabelRef,
   } = useWorkpackageCardLayout({
     card, reusabilityFactors, isCompact, isAssigned, isRetro, isBasic, isBasicMode,
@@ -438,6 +441,7 @@ export const FunctionCard = memo(function FunctionCard({
   const fte = isAssigned ? (card._fte ?? 0) : null;
   const nominalFTE = card._nominalFte ?? 0.35;
   const isNegated = Boolean(card._isNegated);
+  const manHours = isNegated ? 0 : isAssigned ? (card._manHours ?? (fte ?? 0) * (projectDuration || 12) * WORKING_HOURS_PER_MONTH) : (card._nominalManHours ?? nominalFTE * NOMINAL_BASELINE_PROJECT.duration * WORKING_HOURS_PER_MONTH);
   const isAltered = Boolean(card._isAltered);
   const finishTarget = workpackageFinishTarget(card);
   const finishMsDef = finishTarget ? MILESTONE_MAP[finishTarget] : null;
@@ -511,7 +515,7 @@ export const FunctionCard = memo(function FunctionCard({
       ? "0.00"
       : fte !== null
       ? fte.toFixed(2)
-      : `~${nominalFTE.toFixed(2)}`;
+      : nominalFTE.toFixed(2);
 
     const fteBadgeStyle = isRetro
       ? isNegated
@@ -573,6 +577,9 @@ export const FunctionCard = memo(function FunctionCard({
                 <WorkpackageCostLabel cost={card._allocationCost} compact />
               </span>
             )}
+            {isAssigned && <span ref={compactManHoursRef} aria-hidden={hideCompactManHours || undefined} className={`inline-flex shrink-0 ${hideCompactManHours ? "absolute invisible pointer-events-none" : ""}`}>
+              <ManHoursLabel hours={manHours} breakdown={isAssigned ? card._manHoursBreakdown : card._nominalManHoursBreakdown} nominal={!isAssigned} compact />
+            </span>}
             <span ref={compactEffortRef} aria-hidden={isAssigned && hideCompactEffort ? true : undefined} className={`font-mono font-bold text-[8px] px-1 py-0.2 rounded border shrink-0 whitespace-nowrap shadow-2xs ${fteBadgeStyle} ${isAssigned && hideCompactEffort ? "absolute invisible pointer-events-none" : ""}`}>
               {displayFTEText}
             </span>
@@ -777,10 +784,11 @@ export const FunctionCard = memo(function FunctionCard({
         <span className={`text-[9px] font-bold ${isRetro ? "text-black font-mono" : "text-gray-600"} uppercase shrink-0`}>
           {fte !== null ? "Efforts:" : "Nominal:"}
         </span>
-        <div className="flex items-center justify-end gap-1 min-w-0">
+        <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">
           {isAssigned && <WorkpackageCostLabel cost={card._allocationCost} />}
+          {isAssigned && <ManHoursLabel hours={manHours} breakdown={isAssigned ? card._manHoursBreakdown : card._nominalManHoursBreakdown} nominal={!isAssigned} />}
         <span
-          className={`font-mono font-bold text-[10px] px-1 py-0.2 rounded border truncate ${
+          className={`font-mono font-bold ${WORKPACKAGE_EFFORT_BADGE_SIZE} rounded border truncate ${
             isRetro
               ? isNegated
                 ? "text-gray-500 bg-gray-200 border-black line-through"
@@ -805,6 +813,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
   if (!overheads || overheads.length === 0) return null;
   const totalMgmtFTE = overheads.reduce((sum, o) => sum + (o.fte ?? 0), 0);
+  const totalMgmtHours = overheads.reduce((total, overhead) => total + Array.from({ length: project.duration }, (_, month) => project.customMgmtMonthlyFTE?.[overhead.tool]?.[month] ?? overhead.fte).reduce((sum, fte) => sum + fte, 0) * WORKING_HOURS_PER_MONTH, 0);
   const anyAltered = overheads.some((o) => o.isAltered);
 
   const containerStyle = isRetro
@@ -826,6 +835,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
           MANAGEMENT SUPPORT OVERHEAD{anyAltered ? "*" : ""}
         </span>
         <div className="flex items-center gap-1.5 shrink-0">
+          <ManHoursLabel hours={totalMgmtHours} breakdown={{ main: 0, maintenance: 0, supporting: totalMgmtHours }} size="tool" tone="management" />
           <span
             className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded ${isRetro ? "bg-white border-2 border-black shadow-[1px_1px_0px_#000] text-black" : "bg-white/80 border border-black/10 text-gray-800 shadow-2xs"}`}
             title={`Total Management Support: ${totalMgmtFTE.toFixed(2)} FTE/yr`}
@@ -1013,6 +1023,7 @@ export const ToolRow = memo(function ToolRow({
             </span>
           )}
           <WorkpackageCostLabel cost={toolTotalCost} />
+          <ManHoursLabel size="tool" breakdown={sumManHoursBreakdowns(toolCards)} hours={toolCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />
           <span
             className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded ${isRetro ? "bg-white border-2 border-black text-black shadow-[1px_1px_0px_#000]" : "bg-white/90 border border-black/10 text-gray-800 shadow-2xs"}`}
             title={`${toolCards.length} workpackage(s) · Total: ${toolTotalFTE.toFixed(2)} FTE/yr`}
@@ -1111,7 +1122,7 @@ export const ToolRow = memo(function ToolRow({
                 `}
               >
                 {hasMultipleSlots && (
-                  <div className="flex items-center justify-between gap-1 mb-1.5 shrink-0 min-w-0">
+                  <div className="flex flex-wrap items-center justify-between gap-1 mb-1.5 shrink-0 min-w-0">
                     <div className="flex items-center gap-1 min-w-0">
                       <span className={`text-[10px] font-black uppercase tracking-wider truncate ${slotSubText}`} title={sub}>
                         {sub}
@@ -1137,12 +1148,15 @@ export const ToolRow = memo(function ToolRow({
                     </div>
 
                     {!isBasicMode && (
+                      <div className="flex items-center gap-1 shrink-0">
+                      <ManHoursLabel size="subcategory" breakdown={sumManHoursBreakdowns(allSlotCards)} hours={allSlotCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />
                       <span
                         className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/90 border border-black/10 text-gray-800 shadow-2xs shrink-0"
                         title={`${sub}: ${slotTotalFTE.toFixed(2)} FTE/yr`}
                       >
                         {slotTotalFTE.toFixed(2)} FTE/yr
                       </span>
+                      </div>
                     )}
                   </div>
                 )}

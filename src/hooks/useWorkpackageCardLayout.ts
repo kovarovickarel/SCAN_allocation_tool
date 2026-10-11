@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { FactorMap, WorkpackageCard } from "../types";
-import { hasAllocatedCost } from "../utils/allocationCosts";
+
 import { normalizeReusability } from "../utils/reusability";
 
 interface WorkpackageCardLayoutOptions {
@@ -16,17 +16,20 @@ interface WorkpackageCardLayoutOptions {
 // Measure hidden full labels so responsive badges can return without oscillation.
 export function useWorkpackageCardLayout({ card, reusabilityFactors, isCompact, isAssigned, isRetro, isBasic, isBasicMode }: WorkpackageCardLayoutOptions) {
   const [hideCompactEffort, setHideCompactEffort] = useState(false);
+  const [hideCompactManHours, setHideCompactManHours] = useState(false);
   const compactHeaderRef = useRef<HTMLDivElement>(null);
   const compactCategoryRef = useRef<HTMLSpanElement>(null);
   const compactCategoryTextRef = useRef<HTMLSpanElement>(null);
   const compactMilestoneRef = useRef<HTMLSpanElement>(null);
   const compactEffortRef = useRef<HTMLSpanElement>(null);
   const compactCostRef = useRef<HTMLSpanElement>(null);
+  const compactManHoursRef = useRef<HTMLSpanElement>(null);
   const compactDeleteRef = useRef<HTMLButtonElement>(null);
 
   useLayoutEffect(() => {
-    if (!isCompact || !isAssigned || card._editing || !hasAllocatedCost(card._allocationCost)) {
+    if (!isCompact || !isAssigned || card._editing) {
       setHideCompactEffort(false);
+      setHideCompactManHours(false);
       return;
     }
     const header = compactHeaderRef.current;
@@ -34,8 +37,9 @@ export function useWorkpackageCardLayout({ card, reusabilityFactors, isCompact, 
     const text = compactCategoryTextRef.current;
     const effort = compactEffortRef.current;
     const cost = compactCostRef.current;
+    const manHours = compactManHoursRef.current;
     const deleteButton = compactDeleteRef.current;
-    if (!header || !category || !text || !effort || !cost || !deleteButton) return;
+    if (!header || !category || !text || !effort || !manHours || !deleteButton) return;
     let disposed = false;
     const measure = () => {
       if (disposed) return;
@@ -50,15 +54,20 @@ export function useWorkpackageCardLayout({ card, reusabilityFactors, isCompact, 
         ? milestone.getBoundingClientRect().width + (parseFloat(getComputedStyle(category.parentElement).columnGap) || 0) : 0);
       // The invisible effort badge still measures its full width, so hiding it cannot
       // make the next resize measurement bring it back and cause flickering.
-      const rightWidth = effort.getBoundingClientRect().width + cost.getBoundingClientRect().width
+      const rightWidth = effort.getBoundingClientRect().width + (cost?.getBoundingClientRect().width ?? 0) + manHours.getBoundingClientRect().width
         + deleteButton.getBoundingClientRect().width
-        + 2 * (parseFloat(getComputedStyle(deleteButton.parentElement).columnGap) || 0);
+        + (cost ? 3 : 2) * (parseFloat(getComputedStyle(deleteButton.parentElement).columnGap) || 0);
       const requiredWidth = leftWidth + rightWidth + (parseFloat(getComputedStyle(header).columnGap) || 0);
-      setHideCompactEffort(requiredWidth > header.getBoundingClientRect().width + 0.5);
+      const availableWidth = header.getBoundingClientRect().width + 0.5;
+      const hideHours = requiredWidth > availableWidth;
+      const badgeGap = parseFloat(getComputedStyle(deleteButton.parentElement).columnGap) || 0;
+      const widthWithoutHours = requiredWidth - manHours.getBoundingClientRect().width - badgeGap;
+      setHideCompactManHours(hideHours);
+      setHideCompactEffort(isAssigned && hideHours && widthWithoutHours > availableWidth);
     };
     measure();
     const observer = new ResizeObserver(measure);
-    [header, text, effort, cost, deleteButton].forEach((element) => observer.observe(element));
+    [header, text, effort, manHours, cost, deleteButton].forEach((element) => { if (element) observer.observe(element); });
     void document.fonts.ready.then(measure);
     return () => {
       disposed = true;
@@ -103,8 +112,8 @@ export function useWorkpackageCardLayout({ card, reusabilityFactors, isCompact, 
     };
   }, [isCompact, card, reusabilityFactors, isRetro, isBasic]);
   return {
-    hideCompactEffort, compactHeaderRef, compactCategoryRef, compactCategoryTextRef,
-    compactMilestoneRef, compactEffortRef, compactCostRef, compactDeleteRef,
+    hideCompactEffort, hideCompactManHours, compactHeaderRef, compactCategoryRef, compactCategoryTextRef,
+    compactMilestoneRef, compactEffortRef, compactCostRef, compactManHoursRef, compactDeleteRef,
     shortReusabilityLabel, nameRowRef, nameTextRef, reusabilityTagRef, fullReusabilityLabelRef,
   };
 }

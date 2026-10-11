@@ -1,4 +1,5 @@
 import { DEFAULT_NON_FTE_TYPES, NonFteTypesContext } from "./utils/nonFteBasicTypes";
+import { nominalWorkpackageManHoursBreakdown } from "./utils/manHours";
 import { supportingPhaseRates } from "./utils/supportingPhases";
 import { workpackageRateKey, normalizeToolBasicTypes } from "./utils/workpackageTypes";
 import { WorkspaceFileControls } from "./components/features/WorkspaceFileControls";
@@ -28,6 +29,7 @@ import {
   DEFAULT_MGMT_SETTINGS,
   DEFAULT_OTHER_SETTINGS,
   NOMINAL_BASELINE_PROJECT,
+  WORKING_HOURS_PER_MONTH,
   deepClone,
   round2,
   genId,
@@ -327,20 +329,23 @@ export default function App() {
         config.toolFteRates
       );
 
+      const nominalBreakdown = nominalWorkpackageManHoursBreakdown(f, NOMINAL_BASELINE_PROJECT, config.fteRates, config.reusabilityFactors, config.stabilityFactors, config.toolFteRates);
+      const nominalManHours = round2(nominalBreakdown.main + nominalBreakdown.maintenance + nominalBreakdown.supporting);
+
       if (!f.projectId) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: false, _isAltered: false, _allocationCost: undefined };
+        return { ...f, _fte: 0, _nominalFte: nominalFte, _nominalManHours: nominalManHours, _nominalManHoursBreakdown: nominalBreakdown, _manHoursBreakdown: { main: 0, maintenance: 0, supporting: 0 }, _manHours: 0, _isNegated: false, _isAltered: false, _allocationCost: undefined };
       }
 
       const project = projectIndex.get(f.projectId);
       if (!project) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: false, _isAltered: false, _allocationCost: undefined };
+        return { ...f, _fte: 0, _nominalFte: nominalFte, _nominalManHours: nominalManHours, _nominalManHoursBreakdown: nominalBreakdown, _manHoursBreakdown: { main: 0, maintenance: 0, supporting: 0 }, _manHours: 0, _isNegated: false, _isAltered: false, _allocationCost: undefined };
       }
 
       const isToolHidden = project.toolSet.has(f.tool);
       const isSubcategoryHidden = f.subcategory && project.subSet.has(f.subcategory);
 
       if (isToolHidden || isSubcategoryHidden) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _isNegated: true, _isAltered: false, _coveragePct: 0, _isMaintenanceOnlyUncovered: false, _allocationCost: undefined };
+        return { ...f, _fte: 0, _nominalFte: nominalFte, _nominalManHours: nominalManHours, _nominalManHoursBreakdown: nominalBreakdown, _manHoursBreakdown: { main: 0, maintenance: 0, supporting: 0 }, _manHours: 0, _isNegated: true, _isAltered: false, _coveragePct: 0, _isMaintenanceOnlyUncovered: false, _allocationCost: undefined };
       }
 
       const defaultFte = calcCardFTE(
@@ -374,6 +379,7 @@ export default function App() {
 
       let isAltered = false;
       let totalEffortMonths = 0;
+      const manHoursBreakdown = { main: 0, maintenance: 0, supporting: 0 };
       const coverageMonths: { shortPhase?: string; totalWPMonthlyFTE: number }[] = [];
 
       for (let m = 0; m < project.duration; m++) {
@@ -396,6 +402,9 @@ export default function App() {
         const effMeetings = !isOther && customMeetings !== undefined ? customMeetings : defaultMeetingsRate;
 
         totalEffortMonths += (effCore + effDev + effMeetings);
+        const hourCategory = ["Maint", "ResMaint"].includes(defaultMonths[m]?.shortPhase) ? "maintenance" : "main";
+        manHoursBreakdown[hourCategory] += effCore * WORKING_HOURS_PER_MONTH;
+        manHoursBreakdown.supporting += (effDev + effMeetings) * WORKING_HOURS_PER_MONTH;
         const coverageSupport = supportMultiplier === 0 ? 0 : round2((f.customDevSupportFTE?.[m] ?? defaultDevRate) +
           (f.customMeetingsFTE?.[m] ?? defaultMeetingsRate));
         coverageMonths.push({ shortPhase: defaultMonths[m]?.shortPhase, totalWPMonthlyFTE: round2(effCore + coverageSupport) });
@@ -407,6 +416,10 @@ export default function App() {
       return {
         ...f,
         _nominalFte: nominalFte,
+        _nominalManHours: nominalManHours,
+        _manHours: round2(totalEffortMonths * WORKING_HOURS_PER_MONTH),
+        _manHoursBreakdown: manHoursBreakdown,
+        _nominalManHoursBreakdown: nominalBreakdown,
         _isNegated: false,
         _isAltered: isAltered,
         _fte: finalFTE,
