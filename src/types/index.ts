@@ -118,7 +118,16 @@ export interface ProjectSpendingTool {
   totalCost: WorkpackageAllocationCost;
 }
 
+export interface WorkpackageDetails {
+  description?: string;
+  owner?: string;
+  assumptions?: string;
+  deliverables?: string;
+  risks?: string;
+}
+
 export interface WorkpackageCard {
+  details?: WorkpackageDetails;
   id: string;
   name: string;
   tool: string;

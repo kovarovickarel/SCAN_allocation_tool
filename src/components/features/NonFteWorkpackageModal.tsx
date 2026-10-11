@@ -1,18 +1,22 @@
+import { WorkpackageDetailsForm } from "./WorkpackageDetails";
 import { NonFteTypesContext } from "../../utils/nonFteBasicTypes";
 import { useContext, useLayoutEffect, useRef, useState } from "react";
 import { DEFAULT_REUSABILITY_FACTORS, MILESTONES_DEF, ThemeContext, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, genId } from "../../constants";
-import type { FactorMap, SupplierRecord, WorkpackageCard } from "../../types";
+import type { FactorMap, SupplierRecord, WorkpackageCard, WorkpackageDetails, TeamMemberRecord } from "../../types";
 import { normalizeReusability, parseReusabilityFactor } from "../../utils/reusability";
 import { purchaseCost, purchaseSubcategory } from "../../utils/nonFteWorkpackages";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
 
-export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, activeToolView = "all", inline = false, onSave, onClose }: {
+export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, activeToolView = "all", inline = false, onSave, onClose, teamMembers = [] }: {
+  teamMembers?: readonly TeamMemberRecord[];
   card?: WorkpackageCard; suppliers: readonly SupplierRecord[]; reusabilityFactors?: FactorMap; activeToolView?: string; inline?: boolean;
   onSave: (card: WorkpackageCard) => void; onClose: () => void;
 }) {
+  const [details, setDetails] = useState<WorkpackageDetails>(card?.details ?? {});
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
   const types = useContext(NonFteTypesContext);
-  const { isBasic, isRetro } = useContext(ThemeContext);
+  const { isBasic, isRetro, isBasicMode } = useContext(ThemeContext);
   const toolSelectRef = useRef<HTMLSelectElement>(null);
   const typeSelectRef = useRef<HTMLSelectElement>(null);
   const toolTypeRowRef = useRef<HTMLDivElement>(null);
@@ -94,13 +98,13 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
   const inputClass = `w-full ${inline ? "px-1.5 py-0.5 text-slate-800 font-medium" : "px-2.5 py-1.5"} text-xs border ${isRetro ? "border-black rounded-none bg-white font-mono" : "border-slate-300 rounded bg-white"}`;
   const save = () => {
     if (!valid) return;
-    onSave({ ...preview, kind: "non-fte", name: draft.name.trim(),
+    onSave({ ...preview, ...(Object.keys(details).length ? { details } : {}), kind: "non-fte", name: draft.name.trim(),
       supplierId: supplier.id, supplierName: supplier.name, complexity: null, subcategory: purchaseSubcategory(draft) });
   };
   const priceField = <label className="flex items-center justify-between flex-wrap gap-1 text-xs text-gray-600"><span className="font-bold">Base price (EUR)</span><input title="Base price (EUR)" type="text" inputMode="decimal" className={`${inputClass} !w-2/5 text-right !font-bold !px-2 font-mono text-slate-800`} value={price} aria-invalid={price !== "" && !validPrice} onChange={e => setPrice(e.target.value.replace(",", "."))} placeholder="0.00" />{price !== "" && !validPrice && <span className="block w-full mt-1 text-[10px] text-red-600">Enter a positive EUR amount of at least €0.01 after rounding.</span>}</label>;
   const content = <div className={inline
     ? `flex flex-col gap-1.5 p-2 rounded-lg border-2 shadow-lg w-full transition-colors text-slate-800 ${isRetro ? "bg-[#d4d0c8] border-t-white border-l-white border-b-black border-r-black shadow-[3px_3px_0px_#000]" : isBasic ? "bg-slate-50/95 border-blue-400 ring-2 ring-blue-500/30" : `${selectedTool.color} ${selectedTool.border} ring-2 ring-amber-400/40`}`
-    : `w-full max-w-md max-h-[92vh] overflow-y-auto p-5 shadow-2xl border ${isRetro ? "bg-[#d4d0c8] border-black font-mono" : "bg-white rounded-xl border-slate-300"}`}
+    : `w-full ${detailsExpanded ? "max-w-2xl" : "max-w-md"} max-h-[92vh] overflow-y-auto p-5 shadow-2xl border ${isRetro ? "bg-[#d4d0c8] border-black font-mono" : "bg-white rounded-xl border-slate-300"}`}
     onClick={e => e.stopPropagation()}>
       {inline ? <div className="flex items-center justify-between">
         <span className={`text-[10px] font-bold uppercase tracking-wider ${isRetro ? "text-black font-mono font-black" : isBasic ? "text-blue-900 font-bold" : selectedTool.text}`}>Editing Workpackage</span>
@@ -133,6 +137,7 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
           {validPrice && validReusability && !validFinalCost && <p role="alert" className="text-[10px] text-red-600">Final cost must be greater than €0.00. Increase the base price or reusability factor.</p>}
         </div>
       </div>
+      {!card && !isBasicMode && <div className="mt-3"><WorkpackageDetailsForm details={details} onChange={setDetails} teamMembers={teamMembers} expanded={detailsExpanded} onToggle={() => setDetailsExpanded(value => !value)} /></div>}
       {inline ? <div className="flex gap-1 mt-1">
         <button type="button" onClick={save} disabled={!valid} className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold py-1 rounded transition-colors cursor-pointer shadow-xs">Save</button>
         <button type="button" onClick={onClose} className="flex-1 bg-slate-500 hover:bg-slate-600 text-white text-xs font-bold py-1 rounded transition-colors cursor-pointer shadow-xs">Cancel</button>

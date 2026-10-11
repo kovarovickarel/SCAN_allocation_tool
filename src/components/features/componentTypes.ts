@@ -93,6 +93,7 @@ export interface SubcategoryManagerModalProps {
 }
 
 export interface UnassignedPoolProps extends ReusabilityRatesProps {
+  teamMembers?: TeamMemberRecord[];
   onOpenConfiguration?: () => void;
   suppliers?: readonly SupplierRecord[];
   workpackageKind?: "fte" | "non-fte";
@@ -136,6 +137,7 @@ export interface AddTeamMemberModalProps {
 }
 
 export interface AddFunctionModalProps extends ReusabilityRatesProps {
+  teamMembers?: readonly TeamMemberRecord[];
   onClose: () => void;
   reusabilityFactors?: FactorMap;
   onAdd: (card: WorkpackageCard) => void;

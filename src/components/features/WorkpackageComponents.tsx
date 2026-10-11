@@ -1,3 +1,4 @@
+import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
 import { workpackageTypeNames, workpackageRateKey, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import { purchaseSubcategory } from "../../utils/nonFteWorkpackages";
@@ -393,6 +394,8 @@ export const FunctionCard = memo(function FunctionCard({
   onDragEnd,
   draggedCard,
 }: FunctionCardProps) {
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [detailsEditing, setDetailsEditing] = useState(false);
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[card.tool] || TOOLS[0];
   const toolTheme = TOOL_CARD_THEMES[card.tool] || TOOL_CARD_THEMES.Other;
@@ -621,7 +624,7 @@ export const FunctionCard = memo(function FunctionCard({
 
   return (
     <div
-      draggable
+      draggable={!detailsEditing}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEndInternal}
       className={`
@@ -662,6 +665,7 @@ export const FunctionCard = memo(function FunctionCard({
           )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          {!isBasicMode && <WorkpackageDetailsButton expanded={detailsExpanded} onToggle={() => setDetailsExpanded(value => !value)} name={card.name} />}
           {!isBasicMode && (
             <button
               type="button"
@@ -804,6 +808,7 @@ export const FunctionCard = memo(function FunctionCard({
         </span>
         </div>
       </div>
+      {!isBasicMode && <WorkpackageDetailsPanel card={card} onEdit={onEdit} expanded={detailsExpanded} onTextInteraction={setDetailsEditing} teamMembers={teamMembers} />}
     </div>
   );
 });
@@ -962,7 +967,7 @@ export const ToolRow = memo(function ToolRow({
       <div className={isCompact
         ? `grid ${hasMultipleSlots && visibleSlots.length > 1 ? "grid-cols-2" : "grid-cols-3"} gap-1.5 content-start`
         : "flex flex-col gap-1.5"}>
-        {purchases.map(card => <NonFteWorkpackageCard project={project} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} onSchedule={() => onDrop?.(card.id, projectId)} />)}
+        {purchases.map(card => <NonFteWorkpackageCard teamMembers={teamMembers} project={project} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} onSchedule={() => onDrop?.(card.id, projectId)} />)}
       </div>
     </section>
   );
@@ -1258,6 +1263,7 @@ export const UnassignedPool = memo(function UnassignedPool({
   workpackageKind = "fte",
   onChangeWorkpackageKind,
   cards,
+  teamMembers = [],
   reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   fteRates,
   toolFteRates,
@@ -1378,13 +1384,14 @@ export const UnassignedPool = memo(function UnassignedPool({
             : "flex flex-col gap-2"
         }`}
       >
-        {poolCards.map((card) => card.kind === "non-fte" ? <NonFteWorkpackageCard suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} /> : (
+        {poolCards.map((card) => card.kind === "non-fte" ? <NonFteWorkpackageCard teamMembers={teamMembers} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} /> : (
           <FunctionCard
             key={card.id}
             card={card}
             reusabilityFactors={reusabilityFactors}
             fteRates={fteRates}
             toolFteRates={toolFteRates}
+            teamMembers={teamMembers}
             projectId="pool"
             isCompact={isCompact}
             onEdit={onEdit}

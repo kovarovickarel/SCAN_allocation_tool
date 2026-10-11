@@ -1,3 +1,4 @@
+import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
 import { useContext, useId, useLayoutEffect, useRef, useState } from "react";
 import { ThemeContext, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONE_MAP, DEFAULT_SUPPLIERS } from "../../constants";
 import { purchaseCost, purchaseCostDot, purchaseCostSummary, purchaseSubcategory, purchaseMonthlyCosts, validPurchaseMonths } from "../../utils/nonFteWorkpackages";
@@ -16,9 +17,11 @@ const receiptDividerStyle = {
   backgroundPosition: "left top",
 };
 
-export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPLIERS, reusabilityFactors, isCompact = false, onEdit, onDelete, onDragStart, onDragEnd, onSchedule }: FunctionCardProps & { project?: AllocationProject; onSchedule?: () => void; suppliers?: readonly SupplierRecord[] }) {
+export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPLIERS, reusabilityFactors, isCompact = false, teamMembers = [], onEdit, onDelete, onDragStart, onDragEnd, onSchedule }: FunctionCardProps & { project?: AllocationProject; onSchedule?: () => void; suppliers?: readonly SupplierRecord[] }) {
   const { isBasic, isRetro, isBasicMode } = useContext(ThemeContext);
   const [paymentsExpanded, setPaymentsExpanded] = useState(false);
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [detailsEditing, setDetailsEditing] = useState(false);
   const paymentDetailsId = useId();
   const tool = TOOL_MAP[card.tool] || TOOL_MAP.Other;
   const toolCardTheme = TOOL_CARD_THEMES[card.tool] || TOOL_CARD_THEMES.Other;
@@ -114,14 +117,14 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
   const [startYear, startMonth] = (project?.startDate || "2026-01").split("-").map(Number);
   if (card._editing) return <NonFteWorkpackageModal inline card={card} suppliers={suppliers} reusabilityFactors={reusabilityFactors}
     onClose={() => onEdit?.(card.id, false, null)} onSave={updated => onEdit?.(card.id, false, updated)} />;
-  return <article draggable onDragStart={event => {
+  return <article draggable={!detailsEditing} onDragStart={event => {
     event.stopPropagation();
     event.dataTransfer.setData("application/x-scan-card", card.id);
     event.dataTransfer.setData("text/plain", card.id);
     event.dataTransfer.effectAllowed = "move";
     window.__scan_dragged_card_id = card.id;
     onDragStart?.(card);
-  }} onDragEnd={onDragEnd} className={`w-full min-w-0 shrink-0 bg-white border border-b-2 border-b-amber-300 p-2 rounded shadow-2xs cursor-grab ${isRetro ? "rounded-none border-black font-mono" : toolCardTheme.border} ${tool.text} ${card._isNegated ? "opacity-50" : ""}`}
+  }} onDragEnd={onDragEnd} className={`group w-full min-w-0 shrink-0 bg-white border border-b-2 border-b-amber-300 p-2 rounded shadow-2xs cursor-grab transition-colors ${isRetro ? "rounded-none border-black font-mono" : toolCardTheme.border} ${tool.text} ${card._isNegated ? "opacity-50" : ""}`}
     style={{ borderTopWidth: 5, borderBottomStyle: "dashed" }}>
     <div ref={headerRef} className="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-black/10 min-w-0">
       <div className={`flex items-center min-w-0 flex-1 ${isCompact ? "gap-1.5" : "gap-2"}`}>
@@ -143,8 +146,9 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
         </span>}
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {!isCompact && <button type="button" draggable={false} onClick={() => onEdit?.(card.id, true)} aria-label={`Edit ${card.name}`} className="text-slate-400 hover:text-blue-600 cursor-pointer"><PencilIcon size={11} /></button>}
-        <button type="button" draggable={false} onClick={() => onDelete?.(card.id)} aria-label={`Delete ${card.name}`} className="text-rose-300 hover:text-rose-600 cursor-pointer"><TrashIcon size={11} /></button>
+        {!isCompact && !isBasicMode && <WorkpackageDetailsButton expanded={detailsExpanded} onToggle={() => setDetailsExpanded(value => !value)} name={card.name} />}
+        {!isCompact && <button type="button" draggable={false} onClick={() => onEdit?.(card.id, true)} aria-label={`Edit ${card.name}`} className="p-0.5 text-gray-500 hover:text-gray-900 opacity-40 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer"><PencilIcon size={11} /></button>}
+        <button type="button" draggable={false} onClick={() => onDelete?.(card.id)} aria-label={`Delete ${card.name}`} className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded opacity-40 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer"><TrashIcon size={11} /></button>
       </div>
     </div>
     {!isCompact && <div className="flex items-start justify-between gap-2 min-w-0">
@@ -191,5 +195,6 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
         : <span className={`text-[9px] font-bold ${isRetro ? "text-black font-mono" : "text-gray-600"} uppercase shrink-0`}>TOTAL COST:</span>}
       <WorkpackageCostLabel cost={purchaseCostSummary(card._isNegated ? 0 : total, "EUR")} compact={isCompact} title={`${card._isAltered ? "Manually adjusted purchase cost" : "Purchase cost after reusability"}: ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`} />
     </div>
+    {!isCompact && !isBasicMode && <WorkpackageDetailsPanel card={card} onEdit={onEdit} expanded={detailsExpanded} onTextInteraction={setDetailsEditing} teamMembers={teamMembers} />}
   </article>;
 }

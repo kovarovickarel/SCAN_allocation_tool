@@ -321,3 +321,15 @@ export const ToolIcon = memo(({ toolName, size = 13, className = "" }: ToolIconP
       );
   }
 });
+
+export const AlertTriangleIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M12 3 2 21h20zM12 9v5M12 17h.01" />
+  </svg>
+));
+
+export const PuzzlePieceIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M19 13h-2a2 2 0 1 1 0-4h2V5h-6V3a2 2 0 1 0-4 0v2H5v6H3a2 2 0 1 0 0 4h2v4h6v2a2 2 0 1 0 4 0v-2h4v-6Z" />
+  </svg>
+));

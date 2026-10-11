@@ -572,6 +572,10 @@ export default function App() {
   const handleDragEnd = useCallback(() => setDraggedCard(null), []);
 
   const handleEdit = useCallback((cardId, startEditing, draft) => {
+    if (!startEditing && draft && Object.keys(draft).length === 1 && draft.details !== undefined) {
+      setFunctions(current => current.map(card => card.id === cardId ? { ...card, details: draft.details } : card));
+      return;
+    }
     const card = functions.find(item => item.id === cardId);
     if (!startEditing && draft && card?.kind === "non-fte") {
       const updated = { ...card, ...draft, kind: "non-fte" as const, subcategory: purchaseSubcategory({ ...card, ...draft }), _editing: false };
@@ -942,6 +946,7 @@ export default function App() {
             onSavePayments={handleSavePurchasePayments} /> : <>
           {activeToolView === "all" ? (
             <UnassignedPool
+              teamMembers={teamMembers}
               onOpenConfiguration={() => setShowWorkpackagesConfigModal(true)}
               suppliers={config.suppliers}
               workpackageKind={workpackageKind}
@@ -966,6 +971,7 @@ export default function App() {
             <div className="w-80 shrink-0 flex flex-col gap-3 h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]">
               <div className="flex-1 min-h-0 flex flex-col">
                 <UnassignedPool
+                  teamMembers={teamMembers}
                   onOpenConfiguration={() => setShowWorkpackagesConfigModal(true)}
                   suppliers={config.suppliers}
                   workpackageKind={workpackageKind}
@@ -1128,7 +1134,7 @@ export default function App() {
         </main>
 
         {/* Modals */}
-        {showAddFunction && workpackageKind === "non-fte" && <NonFteWorkpackageModal
+        {showAddFunction && workpackageKind === "non-fte" && <NonFteWorkpackageModal teamMembers={teamMembers}
           suppliers={config.suppliers} activeToolView={activeToolView}
           reusabilityFactors={config.reusabilityFactors} onClose={() => setShowAddFunction(false)}
           onSave={card => {
@@ -1152,7 +1158,7 @@ export default function App() {
           }} />}
 
         {showAddFunction && workpackageKind === "fte" && (
-          <AddFunctionModal
+          <AddFunctionModal teamMembers={teamMembers}
             onClose={() => setShowAddFunction(false)}
             reusabilityFactors={config.reusabilityFactors}
             fteRates={config.fteRates}

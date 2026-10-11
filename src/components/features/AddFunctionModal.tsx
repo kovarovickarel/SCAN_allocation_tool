@@ -1,3 +1,5 @@
+import { WorkpackageDetailsForm } from "./WorkpackageDetails";
+import type { WorkpackageDetails } from "../../types";
 import { workpackageTypeNames, workpackageRateKey } from "../../utils/workpackageTypes";
 import React, { useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, DEFAULT_OTHER_SETTINGS, MILESTONES_DEF, genId } from "../../constants";
@@ -6,8 +8,10 @@ import type { AddFunctionModalProps, AddFunctionDraft } from './componentTypes';
 import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
 import { normalizeReusability, parseReusabilityFactor, hasWorkpackageMaintenance } from "../../utils/helpers";
 
-export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER_SETTINGS, activeToolView = "all", reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates, toolFteRates }: AddFunctionModalProps) {
-  const { isRetro } = React.useContext(ThemeContext);
+export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER_SETTINGS, activeToolView = "all", reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates, toolFteRates, teamMembers = [] }: AddFunctionModalProps) {
+  const [details, setDetails] = useState<WorkpackageDetails>({});
+  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const defaultTool = activeToolView !== "all" ? activeToolView : "KPI";
   const [draft, setDraft] = useState<AddFunctionDraft>({
     name: "",
@@ -51,6 +55,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
     if (!draft.name.trim() || isInvalidReusability) return;
     onAdd({
       id: genId(),
+      ...(Object.keys(details).length ? { details } : {}),
       name: draft.name.trim(),
       tool: draft.tool,
       complexity: workpackageRateKey(draft, toolFteRates),
@@ -75,7 +80,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
           isRetro
             ? "bg-[#d4d0c8] rounded-none border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono text-black"
             : "bg-white rounded-xl shadow-2xl border border-slate-300"
-        } p-6 w-full max-w-sm flex flex-col gap-4`}
+        } p-6 w-full ${detailsExpanded ? "max-w-2xl" : "max-w-sm"} max-h-[92vh] overflow-y-auto flex flex-col gap-4`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className={`flex items-center justify-between pb-2 ${
@@ -327,6 +332,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
             )}
           </div>
         </div>
+        {!isBasicMode && <WorkpackageDetailsForm details={details} onChange={setDetails} teamMembers={teamMembers} expanded={detailsExpanded} onToggle={() => setDetailsExpanded(value => !value)} />}
         <div className={`flex gap-2 pt-2 ${isRetro ? "border-t-2 border-black" : "border-t"}`}>
           <button
             type="button"
