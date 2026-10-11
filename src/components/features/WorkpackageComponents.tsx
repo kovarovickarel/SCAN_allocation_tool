@@ -967,7 +967,7 @@ export const ToolRow = memo(function ToolRow({
       <div className={isCompact
         ? `grid ${hasMultipleSlots && visibleSlots.length > 1 ? "grid-cols-2" : "grid-cols-3"} gap-1.5 content-start`
         : "flex flex-col gap-1.5"}>
-        {purchases.map(card => <NonFteWorkpackageCard teamMembers={teamMembers} project={project} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} onSchedule={() => onDrop?.(card.id, projectId)} />)}
+        {purchases.map(card => <NonFteWorkpackageCard teamMembers={teamMembers} project={project} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} onSchedule={() => onDrop?.(card.id, projectId, true)} />)}
       </div>
     </section>
   );

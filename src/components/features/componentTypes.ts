@@ -74,7 +74,7 @@ export interface ToolRowProps extends ReusabilityRatesProps {
   isCompact?: boolean;
   onEdit?: CardEditHandler;
   onDelete?: (cardId: string) => void;
-  onDrop?: (cardId: string, projectId: string) => void;
+  onDrop?: (cardId: string, projectId: string, editSchedule?: boolean) => void;
   onDragStart?: (card: WorkpackageCard) => void;
   onDragEnd?: (event?: React.DragEvent<HTMLElement>) => void;
   draggedCard?: WorkpackageCard | null;
@@ -102,7 +102,7 @@ export interface UnassignedPoolProps extends ReusabilityRatesProps {
   reusabilityFactors?: FactorMap;
   onEdit: CardEditHandler;
   onDelete: (cardId: string) => void;
-  onDrop: (cardId: string, projectId: string) => void;
+  onDrop: (cardId: string, projectId: string, editSchedule?: boolean) => void;
   onDragStart: (card: WorkpackageCard) => void;
   onDragEnd: (event?: React.DragEvent<HTMLElement>) => void;
   draggedCard: WorkpackageCard | null;
@@ -276,7 +276,7 @@ export interface ProjectBasketProps {
   index: number;
   onEdit: CardEditHandler;
   onDelete: (cardId: string) => void;
-  onDrop: (cardId: string, projectId: string) => void;
+  onDrop: (cardId: string, projectId: string, editSchedule?: boolean) => void;
   onDragStart: (card: WorkpackageCard) => void;
   onDragEnd: (event?: React.DragEvent<HTMLElement>) => void;
   draggedCard: WorkpackageCard | null;

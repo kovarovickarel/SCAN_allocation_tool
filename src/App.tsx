@@ -488,10 +488,11 @@ export default function App() {
     );
   }, [projects, functions, teamMembers, config]);
 
-  const handleDrop = useCallback((cardId, targetProjectId) => {
+  const handleDrop = useCallback((cardId, targetProjectId, editSchedule = false) => {
     setDraggedCard(null);
     if (targetProjectId !== "pool") {
       const targetCard = functions.find((f) => f.id === cardId);
+      if (targetCard?.projectId === targetProjectId && !editSchedule) return;
       const targetProj = projects.find((p) => p.id === targetProjectId);
       if (targetCard?.kind === "non-fte" && targetProj) {
         setPendingPurchase({ card: { ...targetCard, subcategory: purchaseSubcategory(targetCard) }, project: targetProj });

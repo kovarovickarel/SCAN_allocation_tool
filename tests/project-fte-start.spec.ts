@@ -65,12 +65,11 @@ for (const mode of ["extended", "retro"]) test(`manual project start selection, 
   await dialog.getByRole("button", { name: "Confirm & Place in Project" }).click();
   await expect(dialog).toHaveCount(0);
   await expect(pool.getByText("Manual schedule UI", { exact: true })).toHaveCount(0);
-  // Reopening retains the selected project-relative start, even after switching the toggle.
+  // Same-project drops do not reopen scheduling, even after switching the toggle.
   await toggle.click();
   await toggle.click();
   await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
-  await expect(page.getByLabel("Workpackage Starting Month")).toHaveValue("3");
-  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await work().dragTo(pool.getByRole("heading", { name: "Workpackage Pool", exact: true }));
   await toggle.click();
   await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
@@ -78,7 +77,7 @@ for (const mode of ["extended", "retro"]) test(`manual project start selection, 
   await expect(pool.getByText("Manual schedule UI", { exact: true })).toHaveCount(0);
   await toggle.click();
   await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
-  await expect(page.getByLabel("Workpackage Starting Month")).toHaveValue("1");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 test("manual schedules re-open for deadline correction instead of automatic warnings", async ({ page }) => {
@@ -149,6 +148,9 @@ test("basic mode always schedules manually, hides the toggle and preserves exten
   await dialog.getByRole("button", { name: "End (M12)", exact: true }).click();
   await dialog.getByLabel("Workpackage Starting Month").fill("3");
   await dialog.getByRole("button", { name: "Confirm & Place in Project" }).click();
+  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await work().dragTo(page.getByRole("heading", { name: "Workpackage Pool", exact: true }));
   await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
   dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "FFV M6", exact: true }).click();
