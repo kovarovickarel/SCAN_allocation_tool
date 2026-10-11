@@ -49,7 +49,7 @@ export function useProjectTimelineRangeEditing({
     const isClear = isNaN(parsed) || cellInputValue.trim() === "";
     const targetVal = isClear ? null : Math.max(0, parsed);
 
-    const { type, cardId, toolName, isCollapsed, getMonthData } = rangeSelection;
+    const { type, cardId, toolName, isCollapsed, getMonthData, activityId, activityIds } = rangeSelection;
 
     const updates = selectedMonthIndices
       .filter((mIdx) => {
@@ -99,6 +99,25 @@ export function useProjectTimelineRangeEditing({
         setLocalCards((prev) =>
           prev.map((f) => {
             if (f.id !== cardId) return f;
+            if (type === "supportingActivity") {
+              const activities = Object.fromEntries(Object.entries(f.customSupportingActivityFTE || {}).map(([id, months]) => [id, { ...(months as Record<string, number>) }]));
+              const key = activityId === "weeklyMeetings" ? "customMeetingsFTE" : "customDevSupportFTE";
+              const aggregate = { ...(f[key] || {}) };
+              for (const { monthIdx, value, defaultVal } of updates) {
+                const data = getMonthData(monthIdx);
+                const values = { ...data.activityValues, [activityId]: value ?? defaultVal };
+                for (const id of activityIds) {
+                  activities[id] = { ...activities[id] };
+                  if (Math.abs(values[id] - data.activityDefaults[id]) < 0.001) delete activities[id][monthIdx];
+                  else activities[id][monthIdx] = round2(values[id]);
+                }
+                const total = round2(activityIds.reduce((sum, id) => sum + values[id], 0));
+                const baseline = round2(activityIds.reduce((sum, id) => sum + data.activityDefaults[id], 0));
+                if (Math.abs(total - baseline) < 0.001) delete aggregate[monthIdx];
+                else aggregate[monthIdx] = total;
+              }
+              return { ...f, customSupportingActivityFTE: activities, [key]: aggregate };
+            }
             const key = type === "devSupport" ? "customDevSupportFTE" : type === "meetings" ? "customMeetingsFTE" : "customCoreFTE";
             const current = { ...(f[key] || {}) };
             for (let i = 0; i < updates.length; i++) {
@@ -122,7 +141,7 @@ export function useProjectTimelineRangeEditing({
 
   const handleResetRange = useCallback(() => {
     if (!rangeSelection || selectedMonthIndices.length === 0) return;
-    const { type, cardId, toolName, getMonthData } = rangeSelection;
+    const { type, cardId, toolName, getMonthData, activityId, activityIds } = rangeSelection;
 
     const updates = selectedMonthIndices
       .filter((mIdx) => {
@@ -152,6 +171,25 @@ export function useProjectTimelineRangeEditing({
         setLocalCards((prev) =>
           prev.map((f) => {
             if (f.id !== cardId) return f;
+            if (type === "supportingActivity") {
+              const activities = Object.fromEntries(Object.entries(f.customSupportingActivityFTE || {}).map(([id, months]) => [id, { ...(months as Record<string, number>) }]));
+              const key = activityId === "weeklyMeetings" ? "customMeetingsFTE" : "customDevSupportFTE";
+              const aggregate = { ...(f[key] || {}) };
+              for (const { monthIdx } of updates) {
+                const data = getMonthData(monthIdx);
+                const values = { ...data.activityValues, [activityId]: data.defaultVal };
+                for (const id of activityIds) {
+                  activities[id] = { ...activities[id] };
+                  if (Math.abs(values[id] - data.activityDefaults[id]) < 0.001) delete activities[id][monthIdx];
+                  else activities[id][monthIdx] = round2(values[id]);
+                }
+                const total = round2(activityIds.reduce((sum, id) => sum + values[id], 0));
+                const baseline = round2(activityIds.reduce((sum, id) => sum + data.activityDefaults[id], 0));
+                if (Math.abs(total - baseline) < 0.001) delete aggregate[monthIdx];
+                else aggregate[monthIdx] = total;
+              }
+              return { ...f, customSupportingActivityFTE: activities, [key]: aggregate };
+            }
             const key = type === "devSupport" ? "customDevSupportFTE" : type === "meetings" ? "customMeetingsFTE" : "customCoreFTE";
             const current = { ...(f[key] || {}) };
             for (let i = 0; i < updates.length; i++) {

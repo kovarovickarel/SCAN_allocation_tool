@@ -6,10 +6,14 @@ export type TimelineRangeMonthData = {
   isOverridden?: boolean;
   effDevRate?: number;
   effMeetingsRate?: number;
+  activityValues?: Record<string, number>;
+  activityDefaults?: Record<string, number>;
 };
 
 export type TimelineRangeSelectionContext = {
   type: string;
+  activityId?: string;
+  activityIds?: string[];
   cardId?: string | null;
   toolName?: string | null;
   isCollapsed?: boolean;

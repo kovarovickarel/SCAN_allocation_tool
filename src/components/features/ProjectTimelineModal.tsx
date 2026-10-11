@@ -1,7 +1,10 @@
+import { workpackageTypeLabel } from "../../utils/workpackageTypes";
+import { supportingPhaseRates, supportingActivityRate, getSupportingPhases } from "../../utils/supportingPhases";
+import { workpackageRateKey, workpackageTypeColor, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_COLORS, TOOLS, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, MILESTONE_MAP, clamp, round2 } from "../../constants";
 import { normalizeMilestones, calculateProjectEffort, getFTEGradientStyle, computeWorkpackageLifecycleTimeline, getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "../../utils/helpers";
-import { workpackageStartMonth, workpackageRepositionLimits, repositionWorkpackage } from "../../utils/workpackageFinishTargets";
+import { workpackageStartMonth, workpackageFinishTarget, workpackageRepositionLimits, repositionWorkpackage } from "../../utils/workpackageFinishTargets";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { useProjectTimelineRangeEditing } from "../../hooks/useProjectTimelineRangeEditing";
@@ -111,6 +114,7 @@ export function ProjectTimelineModal({
           customCoreFTE: {},
           customDevSupportFTE: {},
           customMeetingsFTE: {},
+          customSupportingActivityFTE: {},
         };
       })
     );
@@ -239,10 +243,10 @@ export function ProjectTimelineModal({
         const stabilityMultiplier = stabilityFactors[localProject.stability] ?? 1.0;
 
         const workpackages = toolCards.map((c) => {
-        const isToolOther = c.tool === "Other";
+        const isToolOther = c.tool === "Other" && !c.complexity;
         const isSubUnused = c.subcategory ? hiddenSubs.has(c.subcategory) : false;
         const isNegated = isToolUnused || isSubUnused || Boolean(c._isNegated);
-        const complexityKey = c.tool === "KPI" ? (c.complexity || "Supporting") : "Point Cloud";
+        const complexityKey = workpackageRateKey(c, toolFteRates);
         const rates = toolFteRates?.[t.name]?.[complexityKey] ?? fteRates?.[complexityKey] ?? DEFAULT_FTE_RATES[complexityKey] ?? DEFAULT_FTE_RATES["Point Cloud"];
 
         const isDraggingThisCard = Boolean(activityDrag && activityDrag.cardId === c.id);
@@ -253,9 +257,11 @@ export function ProjectTimelineModal({
         );
         const activeCustomCore = effectiveCard.customCoreFTE;
 
-        const supportMultiplier = getSupportReusabilityFactor(c, reusabilityFactors);
-        const defaultDevFunctionsRate = isNegated || isToolOther ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier * supportMultiplier);
-        const defaultMeetingsRate = isNegated || isToolOther ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier * supportMultiplier);
+        const supportingPhases = getSupportingPhases(rates);
+        const devSupportLabel = supportingPhases.filter(phase => phase.id !== "weeklyMeetings").map(phase => phase.name).join(" + ") || "Supporting activities";
+        const meetingsLabel = supportingPhases.find(phase => phase.id === "weeklyMeetings")?.name || "Weekly meeting attendance";
+        const supportMultiplier = getSupportReusabilityFactor(c, reusabilityFactors, rates);
+        const { dev: defaultDevFunctionsRate, meetings: defaultMeetingsRate } = supportingPhaseRates(c, rates, defaultCoreMonths[0], reusabilityFactors, stabilityMultiplier, isNegated);
 
         let hasAnyDevOverride = false;
         let hasAnyMeetingsOverride = false;
@@ -270,13 +276,14 @@ export function ProjectTimelineModal({
             meetingsMonths.push(inactive);
             continue;
           }
+          const { dev: defaultDevFunctionsRate, meetings: defaultMeetingsRate } = supportingPhaseRates(c, rates, defaultCoreMonths[m], reusabilityFactors, stabilityMultiplier, isNegated);
           const customDev = isNegated || supportMultiplier === 0 ? undefined : effectiveCard.customDevSupportFTE?.[m];
           const isDevOverridden = customDev !== undefined && Math.abs(customDev - defaultDevFunctionsRate) > 0.001;
           if (isDevOverridden) hasAnyDevOverride = true;
           const effDevRate = isDevOverridden ? customDev : defaultDevFunctionsRate;
 
           devSupportMonths.push({
-            phaseName: "Functions Dev Support",
+            phaseName: devSupportLabel,
             shortPhase: "DevSupp",
             phaseSpan: duration,
             phaseMonthIndex: m + 1,
@@ -294,7 +301,7 @@ export function ProjectTimelineModal({
           const effMeetingsRate = isMeetingsOverridden ? customMeetings : defaultMeetingsRate;
 
           meetingsMonths.push({
-            phaseName: "Weekly Meetings Attendance",
+            phaseName: meetingsLabel,
             shortPhase: "Meetings",
             phaseSpan: duration,
             phaseMonthIndex: m + 1,
@@ -307,12 +314,40 @@ export function ProjectTimelineModal({
           });
         }
 
+        // Round each actual support span, including gaps and maintenance exclusions.
+        for (const activityMonths of [devSupportMonths, meetingsMonths]) {
+          activityMonths.forEach((month, index) => {
+            const active = month.totalFTE > 0;
+            month.isPhaseStart = active && !(activityMonths[index - 1]?.totalFTE > 0);
+            month.isPhaseEnd = active && !(activityMonths[index + 1]?.totalFTE > 0);
+          });
+        }
+
+        const supportingTracks = supportingPhases.map(activity => {
+          const ids = supportingPhases.filter(phase => (phase.id === "weeklyMeetings") === (activity.id === "weeklyMeetings")).map(phase => phase.id);
+          const aggregateMonths = activity.id === "weeklyMeetings" ? meetingsMonths : devSupportMonths;
+          const months = defaultCoreMonths.map((month, index) => {
+            const baseline = supportingActivityRate(c, activity, rates, month, reusabilityFactors, stabilityMultiplier, isNegated);
+            const hasIndividualOverrides = ids.some(id => effectiveCard.customSupportingActivityFTE?.[id]?.[index] !== undefined);
+            const aggregate = aggregateMonths[index];
+            const stored = effectiveCard.customSupportingActivityFTE?.[activity.id]?.[index];
+            const value = month.phaseName === "Inactive" || isNegated ? 0 : hasIndividualOverrides ? stored ?? baseline : aggregate?.isOverridden && aggregate.defaultFTE > 0 ? round2(baseline * aggregate.totalFTE / aggregate.defaultFTE) : baseline;
+            return { phaseName: activity.name, totalFTE: value, defaultFTE: baseline, isOverridden: Math.abs(value - baseline) > 0.001,
+              isPhaseStart: false, isPhaseEnd: false, style: getFTEGradientStyle(value, isNegated, 3.0, true) };
+          });
+          months.forEach((month, index) => {
+            month.isPhaseStart = month.totalFTE > 0 && !(months[index - 1]?.totalFTE > 0);
+            month.isPhaseEnd = month.totalFTE > 0 && !(months[index + 1]?.totalFTE > 0);
+          });
+          return { activity, ids, months, hasOverride: months.some(month => month.isOverridden) };
+        });
+
         const mergedCoreMonths = defaultCoreMonths.map((m, mIdx) => {
           if (!isToolOther && m.phaseName === "Inactive") return { ...m, defaultMergedFTE: 0, totalWPMonthlyFTE: 0, hasOverride: false, isCoreOverridden: false, coreOnlyFTE: 0, defaultCoreOnlyFTE: 0, effDevRate: 0, effMeetingsRate: 0, mergedStyle: m.style, coreOnlyStyle: m.style };
           const effDevRate = devSupportMonths[mIdx]?.totalFTE ?? defaultDevFunctionsRate;
           const effMeetingsRate = meetingsMonths[mIdx]?.totalFTE ?? defaultMeetingsRate;
           const combinedEffSupportRate = round2(effDevRate + effMeetingsRate);
-          const defaultCombinedSupportRate = round2(defaultDevFunctionsRate + defaultMeetingsRate);
+          const defaultCombinedSupportRate = round2((devSupportMonths[mIdx]?.defaultFTE ?? 0) + (meetingsMonths[mIdx]?.defaultFTE ?? 0));
 
           const defaultCoreOnlyFTE = m.totalFTE;
           const defaultMergedFTE = isNegated ? 0 : round2(defaultCoreOnlyFTE + defaultCombinedSupportRate);
@@ -322,7 +357,7 @@ export function ProjectTimelineModal({
           const coreOnlyFTE = isCoreOverridden ? customCore : defaultCoreOnlyFTE;
 
           const totalWPMonthlyFTE = isNegated ? 0 : round2(coreOnlyFTE + combinedEffSupportRate);
-          const hasAnyMonthOverride = isCoreOverridden || devSupportMonths[mIdx]?.isOverridden || meetingsMonths[mIdx]?.isOverridden;
+          const hasAnyMonthOverride = isCoreOverridden || devSupportMonths[mIdx]?.isOverridden || meetingsMonths[mIdx]?.isOverridden || supportingTracks.some(track => track.months[mIdx]?.isOverridden);
 
           return {
             ...m,
@@ -340,7 +375,7 @@ export function ProjectTimelineModal({
         });
 
         const hasAnyCoreOverride = Object.keys(activeCustomCore || {}).length > 0;
-        const isWPAltered = Boolean(c._isAltered) || hasAnyCoreOverride || hasAnyDevOverride || hasAnyMeetingsOverride;
+        const isWPAltered = Boolean(c._isAltered) || hasAnyCoreOverride || hasAnyDevOverride || hasAnyMeetingsOverride || supportingTracks.some(track => track.hasOverride);
 
         let totalEffortSum = 0;
         for (let m = 0; m < duration; m++) {
@@ -358,9 +393,12 @@ export function ProjectTimelineModal({
           rates,
           defaultDevFunctionsRate,
           defaultMeetingsRate,
+          devSupportLabel,
+          meetingsLabel,
           mergedCoreMonths,
           devSupportMonths,
           meetingsMonths,
+          supportingTracks,
         };
       });
 
@@ -588,7 +626,7 @@ export function ProjectTimelineModal({
                     ? "bg-indigo-600 text-white shadow-xs rounded"
                     : "text-slate-300 hover:text-white rounded"
                 }`}
-                title="Separate Dev Support & Weekly Meetings as individual tracks under each workpackage"
+                title="Show each supporting activity as an individual track under each workpackage"
               >
                 + Expand
               </button>
@@ -1050,16 +1088,16 @@ export function ProjectTimelineModal({
 
                         {/* Workpackages within Domain */}
                         {workpackages.map((wp) => {
-                          const { card, isNegated, isWPAltered, activeCardFTE, hasAnyDevOverride, hasAnyMeetingsOverride, mergedCoreMonths, defaultDevFunctionsRate, defaultMeetingsRate, devSupportMonths, meetingsMonths } = wp;
+                          const { card, isNegated, isWPAltered, activeCardFTE, mergedCoreMonths } = wp;
                           const complexityDef = COMPLEXITY_COLORS[card.complexity];
+                          const typeColor = workpackageTypeColor(card, toolFteRates);
 
                           const isWPCollapsed = customCollapsedWPs[card.id] ?? globalSupportCollapsed;
                           const coreRowKey = `core_${card.id}`;
-                          const devRowKey = `devSupport_${card.id}`;
-                          const meetRowKey = `meetings_${card.id}`;
                           const repositionLimits = workpackageRepositionLimits(card, localProject, fteRates, toolFteRates);
                           const isDraggingThisWP = activityDrag?.cardId === card.id;
-                          const finishMsDef = card.otherFinishMilestone ? MILESTONE_MAP[card.otherFinishMilestone] : null;
+                          const finishTarget = workpackageFinishTarget(card);
+                          const finishMsDef = finishTarget ? MILESTONE_MAP[finishTarget] : null;
 
                           return (
                             <div key={card.id} className={`flex flex-col border-b ${isRetro ? "border-black last:border-b-0" : "border-slate-100 last:border-b-0"} group/wprow`}>
@@ -1071,7 +1109,7 @@ export function ProjectTimelineModal({
                                 <div className={`p-2 pl-7 border-r ${isRetro ? "border-black" : tool.border} flex flex-col justify-center h-full min-w-0`}>
                                   <div className="flex items-center justify-between gap-1 min-w-0">
                                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                      <span className={`w-1.5 h-1.5 rounded-full ${isNegated ? "bg-gray-400" : complexityDef?.dot || "bg-blue-500"} shrink-0`} />
+                                      <span style={isNegated ? undefined : { backgroundColor: typeColor }} className={`w-1.5 h-1.5 rounded-full ${isNegated ? "bg-gray-400" : complexityDef?.dot || "bg-blue-500"} shrink-0`} />
                                       <span
                                         className={`text-[11px] font-bold ${isRetro ? "font-mono font-bold text-black" : "text-slate-800"} truncate leading-tight ${isNegated ? "line-through text-slate-500" : ""}`}
                                         title={isWPAltered ? `${card.name} (Monthly FTE manually altered)` : card.name}
@@ -1115,7 +1153,7 @@ export function ProjectTimelineModal({
                                             <RotateCcwIcon size={9} /> Reset
                                           </button>
                                         )}
-                                        {card.tool !== "Other" && (
+                                        {getSupportingPhases(wp.rates).length > 0 && (
                                           <button
                                             type="button"
                                             onClick={() => toggleWPSupport(card.id)}
@@ -1147,14 +1185,14 @@ export function ProjectTimelineModal({
                                         {card.subcategory}
                                       </span>
                                     )}
-                                    {card.tool === "KPI" && card.complexity && (
-                                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
-                                        isRetro ? "bg-white text-black border border-black font-mono" : complexityDef?.badge
+                                    {card.complexity && (card.tool === "KPI" || toolFteRates?.[card.tool]?.[card.complexity]?.phases) && (
+                                      <span style={workpackageTypeBadgeStyle(card, toolFteRates)} className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                                        isRetro ? "bg-white text-black border border-black font-mono" : complexityDef?.badge ?? `${tool.accent} ${tool.text}`
                                       }`}>
-                                        {card.complexity}
+                                        {workpackageTypeLabel(card)}
                                       </span>
                                     )}
-                                    {card.tool === "Other" && (() => {
+                                    {card.tool === "Other" && !card.complexity && (() => {
                                       const rawEffort = parseFloat(card.otherEffort) || 0.3;
                                       const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
                                       const finalEffort = round2(rawEffort * reusabilityMult);
@@ -1489,31 +1527,58 @@ export function ProjectTimelineModal({
                               </div>
 
                               {/* Itemized Support Tracks */}
-                              {!isWPCollapsed && !isNegated && card.tool !== "Other" && (
+                              {!isWPCollapsed && !isNegated && getSupportingPhases(wp.rates).length > 0 && (
                                 <>
-                                  {/* Sub-track 1: Functions Dev Support */}
-                                  <div className={`grid grid-cols-[300px_1fr] items-center min-h-[30px] ${
+                                  {wp.supportingTracks.map((track, activityIndex) => {
+                                    const activityMonths = track.months;
+                                    const activityRowKey = `supporting_${card.id}_${activityIndex}`;
+                                    const hasActivityOverride = track.hasOverride;
+                                    const resetActivity = () => {
+                                      setLocalCards(current => current.map(item => {
+                                        if (item.id !== card.id) return item;
+                                        const activities = { ...item.customSupportingActivityFTE };
+                                        const key = track.activity.id === "weeklyMeetings" ? "customMeetingsFTE" : "customDevSupportFTE";
+                                        const aggregate = { ...item[key] };
+                                        for (let monthIndex = 0; monthIndex < duration; monthIndex++) {
+                                          let total = 0, baseline = 0;
+                                          for (const sibling of wp.supportingTracks.filter(other => track.ids.includes(other.activity.id))) {
+                                            const value = sibling.activity.id === track.activity.id ? sibling.months[monthIndex].defaultFTE : sibling.months[monthIndex].totalFTE;
+                                            baseline += sibling.months[monthIndex].defaultFTE;
+                                            total += value;
+                                            activities[sibling.activity.id] = { ...activities[sibling.activity.id] };
+                                            if (Math.abs(value - sibling.months[monthIndex].defaultFTE) < 0.001) delete activities[sibling.activity.id][monthIndex];
+                                            else activities[sibling.activity.id][monthIndex] = value;
+                                          }
+                                          if (Math.abs(total - baseline) < 0.001) delete aggregate[monthIndex];
+                                          else aggregate[monthIndex] = round2(total);
+                                        }
+                                        return { ...item, customSupportingActivityFTE: activities, [key]: aggregate };
+                                      }));
+                                      setIsDirty(true);
+                                    };
+                                    return (
+                                  <div key={track.activity.id} className={`grid grid-cols-[300px_1fr] items-center min-h-[30px] ${
                                     isRetro ? "bg-[#d8d4cc] border-t border-dashed border-black/40" : "bg-sky-50/30 hover:bg-sky-50/50 border-t border-dashed border-sky-100"
                                   } transition-colors`}>
                                     <div className={`p-1 pl-11 border-r ${isRetro ? "border-black font-mono" : "border-slate-200"} flex items-center justify-between h-full min-w-0`}>
                                       <div className="flex items-center gap-1.5 min-w-0">
-                                        <span className={`text-[10px] ${isRetro ? "text-black" : "text-sky-400"} font-mono font-bold`}>├</span>
+                                        <span className={`text-[10px] ${isRetro ? "text-black" : "text-sky-400"} font-mono font-bold`}>{activityIndex === wp.supportingTracks.length - 1 ? "└" : "├"}</span>
                                         <span className={`text-[9.5px] font-bold ${isRetro ? "text-black font-mono" : "text-sky-950"} truncate`}>
-                                          1. Functions Dev Support
-                                          {hasAnyDevOverride && <span className="text-red-600 font-black ml-1" title="Manually modified">*</span>}
+                                          {activityIndex + 1}. {track.activity.name}
+                                          {hasActivityOverride && <span className="text-red-600 font-black ml-1" title="Manually modified">*</span>}
                                         </span>
                                       </div>
                                       <div className="flex items-center gap-1 shrink-0 ml-1">
-                                        {hasAnyDevOverride && (
+                                        {hasActivityOverride && (
                                           <button
                                             type="button"
-                                            onClick={() => handleResetCard(card.id, "devSupport")}
+                                            onClick={() => resetActivity()}
                                             className={`text-[8px] font-bold px-1 py-0.2 border transition-colors cursor-pointer ${
                                               isRetro
                                                 ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
                                                 : "rounded border-red-300 bg-red-50 hover:bg-red-100 text-red-800"
                                             }`}
-                                            title="Reset Dev Support overrides to default"
+                                            title={`Reset ${track.activity.name} overrides to default`}
                                           >
                                             Reset
                                           </button>
@@ -1527,12 +1592,12 @@ export function ProjectTimelineModal({
                                     </div>
 
                                     <div
-                                      data-timeline-row={devRowKey}
+                                      data-timeline-row={activityRowKey}
                                       className={`grid ${isRetro ? "divide-x divide-black" : "divide-x divide-sky-100/60"} h-full py-0.5 px-1.5 items-center select-none`}
                                       style={{ gridTemplateColumns: `repeat(${duration}, minmax(52px, 1fr))` }}
                                     >
-                                      {devSupportMonths.map((mData, mIdx) => {
-                                        const isRowSelected = rangeSelection && rangeSelection.rowKey === devRowKey;
+                                      {activityMonths.map((mData, mIdx) => {
+                                        const isRowSelected = rangeSelection && rangeSelection.rowKey === activityRowKey;
                                         const isCellSelected = isRowSelected && selectedMonthIndices.includes(mIdx);
                                         const isEditingThisCell = isRowSelected && rangeSelection.isEditing && rangeSelection.endMonthIdx === mIdx;
                                         const isCellEditable = mData.defaultFTE > 0 || Boolean(mData.isOverridden);
@@ -1542,14 +1607,18 @@ export function ProjectTimelineModal({
                                             key={mIdx}
                                             onMouseDown={(e) => {
                                               if (isCellEditable) {
-                                                handleCellMouseDown(e, devRowKey, {
-                                                  type: "devSupport",
+                                                handleCellMouseDown(e, activityRowKey, {
+                                                  type: "supportingActivity",
+                                                  activityId: track.activity.id,
+                                                  activityIds: track.ids,
                                                   cardId: card.id,
                                                   toolName: null,
                                                   getMonthData: (idx) => ({
-                                                    currentVal: devSupportMonths[idx]?.totalFTE ?? defaultDevFunctionsRate,
-                                                    defaultVal: devSupportMonths[idx]?.defaultFTE ?? defaultDevFunctionsRate,
-                                                    isOverridden: Boolean(devSupportMonths[idx]?.isOverridden),
+                                                    currentVal: activityMonths[idx]?.totalFTE ?? 0,
+                                                    defaultVal: activityMonths[idx]?.defaultFTE ?? 0,
+                                                    isOverridden: Boolean(activityMonths[idx]?.isOverridden),
+                                                    activityValues: Object.fromEntries(wp.supportingTracks.filter(other => track.ids.includes(other.activity.id)).map(other => [other.activity.id, other.months[idx].totalFTE])),
+                                                    activityDefaults: Object.fromEntries(wp.supportingTracks.filter(other => track.ids.includes(other.activity.id)).map(other => [other.activity.id, other.months[idx].defaultFTE])),
                                                   }),
                                                 }, mIdx);
                                               }
@@ -1608,7 +1677,7 @@ export function ProjectTimelineModal({
                                                     : mData.isOverridden
                                                     ? "ring-1 ring-red-600 ring-offset-1 ring-offset-white font-bold shadow-xs z-10"
                                                     : ""
-                                                } ${!mData.isPhaseStart ? "border-l-0" : ""} ${!mData.isPhaseEnd ? "border-r border-dashed border-white/30" : ""}`}
+                                                } border-dashed ${!mData.isPhaseStart ? "border-l-0" : ""} ${!mData.isPhaseEnd ? "border-r-0" : ""}`}
                                               >
                                                 {mData.isOverridden && (
                                                   <span className="absolute top-0.5 right-0.5 text-[6.5px] font-black text-red-600 leading-none z-20">★</span>
@@ -1623,138 +1692,8 @@ export function ProjectTimelineModal({
                                       })}
                                     </div>
                                   </div>
-
-                                  {/* Sub-track 2: Weekly Meetings Attendance */}
-                                  <div className={`grid grid-cols-[300px_1fr] items-center min-h-[30px] ${
-                                    isRetro ? "bg-[#d8d4cc] border-t border-dashed border-black/40" : "bg-indigo-50/30 hover:bg-indigo-50/50 border-t border-dashed border-indigo-100"
-                                  } transition-colors`}>
-                                    <div className={`p-1 pl-11 border-r ${isRetro ? "border-black font-mono" : "border-slate-200"} flex items-center justify-between h-full min-w-0`}>
-                                      <div className="flex items-center gap-1.5 min-w-0">
-                                        <span className={`text-[10px] ${isRetro ? "text-black" : "text-indigo-400"} font-mono font-bold`}>└</span>
-                                        <span className={`text-[9.5px] font-bold ${isRetro ? "text-black font-mono" : "text-indigo-950"} truncate`}>
-                                          2. Weekly Meetings Attendance
-                                          {hasAnyMeetingsOverride && <span className="text-red-600 font-black ml-1" title="Manually modified">*</span>}
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1 shrink-0 ml-1">
-                                        {hasAnyMeetingsOverride && (
-                                          <button
-                                            type="button"
-                                            onClick={() => handleResetCard(card.id, "meetings")}
-                                            className={`text-[8px] font-bold px-1 py-0.2 border transition-colors cursor-pointer ${
-                                              isRetro
-                                                ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
-                                                : "rounded border-red-300 bg-red-50 hover:bg-red-100 text-red-800"
-                                            }`}
-                                            title="Reset Weekly Meetings overrides to default"
-                                          >
-                                            Reset
-                                          </button>
-                                        )}
-                                        <span className={`text-[8px] font-semibold uppercase px-1 py-0.2 ${
-                                          isRetro ? "bg-white text-black border border-black font-mono" : "rounded bg-indigo-100/80 text-indigo-800 border border-indigo-200"
-                                        }`}>
-                                          M1&ndash;M{duration}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div
-                                      data-timeline-row={meetRowKey}
-                                      className={`grid ${isRetro ? "divide-x divide-black" : "divide-x divide-indigo-100/60"} h-full py-0.5 px-1.5 items-center select-none`}
-                                      style={{ gridTemplateColumns: `repeat(${duration}, minmax(52px, 1fr))` }}
-                                    >
-                                      {meetingsMonths.map((mData, mIdx) => {
-                                        const isRowSelected = rangeSelection && rangeSelection.rowKey === meetRowKey;
-                                        const isCellSelected = isRowSelected && selectedMonthIndices.includes(mIdx);
-                                        const isEditingThisCell = isRowSelected && rangeSelection.isEditing && rangeSelection.endMonthIdx === mIdx;
-                                        const isCellEditable = mData.defaultFTE > 0 || Boolean(mData.isOverridden);
-
-                                        return (
-                                          <div
-                                            key={mIdx}
-                                            onMouseDown={(e) => {
-                                              if (isCellEditable) {
-                                                handleCellMouseDown(e, meetRowKey, {
-                                                  type: "meetings",
-                                                  cardId: card.id,
-                                                  toolName: null,
-                                                  getMonthData: (idx) => ({
-                                                    currentVal: meetingsMonths[idx]?.totalFTE ?? defaultMeetingsRate,
-                                                    defaultVal: meetingsMonths[idx]?.defaultFTE ?? defaultMeetingsRate,
-                                                    isOverridden: Boolean(meetingsMonths[idx]?.isOverridden),
-                                                  }),
-                                                }, mIdx);
-                                              }
-                                            }}
-                                            className={`h-full flex items-center justify-center p-0.5 ${
-                                              isManualEditEnabled && isCellEditable
-                                                ? "cursor-crosshair"
-                                                : isManualEditEnabled && !isCellEditable
-                                                ? "cursor-not-allowed opacity-90"
-                                                : "cursor-default"
-                                            } ${
-                                              isEditingThisCell
-                                                ? "relative z-40"
-                                                : isCellSelected
-                                                ? "relative z-30 ring-2 ring-cyan-400 ring-offset-1 rounded-md shadow-[0_0_10px_rgba(6,182,212,0.6)]"
-                                                : mData.isOverridden
-                                                ? "relative z-10"
-                                                : ""
-                                            }`}
-                                          >
-                                            {isEditingThisCell ? (
-                                              <div
-                                                className="w-full h-5 relative flex items-center justify-center"
-                                                onClick={(e) => e.stopPropagation()}
-                                                onMouseDown={(e) => e.stopPropagation()}
-                                              >
-                                                <input
-                                                  ref={inputRef}
-                                                  type="text"
-                                                  inputMode="decimal"
-                                                  step="0.05"
-                                                  min="0"
-                                                  max="10"
-                                                  value={cellInputValue}
-                                                  onChange={(e) => setCellInputValue(e.target.value.replace(",", "."))}
-                                                  onKeyDown={(e) => {
-                                                    if (e.key === "Enter") handleCommitRangeEdit();
-                                                    if (e.key === "Escape") setRangeSelection(null);
-                                                  }}
-                                                  onBlur={handleCommitRangeEdit}
-                                                  className={`w-full h-full text-center text-[9px] font-mono font-bold ${
-                                                    isRetro ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black" : "border-2 border-cyan-500 rounded ring-2 ring-cyan-400"
-                                                  }`}
-                                                />
-                                              </div>
-                                            ) : (
-                                              <div
-                                                style={mData.style}
-                                                className={`w-full h-5 ${isRetro ? "rounded-none" : `${mData.isPhaseStart ? "rounded-l-md" : "rounded-l-none"} ${mData.isPhaseEnd ? "rounded-r-md" : "rounded-r-none"}`} border relative flex items-center justify-center select-none shadow-2xs transition-all ${
-                                                  isManualEditEnabled
-                                                    ? "hover:scale-[1.03] hover:z-20"
-                                                    : ""
-                                                } ${
-                                                  isCellSelected
-                                                    ? "brightness-105"
-                                                    : mData.isOverridden
-                                                    ? "ring-1 ring-red-600 ring-offset-1 ring-offset-white font-bold shadow-xs z-10"
-                                                    : ""
-                                                } ${!mData.isPhaseStart ? "border-l-0" : ""} ${!mData.isPhaseEnd ? "border-r border-dashed border-white/30" : ""}`}
-                                              >
-                                                {mData.isOverridden && (
-                                                  <span className="absolute top-0.5 right-0.5 text-[6.5px] font-black text-red-600 leading-none z-20">★</span>
-                                                )}
-                                                <span className="text-[8.5px] font-mono font-bold leading-none">
-                                                  {mData.totalFTE.toFixed(2)}
-                                                </span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </div>
+                                    );
+                                  })}
                                 </>
                               )}
                             </div>
