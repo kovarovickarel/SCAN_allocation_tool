@@ -61,7 +61,7 @@ test("standard drag preview moves all overrides and support starts with rounded 
   const row = dialog.locator('[data-timeline-row="core_standard"]');
   await moveRow(page, row, 3);
   await dialog.getByRole("button", { name: "Expand support tracks", exact: true }).click();
-  for (const [rowKey, value] of [["core_standard", "0.27"], ["devSupport_standard", "0.12"], ["meetings_standard", "0.18"]]) {
+  for (const [rowKey, value] of [["core_standard", "0.27"], ["supporting_standard_0", "0.12"], ["supporting_standard_1", "0.18"]]) {
     const track = dialog.locator(`[data-timeline-row="${rowKey}"]`);
     await expect(track.locator(":scope > div").nth(0)).toContainText("0.00");
     await expect(track.locator(":scope > div").nth(2)).toContainText(value);
@@ -115,7 +115,7 @@ test("all FTE tools use configured development durations and inclusive finish bo
   }
   expect(workpackageRepositionLimits(card, project).maxValidStart).toBe(3);
   expect(workpackageRepositionLimits({ ...card, finishMilestone: null }, project).maxValidStart).toBe(12);
-  const rates = { KPI: { Supporting: { ...DEFAULT_FTE_RATES.Supporting, phaseDuration: { Requirements: 2, Implementation: 3, Validation: 1, Integration: 2 } } } };
+  const rates = { KPI: { Supporting: { ...DEFAULT_FTE_RATES.Supporting, phases: undefined, phaseDuration: { Requirements: 2, Implementation: 3, Validation: 1, Integration: 2 } } } };
   expect(workpackageRepositionLimits(card, project, DEFAULT_FTE_RATES, rates).maxValidStart).toBe(2);
 });
 

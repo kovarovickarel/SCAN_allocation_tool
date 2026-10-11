@@ -101,23 +101,18 @@ test.describe("visual coverage across screens and interactions", () => {
     await expect(page.getByText("Playwright Project", { exact: true })).toBeVisible();
   });
 
-  test("captures configuration tabs and checks Escape closes the dialog", async ({ page }) => {
+  test("captures separate workpackage and defaults configuration windows and checks Escape", async ({ page }) => {
     await openApp(page);
-
+    await page.getByRole("button", { name: "Workpackages configuration", exact: true }).click();
+    let dialog = page.getByRole("dialog");
+    await expect(dialog.getByRole("heading", { name: "Workpackages configuration", exact: true })).toBeVisible();
+    await expect(page).toHaveScreenshot("configuration-tool-rates.png", { fullPage: true, maxDiffPixelRatio: 0.002 });
+    await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "Default's Configuration" }).click();
-    const dialog = page.getByRole("dialog");
+    dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "Calculation Configuration" })).toBeVisible();
-    await expect(page).toHaveScreenshot("configuration-tool-rates.png", {
-      fullPage: true,
-      maxDiffPixelRatio: 0.002,
-    });
-
     await dialog.getByRole("button", { name: "Management Support" }).click();
-    await expect(page).toHaveScreenshot("configuration-management.png", {
-      fullPage: true,
-      maxDiffPixelRatio: 0.002,
-    });
-
+    await expect(page).toHaveScreenshot("configuration-management.png", { fullPage: true, maxDiffPixelRatio: 0.002 });
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
   });

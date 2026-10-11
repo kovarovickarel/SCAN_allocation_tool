@@ -3,6 +3,30 @@
 Updated: 2026-10-11. Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
+## Latest basic-type configuration batch (2026-10-11)
+
+This section supersedes the earlier pending-publication status below. The remote
+and local master matched at `7090a0f` before this batch. The user authorized
+contextual commits and a push after successful checks; inspect `git log` and
+`origin/master` for publication status. A remote push does not by itself confirm
+that the hosted Pages deployment has finished.
+
+Workpackages configuration now manages ordinary FTE basic types, colors, ordered
+main/maintenance phases, independent supporting activities and non-FTE name/icon
+types. Built-in KPI types and Other Standard use the same model. Creation,
+renaming/removal protection, draft Save/Cancel, workspace transfer and lifecycle
+limits are covered. Project supporting activities have dedicated editable rows.
+
+Final checks: 296 app tests passed, including ten new basic-type regression tests;
+both Pages production checks, the Pages build and TypeScript passed. Current
+Windows visual references were updated for the accepted UI changes; historical
+references were preserved. `tests/README.md` maps the coverage. The build still
+reports its existing informational large-bundle warning.
+
+This checkout is `C:/Users/kovar/Desktop/SCAN_Allocation_tool`. Tests used the
+package scripts with servers on 5174 and 4174, independently of the user's 5173
+planning session. The older laptop paths below describe prior sessions.
+
 ## Current state
 
 This is the existing React/Vite front-end application, not a new project. Its
@@ -127,3 +151,7 @@ The user requested local commits and will push to the remote after validation.
 No remote push has been performed for this batch. Once pushed, the Pages workflow
 will validate and redeploy the app; inspect the workflow result before claiming
 the new feature is available on the hosted site.
+
+## Supporting activity rows in the project timeline
+
+The project timeline now renders one itemized row per configured supporting activity, in configuration order. It no longer combines custom activity names or adds an absent Weekly meeting attendance row. Each row uses its own rate, reusability setting and maintenance inclusion, with connected dashed cells. Individual edits and resets use `customSupportingActivityFTE` keyed by activity ID and synchronize the legacy aggregate support maps used by shared totals and allocation calculations. These maps are saved with the timeline, validated during workspace import, cleared on full reset/revalidation, and shifted when repositioning a workpackage. Regression coverage is included in tests/basic-types.spec.ts; see the latest verification section below.

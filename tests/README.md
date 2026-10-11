@@ -6,6 +6,7 @@ a separate development server on port 5174 and leaves the interactive app on
 
 | Area | Suites and important behavior |
 | --- | --- |
+| Basic types | `basic-types`: phase ordering and project limits, ordinary Other defaults, per-activity rates, draft creation, rename/removal protection, non-FTE icon selection, independent activity tracks and saved overrides |
 | Scheduling | `project-fte-start`, `workpackage-finish-targets`, `workpackage-reposition`: automatic/manual starts, basic-mode rules, inclusive milestone limits for all FTE tools, Other maintenance, shifting overrides and support, allocation reconciliation, saving and every discard route |
 | Staffing | `timeline-editing`, `workpackage-drop`, `member-assignment`, `adjust-member-allocation`, `team-timeline-controls`, `team-staffing-colors`: monthly/phase allocations, capacity, cross-project reservations, roles, maintenance, staged changes and controls |
 | Optimization | `auto-allocation`, `auto-allocation-calculations`, `auto-allocation-cost`: priorities, coverage, minimum cost, exhaustive small cases and large portfolios |

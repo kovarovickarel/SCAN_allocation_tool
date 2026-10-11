@@ -31,7 +31,7 @@ async function demands(timeline: Locator, name: string) {
 }
 async function drop(timeline: Locator, member: string, name: string, phase?: string) {
   await timeline.getByTitle(`Drag and drop ${member} onto any activity above to allocate`, { exact: true })
-    .dragTo(phase ? wp(timeline, name).getByTitle(new RegExp(`^Drop member onto entire ${phase} subactivity`))
+    .dragTo(phase ? wp(timeline, name).getByTitle(new RegExp(`^Drop member onto entire ${phase} subactivity`)).first()
       : timeline.getByText(name, { exact: true }).first());
 }
 async function memberRow(timeline: Locator, name: string, member: string) {
@@ -79,7 +79,7 @@ test("percentage input, slider and presets stay within workpackage demand", asyn
   await drop(timeline, "Elena Russo", "Object Distance KPI");
   const dialog = await editor(page, timeline, "Object Distance KPI", "Elena Russo");
   const max = Number(await dialog.getByRole("spinbutton").getAttribute("max"));
-  expect(max).toBe(68);
+  expect(max).toBe(Math.round(Math.max(...demand.map(month => month.fte)) * 100));
   await expect(dialog.getByRole("button", { name: "75%", exact: true })).toBeDisabled();
   await dialog.getByRole("spinbutton").fill("999");
   await expect(dialog.getByRole("spinbutton")).toHaveValue(String(max));
@@ -348,11 +348,11 @@ test("a manual cell adjustment warns even when all activity months still have al
   expect(await values(timeline, "Object Distance KPI", "Elena Russo")).toEqual(before);
 });
 
-test("Other workpackage excludes maintenance and never allocates outside its active months", async ({ page }) => {
+test("Other Standard has no maintenance and never allocates outside its active Main months", async ({ page }) => {
   const timeline = await setup(page, [...names, "Config Manager"]);
   await timeline.getByRole("button", { name: 'Include "Other" WPs', exact: true }).click();
   const demand = await demands(timeline, "Config Manager");
-  expect(demand.some((month) => month.maintenance)).toBe(true);
+  expect(demand.some((month) => month.maintenance)).toBe(false);
   await drop(timeline, "Alex Novak", "Config Manager");
   const dialog = await editor(page, timeline, "Config Manager", "Alex Novak");
   await dialog.getByRole("checkbox").uncheck();

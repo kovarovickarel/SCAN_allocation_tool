@@ -30,6 +30,20 @@ View preferences retain theme, basic/extended mode, active tool, pool/member den
 
 Computed effort, coverage and prices are recalculated. Transient dialogs, drag state, inline editor drafts and unsaved timeline drafts are not saved; use the editor's Save action before exporting. Files are not encrypted and include the member and salary data in the workspace. Export downloads a file; there is no automatic disk backup.
 
+Custom basic workpackage types are retained in the configuration's tool rate entries, including their ordered phase definitions, monthly rates, durations, reusability flags and final project-end flag. Workpackages retain the selected type through their `complexity` field. Import validates these definitions before replacement. Use a version of the app that supports custom basic types when transferring these files.
+
 Import validates the format/version, structure, configuration, identifiers, supplier/project links, numeric values and saved FTE schedules before offering replacement. The review lists project/member/workpackage counts and offers a backup download of the current workspace. Cancel or a failed validation leaves the current workspace unchanged. Confirming replaces the workspace; it does not merge or regenerate IDs. Version 1 rejects unsupported schema versions instead of guessing how to restore them. Files are limited to 20 MB.
 
 Implementation: `src/utils/workspaceFile.ts`, `src/components/features/WorkspaceFileControls.tsx`, and the state wiring in `src/App.tsx`. Regression tests are in `tests/workspace-files.spec.ts`.
+
+Basic type rate entries can also store an optional six-digit hex `color` (for example `#059669`) for type tags and timeline indicators. If absent, the selected tool color is used.
+
+Basic types may include `supportingPhases`, with `id`, `name`, `rate`, `scaleByReusability`, and `includeMaintenance`. These phases span the workpackage lifecycle rather than occupying an ordered duration. `includeMaintenance` applies to all maintenance phases, including finite maintenance and the final project-end phase. Omitted arrays retain legacy support and meeting rates.
+
+Ordered basic-type phases optionally store `kind` (`main` or `maintenance`). Main phases precede maintenance; only the final maintenance phase may have `untilProjectEnd`. Finite maintenance durations are maximums, capped by project end. Older phases without `kind` infer maintenance from their unbound flag. Optional `scaleByMaintenancePreference` preserves the card-level maintenance scaling behavior of converted built-in types; optional `builtinLifecycle` preserves their original type palette.
+
+Supporting, Point Cloud and Perception are now seeded regular definitions with explicit phase/activity arrays and colors. Older definitions without arrays are migrated from their saved values on import. The former `builtinLifecycle` marker is accepted for compatibility and removed during conversion.
+
+Other supports ordinary basic types, seeded as `Standard` with a single Main phase and no maintenance/supporting activities. Typed Other cards store their type in `complexity` and use standard start/finish fields. Older Other cards without a type retain their bespoke Other fields; imports add the default Standard definition when absent.
+
+Configuration optionally contains `nonFteTypes`, an array of `{ name, icon }` records. Names are nonempty and unique ignoring case; icons are selected from the supported non-FTE icon catalog. Purchase `purchaseType` values must reference a configured name. Older files without the array use the four original purchase types.

@@ -98,7 +98,7 @@ test("custom reusability validates its factor, normalizes presets and defaults m
   await expect(dialog.getByRole("button", { name: "Add Workpackage", exact: true })).toBeDisabled();
   await factor.fill("0,37");
   await expect(factor).toHaveValue("0.37");
-  await expect(dialog.getByRole("checkbox", { name: "Apply factor to maintenance phases" })).not.toBeChecked();
+  await expect(dialog.getByRole("checkbox", { name: "Apply factor to maintenance phases" })).toHaveCount(0);
   await factor.fill("0.5");
   await expect(dialog.getByText("Tag: Minor Deviations", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Add Workpackage", exact: true }).click();

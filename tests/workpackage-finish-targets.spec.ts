@@ -12,7 +12,7 @@ test("finish targets use configured phase lengths, independent of effort and mai
     expect(workpackageDevelopmentMonths({ ...card, tool: tool.name })).toBe(tool.name === "KPI" ? 7 : 9);
   }
   expect(workpackageDevelopmentMonths({ ...card, complexity: "Perception", reusability: "High Reusability" })).toBe(14);
-  const toolRates = { KPI: { Supporting: { ...DEFAULT_FTE_RATES.Supporting, Requirements: 0, phaseDuration: { Requirements: 2, Implementation: 5, Validation: 3, Integration: 1 } } } };
+  const toolRates = { KPI: { Supporting: { ...DEFAULT_FTE_RATES.Supporting, phases: undefined, Requirements: 0, phaseDuration: { Requirements: 2, Implementation: 5, Validation: 3, Integration: 1 } } } };
   expect(workpackageDevelopmentMonths(card, DEFAULT_FTE_RATES, toolRates)).toBe(11);
   expect(workpackageFinishViolation(card, project, DEFAULT_FTE_RATES, toolRates)).toContain("require 11 months");
 });
@@ -29,8 +29,8 @@ test("deadline month is inclusive and maintenance continues after the target", (
 
 test("project end, legacy Other targets and purchases retain their respective semantics", () => {
   expect(workpackageFinishViolation({ ...card, finishMilestone: null }, { ...project, duration: 6 })).toContain("project end");
-  expect(workpackageFinishViolation({ ...card, tool: "Other", otherDuration: 10, otherFinishMilestone: "FFV" }, project)).toContain("Execution require 10 months");
-  expect(workpackageFinishViolation({ ...card, tool: "Other", otherDuration: 9, otherFinishMilestone: "FFV" }, project)).toBeNull();
+  expect(workpackageFinishViolation({ ...card, tool: "Other", complexity: null, otherDuration: 10, otherFinishMilestone: "FFV" }, project)).toContain("Execution require 10 months");
+  expect(workpackageFinishViolation({ ...card, tool: "Other", complexity: null, otherDuration: 9, otherFinishMilestone: "FFV" }, project)).toBeNull();
   expect(workpackageFinishViolation({ ...card, kind: "non-fte", purchaseMilestone: "FFV" }, { ...project, duration: 6 })).toBeNull();
   expect(workpackageFinishViolation({ ...card, finishMilestone: "UNKNOWN" }, project)).toContain("not available");
 });
@@ -85,11 +85,12 @@ test("changing configured phase durations revalidates assigned finish targets", 
   await dialog.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   const work = page.locator('[draggable="true"]').filter({ has: page.getByText("Configuration deadline test", { exact: true }) });
   await work.dragTo(page.getByRole("heading", { name: "GM", exact: true }));
-  await page.getByRole("button", { name: "Default's Configuration", exact: true }).click();
+  await page.getByRole("button", { name: "Workpackages configuration", exact: true }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "KPI", exact: true }).click();
-  await dialog.getByRole("button", { name: "Supporting", exact: true }).click();
-  await dialog.getByText("Requirements", { exact: true }).locator("..").getByRole("spinbutton").fill("5");
+  await dialog.getByRole("button", { name: "Edit", exact: true }).click();
+  await dialog.getByLabel("Phase 1 duration", { exact: true }).fill("5");
+  await dialog.getByRole("button", { name: "Save basic type", exact: true }).click();
   await dialog.getByRole("button", { name: "Save Configuration", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Cannot Assign Workpackage" })).toBeVisible();
   await expect(page.getByText(/Pre-maintenance phases require 11 months/)).toBeVisible();
