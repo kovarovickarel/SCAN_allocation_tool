@@ -19,7 +19,7 @@ export function useProjectTimelineRangeEditing({
   setLocalCards,
   setIsDirty,
 }: ProjectTimelineRangeEditingOptions) {
-  // Drag-to-reposition state for "Other" workpackage execution blocks
+  // Drag-to-reposition state for FTE workpackage lifecycle blocks
   const [activityDrag, setActivityDrag] = useState(null);
   const canStartRangeSelection = useCallback((monthData: TimelineRangeMonthData | null | undefined) =>
     (monthData?.defaultVal > 0) || Boolean(monthData?.isOverridden),

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_COLORS, TOOLS, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, MILESTONE_MAP, clamp, round2 } from "../../constants";
 import { normalizeMilestones, calculateProjectEffort, getFTEGradientStyle, computeWorkpackageLifecycleTimeline, getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "../../utils/helpers";
+import { workpackageStartMonth, workpackageRepositionLimits, repositionWorkpackage } from "../../utils/workpackageFinishTargets";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { useProjectTimelineRangeEditing } from "../../hooks/useProjectTimelineRangeEditing";
@@ -81,27 +82,13 @@ export function ProjectTimelineModal({
     setLocalCards((prev) =>
       prev.map((f) => {
         if (f.id !== cardId) return f;
-        const oldStart = Math.max(1, parseInt(f.otherStartMonth, 10) || 1);
-        const targetStart = Math.max(1, parseInt(newStartMonth, 10) || 1);
-        const delta = targetStart - oldStart;
-
-        const shiftedCustomCore = {};
-        if (f.customCoreFTE) {
-          for (const [mStr, val] of Object.entries(f.customCoreFTE)) {
-            const m = parseInt(mStr, 10);
-            shiftedCustomCore[m + delta] = val;
-          }
-        }
-
-        return {
-          ...f,
-          otherStartMonth: targetStart,
-          customCoreFTE: shiftedCustomCore,
-        };
+        const limits = workpackageRepositionLimits(f, localProject, fteRates, toolFteRates);
+        if (limits.maxValidStart < 1) return f;
+        return repositionWorkpackage(f, clamp(newStartMonth, 1, limits.maxValidStart), duration);
       })
     );
     setIsDirty(true);
-  }, []);
+  }, [localProject, fteRates, toolFteRates, duration]);
 
   const handleResetMgmt = useCallback((toolName) => {
     setLocalProject((prev) => {
@@ -136,7 +123,7 @@ export function ProjectTimelineModal({
     onClose();
   };
 
-  // Global mouse move & mouse up handler for repositioning Other workpackage blocks
+  // Global mouse move & mouse up handler for repositioning FTE workpackage blocks
   useEffect(() => {
     if (!activityDrag) return;
 
@@ -259,36 +246,12 @@ export function ProjectTimelineModal({
         const rates = toolFteRates?.[t.name]?.[complexityKey] ?? fteRates?.[complexityKey] ?? DEFAULT_FTE_RATES[complexityKey] ?? DEFAULT_FTE_RATES["Point Cloud"];
 
         const isDraggingThisCard = Boolean(activityDrag && activityDrag.cardId === c.id);
-        const effectiveStartMonth = isDraggingThisCard
-          ? activityDrag.currentStartMonth
-          : Math.max(1, parseInt(c.otherStartMonth, 10) || 1);
-
-        const effectiveCard = isDraggingThisCard
-          ? { ...c, otherStartMonth: effectiveStartMonth }
-          : c;
-
+        const effectiveStartMonth = isDraggingThisCard ? activityDrag.currentStartMonth : workpackageStartMonth(c);
+        const effectiveCard = isDraggingThisCard ? repositionWorkpackage(c, effectiveStartMonth, duration) : c;
         const defaultCoreMonths = computeWorkpackageLifecycleTimeline(
-          effectiveCard,
-          localProject,
-          rates,
-          reusabilityFactors,
-          stabilityFactors,
-          isNegated,
-          duration
+          effectiveCard, localProject, rates, reusabilityFactors, stabilityFactors, isNegated, duration
         );
-
-        const dragDelta = isDraggingThisCard
-          ? effectiveStartMonth - Math.max(1, parseInt(c.otherStartMonth, 10) || 1)
-          : 0;
-
-        const shiftedCustomCore = {};
-        if (isDraggingThisCard && dragDelta !== 0 && c.customCoreFTE) {
-          for (const [mStr, val] of Object.entries(c.customCoreFTE)) {
-            const m = parseInt(mStr, 10);
-            shiftedCustomCore[m + dragDelta] = val;
-          }
-        }
-        const activeCustomCore = isDraggingThisCard && dragDelta !== 0 ? shiftedCustomCore : c.customCoreFTE;
+        const activeCustomCore = effectiveCard.customCoreFTE;
 
         const supportMultiplier = getSupportReusabilityFactor(c, reusabilityFactors);
         const defaultDevFunctionsRate = isNegated || isToolOther ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier * supportMultiplier);
@@ -307,7 +270,7 @@ export function ProjectTimelineModal({
             meetingsMonths.push(inactive);
             continue;
           }
-          const customDev = isNegated || supportMultiplier === 0 ? undefined : c.customDevSupportFTE?.[m];
+          const customDev = isNegated || supportMultiplier === 0 ? undefined : effectiveCard.customDevSupportFTE?.[m];
           const isDevOverridden = customDev !== undefined && Math.abs(customDev - defaultDevFunctionsRate) > 0.001;
           if (isDevOverridden) hasAnyDevOverride = true;
           const effDevRate = isDevOverridden ? customDev : defaultDevFunctionsRate;
@@ -325,7 +288,7 @@ export function ProjectTimelineModal({
             style: getFTEGradientStyle(effDevRate, isNegated, 3.0, true),
           });
 
-          const customMeetings = isNegated || supportMultiplier === 0 ? undefined : c.customMeetingsFTE?.[m];
+          const customMeetings = isNegated || supportMultiplier === 0 ? undefined : effectiveCard.customMeetingsFTE?.[m];
           const isMeetingsOverridden = customMeetings !== undefined && Math.abs(customMeetings - defaultMeetingsRate) > 0.001;
           if (isMeetingsOverridden) hasAnyMeetingsOverride = true;
           const effMeetingsRate = isMeetingsOverridden ? customMeetings : defaultMeetingsRate;
@@ -1094,7 +1057,7 @@ export function ProjectTimelineModal({
                           const coreRowKey = `core_${card.id}`;
                           const devRowKey = `devSupport_${card.id}`;
                           const meetRowKey = `meetings_${card.id}`;
-                          const isOther = card.tool === "Other";
+                          const repositionLimits = workpackageRepositionLimits(card, localProject, fteRates, toolFteRates);
                           const isDraggingThisWP = activityDrag?.cardId === card.id;
                           const finishMsDef = card.otherFinishMilestone ? MILESTONE_MAP[card.otherFinishMilestone] : null;
 
@@ -1253,7 +1216,7 @@ export function ProjectTimelineModal({
                                   {mergedCoreMonths.map((mData, mIdx) => {
                                     const isStart = mData.isPhaseStart;
                                     const isEnd = mData.isPhaseEnd;
-                                    const isExecPhase = mData.shortPhase === "Exec";
+                                    const isExecPhase = ["Exec", "Req", "Imp", "Val", "Int"].includes(mData.shortPhase);
                                     const isDragExec = isDraggingThisWP && isExecPhase;
                                     const roundedClasses = isRetro ? "rounded-none" : `${isStart ? "rounded-l-md" : "rounded-l-none"} ${isEnd ? "rounded-r-md" : "rounded-r-none"}`;
                                     const paddingRight = isEnd && mIdx < duration - 1 ? "pr-1" : "pr-0";
@@ -1358,17 +1321,15 @@ export function ProjectTimelineModal({
                                           </div>
                                         )}
 
-                                        {/* Hover Drag Handle for Other workpackages */}
-                                        {isOther && isManualEditEnabled && !isNegated && isExecPhase && isStart && (
+                                        {/* Hover Drag Handle for FTE workpackages */}
+                                        {isManualEditEnabled && !isBasicMode && !isNegated && repositionLimits.maxValidStart >= 1 &&
+                                          mIdx === (isDraggingThisWP ? activityDrag.currentStartMonth : workpackageStartMonth(card)) - 1 && (
                                           <div
                                             onMouseDown={(e) => {
                                               e.stopPropagation();
                                               e.preventDefault();
-                                              const milestoneKey = card.otherFinishMilestone;
-                                              const bMonth = milestoneKey && milestones?.[milestoneKey] ? milestones[milestoneKey] : duration;
-                                              const curDur = Math.max(1, parseInt(card.otherDuration, 10) || 6);
-                                              const curStart = Math.max(1, parseInt(card.otherStartMonth, 10) || 1);
-                                              const maxStart = Math.max(1, bMonth - curDur + 1);
+                                              const { finishMilestone: milestoneKey, boundaryMonth: bMonth, duration: curDur, maxValidStart: maxStart } = repositionLimits;
+                                              const curStart = workpackageStartMonth(card);
                                               setActivityDrag({
                                                 cardId: card.id,
                                                 rowKey: coreRowKey,

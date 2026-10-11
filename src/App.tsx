@@ -425,6 +425,7 @@ export default function App() {
       return {
         ...f,
         otherStartMonth: updated.otherStartMonth,
+        startMonth: updated.startMonth,
         customCoreFTE: updated.customCoreFTE,
         customDevSupportFTE: updated.customDevSupportFTE,
         customMeetingsFTE: updated.customMeetingsFTE,
@@ -443,6 +444,7 @@ export default function App() {
         return {
           ...f,
           otherStartMonth: updated.otherStartMonth,
+          startMonth: updated.startMonth,
           customCoreFTE: updated.customCoreFTE,
           customDevSupportFTE: updated.customDevSupportFTE,
           customMeetingsFTE: updated.customMeetingsFTE,

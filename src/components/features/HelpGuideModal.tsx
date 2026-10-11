@@ -532,7 +532,7 @@ export function HelpGuideModal({
                     <strong>Individual &amp; Range Resets:</strong> Click <code className="text-red-600 font-bold underline">Reset</code> inside the popover to instantly revert the selected months back to the baseline formula.
                   </li>
                   <li>
-                    <strong>Repositioning &quot;Other&quot; Workpackages:</strong> Hovering over the leftmost cell of an &quot;Other&quot; workpackage reveals a vertical grab bar. Dragging it horizontally shifts the entire execution block along the calendar timeline while respecting project and milestone boundaries.
+                    <strong>Repositioning FTE Workpackages:</strong> With Manual Adjust enabled in extended mode, the first active cell of any FTE workpackage has a vertical grab bar. Drag it horizontally to move the whole lifecycle, support and meetings. All pre-maintenance phases must finish on or before the finish target; maintenance can continue afterward. Save &amp; Close applies the new start, while closing without saving discards the change.
                   </li>
                 </ul>
               </div>

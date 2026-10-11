@@ -53,7 +53,7 @@ test.describe("timeline editing behavior", () => {
     await editor.press("Enter");
 
     for (const index of [0, 1]) {
-      await expect(selectionCells.nth(index).locator("[title]").first()).toHaveAttribute("title", /MANUALLY ALTERED/);
+      await expect(selectionCells.nth(index).locator("[title*='MANUALLY ALTERED']")).toHaveCount(1);
     }
 
     await dialog.getByRole("button", { name: "Save & Close" }).click();

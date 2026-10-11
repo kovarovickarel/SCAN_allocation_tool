@@ -6,6 +6,30 @@ export function workpackageFinishTarget(card: WorkpackageCard): string | null {
   return card.tool === "Other" ? card.otherFinishMilestone || null : card.finishMilestone || null;
 }
 
+export function workpackageStartMonth(card: WorkpackageCard): number {
+  return Math.max(1, parseInt(String(card.tool === "Other" ? card.otherStartMonth : card.startMonth), 10) || 1);
+}
+
+export function workpackageRepositionLimits(card: WorkpackageCard, project: AllocationProject, fteRates = DEFAULT_FTE_RATES, toolFteRates = null) {
+  const finishMilestone = workpackageFinishTarget(card);
+  const boundaryMonth = finishMilestone
+    ? normalizeMilestones(project.milestones, project.duration)[finishMilestone]
+    : project.duration;
+  const duration = workpackageDevelopmentMonths(card, fteRates, toolFteRates);
+  return { finishMilestone, boundaryMonth, duration, maxValidStart: boundaryMonth ? boundaryMonth - duration + 1 : 0 };
+}
+
+export function repositionWorkpackage(card: WorkpackageCard, startMonth: number, projectDuration: number): WorkpackageCard {
+  const delta = startMonth - workpackageStartMonth(card);
+  const shifted = (values: Record<string, number> | undefined) => values && Object.fromEntries(
+    Object.entries(values).map(([month, value]) => [Number(month) + delta, value])
+      .filter(([month]) => Number(month) >= 0 && Number(month) < projectDuration)
+  );
+  return { ...card, ...(card.tool === "Other" ? { otherStartMonth: startMonth } : { startMonth }),
+    customCoreFTE: shifted(card.customCoreFTE), customDevSupportFTE: shifted(card.customDevSupportFTE),
+    customMeetingsFTE: shifted(card.customMeetingsFTE) };
+}
+
 export function workpackageDevelopmentMonths(card: WorkpackageCard, fteRates = DEFAULT_FTE_RATES, toolFteRates = null): number {
   if (card.kind === "non-fte") return 0;
   if (card.tool === "Other") return Math.max(1, parseInt(card.otherDuration, 10) || 6);
