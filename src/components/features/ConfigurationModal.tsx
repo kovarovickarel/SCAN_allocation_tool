@@ -1,7 +1,7 @@
+import { DEFAULT_NON_FTE_TYPES, NON_FTE_ICONS } from "../../utils/nonFteBasicTypes";
+import { NonFteTypeIcon } from "../ui/NonFteTypeIcon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
-  COMPLEXITY_COLORS,
-  COMPLEXITY_TYPES,
   DEFAULT_FTE_RATES,
   DEFAULT_FTE_COSTS,
   DEFAULT_SUPPLIERS,
@@ -13,9 +13,17 @@ import {
   DEFAULT_TOOL_FTE_RATES,
   FOOTPRINTS,
   ThemeContext,
+  TEAM_COMPACT_BTN_STYLES,
+  TOOL_BASIC_TYPE_COLORS,
   TOOLS,
   deepClone,
 } from "../../constants";
+import { SupportingPhasePanel } from "./SupportingPhasePanel";
+import { getSupportingPhases, validSupportingPhases } from "../../utils/supportingPhases";
+import { BasicTypeColorPicker } from "../ui/BasicTypeColorPicker";
+import { WorkpackageTypeSummary } from "./WorkpackageTypeSummary";
+import { WorkpackagePhaseEditor } from "./WorkpackagePhaseEditor";
+import { workpackageTypeNames, validWorkpackagePhases, workpackageTypeColor, getBasicTypePhases, normalizeToolBasicTypes } from "../../utils/workpackageTypes";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { FteCostSettings, SupplierRecord } from "../../types";
 import { parseFteHourlyRate } from "../../utils/helpers";
@@ -23,6 +31,7 @@ import { convertHourlyRateInputs, fetchLatestExchangeRate } from "../../utils/cu
 import { retainUsedSuppliers } from "../../utils/nonFteWorkpackages";
 
 type ConfigurationModalConfig = {
+  nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
   suppliers?: SupplierRecord[];
   fteRates: typeof DEFAULT_FTE_RATES;
   fteCosts: FteCostSettings;
@@ -36,9 +45,14 @@ type ConfigurationModalConfig = {
 type ConfigurationIconProps = { size?: number; className?: string };
 
 interface ConfigurationModalProps {
+  scope?: "defaults" | "workpackages";
+  initialTool?: string;
+  onToolChange?: (tool: string) => void;
   config: ConfigurationModalConfig;
+  usedPurchaseTypes?: ReadonlySet<string>;
+  usedFteTypes?: readonly { tool: string; name: string }[];
   usedSupplierIds?: ReadonlySet<string>;
-  onSave: (newConfig: ConfigurationModalConfig) => void;
+  onSave: (newConfig: ConfigurationModalConfig, renames?: { tool: string; from: string; to: string }[]) => void;
   onClose: () => void;
   SettingsIcon: React.ComponentType<ConfigurationIconProps>;
   ToolIcon: React.ComponentType<{ toolName: string; size?: number; className?: string }>;
@@ -46,8 +60,13 @@ interface ConfigurationModalProps {
 }
 
 export function ConfigurationModal({
+  scope = "defaults",
+  initialTool = TOOLS[0].name,
+  onToolChange,
   config,
   usedSupplierIds = new Set<string>(),
+  usedPurchaseTypes = new Set<string>(),
+  usedFteTypes = [],
   onSave,
   onClose,
   SettingsIcon,
@@ -55,7 +74,7 @@ export function ConfigurationModal({
   RotateCcwIcon,
 }: ConfigurationModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
-  const [draft, setDraft] = useState(() => deepClone({ ...config, suppliers: config.suppliers ?? [...DEFAULT_SUPPLIERS], fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
+  const [draft, setDraft] = useState(() => deepClone({ ...config, nonFteTypes: config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES, toolFteRates: normalizeToolBasicTypes(config.toolFteRates), suppliers: config.suppliers ?? [...DEFAULT_SUPPLIERS], fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
   const [hourlyRateInputs, setHourlyRateInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(config.fteCosts?.hourlyRates?.[location.code] ?? "")])));
   const hasInvalidHourlyRates = FOOTPRINTS.some((location) => parseFteHourlyRate(hourlyRateInputs[location.code]) === undefined);
@@ -64,10 +83,97 @@ export function ConfigurationModal({
   const [conversionError, setConversionError] = useState<string | null>(null);
   const currencyRequest = useRef<AbortController | null>(null);
   const currencyRequestId = useRef(0);
+  const [isAddingPurchaseType, setIsAddingPurchaseType] = useState(false);
+  const [purchaseTypeName, setPurchaseTypeName] = useState("");
+  const [purchaseTypeIcon, setPurchaseTypeIcon] = useState("");
   const [supplierName, setSupplierName] = useState("");
-  const [activeTab, setActiveTab] = useState("tools");
-  const [selectedTool, setSelectedTool] = useState(TOOLS[0].name);
-  const [selectedComplexity, setSelectedComplexity] = useState("Supporting");
+  const isWorkpackages = scope === "workpackages";
+  const [activeTab, setActiveTab] = useState(isWorkpackages ? "tools" : "costs");
+  const [selectedTool, setSelectedTool] = useState(initialTool);
+  const [selectedComplexity, setSelectedComplexity] = useState(() => workpackageTypeNames(initialTool, config.toolFteRates)[0] ?? "");
+  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [typeNotice, setTypeNotice] = useState<string | null>(null);
+  const [isEditingType, setIsEditingType] = useState(false);
+  const [pendingType, setPendingType] = useState<{ name: string; rates: any } | null>(null);
+  const [editingTypeName, setEditingTypeName] = useState("");
+  const [typeRenames, setTypeRenames] = useState<{ tool: string; from: string; to: string }[]>([]);
+  const isSelectedTypeUsed = usedFteTypes.some(type => {
+    let name = type.name;
+    for (const rename of typeRenames) if (rename.tool === type.tool && rename.from === name) name = rename.to;
+    return type.tool === selectedTool && name === selectedComplexity;
+  });
+  const removeBasicType = () => {
+    if (isSelectedTypeUsed) return;
+    const types = { ...draft.toolFteRates[selectedTool] };
+    delete types[selectedComplexity];
+    const updated = { ...draft.toolFteRates, [selectedTool]: types };
+    setDraft(current => ({ ...current, toolFteRates: updated }));
+    setSelectedComplexity(workpackageTypeNames(selectedTool, updated)[0] ?? "");
+    setTypeNotice(null);
+  };
+  const typeSnapshot = useRef<any>(null);
+  const previousType = useRef("Supporting");
+  const beginTypeEdit = (initialize = true) => {
+    typeSnapshot.current = deepClone(draft.toolFteRates);
+    previousType.current = selectedComplexity;
+    setEditingTypeName(selectedTool !== "KPI" && selectedComplexity === "Point Cloud" ? "Standard" : selectedComplexity);
+    if (initialize) setDraft(current => {
+      const rates = current.toolFteRates[selectedTool][selectedComplexity];
+      return { ...current, toolFteRates: { ...current.toolFteRates, [selectedTool]: { ...current.toolFteRates[selectedTool], [selectedComplexity]: { ...rates, phases: getBasicTypePhases(rates) } } } };
+    });
+    setIsEditingType(true);
+  };
+  const cancelTypeEdit = () => {
+    setDraft(current => ({ ...current, toolFteRates: typeSnapshot.current }));
+    setSelectedComplexity(previousType.current);
+    setPendingType(null);
+    setIsEditingType(false);
+    setTypeNotice(null);
+  };
+  const hasInvalidPhases = Boolean(pendingType && (!validWorkpackagePhases(pendingType.rates.phases) || !validSupportingPhases(pendingType.rates.supportingPhases))) || Object.values(draft.toolFteRates).some((types) => Object.values(types).some((rates: any) => (rates.phases && !validWorkpackagePhases(rates.phases)) || (rates.supportingPhases && !validSupportingPhases(rates.supportingPhases))));
+  const addBasicType = () => {
+    beginTypeEdit(false);
+    setPendingType({ name: "", rates: { ...deepClone(DEFAULT_FTE_RATES["Point Cloud"]),
+        color: TOOL_BASIC_TYPE_COLORS[selectedTool],
+        devFunctionsSupport: 0, weeklyMeetings: 0, supportingPhases: [],
+        phases: [{ id: genId(), name: "Requirements", kind: "main", notMilestoneBound: false, rate: 0.1, duration: 1, scaleByReusability: true, untilProjectEnd: false }],
+      } });
+    setTypeNotice(null);
+  };
+
+  const saveBasicType = () => {
+    if (hasInvalidPhases) return;
+    if (!pendingType) {
+      const enteredName = editingTypeName.trim();
+      const name = selectedTool !== "KPI" && selectedComplexity === "Point Cloud" && enteredName === "Standard" ? "Point Cloud" : enteredName;
+      if (!name || ["__proto__", "prototype", "constructor"].includes(name) || workpackageTypeNames(selectedTool, draft.toolFteRates).some(key => key !== selectedComplexity && key.toLowerCase() === name.toLowerCase())) {
+        setTypeNotice("Enter a unique basic type name for this tool."); return;
+      }
+      if (name !== selectedComplexity) {
+        setDraft(current => {
+          const types = { ...current.toolFteRates[selectedTool] };
+          types[name] = types[selectedComplexity];
+          delete types[selectedComplexity];
+          return { ...current, toolFteRates: { ...current.toolFteRates, [selectedTool]: types } };
+        });
+        setTypeRenames(current => [...current, { tool: selectedTool, from: selectedComplexity, to: name }]);
+        setSelectedComplexity(name);
+      }
+    }
+    if (pendingType) {
+      const name = pendingType.name.trim();
+      if (!name || ["__proto__", "prototype", "constructor"].includes(name) || workpackageTypeNames(selectedTool, draft.toolFteRates).some(key => key.toLowerCase() === name.toLowerCase())) {
+        setTypeNotice("Enter a unique basic type name for this tool."); return;
+      }
+      setDraft(current => ({ ...current, toolFteRates: { ...current.toolFteRates,
+        [selectedTool]: { ...current.toolFteRates[selectedTool], [name]: pendingType.rates },
+      } }));
+      setSelectedComplexity(name);
+      setPendingType(null);
+    }
+    setIsEditingType(false);
+    setTypeNotice(null);
+  };
 
   useEscapeKey(onClose);
 
@@ -179,6 +285,18 @@ export function ConfigurationModal({
   };
 
   const resetToDefaults = () => {
+    if (isWorkpackages) {
+      if (isEditingType) return;
+      setDraft((current) => ({ ...current,
+        toolFteRates: Object.fromEntries(TOOLS.map(tool => [tool.name, {
+          ...deepClone(DEFAULT_TOOL_FTE_RATES[tool.name]),
+          ...Object.fromEntries(Object.entries(current.toolFteRates[tool.name]).filter(([name, rates]: [string, any]) => rates.phases && !DEFAULT_TOOL_FTE_RATES[tool.name]?.[name])),
+        }])),
+        nonFteTypes: [...DEFAULT_NON_FTE_TYPES, ...current.nonFteTypes.filter(type => usedPurchaseTypes.has(type.name) && !DEFAULT_NON_FTE_TYPES.some(defaultType => defaultType.name === type.name))],
+        otherDefaults: { ...DEFAULT_OTHER_SETTINGS },
+      }));
+      return;
+    }
     currencyRequestId.current += 1;
     currencyRequest.current?.abort();
     currencyRequest.current = null;
@@ -186,11 +304,12 @@ export function ConfigurationModal({
     setConversionNotice(null);
     setConversionError(null);
     setDraft({
+      nonFteTypes: deepClone(config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES),
       suppliers: retainUsedSuppliers(DEFAULT_SUPPLIERS, config.suppliers ?? DEFAULT_SUPPLIERS, usedSupplierIds),
       fteRates: deepClone(DEFAULT_FTE_RATES),
       fteCosts: deepClone(DEFAULT_FTE_COSTS),
-      toolFteRates: deepClone(DEFAULT_TOOL_FTE_RATES),
-      otherDefaults: { ...DEFAULT_OTHER_SETTINGS },
+      toolFteRates: deepClone(config.toolFteRates),
+      otherDefaults: { ...config.otherDefaults },
       management: { ...DEFAULT_MGMT_SETTINGS },
       reusabilityFactors: { ...DEFAULT_REUSABILITY_FACTORS },
       stabilityFactors: { ...DEFAULT_STABILITY_FACTORS },
@@ -198,7 +317,7 @@ export function ConfigurationModal({
     setHourlyRateInputs(Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(DEFAULT_FTE_COSTS.hourlyRates[location.code] ?? "")])));
   };
 
-  const activeToolRates = draft.toolFteRates?.[selectedTool]?.[selectedComplexity] ?? draft.fteRates[selectedComplexity];
+  const activeToolRates = pendingType?.rates ?? draft.toolFteRates?.[selectedTool]?.[selectedComplexity] ?? draft.fteRates[selectedComplexity];
   const activeDevMonths = activeToolRates?.phaseDuration ? phases.reduce((s, p) => s + (activeToolRates.phaseDuration[p] || 0), 0) : 0;
   const currentOtherDefaults = draft.otherDefaults || DEFAULT_OTHER_SETTINGS;
 
@@ -222,8 +341,8 @@ export function ConfigurationModal({
               <SettingsIcon size={18} />
             </div>
             <div>
-              <h2 className={`text-base font-black tracking-tight ${isRetro ? "font-mono text-white" : ""}`}>Calculation Configuration</h2>
-              <p className={`text-xs ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>Tool phase rates, durations, costs, management overheads &amp; multipliers</p>
+              <h2 className={`text-base font-black tracking-tight ${isRetro ? "font-mono text-white" : ""}`}>{isWorkpackages ? "Workpackages configuration" : "Calculation Configuration"}</h2>
+              <p className={`text-xs ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>{isWorkpackages ? "Basic types, phase rates, durations & supporting activities" : "Costs, suppliers, management overheads & multipliers"}</p>
             </div>
           </div>
           <button
@@ -244,13 +363,14 @@ export function ConfigurationModal({
           isRetro ? "border-b-2 border-black bg-[#c0c0c0]" : "border-b border-gray-200 bg-slate-50"
         }`}>
           {[
-            { key: "tools", label: "Tool Phase Rates & Durations" },
+            { key: "tools", label: "FTE Workpackage Basic Types Rates & Durations" },
+            { key: "purchases", label: "non-FTE Workpackage Basic Types" },
             { key: "costs", label: "FTE costs" },
             { key: "suppliers", label: "Suppliers" },
             { key: "management", label: "Management Support" },
             { key: "reusability", label: "Reusability Factors" },
             { key: "stability", label: "Stability Factors" },
-          ].map((tab) => {
+          ].filter((tab) => isWorkpackages ? ["tools", "purchases"].includes(tab.key) : !["tools", "purchases"].includes(tab.key)).map((tab) => {
             const isTabActive = activeTab === tab.key;
             return (
               <button
@@ -274,29 +394,57 @@ export function ConfigurationModal({
         </div>
 
         <div className={`p-6 overflow-y-auto flex-1 min-h-0 ${isRetro ? "bg-[#d4d0c8] font-mono text-black" : "bg-white"}`}>
+          {activeTab === "purchases" && <div className="flex flex-col gap-4">
+            <h3 className="text-[10px] font-black uppercase tracking-wider text-slate-500">Basic Types</h3>
+            <div className="flex flex-col gap-2">
+              {draft.nonFteTypes.map(type => <div key={type.name} className="flex items-center justify-between gap-3 border border-slate-200 rounded-lg p-3 text-xs">
+                <span className="flex items-center gap-2 text-slate-700"><NonFteTypeIcon purchaseType={type.name} icon={type.icon} size={18} />{type.name}</span>
+                <button type="button" aria-label={`Remove ${type.name} type`} disabled={usedPurchaseTypes.has(type.name)} title={usedPurchaseTypes.has(type.name) ? "Used by existing workpackages" : undefined} className="text-red-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" onClick={() => setDraft(current => ({ ...current, nonFteTypes: current.nonFteTypes.filter(item => item.name !== type.name) }))}>Remove</button>
+              </div>)}
+            </div>
+            {!isAddingPurchaseType && <button type="button" className="self-end px-3 py-2 rounded bg-blue-600 text-white text-xs font-bold cursor-pointer" onClick={() => setIsAddingPurchaseType(true)}>+ Add basic type</button>}
+            {isAddingPurchaseType && <div className="flex flex-col gap-2 border border-slate-200 rounded-lg p-3">
+              <div className="flex items-end gap-3">
+                <label className="w-1/2 min-w-0 shrink-0 text-xs font-semibold text-slate-600">Type name<input aria-label="Non-FTE basic type name" value={purchaseTypeName} onChange={event => setPurchaseTypeName(event.target.value)} className="block w-full mt-1 border border-slate-300 rounded px-3 py-2 bg-white text-slate-900" /></label>
+                <div className="flex flex-1 justify-end items-center gap-2">
+                  <button type="button" className="px-3 py-2 rounded border border-slate-300 text-slate-700 text-xs font-bold cursor-pointer" onClick={() => { setIsAddingPurchaseType(false); setPurchaseTypeName(""); setPurchaseTypeIcon(""); }}>Cancel</button>
+                  <button type="button" disabled={!purchaseTypeName.trim() || !purchaseTypeIcon || draft.nonFteTypes.some(type => type.name.toLowerCase() === purchaseTypeName.trim().toLowerCase())} className="px-3 py-2 rounded bg-blue-600 text-white text-xs font-bold cursor-pointer disabled:opacity-40" onClick={() => {
+                    setDraft(current => ({ ...current, nonFteTypes: [...current.nonFteTypes, { name: purchaseTypeName.trim(), icon: purchaseTypeIcon }] }));
+                    setPurchaseTypeName(""); setPurchaseTypeIcon(""); setIsAddingPurchaseType(false);
+                  }}>Save basic type</button>
+                </div>
+              </div>
+              <div><span className="text-xs font-semibold text-slate-600">Icon</span><div className="flex flex-wrap gap-2 mt-2">{NON_FTE_ICONS.map(icon => <button key={icon} type="button" aria-label={`Select ${icon} icon`} title={icon} aria-pressed={purchaseTypeIcon === icon} onClick={() => setPurchaseTypeIcon(icon)} className={`p-3 border rounded-lg cursor-pointer ${purchaseTypeIcon === icon ? "text-blue-600 border-blue-400 bg-blue-50" : "text-slate-600 border-slate-200 bg-white"}`}><NonFteTypeIcon purchaseType="" icon={icon} size={20} /></button>)}</div></div>
+            </div>}
+          </div>}
           {activeTab === "tools" && (
             <div className="flex flex-col gap-3.5">
               <div className="flex items-center justify-between">
                 <span className={`text-[10px] font-black uppercase tracking-wider block ${isRetro ? "text-black font-mono font-bold" : "text-gray-500"}`}>
-                  Select Tool Domain
+                  Tool domain
                 </span>
               </div>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {TOOLS.map((t) => {
                   const isSelected = selectedTool === t.name;
+                  const activeButtonStyle = t.name === "SYS.5"
+                    ? TEAM_COMPACT_BTN_STYLES[t.name].active.replace(/text-\S+/g, "text-white")
+                    : TEAM_COMPACT_BTN_STYLES[t.name].active;
                   return (
                     <button
                       key={t.name}
                       type="button"
-                      onClick={() => setSelectedTool(t.name)}
+                      disabled={isEditingType}
+                      onClick={() => { setSelectedTool(t.name); onToolChange?.(t.name); setSelectedComplexity(workpackageTypeNames(t.name, draft.toolFteRates)[0] ?? ""); setIsTypeDropdownOpen(false); setTypeNotice(null); }}
+                      aria-pressed={isSelected}
                       className={`text-xs font-bold px-2.5 py-1.5 border transition-all cursor-pointer flex items-center gap-1.5 ${
                         isRetro
                           ? isSelected
-                            ? "bg-[#000080] text-white border-2 border-t-black border-l-black border-b-white border-r-white font-mono font-bold"
-                            : "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black font-mono hover:bg-[#d8d4cc]"
+                            ? `${activeButtonStyle} border-2 border-t-black border-l-black border-b-white border-r-white font-mono font-bold`
+                            : `${t.accent} ${t.text} border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black font-mono hover:brightness-95`
                           : isSelected
-                          ? "bg-slate-900 text-white border-slate-900 shadow-xs rounded-lg"
-                          : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 rounded-lg"
+                          ? `${activeButtonStyle} ${t.border} rounded-lg`
+                          : `${t.color} ${t.text} ${t.border} hover:brightness-95 rounded-lg`
                       }`}
                     >
                       <ToolIcon toolName={t.name} size={12} className="shrink-0" />
@@ -306,7 +454,57 @@ export function ConfigurationModal({
                 })}
               </div>
 
-              {selectedTool === "Other" ? (
+              {<div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black uppercase tracking-wider text-slate-500">Basic types</label>
+                <div className="flex items-center justify-between gap-3">
+              {isEditingType && <div className="flex shrink-0 items-center gap-2 text-xs font-semibold text-slate-700">
+                <BasicTypeColorPicker value={pendingType?.rates.color ?? workpackageTypeColor({ tool: selectedTool, complexity: selectedComplexity }, draft.toolFteRates)} onSave={color => {
+                  if (pendingType) setPendingType(current => current ? { ...current, rates: { ...current.rates, color } } : null);
+                  else setDraft(current => ({ ...current, toolFteRates: { ...current.toolFteRates,
+                    [selectedTool]: { ...current.toolFteRates[selectedTool], [selectedComplexity]: { ...current.toolFteRates[selectedTool][selectedComplexity], color } },
+                  } }));
+                }} />
+              </div>}
+                {isEditingType ? <input aria-label={pendingType ? "New basic type name" : "Basic type name"} placeholder="New basic type name" value={pendingType ? pendingType.name : editingTypeName} onChange={event => { const name = event.target.value; if (pendingType) setPendingType(current => current ? { ...current, name } : null); else setEditingTypeName(name); setTypeNotice(null); }} className="w-1/2 min-w-0 text-xs px-2 py-1.5 border border-slate-300 rounded bg-white text-slate-900" /> : <div className="relative w-1/2 min-w-0" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsTypeDropdownOpen(false); }} onKeyDown={event => { if (event.key === "Escape" && isTypeDropdownOpen) { event.stopPropagation(); setIsTypeDropdownOpen(false); } }}>
+                  <button type="button" aria-label="Basic type" aria-haspopup="listbox" aria-expanded={isTypeDropdownOpen} disabled={isEditingType} onClick={() => setIsTypeDropdownOpen(open => !open)} className="flex items-center gap-2 w-full text-xs px-2 py-1.5 border border-slate-300 rounded bg-white text-slate-900 text-left cursor-pointer disabled:opacity-50">
+                    <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: workpackageTypeColor({ tool: selectedTool, complexity: selectedComplexity }, draft.toolFteRates) }} />
+                    <span className="flex-1 truncate">{selectedTool !== "KPI" && selectedComplexity === "Point Cloud" ? "Standard" : selectedComplexity || "No basic types"}</span>
+                    <span aria-hidden="true">▾</span>
+                  </button>
+                  {isTypeDropdownOpen && <div role="listbox" aria-label="Basic types" className="absolute top-full left-0 right-0 z-20 mt-1 max-h-60 overflow-y-auto rounded border border-slate-300 bg-white shadow-lg" onKeyDown={event => {
+                    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                      event.preventDefault();
+                      const options = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button'));
+                      const index = options.indexOf(document.activeElement as HTMLButtonElement);
+                      options[(index + (event.key === "ArrowDown" ? 1 : -1) + options.length) % options.length]?.focus();
+                    }
+                  }}>
+                    {workpackageTypeNames(selectedTool, draft.toolFteRates).map(name => <button key={name} type="button" role="option" aria-selected={selectedComplexity === name} onClick={() => { setSelectedComplexity(name); setIsTypeDropdownOpen(false); }} className={`flex items-center gap-2 w-full px-2 py-2 text-xs text-left text-slate-900 cursor-pointer hover:bg-blue-50 focus:bg-blue-50 ${selectedComplexity === name ? "bg-blue-50" : "bg-white"}`}>
+                      <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: workpackageTypeColor({ tool: selectedTool, complexity: name }, draft.toolFteRates) }} />
+                      <span className="truncate">{selectedTool !== "KPI" && name === "Point Cloud" ? "Standard" : name}</span>
+                    </button>)}
+                  </div>}
+                </div>
+                }
+                {!isEditingType && <button type="button" onClick={addBasicType} className="shrink-0 text-xs font-bold px-3 py-1.5 bg-blue-600 text-white rounded cursor-pointer">+ Add basic type</button>}
+                {isEditingType && <div className="ml-auto flex items-center justify-end gap-2">
+                  <button type="button" onClick={cancelTypeEdit} className="text-xs font-bold px-3 py-1.5 border border-slate-300 text-slate-700 rounded cursor-pointer">{pendingType ? "Cancel" : "Cancel type changes"}</button>
+                  <button type="button" disabled={hasInvalidPhases || Boolean(pendingType && !pendingType.name.trim())} onClick={saveBasicType} className="text-xs font-bold px-3 py-1.5 bg-blue-600 text-white rounded cursor-pointer disabled:opacity-40">Save basic type</button>
+                </div>}
+                </div>
+                {typeNotice && <p role="alert" className="text-xs text-red-600">{typeNotice}</p>}
+              </div>}
+              {!isEditingType ? (
+                selectedComplexity && draft.toolFteRates[selectedTool]?.[selectedComplexity] ? <WorkpackageTypeSummary tool={selectedTool} name={selectedTool !== "KPI" && selectedComplexity === "Point Cloud" ? "Standard" : selectedComplexity} rates={activeToolRates} onEdit={() => beginTypeEdit()} onRemove={removeBasicType} canRemove={!isSelectedTypeUsed} /> : <p className="text-xs text-slate-500">No basic types defined. Add a basic type to get started.</p>
+              ) : activeToolRates?.phases ? (
+                <WorkpackagePhaseEditor phases={activeToolRates.phases} onChange={phases => pendingType
+                  ? setPendingType(current => current ? { ...current, rates: { ...current.rates, phases } } : null)
+                  : setDraft(current => ({ ...current,
+                  toolFteRates: { ...current.toolFteRates, [selectedTool]: { ...current.toolFteRates[selectedTool],
+                    [selectedComplexity]: { ...current.toolFteRates[selectedTool][selectedComplexity], phases },
+                  } },
+                }))} />
+              ) : selectedTool === "Other" ? (
                 <div className="flex flex-col gap-3.5">
                   <div className={`p-3.5 flex items-center justify-between ${
                     isRetro
@@ -395,36 +593,6 @@ export function ConfigurationModal({
                 </div>
               ) : selectedTool === "KPI" ? (
                 <>
-                  <div className={`p-1.5 border flex items-center justify-between ${
-                    isRetro
-                      ? "bg-[#c0c0c0] border-2 border-t-black border-l-black border-b-white border-r-white"
-                      : "bg-slate-100 rounded-xl border-slate-200"
-                  }`}>
-                    {COMPLEXITY_TYPES.map((type) => {
-                      const isSel = selectedComplexity === type;
-                      const color = COMPLEXITY_COLORS[type];
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => setSelectedComplexity(type)}
-                          className={`flex-1 py-1.5 px-3 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                            isRetro
-                              ? isSel
-                                ? "bg-[#000080] text-white border-2 border-t-black border-l-black border-b-white border-r-white font-mono"
-                                : "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black font-mono hover:bg-[#d8d4cc]"
-                              : isSel
-                              ? "bg-white text-slate-900 shadow-sm border border-slate-300 rounded-lg"
-                              : "text-slate-600 hover:text-slate-900 rounded-lg"
-                          }`}
-                        >
-                          <span className={`w-2 h-2 rounded-full ${color.dot}`} />
-                          {type}
-                        </button>
-                      );
-                    })}
-                  </div>
-
                   <div className={`overflow-hidden shadow-xs ${
                     isRetro ? "border-2 border-black bg-white" : "border border-slate-200 rounded-xl"
                   }`}>
@@ -552,6 +720,24 @@ export function ConfigurationModal({
                   </div>
                 </div>
               )}
+              {isEditingType && <>
+                {!activeToolRates?.phases && <div className="border border-slate-200 rounded-xl p-3 grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50/60">
+                  {[{ key: "initialMaintenance", name: "Initial Maintenance", duration: "Up to 6 months after development" }, { key: "residualMaintenance", name: "Residual Maintenance", duration: "Until project end, after initial maintenance" }].map(phase => <div key={phase.key} className="flex flex-col gap-1.5">
+                    <span className="text-xs font-bold text-slate-800">{phase.name}</span>
+                    <label className="text-[10px] font-semibold text-gray-500">FTE Rate / Mo
+                      <input aria-label={`${phase.name} FTE rate`} type="text" inputMode="decimal" value={activeToolRates[phase.key]} onChange={event => updateNestedToolRate(phase.key, event.target.value.replace(",", "."))} className="w-full mt-1 text-xs px-2 py-1 font-mono border border-gray-300 rounded bg-white text-slate-900" />
+                    </label>
+                    <span className="text-[10px] text-slate-500">{phase.duration} · Not milestone bound</span>
+                    <span className="text-[10px] text-emerald-700">Scaled when maintenance reusability is enabled</span>
+                  </div>)}
+                </div>}
+                <SupportingPhasePanel phases={getSupportingPhases(activeToolRates)} onChange={supportingPhases => {
+                  if (pendingType) setPendingType(current => current ? { ...current, rates: { ...current.rates, supportingPhases } } : null);
+                  else setDraft(current => ({ ...current, toolFteRates: { ...current.toolFteRates,
+                    [selectedTool]: { ...current.toolFteRates[selectedTool], [selectedComplexity]: { ...current.toolFteRates[selectedTool][selectedComplexity], supportingPhases } },
+                  } }));
+                }} />
+              </>}
             </div>
           )}
 
@@ -793,6 +979,7 @@ export function ConfigurationModal({
         }`}>
           <button
             type="button"
+            disabled={isEditingType}
             onClick={resetToDefaults}
             className={`flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 transition-colors cursor-pointer ${
               isRetro
@@ -817,12 +1004,12 @@ export function ConfigurationModal({
             <button
               type="button"
               onClick={() => {
-                if (hasInvalidHourlyRates || currencyRequest.current) return;
+                if (isEditingType || isAddingPurchaseType || hasInvalidHourlyRates || hasInvalidPhases || currencyRequest.current) return;
                 onSave({ ...draft, suppliers: retainUsedSuppliers(draft.suppliers, config.suppliers ?? DEFAULT_SUPPLIERS, usedSupplierIds), fteCosts: { ...draft.fteCosts, hourlyRates: Object.fromEntries(FOOTPRINTS.map((location) =>
-                  [location.code, parseFteHourlyRate(hourlyRateInputs[location.code]) ?? null])) } });
+                  [location.code, parseFteHourlyRate(hourlyRateInputs[location.code]) ?? null])) } }, typeRenames);
                 onClose();
               }}
-              disabled={hasInvalidHourlyRates || isConvertingCurrency}
+              disabled={isEditingType || isAddingPurchaseType || hasInvalidHourlyRates || hasInvalidPhases || isConvertingCurrency}
               title={isConvertingCurrency ? "Wait for currency conversion to finish." : hasInvalidHourlyRates ? "Correct the hourly rates in the FTE costs tab before saving." : undefined}
               className={`text-xs font-bold px-4 py-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 isRetro

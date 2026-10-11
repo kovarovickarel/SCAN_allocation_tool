@@ -1,3 +1,5 @@
+import { workpackageTypeLabel } from "../../utils/workpackageTypes";
+import { workpackageRateKey, workpackageTypeColor, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import { costInEUR, parsePurchasePaymentAmount, purchaseMonthlyCosts, purchasePaymentSchedule } from "../../utils/nonFteWorkpackages";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ThemeContext, WORKING_HOURS_PER_MONTH, DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, PROJECT_TYPE_COLORS, TOOL_MAP, TOOL_ICON_COLORS, MILESTONES_DEF, COMPLEXITY_COLORS, FOOTPRINT_MAP } from "../../constants";
@@ -96,7 +98,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     else setEditNotice("The payment changes could not be saved. Check that the workpackages still belong to this project and all amounts are valid.");
   };
   const phases = useMemo(() => new Map(options.cards.filter((card) => card.projectId === project.id).map((card) => {
-    const complexity = card.tool === "KPI" ? card.complexity || "Supporting" : "Point Cloud";
+    const complexity = workpackageRateKey(card, options.toolFteRates);
     const rates = options.toolFteRates?.[card.tool]?.[complexity] ?? options.fteRates[complexity] ?? DEFAULT_FTE_RATES["Point Cloud"];
     return [card.id, computeWorkpackageLifecycleTimeline(card, project, rates, options.reusabilityFactors, options.stabilityFactors, false, project.duration)];
   })), [options.cards, options.toolFteRates, options.fteRates, options.reusabilityFactors, options.stabilityFactors, project]);
@@ -236,7 +238,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
       <div className={`grid items-center min-h-[44px] border-b transition-colors ${isRetro ? "border-black bg-white" : track.isManagement ? "border-purple-100 bg-purple-50/60 hover:bg-purple-100/50" : "border-slate-100 bg-white/60 hover:bg-white/90"}`} style={gridStyle}>
         <div className={`p-2 pl-7 border-r h-full min-w-0 flex flex-col justify-center ${isRetro ? "border-black" : track.isManagement ? "border-slate-200" : tool?.border || "border-slate-200"}`}>
           <div className="flex items-center gap-1.5 min-w-0">
-          {track.isManagement ? <ManagementIcon size={13} className={isRetro ? "text-black" : "text-purple-700"} /> : <span className={`w-1.5 h-1.5 rounded-full ${complexity?.dot || "bg-blue-500"} shrink-0`} />}
+          {track.isManagement ? <ManagementIcon size={13} className={isRetro ? "text-black" : "text-purple-700"} /> : <span style={card?.kind !== "non-fte" && card ? { backgroundColor: workpackageTypeColor(card, options.toolFteRates) } : undefined} className={`w-1.5 h-1.5 rounded-full ${complexity?.dot || "bg-blue-500"} shrink-0`} />}
           <span className={`text-[11px] font-bold truncate leading-tight ${isRetro ? "text-black font-mono" : "text-slate-800"}`} title={altered ? `${track.name} (Monthly payments manually altered)` : track.name}>{track.name}{altered && <span className="text-red-600 font-black ml-1" title="Monthly payments manually altered">*</span>}</span>
           {altered && onSavePayments && <button type="button" className={`text-[9px] font-bold px-1.5 py-0.5 border transition-colors cursor-pointer flex items-center gap-0.5 shrink-0 ${isRetro
             ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
@@ -257,6 +259,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
           </button>}
           </div>
           <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0 pl-5">
+            {card?.kind !== "non-fte" && card?.complexity && card.tool !== "Other" && <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border" style={workpackageTypeBadgeStyle(card, options.toolFteRates)}>{workpackageTypeLabel(card)}</span>}
             {card && <span className={`text-[8.5px] px-1.5 py-0.5 rounded font-semibold border ${isRetro ? "bg-white text-black border-black font-mono" : "bg-white text-gray-700 border-gray-300 shadow-2xs"}`}>
               <ReusabilityLabel card={card} factors={options.reusabilityFactors} factorOnly />
             </span>}

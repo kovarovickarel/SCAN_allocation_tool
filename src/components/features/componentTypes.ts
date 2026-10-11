@@ -93,6 +93,7 @@ export interface SubcategoryManagerModalProps {
 }
 
 export interface UnassignedPoolProps extends ReusabilityRatesProps {
+  onOpenConfiguration?: () => void;
   suppliers?: readonly SupplierRecord[];
   workpackageKind?: "fte" | "non-fte";
   onChangeWorkpackageKind?: (kind: "fte" | "non-fte") => void;

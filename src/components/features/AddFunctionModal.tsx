@@ -1,5 +1,6 @@
+import { workpackageTypeNames, workpackageRateKey } from "../../utils/workpackageTypes";
 import React, { useMemo, useState } from "react";
-import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, TOOLS, TOOL_MAP, DEFAULT_OTHER_SETTINGS, MILESTONES_DEF, genId } from "../../constants";
+import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, DEFAULT_OTHER_SETTINGS, MILESTONES_DEF, genId } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { AddFunctionModalProps, AddFunctionDraft } from './componentTypes';
 import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
@@ -11,7 +12,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
   const [draft, setDraft] = useState<AddFunctionDraft>({
     name: "",
     tool: defaultTool,
-    complexity: defaultTool === "KPI" ? "Supporting" : null,
+    complexity: workpackageTypeNames(defaultTool, toolFteRates)[0] ?? null,
     reusability: "New",
     customReusabilityFactor: 0.5,
     reusabilityAppliesToMaintenance: false,
@@ -32,6 +33,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
   }, [activeToolView]);
 
   const selectedTool = TOOL_MAP[draft.tool];
+  const basicTypes = workpackageTypeNames(draft.tool, toolFteRates);
   const maintenanceAvailable = hasWorkpackageMaintenance(draft, fteRates, toolFteRates);
   const isInvalidReusability = draft.reusability === "Other" && parseReusabilityFactor(draft.customReusabilityFactor) === null;
 
@@ -40,7 +42,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
     setDraft((d) => ({
       ...d,
       tool: t,
-      complexity: t === "KPI" ? (d.complexity || "Supporting") : null,
+      complexity: workpackageTypeNames(t, toolFteRates)[0] ?? null,
       subcategory: nextTool?.subcategories ? nextTool.subcategories[0] : null,
     }));
   };
@@ -51,7 +53,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
       id: genId(),
       name: draft.name.trim(),
       tool: draft.tool,
-      complexity: draft.tool === "KPI" ? (draft.complexity || "Supporting") : null,
+      complexity: workpackageRateKey(draft, toolFteRates),
       ...normalizeReusability({ ...draft, reusabilityAppliesToMaintenance: draft.reusability === "Other" && maintenanceAvailable && draft.reusabilityAppliesToMaintenance }, reusabilityFactors),
       subcategory: selectedTool?.subcategories ? (draft.subcategory ?? selectedTool.subcategories[0]) : null,
       projectId: null,
@@ -59,7 +61,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
       otherDuration: Math.max(1, parseInt(draft.otherDuration, 10) || 1),
       otherStartMonth: null,
       otherFinishMilestone: draft.otherFinishMilestone || null,
-      finishMilestone: draft.tool === "Other" ? null : draft.finishMilestone || null,
+      finishMilestone: draft.finishMilestone || null,
       otherHasMaintenance: Boolean(draft.otherHasMaintenance),
       otherMaintenanceEffort: Math.max(0, parseFloat(draft.otherMaintenanceEffort) || 0),
     });
@@ -115,7 +117,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
               onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             />
           </div>
-          <div className={draft.tool === "KPI" ? "grid grid-cols-2 gap-2" : "flex flex-col gap-2"}>
+          <div className={basicTypes.length > 1 ? "grid grid-cols-2 gap-2" : "flex flex-col gap-2"}>
             <div>
               <label className={`text-xs font-semibold block mb-1 ${isRetro ? "text-black font-mono font-bold" : "text-gray-700"}`}>
                 Tool Domain
@@ -134,10 +136,10 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                 ))}
               </select>
             </div>
-            {draft.tool === "KPI" && (
+            {basicTypes.length > 0 && (
               <div>
                 <label className={`text-xs font-semibold block mb-1 ${isRetro ? "text-black font-mono font-bold" : "text-gray-700"}`}>
-                  Complexity
+                  Basic type
                 </label>
                 <select
                   className={`px-2 py-1.5 w-full text-xs font-medium ${
@@ -145,18 +147,18 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                       ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white font-mono text-black font-bold"
                       : "border border-gray-300 rounded"
                   }`}
-                  value={draft.complexity || "Supporting"}
+                  value={workpackageRateKey(draft, toolFteRates)}
                   onChange={(e) => setDraft((d) => ({ ...d, complexity: e.target.value }))}
                 >
-                  {COMPLEXITY_TYPES.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                  {basicTypes.map((c) => (
+                    <option key={c} value={c}>{draft.tool !== "KPI" && c === "Point Cloud" ? "Standard" : c}</option>
                   ))}
                 </select>
               </div>
             )}
           </div>
 
-          {draft.tool !== "Other" && (
+          {(draft.tool !== "Other" || draft.complexity) && (
             <div>
               <label className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
                 Finish Target (Milestone)
@@ -165,10 +167,10 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                 <option value="">Project End (Default)</option>
                 {MILESTONES_DEF.map(m => <option key={m.key} value={m.key}>{m.label} ({m.name})</option>)}
               </select>
-              <p className="text-[10px] text-slate-500 mt-1">Pre-maintenance phases must finish by this target. Maintenance may continue afterward.</p>
+              <p className="text-[10px] text-slate-500 mt-1">Milestone-bound main phases must finish by this target. All main phases must finish by project end; maintenance may end early.</p>
             </div>
           )}
-          {draft.tool === "Other" && (
+          {draft.tool === "Other" && !draft.complexity && (
             <div className={`flex flex-col gap-2 p-2.5 ${
               isRetro
                 ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]"

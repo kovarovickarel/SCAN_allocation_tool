@@ -1,4 +1,5 @@
-import { workpackageDevelopmentMonths, workpackageFinishTarget } from "../../utils/workpackageFinishTargets";
+import { workpackageRateKey, isMaintenancePhase } from "../../utils/workpackageTypes";
+import { workpackageDevelopmentMonths, workpackageMainMonths, workpackageFinishTarget } from "../../utils/workpackageFinishTargets";
 import { DEFAULT_FTE_RATES } from "../../constants";
 import { applySalaryTotals } from "../../utils/externalSalaries";
 import { purchaseScheduleExceedsProject } from "../../utils/nonFteWorkpackages";
@@ -541,7 +542,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   const projectCards = useMemo(() => cards.filter((c) => c.projectId === project.id), [cards, project.id]);
 
   const boundOtherWPs = useMemo(() => {
-    return projectCards.filter((c) => c.kind !== "non-fte" && c.tool === "Other" && Boolean(c.otherFinishMilestone));
+    return projectCards.filter((c) => c.kind !== "non-fte" && c.tool === "Other" && !c.complexity && Boolean(c.otherFinishMilestone));
   }, [projectCards]);
 
   const projectCardsByTool = useMemo(() => {
@@ -638,7 +639,7 @@ export const ProjectBasket = memo(function ProjectBasket({
     let minRequiredDuration = Math.max(6, minMonths.SSSR);
     for (let i = 0; i < projectCards.length; i++) {
       const c = projectCards[i];
-      if (c.kind !== "non-fte" && c.tool === "Other" && !c.otherFinishMilestone) {
+      if (c.kind !== "non-fte" && c.tool === "Other" && !c.complexity && !c.otherFinishMilestone) {
         const dur = Math.max(1, parseInt(c.otherDuration, 10) || 1);
         if (dur > minRequiredDuration) minRequiredDuration = dur;
       }
@@ -779,7 +780,7 @@ export const ProjectBasket = memo(function ProjectBasket({
     let minRequiredDuration = Math.max(6, minMonths.SSSR);
     for (let i = 0; i < projectCards.length; i++) {
       const c = projectCards[i];
-      if (c.kind !== "non-fte" && c.tool === "Other" && !c.otherFinishMilestone) {
+      if (c.kind !== "non-fte" && c.tool === "Other" && !c.complexity && !c.otherFinishMilestone) {
         const dur = Math.max(1, parseInt(c.otherDuration, 10) || 1);
         if (dur > minRequiredDuration) minRequiredDuration = dur;
       }
@@ -1386,11 +1387,12 @@ export const ProjectBasket = memo(function ProjectBasket({
 
 export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates = DEFAULT_FTE_RATES, toolFteRates = null }) {
   const { isRetro } = React.useContext(ThemeContext);
-  const isOther = card.tool === "Other";
+  const isOther = card.tool === "Other" && !card.complexity;
   const duration = workpackageDevelopmentMonths(card, fteRates, toolFteRates);
-  const complexity = card.tool === "KPI" ? card.complexity || "Supporting" : "Point Cloud";
+  const mainDuration = workpackageMainMonths(card, fteRates, toolFteRates);
+  const complexity = workpackageRateKey(card, toolFteRates);
   const rates = toolFteRates?.[card.tool]?.[complexity] ?? fteRates[complexity] ?? fteRates["Point Cloud"];
-  const hasMaintenance = isOther ? Boolean(card.otherHasMaintenance) : Boolean(rates?.initialMaintenance || rates?.residualMaintenance);
+  const hasMaintenance = isOther ? Boolean(card.otherHasMaintenance) : rates?.phases ? rates.phases.some(isMaintenancePhase) : Boolean(rates?.initialMaintenance || rates?.residualMaintenance);
   const projectDuration = project.duration;
 
   const rawEffort = parseFloat(card.otherEffort) || 0.3;
@@ -1409,7 +1411,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
       ? milestones[selectedMilestone]
       : projectDuration;
 
-  const maxValidStart = Math.max(1, milestoneBoundaryMonth - duration + 1);
+  const maxValidStart = Math.max(1, Math.min(duration === 0 ? projectDuration : milestoneBoundaryMonth - duration + 1, projectDuration - mainDuration + 1));
 
   const initialStart = card.projectId !== project.id && selectedMilestone && milestones?.[selectedMilestone]
     ? maxValidStart
@@ -1430,7 +1432,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
   const handleMilestoneTargetChange = (msKey) => {
     setSelectedMilestone(msKey);
     const boundary = msKey && milestones?.[msKey] ? milestones[msKey] : projectDuration;
-    const alignedStart = Math.max(1, boundary - duration + 1);
+    const alignedStart = duration === 0 ? 1 : Math.max(1, Math.min(boundary - duration + 1, projectDuration - mainDuration + 1));
     setStartMonthInput(String(alignedStart));
     setSpanningError(false);
   };
@@ -1521,19 +1523,23 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
   let errorMessage = null;
   const isDurationTooLong = duration > milestoneBoundaryMonth;
 
-  if (isDurationTooLong) {
+  if (mainDuration > projectDuration) {
+    errorMessage = `Main phases require ${mainDuration} months and must finish within the ${projectDuration}-month project, including phases not bound by a milestone.`;
+  } else if (isDurationTooLong) {
     errorMessage = `The activity duration (${duration} months) exceeds the available timeline before ${selectedMilestone || "project end"} (${milestoneBoundaryMonth} months). Choose a later finish target or reduce the workpackage duration.`;
   } else if (isNaN(startMonth) || startMonthInput.trim() === "") {
     errorMessage = "Please enter a valid start month number.";
   } else if (startMonth < 1) {
     errorMessage = "Start month must be at least 1 (M1).";
+  } else if (startMonth > maxValidStart && !spanningError) {
+    errorMessage = `Choose a start month no later than M${maxValidStart} so milestone-bound phases meet their target and all main phases finish by project end.`;
   } else if (spanningError) {
     errorMessage = `Activity would span beyond ${selectedMilestone ? `${selectedMilestone} (Month ${milestoneBoundaryMonth})` : "the project end"}! Selected last possible month M${maxValidStart} to start the activity instead.`;
   }
 
   const isValid = errorMessage === null;
   const previewStartMonth = !isNaN(startMonth) && startMonth >= 1 ? startMonth : null;
-  const previewEndMonth = previewStartMonth !== null ? previewStartMonth + duration - 1 : null;
+  const previewEndMonth = previewStartMonth !== null ? previewStartMonth + mainDuration - 1 : null;
 
   return (
     <div
@@ -1589,9 +1595,9 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
             : "text-slate-600 bg-slate-50 rounded-xl border border-slate-200"
         }`}>
           <div className="flex items-center justify-between">
-            <span className={`font-semibold ${isRetro ? "text-black" : "text-slate-500"}`}>{isOther ? "Activity Duration:" : "Pre-maintenance Duration:"}</span>
+            <span className={`font-semibold ${isRetro ? "text-black" : "text-slate-500"}`}>{isOther ? "Activity Duration:" : "Main phases duration:"}</span>
             <span className={`font-bold font-mono ${isRetro ? "text-black font-black" : "text-slate-800"}`}>
-              {isOther ? `${finalEffort.toFixed(2)} FTE / ` : ""}{duration} months
+              {isOther ? `${finalEffort.toFixed(2)} FTE / ` : ""}{mainDuration} months
             </span>
           </div>
           <div className="flex items-center justify-between">

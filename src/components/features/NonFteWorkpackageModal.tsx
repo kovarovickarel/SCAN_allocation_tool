@@ -1,5 +1,6 @@
+import { NonFteTypesContext } from "../../utils/nonFteBasicTypes";
 import { useContext, useLayoutEffect, useRef, useState } from "react";
-import { DEFAULT_REUSABILITY_FACTORS, MILESTONES_DEF, PURCHASE_TYPES, ThemeContext, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, genId } from "../../constants";
+import { DEFAULT_REUSABILITY_FACTORS, MILESTONES_DEF, ThemeContext, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, genId } from "../../constants";
 import type { FactorMap, SupplierRecord, WorkpackageCard } from "../../types";
 import { normalizeReusability, parseReusabilityFactor } from "../../utils/reusability";
 import { purchaseCost, purchaseSubcategory } from "../../utils/nonFteWorkpackages";
@@ -10,6 +11,7 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
   card?: WorkpackageCard; suppliers: readonly SupplierRecord[]; reusabilityFactors?: FactorMap; activeToolView?: string; inline?: boolean;
   onSave: (card: WorkpackageCard) => void; onClose: () => void;
 }) {
+  const types = useContext(NonFteTypesContext);
   const { isBasic, isRetro } = useContext(ThemeContext);
   const toolSelectRef = useRef<HTMLSelectElement>(null);
   const typeSelectRef = useRef<HTMLSelectElement>(null);
@@ -44,7 +46,7 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
   useEscapeKey(onClose, !inline);
   const [draft, setDraft] = useState<WorkpackageCard>(() => card ? { ...card, subcategory: purchaseSubcategory(card) } : {
     id: genId(), name: "", kind: "non-fte", tool: activeToolView === "all" ? "KPI" : activeToolView,
-    purchaseType: "License", supplierId: suppliers[0]?.id || "", purchaseMilestone: null, reusability: "New",
+    purchaseType: types[0]?.name ?? "", supplierId: suppliers[0]?.id || "", purchaseMilestone: null, reusability: "New",
     customReusabilityFactor: 0.5, projectId: null,
     subcategory: purchaseSubcategory({ tool: activeToolView === "all" ? "KPI" : activeToolView }),
   });
@@ -79,7 +81,7 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
     return () => { disposed = true; observer.disconnect(); document.fonts.removeEventListener("loadingdone", measure); };
   }, [typeLabel, draft.tool, inline, isRetro]);
   const roundedPrice = Math.round(Number(price) * 100) / 100;
-  const validPrice = /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(price.trim()) && Number.isFinite(Number(price)) && roundedPrice > 0 && Number(price) <= Number.MAX_SAFE_INTEGER / 100;
+  const validPrice = types.some(type => type.name === draft.purchaseType) && /^(?:\d+(?:\.\d*)?|\.\d+)$/.test(price.trim()) && Number.isFinite(Number(price)) && roundedPrice > 0 && Number(price) <= Number.MAX_SAFE_INTEGER / 100;
   const supplier = suppliers.find(s => s.id === draft.supplierId);
   const validReusability = draft.reusability !== "Other" || parseReusabilityFactor(draft.customReusabilityFactor) !== null;
   const preview = { ...draft, purchasePriceEUR: roundedPrice,
@@ -108,7 +110,7 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
         <label className={`${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}><span className={inline ? "sr-only" : undefined}>Workpackage Name *</span><input autoFocus title="Workpackage Name" className={`${inputClass} ${inline ? "font-medium" : "mt-1 font-normal"}`} value={draft.name} onChange={e => setDraft(d => ({ ...d, name: e.target.value }))} /></label>
         <div ref={toolTypeRowRef} className="grid gap-3" style={{ gridTemplateColumns: toolTypeColumns }}>
           <label className={`min-w-0 ${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}><span className={inline ? "sr-only" : undefined}>Tool Domain</span><select ref={toolSelectRef} title={`Tool Domain: ${draft.tool}`} className={`${inputClass} ${inline ? "" : "mt-1"}`} value={draft.tool} onChange={e => setDraft(d => ({ ...d, tool: e.target.value, subcategory: purchaseSubcategory({ tool: e.target.value }) }))}>{TOOLS.filter(t => activeToolView === "all" || t.name === activeToolView || t.name === "Other" || t.name === card?.tool).map(t => <option key={t.name} value={t.name} title={t.name}>{shortToolNames.includes(t.name) ? TOOL_ABBREVIATIONS[t.name] || t.name : t.name}</option>)}</select></label>
-          <label className={`min-w-0 ${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}><span className={inline ? "sr-only" : undefined}>Type</span><select ref={typeSelectRef} title={`Type: ${draft.purchaseType}`} className={`${inputClass} ${inline ? "" : "mt-1"}`} value={draft.purchaseType} onChange={e => setDraft(d => ({ ...d, purchaseType: e.target.value as WorkpackageCard["purchaseType"] }))}>{PURCHASE_TYPES.map(type => <option key={type} value={type}>{inline && type === "Contracted workpackage" ? "Contracted WP" : type}</option>)}</select></label>
+          <label className={`min-w-0 ${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}><span className={inline ? "sr-only" : undefined}>Type</span><select ref={typeSelectRef} title={`Type: ${draft.purchaseType}`} className={`${inputClass} ${inline ? "" : "mt-1"}`} value={draft.purchaseType} onChange={e => setDraft(d => ({ ...d, purchaseType: e.target.value as WorkpackageCard["purchaseType"] }))}>{types.map(type => <option key={type.name} value={type.name}>{inline && type.name === "Contracted workpackage" ? "Contracted WP" : type.name}</option>)}</select></label>
         </div>
         {selectedTool.subcategories && <label className={`${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}>
           <span className={inline ? "sr-only" : undefined}>Subtool</span>

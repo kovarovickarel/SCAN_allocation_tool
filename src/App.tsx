@@ -1,3 +1,6 @@
+import { DEFAULT_NON_FTE_TYPES, NonFteTypesContext } from "./utils/nonFteBasicTypes";
+import { supportingPhaseRates } from "./utils/supportingPhases";
+import { workpackageRateKey, normalizeToolBasicTypes } from "./utils/workpackageTypes";
 import { WorkspaceFileControls } from "./components/features/WorkspaceFileControls";
 import type { WorkspaceData, WorkspaceView } from "./utils/workspaceFile";
 import { workpackageFinishViolation } from "./utils/workpackageFinishTargets";
@@ -91,7 +94,7 @@ export default function App() {
       _editing: false,
       customCoreFTE: {},
       customDevSupportFTE: {},
-      customMeetingsFTE: {},
+      customMeetingsFTE: {}, customSupportingActivityFTE: {},
     }))
   );
 
@@ -182,6 +185,8 @@ export default function App() {
   const [showAddFunction, setShowAddFunction] = useState(false);
   const [showAddProject, setShowAddProject] = useState(false);
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showWorkpackagesConfigModal, setShowWorkpackagesConfigModal] = useState(false);
+  const [workpackagesConfigTool, setWorkpackagesConfigTool] = useState("KPI");
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [pendingOtherAssignment, setPendingOtherAssignment] = useState(null);
   const [manualRescheduleQueue, setManualRescheduleQueue] = useState([]);
@@ -206,6 +211,7 @@ export default function App() {
   });
 
   const [config, setConfig] = useState({
+    nonFteTypes: DEFAULT_NON_FTE_TYPES,
     suppliers: DEFAULT_SUPPLIERS.map(supplier => ({ ...supplier })),
     fteRates: deepClone(DEFAULT_FTE_RATES),
     fteCosts: deepClone(DEFAULT_FTE_COSTS),
@@ -215,6 +221,14 @@ export default function App() {
     reusabilityFactors: DEFAULT_REUSABILITY_FACTORS,
     stabilityFactors: DEFAULT_STABILITY_FACTORS,
   });
+
+  useEffect(() => {
+    const tools = normalizeToolBasicTypes(config.toolFteRates);
+    const rates = normalizeToolBasicTypes({ KPI: config.fteRates }).KPI;
+    const needsMigration = Object.entries(tools).some(([tool, types]) => Object.entries(types).some(([name, value]) => value !== config.toolFteRates[tool][name])) ||
+      Object.entries(rates).some(([name, value]) => value !== config.fteRates[name]);
+    if (needsMigration) setConfig(current => ({ ...current, toolFteRates: tools, fteRates: rates }));
+  }, [config.toolFteRates, config.fteRates]);
 
   useEffect(() => {
     const invalid = functions.flatMap(card => {
@@ -228,7 +242,7 @@ export default function App() {
     setFunctions(current => current.map(card => ids.has(card.id) ? {
       ...card, projectId: null, startMonth: null, otherStartMonth: null, _editing: false,
       memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
-      customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {},
+      customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {},
     } : card));
     const automatic = invalid.filter(item => !isBasicMode && item.project.autoStartFte !== false);
     const manual = invalid.filter(item => isBasicMode || item.project.autoStartFte === false);
@@ -253,10 +267,16 @@ export default function App() {
     ...teamMembers.filter(member => member.isExternal && member.supplierId).map(member => member.supplierId!),
   ]), [functions, teamMembers]);
 
-  const handleSaveConfig = useCallback((newConfig) => {
-    setConfig(current => ({ ...newConfig, suppliers: retainUsedSuppliers(
+  const handleSaveConfig = useCallback((newConfig, renames: { tool: string; from: string; to: string }[] = []) => {
+    if (renames.length) setFunctions(current => current.map(card => {
+      if (card.kind === "non-fte" || (card.tool === "Other" && !card.complexity)) return card;
+      let name = workpackageRateKey(card, config.toolFteRates);
+      for (const rename of renames) if (rename.tool === card.tool && rename.from === name) name = rename.to;
+      return name === workpackageRateKey(card, config.toolFteRates) ? card : { ...card, complexity: name };
+    }));
+    setConfig(current => ({ ...newConfig, nonFteTypes: newConfig.nonFteTypes ?? current.nonFteTypes ?? DEFAULT_NON_FTE_TYPES, suppliers: retainUsedSuppliers(
       newConfig.suppliers ?? DEFAULT_SUPPLIERS, current.suppliers, usedSupplierIds) }));
-  }, [usedSupplierIds]);
+  }, [usedSupplierIds, config.toolFteRates]);
 
   useEffect(() => {
     const handleGlobalDragEnd = () => {
@@ -332,8 +352,8 @@ export default function App() {
         config.toolFteRates
       );
 
-      const isOther = f.tool === "Other";
-      const complexityKey = f.tool === "KPI" ? (f.complexity || "Supporting") : "Point Cloud";
+      const isOther = f.tool === "Other" && !f.complexity;
+      const complexityKey = workpackageRateKey(f, config.toolFteRates);
       const rates =
         config.toolFteRates?.[f.tool]?.[complexityKey] ??
         config.fteRates?.[complexityKey] ??
@@ -350,9 +370,7 @@ export default function App() {
       );
 
       const stabilityMultiplier = config.stabilityFactors[project.stability] ?? 1.0;
-      const supportMultiplier = getSupportReusabilityFactor(f, config.reusabilityFactors);
-      const defaultDevRate = isOther ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier * supportMultiplier);
-      const defaultMeetingsRate = isOther ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier * supportMultiplier);
+      const supportMultiplier = getSupportReusabilityFactor(f, config.reusabilityFactors, rates);
 
       let isAltered = false;
       let totalEffortMonths = 0;
@@ -363,6 +381,7 @@ export default function App() {
           coverageMonths.push({ shortPhase: "", totalWPMonthlyFTE: 0 });
           continue;
         }
+        const { dev: defaultDevRate, meetings: defaultMeetingsRate } = supportingPhaseRates(f, rates, defaultMonths[m], config.reusabilityFactors, stabilityMultiplier);
         const defCore = defaultMonths[m]?.totalFTE || 0;
         const customCore = f.customCoreFTE?.[m];
         const customDev = isOther || supportMultiplier === 0 ? undefined : f.customDevSupportFTE?.[m];
@@ -429,6 +448,7 @@ export default function App() {
         customCoreFTE: updated.customCoreFTE,
         customDevSupportFTE: updated.customDevSupportFTE,
         customMeetingsFTE: updated.customMeetingsFTE,
+        customSupportingActivityFTE: updated.customSupportingActivityFTE,
       };
     });
     const reconciled = reconcileProjectTimelineAllocations(project, { ...project, customMgmtMonthlyFTE },
@@ -448,6 +468,7 @@ export default function App() {
           customCoreFTE: updated.customCoreFTE,
           customDevSupportFTE: updated.customDevSupportFTE,
           customMeetingsFTE: updated.customMeetingsFTE,
+        customSupportingActivityFTE: updated.customSupportingActivityFTE,
           memberMonthlyAssignments: updated.memberMonthlyAssignments,
         };
       })
@@ -473,7 +494,7 @@ export default function App() {
           setAssignmentWarning({ cardName: targetCard.name, projectName: targetProj.name, reason });
           setFunctions(prev => prev.map(card => card.id === cardId ? {
             ...card, projectId: null, startMonth: null, otherStartMonth: null, memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
-            customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {},
+            customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {},
           } : card));
           return;
         }
@@ -512,7 +533,7 @@ export default function App() {
     const { card } = pendingOtherAssignment;
     const project = projects.find(item => item.id === pendingOtherAssignment.project.id);
     if (!project || !Number.isInteger(startMonth) || startMonth < 1) return;
-    const schedule = card.tool === "Other"
+    const schedule = card.tool === "Other" && !card.complexity
       ? { otherStartMonth: startMonth, otherFinishMilestone: finishMilestone || null }
       : { startMonth, finishMilestone: finishMilestone || null };
     if (workpackageFinishViolation({ ...card, ...schedule, projectId: project.id }, project, config.fteRates, config.toolFteRates)) return;
@@ -588,7 +609,7 @@ export default function App() {
   }, [projects, functions, config.reusabilityFactors]);
 
   const handleAddFunction = useCallback((newFn) => {
-    setFunctions((prev) => [{ ...newFn, _editing: false, customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {} }, ...prev]);
+    setFunctions((prev) => [{ ...newFn, _editing: false, customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {} }, ...prev]);
   }, []);
 
   const handleAddProject = useCallback((newProject) => {
@@ -701,19 +722,19 @@ export default function App() {
   const importWorkspace = useCallback((data: WorkspaceData) => {
     stopAutoScroll();
     setProjects(data.projects); setFunctions(data.workpackages); setTeamMembers(data.teamMembers);
-    setConfig(data.configuration); setTeamOtherWPScopes(data.teamOtherWPScopes);
+    setConfig({ ...data.configuration, nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }); setTeamOtherWPScopes(data.teamOtherWPScopes);
     restoreViewPreferences(data.view); setWorkpackageKind(data.view.workpackageKind);
     setShowSummaryDashboard(data.view.summaryOpen); setSummaryFilter(data.view.summaryFilter);
     setSelectedSummaryProjectIds(data.view.selectedProjectIds);
     setShowAddMember(false); setEditingMember(null); setShowAddFunction(false); setShowAddProject(false);
-    setShowConfigModal(false); setShowHelpModal(false); setPendingPurchase(null); setPendingOtherAssignment(null);
+    setShowConfigModal(false); setShowWorkpackagesConfigModal(false); setShowHelpModal(false); setPendingPurchase(null); setPendingOtherAssignment(null);
     setManualRescheduleQueue([]); setAssignmentWarning(null); setDraggedCard(null);
     setDraggedProjectIndex(null); setTargetProjectIndex(null);
     setWorkspaceRevision(value => value + 1);
   }, [restoreViewPreferences, stopAutoScroll]);
 
   return (
-    <ThemeContext.Provider value={{ theme, isBasic, isRetro, setTheme, mode: appMode, isBasicMode }}>
+    <NonFteTypesContext.Provider value={config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES}><ThemeContext.Provider value={{ theme, isBasic, isRetro, setTheme, mode: appMode, isBasicMode }}>
       <div className={`min-h-screen ${isRetro ? "bg-[#008080] font-sans" : "bg-slate-950"} flex flex-col text-slate-800 select-none`}>
         <header className={`${isRetro ? "bg-[#c0c0c0] border-b-2 border-black shadow-[0_2px_0px_#fff]" : "bg-slate-900 border-b border-slate-800 shadow-lg"} px-4 md:px-5 py-3 flex items-center gap-5 shrink-0`}>
           <div className="w-[278px] min-[1400px]:w-80 shrink-0 flex items-center gap-3 min-w-0">
@@ -812,7 +833,7 @@ export default function App() {
                 {TEST_TOOLS.slice(0, 5).map((tool) => {
                   const isActive = !showSummaryDashboard && activeToolView === tool.name;
                   const style = TOOL_VIEW_SWITCHER_STYLES[tool.name];
-                  
+
                   const btnClass = isRetro
                     ? isActive
                       ? "bg-[#000080] text-white border-2 border-t-black border-l-black border-b-white border-r-white font-mono scale-110"
@@ -908,6 +929,7 @@ export default function App() {
             onSavePayments={handleSavePurchasePayments} /> : <>
           {activeToolView === "all" ? (
             <UnassignedPool
+              onOpenConfiguration={() => setShowWorkpackagesConfigModal(true)}
               suppliers={config.suppliers}
               workpackageKind={workpackageKind}
               onChangeWorkpackageKind={setWorkpackageKind}
@@ -931,6 +953,7 @@ export default function App() {
             <div className="w-80 shrink-0 flex flex-col gap-3 h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]">
               <div className="flex-1 min-h-0 flex flex-col">
                 <UnassignedPool
+                  onOpenConfiguration={() => setShowWorkpackagesConfigModal(true)}
                   suppliers={config.suppliers}
                   workpackageKind={workpackageKind}
                   onChangeWorkpackageKind={setWorkpackageKind}
@@ -1157,8 +1180,24 @@ export default function App() {
           <ConfigurationModal
             config={config}
             usedSupplierIds={usedSupplierIds}
+            usedPurchaseTypes={new Set(functions.filter(card => card.kind === "non-fte").map(card => card.purchaseType))}
             onSave={handleSaveConfig}
             onClose={() => setShowConfigModal(false)}
+            SettingsIcon={SettingsIcon}
+            ToolIcon={ToolIcon}
+            RotateCcwIcon={RotateCcwIcon}
+          />
+        )}
+        {showWorkpackagesConfigModal && (
+          <ConfigurationModal
+            scope="workpackages"
+            usedFteTypes={functions.filter(card => card.kind !== "non-fte" && !(card.tool === "Other" && !card.complexity)).map(card => ({ tool: card.tool, name: workpackageRateKey(card, config.toolFteRates) }))}
+            usedPurchaseTypes={new Set(functions.filter(card => card.kind === "non-fte").map(card => card.purchaseType))}
+            initialTool={workpackagesConfigTool}
+            onToolChange={setWorkpackagesConfigTool}
+            config={config}
+            onSave={(updated, renames) => handleSaveConfig({ ...config, toolFteRates: updated.toolFteRates, otherDefaults: updated.otherDefaults, nonFteTypes: updated.nonFteTypes }, renames)}
+            onClose={() => setShowWorkpackagesConfigModal(false)}
             SettingsIcon={SettingsIcon}
             ToolIcon={ToolIcon}
             RotateCcwIcon={RotateCcwIcon}
@@ -1256,6 +1295,6 @@ export default function App() {
           </div>
         )}
       </div>
-    </ThemeContext.Provider>
+    </ThemeContext.Provider></NonFteTypesContext.Provider>
   );
 }

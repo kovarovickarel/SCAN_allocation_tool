@@ -1,6 +1,18 @@
 import { memo } from "react";
 import type { SvgIconProps, ToolIconProps } from '../features/componentTypes';
 
+export const LightningBoltIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+    <path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z" />
+  </svg>
+));
+
+export const InfinityIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M12 12c-3-4-4-5-6-5a5 5 0 0 0 0 10c2 0 3-1 6-5s4-5 6-5a5 5 0 0 1 0 10c-2 0-3-1-6-5Z" />
+  </svg>
+));
+
 export const ProjectIcon = memo(({ size = 16, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <path d="M3 7V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />

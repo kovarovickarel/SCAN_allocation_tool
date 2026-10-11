@@ -1,3 +1,6 @@
+import { workpackageTypeLabel } from "../../utils/workpackageTypes";
+import { supportingPhaseRates } from "../../utils/supportingPhases";
+import { workpackageRateKey, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, round2 } from "../../constants";
 import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, calculateWorkpackageAllocationCost, formatMemberMonthlyAllocationCost, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
@@ -208,16 +211,15 @@ export function TeamTimelineModal({
         const isCardToolHidden = (p.hiddenTools || []).includes(card.tool);
         const isSubUnused = card.subcategory ? hiddenSubs.has(card.subcategory) : false;
         const isNegated = isCardToolHidden || isSubUnused || Boolean(card._isNegated);
-        const complexityKey = card.tool === "KPI" ? (card.complexity || "Supporting") : "Point Cloud";
+        const complexityKey = workpackageRateKey(card, toolFteRates);
         const rates = toolFteRates?.[card.tool]?.[complexityKey] ?? fteRates?.[complexityKey] ?? DEFAULT_FTE_RATES[complexityKey] ?? DEFAULT_FTE_RATES["Point Cloud"];
 
         const defaultCoreMonths = computeWorkpackageLifecycleTimeline(card, p, rates, reusabilityFactors, stabilityFactors, isNegated, pDur);
-        const supportMultiplier = getSupportReusabilityFactor(card, reusabilityFactors);
-        const defaultDevRate = isNegated || card.tool === "Other" ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stabilityMultiplier * supportMultiplier);
-        const defaultMeetingsRate = isNegated || card.tool === "Other" ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stabilityMultiplier * supportMultiplier);
+        const supportMultiplier = getSupportReusabilityFactor(card, reusabilityFactors, rates);
 
         const mergedMonthsInProject = defaultCoreMonths.map((m, mIdx) => {
-          if (card.tool !== "Other" && m.phaseName === "Inactive") return { ...m, coreFTE: 0, totalWPMonthlyFTE: 0 };
+          if ((card.tool !== "Other" || card.complexity) && m.phaseName === "Inactive") return { ...m, coreFTE: 0, totalWPMonthlyFTE: 0 };
+          const { dev: defaultDevRate, meetings: defaultMeetingsRate } = supportingPhaseRates(card, rates, m, reusabilityFactors, stabilityMultiplier, isNegated);
           const effDevRate = supportMultiplier === 0 ? 0 : card.customDevSupportFTE?.[mIdx] ?? defaultDevRate;
           const effMeetingsRate = supportMultiplier === 0 ? 0 : card.customMeetingsFTE?.[mIdx] ?? defaultMeetingsRate;
           const supportSum = round2(effDevRate + effMeetingsRate);
@@ -572,7 +574,7 @@ export function TeamTimelineModal({
             contrib = parseFloat(monthlySpecific[pRel]) || 0;
           } else if (assignedFTE > 0) {
             const wpMonthFTE = wp.mergedMonthsInProject[pRel]?.totalWPMonthlyFTE || 0;
-            const wpDuration = wp.card.tool === "Other" ? Math.max(1, parseInt(wp.card.otherDuration, 10) || 6) : pRow.pDur;
+            const wpDuration = wp.card.tool === "Other" && !wp.card.complexity ? Math.max(1, parseInt(wp.card.otherDuration, 10) || 6) : pRow.pDur;
             const maxAllowed = Math.min(memberCap, Math.max(assignedFTE, assignedFTE * (pRow.pDur / wpDuration)));
             contrib = round2(Math.min(maxAllowed, wpMonthFTE * memberShare));
           }
@@ -629,7 +631,7 @@ export function TeamTimelineModal({
       for (const member of members) {
         const assigned = parseFloat(assignments[member.id]) || 0;
         const cap = parseFloat(member.fte) || 0;
-        const wpDuration = !isMgmt && card.tool === "Other"
+        const wpDuration = !isMgmt && card.tool === "Other" && !card.complexity
           ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : row.pDur;
         const limit = isMgmt ? assigned : Math.min(cap, Math.max(assigned, assigned * row.pDur / wpDuration));
         allocations[member.id] = monthly[member.id]?.[month] ?? round2(Math.min(limit,
@@ -676,7 +678,7 @@ export function TeamTimelineModal({
         const share = totalStaffed > 0 ? assignedFTE / totalStaffed : 0;
         const otherMember = members.find((m) => m.id === otherMemberId);
         const otherCap = parseFloat(otherMember?.fte) || 1.0;
-        const wpDuration = !isMgmt && workpackage.card.tool === "Other"
+        const wpDuration = !isMgmt && workpackage.card.tool === "Other" && !workpackage.card.complexity
           ? Math.max(1, parseInt(workpackage.card.otherDuration, 10) || 6)
           : projectRow.pDur;
         const maxAllowed = isMgmt ? assignedFTE
@@ -710,7 +712,7 @@ export function TeamTimelineModal({
       const memberCap = parseFloat(members.find((item) => item.id === memberId)?.fte) || 1.0;
       const assignedFTE = parseFloat(assignments[memberId]) || 0;
       const share = totalStaffed > 0 ? assignedFTE / totalStaffed : 1;
-      const wpDuration = !isMgmt && wp.card.tool === "Other"
+      const wpDuration = !isMgmt && wp.card.tool === "Other" && !wp.card.complexity
         ? Math.max(1, parseInt(wp.card.otherDuration, 10) || 6) : projectRow.pDur;
       const maxAllowed = isMgmt ? assignedFTE
         : Math.min(memberCap, Math.max(assignedFTE, assignedFTE * (projectRow.pDur / wpDuration)));
@@ -970,7 +972,7 @@ export function TeamTimelineModal({
               if (monthlySpecific[pRelIdx] !== undefined) {
                 contrib = parseFloat(monthlySpecific[pRelIdx]) || 0;
               } else if (assignedFTE > 0) {
-                const wpDuration = wp.card.tool === "Other" ? Math.max(1, parseInt(wp.card.otherDuration, 10) || 6) : pRow.pDur;
+                const wpDuration = wp.card.tool === "Other" && !wp.card.complexity ? Math.max(1, parseInt(wp.card.otherDuration, 10) || 6) : pRow.pDur;
                 const maxAllowed = Math.min(cap, Math.max(assignedFTE, assignedFTE * (pRow.pDur / wpDuration)));
                 contrib = round2(Math.min(maxAllowed, wpMonthFTE * memberShare));
               }
@@ -2006,6 +2008,7 @@ export function TeamTimelineModal({
                                   </div>
 
                                   <div className="flex items-center gap-0.5 mt-1 flex-wrap min-w-0">
+                                    {card.complexity && (card.tool !== "Other" || card.complexity) && <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border mr-1" style={workpackageTypeBadgeStyle(card, toolFteRates)}>{workpackageTypeLabel(card)}</span>}
                                     {card.tool === "Other" && toolName !== "Other" && (
                                       <button
                                         type="button"
@@ -2094,7 +2097,7 @@ export function TeamTimelineModal({
                                       if (!wp.isNegated && wpMonthFTE <= 0) {
                                         return { isInside: false, fte: 0, isOverridden: false, defaultFTE: 0 };
                                       }
-                                      const wpDuration = card.tool === "Other" ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : pDur;
+                                      const wpDuration = card.tool === "Other" && !card.complexity ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : pDur;
                                       const maxAllowed = Math.min(cap, Math.max(assignedFTE, assignedFTE * (pDur / wpDuration)));
                                       const baseContrib = assignedFTE > 0 ? round2(Math.min(maxAllowed, wpMonthFTE * memberShare)) : 0;
                                       const isOverridden = memberMonthlyMap[pRelIdx] !== undefined;

@@ -1,10 +1,12 @@
+import { workpackageTypeLabel } from "../../utils/workpackageTypes";
+import { workpackageTypeNames, workpackageRateKey, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import { purchaseSubcategory } from "../../utils/nonFteWorkpackages";
 import { NonFteWorkpackageCard } from "./NonFteWorkpackageCard";
 import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { useWorkpackageCardLayout } from "../../hooks/useWorkpackageCardLayout";
-import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_TYPES, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
+import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
 import type { EditCardContentProps, FunctionCardProps, ManagementOverheadsProps, ToolRowProps, UnassignedPoolProps } from './componentTypes';
-import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon, StaffingIcon, ReceiptIcon } from '../ui/icons';
+import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon, StaffingIcon, ReceiptIcon, SettingsIcon } from '../ui/icons';
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
@@ -20,7 +22,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
   const [draft, setDraft] = useState({
     name: card.name,
     tool: card.tool,
-    complexity: card.tool === "KPI" ? (card.complexity || "Supporting") : null,
+    complexity: card.tool !== "Other" || card.complexity ? workpackageRateKey(card, toolFteRates) : null,
     reusability: card.reusabilityAppliesToMaintenance ? "Other" : card.reusability,
     customReusabilityFactor: card.customReusabilityFactor ?? (card.reusabilityAppliesToMaintenance ? getReusabilityFactor(card, reusabilityFactors) : 0.5),
     reusabilityAppliesToMaintenance: card.reusabilityAppliesToMaintenance ?? false,
@@ -35,8 +37,9 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
   });
 
   const selectedTool = TOOL_MAP[draft.tool] || TOOLS[0];
-  const isKPI = draft.tool === "KPI";
-  const isOther = draft.tool === "Other";
+  const basicTypes = workpackageTypeNames(draft.tool, toolFteRates);
+  const showBasicType = basicTypes.length > 0 && !(draft.tool === "Other" && !draft.complexity);
+  const isOther = draft.tool === "Other" && !draft.complexity;
   const maintenanceAvailable = hasWorkpackageMaintenance(draft, fteRates, toolFteRates);
   const isInvalidReusability = draft.reusability === "Other" && parseReusabilityFactor(draft.customReusabilityFactor) === null;
   const customFactorInput = draft.reusability === "Other" && (
@@ -88,7 +91,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
     setDraft((d) => ({
       ...d,
       tool: t,
-      complexity: t === "KPI" ? (d.complexity || "Supporting") : null,
+      complexity: workpackageTypeNames(t, toolFteRates)[0] ?? null,
       subcategory: nextTool?.subcategories ? nextTool.subcategories[0] : null,
       otherStartMonth: t === "Other" && (d.otherStartMonth === null || isNaN(parseInt(d.otherStartMonth, 10))) ? 1 : d.otherStartMonth,
     }));
@@ -119,7 +122,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
       ...draft,
       ...normalizeReusability({ ...draft, reusabilityAppliesToMaintenance: draft.reusability === "Other" && maintenanceAvailable && draft.reusabilityAppliesToMaintenance }, reusabilityFactors),
       name: draft.name.trim(),
-      complexity: draft.tool === "KPI" ? (draft.complexity || "Supporting") : null,
+      complexity: !isOther ? workpackageRateKey(draft, toolFteRates) : null,
       otherEffort: Math.max(0.01, parseFloat(draft.otherEffort) || 0.01),
       otherDuration: curDuration,
       otherStartMonth: isOther ? finalStartMonth : null,
@@ -168,7 +171,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
             <option value="">Project End ({projectDuration || "End"} Mo)</option>
             {MILESTONES_DEF.map(m => <option key={m.key} value={m.key}>{m.label} ({projectMilestones?.[m.key] ? `Month ${projectMilestones[m.key]}` : m.name})</option>)}
           </select>
-          <p className="text-[9px] text-slate-500 mt-0.5">Pre-maintenance phases must finish by this target.</p>
+          <p className="text-[9px] text-slate-500 mt-0.5">Milestone-bound main phases must finish by this target. All main phases must finish by project end.</p>
         </div>
       )}
       {selectedTool?.subcategories && (
@@ -182,15 +185,20 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
           ))}
         </select>
       )}
-      {isKPI ? (
+      {isOther && <select aria-label="Basic type" value="" onChange={event => setDraft(current => ({ ...current, complexity: event.target.value || null }))} className="text-xs bg-white/90 border border-gray-300 rounded px-1 py-1 w-full font-medium shadow-2xs">
+        <option value="">Custom (existing workpackage)</option>
+        {basicTypes.map(name => <option key={name} value={name}>{name === "Point Cloud" ? "Standard" : name}</option>)}
+      </select>}
+      {showBasicType ? (
         <div className="grid grid-cols-2 gap-1">
           <select
             className="text-xs bg-white/90 border border-gray-300 rounded px-1 py-1 font-medium shadow-2xs"
-            value={draft.complexity || "Supporting"}
+            aria-label="Basic type"
+            value={workpackageRateKey(draft, toolFteRates)}
             onChange={(e) => setDraft((d) => ({ ...d, complexity: e.target.value }))}
           >
-            {COMPLEXITY_TYPES.map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {basicTypes.map((c) => (
+              <option key={c} value={c}>{draft.tool !== "KPI" && c === "Point Cloud" ? "Standard" : c}</option>
             ))}
           </select>
           <select
@@ -692,20 +700,21 @@ export const FunctionCard = memo(function FunctionCard({
       </div>
 
       <div className="flex flex-wrap items-center gap-1 mb-1">
-        {card.tool === "KPI" && card.complexity && (
+        {card.complexity && workpackageTypeLabel(card) !== "Standard" && (card.tool === "KPI" || toolFteRates?.[card.tool]?.[card.complexity]?.phases) && (
           <span
-            className={`text-[9px] px-1.5 py-0.2 rounded font-bold ${
+            style={workpackageTypeBadgeStyle(card, toolFteRates)}
+            className={`text-[9px] px-1.5 py-0.2 rounded border font-bold ${
               isRetro
                 ? "bg-[#c0c0c0] text-black border border-black font-mono shadow-[1px_1px_0px_#000]"
                 : isBasic
                 ? "bg-blue-50 text-blue-800 border border-blue-200"
-                : complexityColor?.badge
+                : complexityColor?.badge ?? `${tool.accent} ${tool.text}`
             }`}
           >
-            {card.complexity}
+            {workpackageTypeLabel(card)}
           </span>
         )}
-        {card.tool === "Other" && (() => {
+        {card.tool === "Other" && !card.complexity && (() => {
           const rawEffort = parseFloat(card.otherEffort) || 0.3;
           const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
           const finalEffort = round2(rawEffort * reusabilityMult);
@@ -1223,6 +1232,7 @@ export const ToolRow = memo(function ToolRow({
 });
 
 export const UnassignedPool = memo(function UnassignedPool({
+  onOpenConfiguration,
   suppliers,
   workpackageKind = "fte",
   onChangeWorkpackageKind,
@@ -1290,6 +1300,15 @@ export const UnassignedPool = memo(function UnassignedPool({
             Workpackage Pool
           </h2>
           <div className="flex items-center gap-1.5 shrink-0">
+            {onOpenConfiguration && <button
+              type="button"
+              onClick={onOpenConfiguration}
+              className="p-1 rounded transition-colors cursor-pointer flex items-center justify-center text-slate-400 hover:text-white"
+              title="Workpackages configuration"
+              aria-label="Workpackages configuration"
+            >
+              <SettingsIcon size={13} />
+            </button>}
             <button
               type="button"
               onClick={onToggleCompact}
