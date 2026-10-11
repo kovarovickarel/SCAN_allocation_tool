@@ -32,8 +32,15 @@ export type WorkspaceFile = { format: "scan-allocation-tool"; schemaVersion: num
 export function createWorkspaceFile(data: WorkspaceData, now = new Date()): WorkspaceFile {
   return JSON.parse(JSON.stringify({ format: "scan-allocation-tool", schemaVersion: WORKSPACE_FILE_VERSION,
     exportedAt: now.toISOString(), data: { ...data, configuration: { ...data.configuration, nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }, workpackages: data.workpackages.map(card =>
-      Object.fromEntries(Object.entries(card).filter(([key]) => !key.startsWith("_")))) } }));
+      exportWorkpackage(card)) } }));
 }
+function exportWorkpackage(card: WorkpackageCard) {
+  const source = Object.fromEntries(Object.entries(card).filter(([key]) => !key.startsWith("_") && key !== "details"));
+  // Optional information is source data; keep Markdown and line breaks unchanged.
+  const details = Object.fromEntries(Object.entries(card.details ?? {}).filter(([, value]) => typeof value === "string" && value.trim().length > 0));
+  return Object.keys(details).length ? { ...source, details } : source;
+}
+
 export function serializeWorkspace(data: WorkspaceData, now = new Date()) {
   return JSON.stringify(createWorkspaceFile(data, now), null, 2);
 }
@@ -211,6 +218,13 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   const cards = entities(data.workpackages, "Workpackages");
   cards.forEach((card, index) => validateRecord(card, `data.workpackages[${index}] (workpackage ${index + 1})`, () => {
     text(card.name, "Workpackage name"); choice(card.tool, tools, "Workpackage tool");
+    if (card.details !== undefined) {
+      const details = object(card.details, "Workpackage details");
+      for (const [key, value] of Object.entries(details)) {
+        choice(key, ["description", "owner", "assumptions", "deliverables", "risks"], "Detail section");
+        if (typeof value !== "string") fail("Workpackage detail", "must be text.");
+      }
+    }
     if (card.kind !== undefined) choice(card.kind, ["fte", "non-fte"], "Workpackage kind");
     if (card.projectId != null && !projectIds.has(card.projectId)) fail("Workpackage project", "not found in the project list.");
     for (const key of ["finishMilestone", "otherFinishMilestone", "purchaseMilestone"]) if (card[key] != null) choice(card[key], ["", "FFV", "EFV", "AFV", "SSSR"], key);

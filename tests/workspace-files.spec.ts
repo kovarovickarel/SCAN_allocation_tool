@@ -68,6 +68,61 @@ test("invalid JSON and oversized files produce clear errors", () => {
   expect(() => parseWorkspaceFile(" ".repeat(20 * 1024 * 1024 + 1))).toThrow("maximum size");
 });
 
+test("optional details round trip for both kinds, omitting empty fields", () => {
+  const data = workspace();
+  const details = { description: "First line\nSecond line", owner: "Imported External", assumptions: "- Available data\n- Stable interfaces", deliverables: "- Report", risks: "- Delay" };
+  data.workpackages[0].details = details;
+  data.workpackages[1].details = { ...details, owner: "  " };
+  data.workpackages[2].details = {};
+  const file = parseWorkspaceFile(serializeWorkspace(data));
+  expect(file.data.workpackages[0].details).toEqual(details);
+  expect(file.data.workpackages[1].details).toEqual({ ...details, owner: undefined });
+  expect(file.data.workpackages[2].details).toBeUndefined();
+});
+
+for (const invalid of ["text", { owner: 123 }, { unknown: "text" }]) test(`invalid optional details rejected: ${JSON.stringify(invalid)}`, () => {
+  const file = createWorkspaceFile(workspace());
+  (file.data.workpackages[0] as any).details = invalid;
+  expect(() => parseWorkspaceFile(JSON.stringify(file))).toThrow();
+});
+
+for (const kind of ["fte", "purchase"]) test(`details editing preserves schedules and same-project drops (${kind})`, async ({ page }) => {
+  await page.goto("/");
+  const data = workspace();
+  data.teamMembers.push({ id: "other-owner", firstName: "Cross", lastName: "Team", tool: "SYS.5", role: "engineering", footprint: "PRA", fte: 1 });
+  await upload(page, data);
+  await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
+  const original = createWorkspaceFile(data).data.workpackages.find(card => card.id === kind)!;
+  const card = page.locator('[draggable]').filter({ has: page.getByText(original.name, { exact: true }) }).last();
+  await card.getByRole("button", { name: `Details for ${original.name}`, exact: true }).click();
+  const group = card.getByRole("group", { name: "Workpackage detail sections" });
+  await expect(group.locator('[aria-pressed="true"]')).toHaveCount(0);
+  await group.getByRole("button", { name: "Owner", exact: true }).click();
+  await card.getByRole("combobox", { name: "Owner:" }).fill("Cross");
+  await page.getByRole("option", { name: "Cross Team" }).click();
+  await group.getByRole("button", { name: "Assumptions", exact: true }).click();
+  await expect(group.locator('[aria-pressed="true"]')).toHaveCount(1);
+  await card.getByRole("button", { name: "Add assumption", exact: true }).click();
+  await card.getByRole("textbox", { name: "Assumptions item 1" }).fill("Available data");
+  await expect(card).toHaveAttribute("draggable", "false");
+  await card.getByRole("textbox", { name: "Assumptions item 1" }).press("Enter");
+  await card.getByRole("textbox", { name: "Assumptions item 2" }).fill("Stable interfaces");
+  await card.getByRole("button", { name: "Add assumption", exact: true }).click();
+  await group.getByRole("button", { name: "Assumptions", exact: true }).click();
+  await group.getByRole("button", { name: "Assumptions", exact: true }).click();
+  await expect(card.getByRole("textbox", { name: /Assumptions item/ })).toHaveCount(2);
+  await card.getByRole("button", { name: `Details for ${original.name}`, exact: true }).click();
+  await expect(card).toHaveAttribute("draggable", "true");
+  await card.dragTo(page.getByRole("heading", { name: "Transferred RFQ", exact: true }));
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const saved = (await exportData(page)).data.workpackages.find(card => card.id === kind)!;
+  expect(saved).toEqual({ ...original, details: { owner: "Cross Team", assumptions: "- Available data\n- Stable interfaces" } });
+  if (kind === "purchase") {
+    await card.getByRole("button", { name: `Edit payment months for ${original.name}` }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+  }
+});
+
 async function exportData(page: Page) {
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export workspace", exact: true }).click();
@@ -81,6 +136,42 @@ async function exportData(page: Page) {
 async function upload(page: Page, data: WorkspaceData) {
   await page.getByLabel("Workspace file", { exact: true }).setInputFiles({ name: "transfer.json", mimeType: "application/json", buffer: Buffer.from(serializeWorkspace(data)) });
 }
+
+for (const kind of ["fte", "non-fte"] as const) test(`creation details stay in the draft until Add (${kind})`, async ({ page }) => {
+  await page.goto("/");
+  const data = workspace(); data.view.workpackageKind = kind;
+  await upload(page, data);
+  await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
+  const original = (await exportData(page)).data;
+  await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
+  let dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("button", { name: "Extended details", exact: true })).toHaveAttribute("aria-expanded", "false");
+  await dialog.getByRole("button", { name: "Extended details", exact: true }).click();
+  await dialog.getByPlaceholder("Add detailed description").fill("Draft description");
+  await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+  expect((await exportData(page)).data).toEqual(original);
+  await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
+  dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Extended details", exact: true }).click();
+  await expect(dialog.getByPlaceholder("Add detailed description")).toHaveValue("");
+  if (kind === "fte") await dialog.getByPlaceholder("e.g. Doppler Velocity Ground Truth").fill("Created with details");
+  else {
+    await dialog.getByRole("textbox", { name: "Workpackage Name *", exact: true }).fill("Created with details");
+    await dialog.getByRole("textbox", { name: "Base price (EUR)", exact: true }).fill("100");
+  }
+  await dialog.getByPlaceholder("Add detailed description").fill("Description\nwith another line");
+  await dialog.getByRole("combobox", { name: "Owner:" }).fill("Imported");
+  await dialog.getByRole("option", { name: "Imported External" }).click();
+  for (const [section, item] of [["Assumptions", "assumption"], ["Deliverables", "deliverable"], ["Risks", "risk"]]) {
+    await dialog.getByRole("button", { name: `Add ${item}`, exact: true }).click();
+    await dialog.getByRole("textbox", { name: `${section} item 1`, exact: true }).fill(section);
+  }
+  await dialog.getByRole("button", { name: "Add Workpackage", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const saved = (await exportData(page)).data.workpackages.find(card => card.name === "Created with details")!;
+  expect(saved.details).toEqual({ description: "Description\nwith another line", owner: "Imported External", assumptions: "- Assumptions", deliverables: "- Deliverables", risks: "- Risks" });
+  expect(saved.projectId).toBeNull();
+});
 
 test("real default workspace exports and can be imported without loss", async ({ page }) => {
   await page.goto("/");
