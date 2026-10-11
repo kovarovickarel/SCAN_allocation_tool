@@ -124,6 +124,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`deferred cash timeline 
   await expect(lower.locator('g[role="button"]').nth(12)).toHaveAttribute("aria-label", /External salaries: € 1,000/);
   await expect(lower.locator('g[role="button"]').nth(12)).toHaveAttribute("aria-label", /Salary payment delayed by 12 months/);
   await page.goto(`/__deferred-test?external&delay=12&summary&theme=${theme}`);
+  await page.getByRole("button", { name: "View unused paid external capacity", exact: true }).click();
   const capacity = page.getByRole("region", { name: "External paid capacity" });
   await expect(capacity.getByRole("cell", { name: "Support Manager, 01/2026", exact: true })).toContainText("Payment due 01/2027");
 });

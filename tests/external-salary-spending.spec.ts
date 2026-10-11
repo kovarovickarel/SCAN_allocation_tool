@@ -72,7 +72,9 @@ test("production allocations activate salary on Save and release it on Clear", a
   await expect(page.getByRole("region", { name: "External paid capacity" })).toHaveCount(0);
   await page.getByRole("button", { name: "Close project spending", exact: true }).click();
   await page.getByRole("button", { name: "Summary dashboard", exact: true }).click();
+  await page.getByRole("button", { name: "View unused paid external capacity", exact: true }).click();
   await expect(page.getByRole("region", { name: "External paid capacity" })).toContainText("Paid External");
+  await page.getByRole("button", { name: "Close unused external capacity", exact: true }).click();
   await page.getByTitle("KPI Team View", { exact: true }).click();
   await page.getByRole("button", { name: "Open KPI Combined Team Timeline", exact: true }).click();
   await page.getByRole("button", { name: "Clear Allocation", exact: true }).click();
@@ -155,6 +157,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`project costs exclude u
   await month.focus();
   await expect(dialog.getByText("Non-FTEs:", { exact: false }).first()).toBeVisible();
   await page.goto(`/__external-spending?external=1&summary=1&theme=${theme}`);
+  await page.getByRole("button", { name: "View unused paid external capacity", exact: true }).click();
   const usage = page.getByRole("region", { name: "External paid capacity" });
   await expect(usage.getByLabel("Support Manager, 01/2026", { exact: true })).toContainText("Paid salary €10,000");
   await expect(usage.getByLabel("Support Manager, 01/2026", { exact: true })).toContainText("Unused 0.70 FTE");

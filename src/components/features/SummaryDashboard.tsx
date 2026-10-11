@@ -5,9 +5,9 @@ import type { SupplierRecord, WorkpackageAllocationCost, AllocationProject } fro
 import { calculateSummaryDashboard, type SummaryDashboardOptions, type ProjectStatusFilter } from "../../utils/summaryDashboard";
 import { costInEUR } from "../../utils/nonFteWorkpackages";
 import { useEuroCostConversion } from "../../hooks/useEuroCostConversion";
-import { ExternalSalaryUtilization } from "../ui/ExternalSalaryUtilization";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ProjectSpendingModal } from "./ProjectSpendingModal";
+import { UnusedExternalCapacityModal } from "./UnusedExternalCapacityModal";
 
 export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilter, onFilterChange, savedSelectedProjectIds, onSelectionChange }: {
   options: SummaryDashboardOptions; suppliers: readonly SupplierRecord[];
@@ -25,6 +25,7 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
   const selectedProjectIds = savedSelectedProjectIds === undefined ? localSelectedIds : savedSelectedProjectIds;
   const setSelectedProjectIds = onSelectionChange ?? setLocalSelectedIds;
   const [spendingProject, setSpendingProject] = useState<AllocationProject | null>(null);
+  const [showUnusedCapacity, setShowUnusedCapacity] = useState(false);
   const allSummary = useMemo(() => calculateSummaryDashboard(options), [options]);
   const summary = useMemo(() => filter === "all" ? allSummary : calculateSummaryDashboard(options, filter === "selected" ? "all" : filter, filter === "selected" ? selectedProjectIds : null), [options, filter, selectedProjectIds, allSummary]);
   const tableRows = filter === "selected" ? allSummary.rows : summary.rows;
@@ -40,6 +41,8 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
   };
   const supplierName = (id: string) => suppliers.find(supplier => supplier.id === id)?.name || "Unknown supplier";
   const panel = isRetro ? "bg-white border-2 border-t-black border-l-black border-b-white border-r-white" : "bg-white rounded-xl border border-slate-200 shadow-sm";
+  const unusedCapacity = allSummary.unused;
+  const hasUnusedCapacity = unusedCapacity.unusedFTE > 0.000001 || Object.values(unusedCapacity.unusedCost.externalSalaryCharges || {}).some(charge => charge.allocatedFTE > 0 && charge.salary > 0);
   const button = isRetro ? "px-3 py-2 text-xs font-bold bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black cursor-pointer" : "px-3 py-2 text-xs font-semibold bg-white border border-slate-300 rounded-lg hover:bg-slate-50 cursor-pointer";
   const selectedFilterStyles: Record<ProjectStatusFilter | "selected", string> = {
     all: "ring-2 ring-blue-500",
@@ -104,15 +107,24 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
         </table></div>
         {!tableRows.length && <p className="py-7 text-sm text-slate-500">No projects in this view.</p>}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
         <div className={`${panel} p-4`}><h2 className="text-sm font-bold">FTE by team</h2><p className="text-[10px] text-slate-500 mt-1">Required engineering and management effort</p>{bars(summary.byTeam, key => key, true)}</div>
         <div className={`${panel} p-4`}><h2 className="text-sm font-bold">FTE by location &amp; supplier</h2><p className="text-[10px] text-slate-500 mt-1">Engineering and management effort by location or supplier</p>{bars(summary.byDelivery, key => key === "unstaffed" ? "Unstaffed" : key.startsWith("supplier:") ? supplierName(key.slice(9)) : FOOTPRINT_MAP[key.slice(9)]?.name || key.slice(9))}</div>
-        <div className={`${panel} p-4`}><h2 className="text-sm font-bold">Externalisation</h2><p className="text-[10px] text-slate-500 mt-1">External share of staffed effort, weighted by project duration</p><div className={`text-3xl font-bold mt-4 ${isBasic ? "text-black" : "text-teal-700"}`}>{percent(summary.externalisation)}</div>{Object.keys(summary.bySupplier).length ? bars(summary.bySupplier, supplierName, false, true) : <p className="text-xs italic text-slate-400 mt-3">No external suppliers staffed yet.</p>}</div>
         <div className={`${panel} p-4`}><h2 className="text-sm font-bold">Non-FTE distribution</h2><p className="text-[10px] text-slate-500 mt-1">Purchases and allocated external salaries</p><div className="space-y-3 mt-4">{Object.entries(summary.distribution).map(([category, cost]) => <div key={category} className="flex justify-between gap-3 text-xs"><span>{category}</span><strong className="font-mono whitespace-nowrap">{amount(cost)}</strong></div>)}</div>{!Object.keys(summary.distribution).length && <p className="text-xs italic text-slate-400 mt-5">No Non-FTE spending yet.</p>}</div>
+        <div className={`${panel} p-4`}><h2 className="text-sm font-bold">Externalisation</h2><p className="text-[10px] text-slate-500 mt-1">External share of staffed effort, weighted by project duration</p><div className={`text-3xl font-bold mt-4 ${isBasic ? "text-black" : "text-teal-700"}`}>{percent(summary.externalisation)}</div>{Object.keys(summary.bySupplier).length ? bars(summary.bySupplier, supplierName, false, true) : <p className="text-xs italic text-slate-400 mt-3">No external suppliers staffed yet.</p>}</div>
+        <section role="button" tabIndex={0} aria-haspopup="dialog" aria-label="View unused paid external capacity" onClick={() => setShowUnusedCapacity(true)} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setShowUnusedCapacity(true); } }} className={`${panel} p-4 min-w-0 cursor-pointer hover:shadow-md transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${hasUnusedCapacity ? "!bg-red-50 !border-red-300 ring-1 ring-red-300" : ""}`}>
+          <h2 className="text-sm font-bold">Unused paid external capacity</h2>
+          <p className="text-[10px] text-slate-500 mt-1">Across all projects</p>
+          <div className="mt-4 space-y-4">
+            <div><div className="text-[11px] text-slate-600">Unused FTE-months</div><div className={`text-2xl font-bold font-mono mt-1 ${hasUnusedCapacity ? "text-red-700" : "text-green-700"}`}>{number(unusedCapacity.unusedFTE)}</div></div>
+            <div><div className="text-[11px] text-slate-600">Salaries outside project costs</div><div className={`text-xl font-bold font-mono mt-1 ${hasUnusedCapacity ? "text-red-700" : "text-green-700"}`}>{amount(unusedCapacity.unusedCost)}</div></div>
+          </div>
+          {hasUnusedCapacity && <p className="text-[10px] text-blue-700 font-semibold mt-4">View monthly breakdown →</p>}
+        </section>
       </div>
-      <ExternalSalaryUtilization monthlyCosts={summary.capacityMonthlyCosts} monthLabels={summary.capacityMonthLabels} members={[...options.members]} formatAmount={amount} />
       <p className="text-[10px] text-slate-500">FTE / yr sums each project’s average staffing requirement; it is not simultaneous or peak demand. Staffing percentages use required and allocated FTE-months. Total price matches the app’s allocated project cost. Unused external salary is shown separately above; unallocated internal effort is not priced.</p>
     </div>
+    {showUnusedCapacity && <UnusedExternalCapacityModal monthlyCosts={allSummary.capacityMonthlyCosts} monthLabels={allSummary.capacityMonthLabels} members={[...options.members]} formatAmount={amount} onClose={() => setShowUnusedCapacity(false)} />}
     {selectedRow && <ProjectSpendingModal project={selectedRow.project} cards={[...options.cards]} members={[...options.members]} overheads={selectedRow.effort.overheads}
       fteCosts={options.fteCosts} fteRates={options.fteRates} toolFteRates={options.toolFteRates} reusabilityFactors={options.reusabilityFactors} stabilityFactors={options.stabilityFactors}
       salaryAllocationTotals={Object.fromEntries(Object.entries(summary.totalCost.externalSalaryCharges || {}).map(([key, charge]) => [key, charge.totalAllocatedFTE || charge.allocatedFTE]))}
