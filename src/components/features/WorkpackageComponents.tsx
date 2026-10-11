@@ -577,7 +577,7 @@ export const FunctionCard = memo(function FunctionCard({
                 <WorkpackageCostLabel cost={card._allocationCost} compact />
               </span>
             )}
-            {isAssigned && <span ref={compactManHoursRef} aria-hidden={hideCompactManHours || undefined} className={`inline-flex shrink-0 ${hideCompactManHours ? "absolute invisible pointer-events-none" : ""}`}>
+            {isAssigned && Math.round(manHours) > 0 && <span ref={compactManHoursRef} aria-hidden={hideCompactManHours || undefined} className={`inline-flex shrink-0 ${hideCompactManHours ? "absolute invisible pointer-events-none" : ""}`}>
               <ManHoursLabel hours={manHours} breakdown={isAssigned ? card._manHoursBreakdown : card._nominalManHoursBreakdown} nominal={!isAssigned} compact />
             </span>}
             <span ref={compactEffortRef} aria-hidden={isAssigned && hideCompactEffort ? true : undefined} className={`font-mono font-bold text-[8px] px-1 py-0.2 rounded border shrink-0 whitespace-nowrap shadow-2xs ${fteBadgeStyle} ${isAssigned && hideCompactEffort ? "absolute invisible pointer-events-none" : ""}`}>
@@ -1073,6 +1073,12 @@ export const ToolRow = memo(function ToolRow({
             const slotCards = workpackageView === "non-fte" ? [] : allSlotCards;
             const slotPurchases = hasMultipleSlots ? purchaseCards.filter(card => purchaseSubcategory(card) === sub) : [];
             const slotTotalFTE = allSlotCards.reduce((sum, c) => sum + (c._fte ?? 0), 0);
+            const slotTotalCost = sumWorkpackageAllocationCosts(
+              [...allSlotCards, ...slotPurchases]
+                .filter(card => card.projectId === projectId && !card._isNegated)
+                .map(card => card._allocationCost),
+              fteCosts.currency
+            );
             const isTarget = isMatch(sub);
 
             const spanClass = visibleSlots.length === 3 && idx === 2 ? "col-span-2" : "";
@@ -1147,8 +1153,9 @@ export const ToolRow = memo(function ToolRow({
                       )}
                     </div>
 
-                    {!isBasicMode && (
-                      <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
+                      <WorkpackageCostLabel cost={slotTotalCost} size="subcategory" />
+                      {!isBasicMode && <>
                       <ManHoursLabel size="subcategory" breakdown={sumManHoursBreakdowns(allSlotCards)} hours={allSlotCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />
                       <span
                         className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/90 border border-black/10 text-gray-800 shadow-2xs shrink-0"
@@ -1156,8 +1163,8 @@ export const ToolRow = memo(function ToolRow({
                       >
                         {slotTotalFTE.toFixed(2)} FTE/yr
                       </span>
-                      </div>
-                    )}
+                      </>}
+                    </div>
                   </div>
                 )}
 

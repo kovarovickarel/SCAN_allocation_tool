@@ -39,7 +39,7 @@ export function useWorkpackageCardLayout({ card, reusabilityFactors, isCompact, 
     const cost = compactCostRef.current;
     const manHours = compactManHoursRef.current;
     const deleteButton = compactDeleteRef.current;
-    if (!header || !category || !text || !effort || !manHours || !deleteButton) return;
+    if (!header || !category || !text || !effort || !deleteButton) return;
     let disposed = false;
     const measure = () => {
       if (disposed) return;
@@ -54,16 +54,16 @@ export function useWorkpackageCardLayout({ card, reusabilityFactors, isCompact, 
         ? milestone.getBoundingClientRect().width + (parseFloat(getComputedStyle(category.parentElement).columnGap) || 0) : 0);
       // The invisible effort badge still measures its full width, so hiding it cannot
       // make the next resize measurement bring it back and cause flickering.
-      const rightWidth = effort.getBoundingClientRect().width + (cost?.getBoundingClientRect().width ?? 0) + manHours.getBoundingClientRect().width
+      const rightWidth = effort.getBoundingClientRect().width + (cost?.getBoundingClientRect().width ?? 0) + (manHours?.getBoundingClientRect().width ?? 0)
         + deleteButton.getBoundingClientRect().width
-        + (cost ? 3 : 2) * (parseFloat(getComputedStyle(deleteButton.parentElement).columnGap) || 0);
+        + (1 + Number(Boolean(cost)) + Number(Boolean(manHours))) * (parseFloat(getComputedStyle(deleteButton.parentElement).columnGap) || 0);
       const requiredWidth = leftWidth + rightWidth + (parseFloat(getComputedStyle(header).columnGap) || 0);
       const availableWidth = header.getBoundingClientRect().width + 0.5;
-      const hideHours = requiredWidth > availableWidth;
+      const hideHours = Boolean(manHours) && requiredWidth > availableWidth;
       const badgeGap = parseFloat(getComputedStyle(deleteButton.parentElement).columnGap) || 0;
-      const widthWithoutHours = requiredWidth - manHours.getBoundingClientRect().width - badgeGap;
+      const widthWithoutHours = requiredWidth - (manHours?.getBoundingClientRect().width ?? 0) - (manHours ? badgeGap : 0);
       setHideCompactManHours(hideHours);
-      setHideCompactEffort(isAssigned && hideHours && widthWithoutHours > availableWidth);
+      setHideCompactEffort(widthWithoutHours > availableWidth);
     };
     measure();
     const observer = new ResizeObserver(measure);

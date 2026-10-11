@@ -5,10 +5,11 @@ import { FOOTPRINT_MAP, ThemeContext, WORKING_HOURS_PER_MONTH } from "../../cons
 import type { WorkpackageAllocationCost } from "../../types";
 import { hasAllocatedCost } from "../../utils/allocationCosts";
 
-export function WorkpackageCostLabel({ cost, className = "", compact = false, tone = "cost", title }: {
+export function WorkpackageCostLabel({ cost, className = "", compact = false, size = "standard", tone = "cost", title }: {
   cost?: WorkpackageAllocationCost;
   className?: string;
   compact?: boolean;
+  size?: "standard" | "subcategory";
   tone?: "cost" | "management" | "receipt";
   title?: string;
 }) {
@@ -39,7 +40,7 @@ export function WorkpackageCostLabel({ cost, className = "", compact = false, to
       : "bg-amber-100 text-amber-900 border-amber-300 rounded shadow-2xs";
   return (
     <span
-      className={`inline-flex items-center shrink-0 whitespace-nowrap normal-case px-1 py-0.2 border font-mono ${tone === "receipt" ? "font-normal" : "font-bold"} ${compact ? "text-[8px]" : "text-[10px]"} ${colorClasses} ${className}`}
+      className={`inline-flex items-center shrink-0 whitespace-nowrap normal-case ${size === "subcategory" ? "px-1.5 py-0.5" : "px-1 py-0.2"} border font-mono ${tone === "receipt" ? "font-normal" : "font-bold"} ${size === "subcategory" ? "text-[9px]" : compact ? "text-[8px]" : "text-[10px]"} ${colorClasses} ${className}`}
       style={tone === "receipt" ? { fontFamily: '"Courier New", Courier, monospace' } : undefined}
       title={title ?? (includesPurchase ? `Project tool cost: ${amount} EUR, including non-FTE purchases or external salary × allocated FTE ÷ member FTE.${isPartial ? " Partial cost; some resource rates are missing." : ""}` : tooltip)}
     >
