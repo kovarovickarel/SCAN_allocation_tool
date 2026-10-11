@@ -25,6 +25,11 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
   const paymentDetailsId = useId();
   const tool = TOOL_MAP[card.tool] || TOOL_MAP.Other;
   const toolCardTheme = TOOL_CARD_THEMES[card.tool] || TOOL_CARD_THEMES.Other;
+  const hoverHighlightClasses = isRetro
+    ? "hover:shadow-[2px_2px_0px_#000]"
+    : isBasic
+    ? "hover:border-blue-400 hover:!border-b-amber-300 hover:shadow-sm"
+    : `${toolCardTheme.hoverBorder} hover:!border-b-amber-300 hover:shadow-sm ${toolCardTheme.hoverShadow}`;
   const subcategory = purchaseSubcategory(card);
   const abbreviatedSubcategory = subcategory === "Trace Checker" ? "TC" : subcategory;
   const alterationSuffix = card._isAltered ? "*" : "";
@@ -124,7 +129,7 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
     event.dataTransfer.effectAllowed = "move";
     window.__scan_dragged_card_id = card.id;
     onDragStart?.(card);
-  }} onDragEnd={onDragEnd} className={`group w-full min-w-0 shrink-0 bg-white border border-b-2 border-b-amber-300 p-2 rounded shadow-2xs cursor-grab transition-colors ${isRetro ? "rounded-none border-black font-mono" : toolCardTheme.border} ${tool.text} ${card._isNegated ? "opacity-50" : ""}`}
+  }} onDragEnd={onDragEnd} className={`group w-full min-w-0 shrink-0 bg-white border border-b-2 border-b-amber-300 p-2 rounded shadow-2xs cursor-grab transition-all duration-150 ${hoverHighlightClasses} ${isRetro ? "rounded-none border-black font-mono" : toolCardTheme.border} ${tool.text} ${card._isNegated ? "opacity-50" : ""}`}
     style={{ borderTopWidth: 5, borderBottomStyle: "dashed" }}>
     <div ref={headerRef} className="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-black/10 min-w-0">
       <div className={`flex items-center min-w-0 flex-1 ${isCompact ? "gap-1.5" : "gap-2"}`}>

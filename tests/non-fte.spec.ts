@@ -98,6 +98,19 @@ test("month dragging selects and removes ranges while retaining other months", a
   await expect(month(page, 6)).toHaveAttribute("aria-pressed", "true");
 });
 
+for (const theme of ["vibrant", "basic", "retro"]) test(`receipt hover preserves the dashed edge and reveals action icons (${theme})`, async ({ page }) => {
+  await openHarness(page, theme);
+  const article = page.getByTestId("receipt").locator("article");
+  const bottom = await article.evaluate(element => getComputedStyle(element).borderBottomColor);
+  const edit = article.getByRole("button", { name: "Edit Test Purchase", exact: true });
+  await expect(edit).toHaveCSS("opacity", "0.4");
+  await article.hover();
+  await expect(edit).toHaveCSS("opacity", "1");
+  await expect(article.getByRole("button", { name: "Delete Test Purchase", exact: true })).toHaveCSS("opacity", "1");
+  await expect(article).toHaveCSS("border-bottom-style", "dashed");
+  await expect(article).toHaveCSS("border-bottom-color", bottom);
+});
+
 for (const theme of ["vibrant", "basic", "retro"]) test(`receipt details, responsive labels and compact controls in ${theme}`, async ({ page }) => {
   await openHarness(page, theme);
   await split(page);
