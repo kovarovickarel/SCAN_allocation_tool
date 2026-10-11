@@ -1,3 +1,5 @@
+import { supportingPhaseRates } from "./supportingPhases";
+import { workpackageRateKey } from "./workpackageTypes";
 import { purchaseMonthlyCosts as scheduledPurchaseCosts, purchaseCostSummary, purchaseSubcategory } from "./nonFteWorkpackages";
 import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, round2 } from "../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
@@ -72,15 +74,17 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
       return { id: card.id, name: card.name, tool: card.tool, isManagement: false, isNonFte: true,
         members: [], monthlyCosts, totalCost: sumWorkpackageAllocationCosts(monthlyCosts, fteCosts.currency) };
     }
-    const complexity = card.tool === "KPI" ? card.complexity || "Supporting" : "Point Cloud";
+    const complexity = workpackageRateKey(card, toolFteRates);
     const rates = toolFteRates?.[card.tool]?.[complexity] ?? fteRates[complexity] ?? DEFAULT_FTE_RATES["Point Cloud"];
     const lifecycle = computeWorkpackageLifecycleTimeline(card, project, rates, reusabilityFactors, stabilityFactors, false, project.duration);
-    const support = getSupportReusabilityFactor(card, reusabilityFactors);
+    const support = getSupportReusabilityFactor(card, reusabilityFactors, rates);
     const stability = stabilityFactors[project.stability] ?? 1;
-    const dev = card.tool === "Other" ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stability * support);
-    const meetings = card.tool === "Other" ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stability * support);
-    const required = lifecycle.map((month, index) => card.tool !== "Other" && month.phaseName === "Inactive" ? 0 : round2((card.customCoreFTE?.[index] ?? month.totalFTE) +
-      (support === 0 ? 0 : round2((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings)))));
+    const required = lifecycle.map((month, index) => {
+      if ((card.tool !== "Other" || card.complexity) && month.phaseName === "Inactive") return 0;
+      const { dev, meetings } = supportingPhaseRates(card, rates, month, reusabilityFactors, stability);
+      return round2((card.customCoreFTE?.[index] ?? month.totalFTE) +
+        (support === 0 ? 0 : round2((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings))));
+    });
     return buildTrack(card, required, project, members, fteCosts);
   });
   // Member tracks contain only positive allocations during active workpackage months.

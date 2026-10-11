@@ -1,3 +1,4 @@
+import { workpackageRateKey } from "./workpackageTypes";
 import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS } from "../constants";
 import type { WorkpackageCard, NumericInput, FactorMap } from "../types";
 
@@ -16,14 +17,15 @@ export function getMaintenanceReusabilityFactor(card: WorkpackageCard, factors: 
   return card.reusabilityAppliesToMaintenance ? getReusabilityFactor(card, factors) : 1;
 }
 
-export function getSupportReusabilityFactor(card: WorkpackageCard, factors: FactorMap = DEFAULT_REUSABILITY_FACTORS): number {
-  return card.kind === "non-fte" || getReusabilityFactor(card, factors) === 0 ? 0 : 1;
+export function getSupportReusabilityFactor(card: WorkpackageCard, factors: FactorMap = DEFAULT_REUSABILITY_FACTORS, rates?: any): number {
+  return card.kind === "non-fte" || (!rates?.supportingPhases && getReusabilityFactor(card, factors) === 0) ? 0 : 1;
 }
 
 export function hasWorkpackageMaintenance(card: Pick<WorkpackageCard, "tool" | "complexity" | "otherHasMaintenance">, fteRates = DEFAULT_FTE_RATES, toolFteRates = null): boolean {
-  if (card.tool === "Other") return Boolean(card.otherHasMaintenance);
-  const complexity = card.tool === "KPI" ? card.complexity || "Supporting" : "Point Cloud";
+  if (card.tool === "Other" && !card.complexity) return Boolean(card.otherHasMaintenance);
+  const complexity = workpackageRateKey(card, toolFteRates);
   const rates = toolFteRates?.[card.tool]?.[complexity] ?? fteRates[complexity] ?? fteRates["Point Cloud"];
+  if (rates?.phases) return rates.phases.some(phase => phase.scaleByMaintenancePreference);
   return (rates?.initialMaintenance ?? 0) > 0 || (rates?.residualMaintenance ?? 0) > 0;
 }
 

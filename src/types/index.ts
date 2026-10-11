@@ -4,6 +4,26 @@ export type NumericInput = number | string;
 
 export type NumericMap = Record<string, number>;
 
+export interface WorkpackagePhase {
+  id: string;
+  name: string;
+  rate: number;
+  duration: number;
+  scaleByReusability: boolean;
+  untilProjectEnd: boolean;
+  notMilestoneBound?: boolean;
+  kind?: "main" | "maintenance";
+  scaleByMaintenancePreference?: boolean;
+}
+
+export interface WorkpackageSupportingPhase {
+  id: string;
+  name: string;
+  rate: number;
+  scaleByReusability: boolean;
+  includeMaintenance: boolean;
+}
+
 /** One-based purchase months mapped to integer EUR cents, scoped by workpackage ID. */
 export type PurchasePaymentDrafts = Record<string, NumericMap>;
 export type PurchasePaymentSchedule = Pick<WorkpackageCard, "id" | "purchasePaymentOverrides">;
@@ -67,7 +87,8 @@ export interface ExternalSalaryCharge {
 }
 
 export interface SupplierRecord { id: string; name: string; }
-export type PurchaseType = "License" | "Workstation" | "Hardware" | "Contracted workpackage";
+export type PurchaseType = string;
+export interface NonFteBasicType { name: string; icon: string; }
 export type WorkpackageView = "fte" | "non-fte" | "both";
 export type PurchasePaymentMode = "at-once" | "even" | "split";
 
@@ -136,6 +157,7 @@ export interface WorkpackageCard {
   customCoreFTE?: FteMap;
   customDevSupportFTE?: FteMap;
   customMeetingsFTE?: FteMap;
+  customSupportingActivityFTE?: Record<string, FteMap>;
   _editing?: boolean;
   _isAltered?: boolean;
   _isMgmt?: boolean;

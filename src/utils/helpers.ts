@@ -1,3 +1,5 @@
+import { supportingPhaseRates } from "./supportingPhases";
+import { workpackageRateKey, isMaintenancePhase } from "./workpackageTypes";
 import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, DEFAULT_MGMT_SETTINGS, TOOLS, clamp, round2 } from "../constants";
 import { getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "./reusability";
 
@@ -112,9 +114,9 @@ export function calcCardFTE(
   if (card.kind === "non-fte" || !project || project.duration <= 0) return 0;
   const reusabilityMultiplier = getReusabilityFactor(card, reusabilityFactors);
   const maintenanceMultiplier = getMaintenanceReusabilityFactor(card, reusabilityFactors);
-  const stabilityMultiplier = stabilityFactors[project.stability] ?? 1.0;
+  const stabilityMultiplier = card.tool === "Other" ? 1 : stabilityFactors[project.stability] ?? 1.0;
 
-  if (card.tool === "Other") {
+  if (card.tool === "Other" && !card.complexity) {
     const startMonth = Math.max(1, parseInt(card.otherStartMonth, 10) || 1);
     const durationMonths = Math.max(1, parseInt(card.otherDuration, 10) || 6);
     const monthlyEffort = Math.max(0, parseFloat(card.otherEffort) || 0.3);
@@ -136,11 +138,19 @@ export function calcCardFTE(
     return round2(totalFTEMonths / project.duration);
   }
 
-  // Only KPI workpackages have Supporting/Point Cloud/Perception complexity.
-  // All other standard tools default to the Point Cloud baseline.
-  const complexityKey = card.tool === "KPI" ? (card.complexity || "Supporting") : "Point Cloud";
+  // Built-in tool baselines remain available alongside tool-specific basic types.
+  const complexityKey = workpackageRateKey(card, toolFteRates);
   const rates = toolFteRates?.[card.tool]?.[complexityKey] ?? fteRates[complexityKey] ?? fteRates["Point Cloud"];
   if (!rates) return 0;
+  if (rates.phases || rates.supportingPhases) {
+    const months = computeWorkpackageLifecycleTimeline(card, project, rates, reusabilityFactors, stabilityFactors, false, project.duration);
+    const total = months.reduce((sum, month) => {
+      const support = supportingPhaseRates(card, rates, month, reusabilityFactors, stabilityMultiplier);
+      return sum + month.phaseRate + support.dev + support.meetings;
+    }, 0);
+    return round2(total / project.duration);
+  }
+
 
   const pd = rates.phaseDuration;
   const devDuration = pd.Requirements + pd.Implementation + pd.Validation + pd.Integration;
@@ -283,9 +293,9 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
 
   const reusabilityMultiplier = getReusabilityFactor(card, reusabilityFactors);
   const maintenanceMultiplier = getMaintenanceReusabilityFactor(card, reusabilityFactors);
-  const stabilityMultiplier = stabilityFactors[project.stability] ?? 1.0;
+  const stabilityMultiplier = card.tool === "Other" ? 1 : stabilityFactors[project.stability] ?? 1.0;
 
-  if (card.tool !== "Other") {
+  if (card.tool !== "Other" || card.complexity) {
     const startIdx = Math.max(1, parseInt(card.startMonth, 10) || 1) - 1;
     if (startIdx > 0) {
       const inactive = Array.from({ length: Math.min(startIdx, totalDuration) }, (_, index) => ({
@@ -299,7 +309,7 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
     }
   }
 
-  if (card.tool === "Other") {
+  if (card.tool === "Other" && !card.complexity) {
     const startMonth = Math.max(1, parseInt(card.otherStartMonth, 10) || 1);
     const startIdx = startMonth - 1;
     const durationMonths = Math.max(1, parseInt(card.otherDuration, 10) || 6);
@@ -371,6 +381,30 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
       }
     }
     return months;
+  }
+
+  if (rates.phases) {
+    let cursor = 0;
+    const spans = rates.phases.map((phase) => {
+      const start = cursor;
+      cursor = phase.untilProjectEnd ? totalDuration : cursor + phase.duration;
+      return { phase, start, end: cursor };
+    });
+    return Array.from({ length: totalDuration }, (_, month) => {
+      const span = spans.find(({ start, end }) => month >= start && month < end);
+      const phaseRate = span ? round2(span.phase.rate * (span.phase.scaleByMaintenancePreference ? maintenanceMultiplier : span.phase.scaleByReusability ? reusabilityMultiplier : 1) * stabilityMultiplier) : 0;
+      return {
+        phaseName: span?.phase.name ?? "Inactive",
+        isProjectEndPhase: Boolean(span?.phase.untilProjectEnd),
+        shortPhase: span ? (isMaintenancePhase(span.phase) ? "Maint" : span.phase.name.slice(0, 3)) : "",
+        phaseSpan: span ? Math.max(1, Math.min(totalDuration, span.end) - span.start) : Math.max(1, totalDuration - cursor),
+        phaseMonthIndex: span ? month - span.start + 1 : month - cursor + 1,
+        isPhaseStart: span ? month === span.start : month === cursor,
+        isPhaseEnd: span ? month === Math.min(totalDuration, span.end) - 1 : month === totalDuration - 1,
+        phaseRate, totalFTE: phaseRate,
+        style: getFTEGradientStyle(phaseRate, isNegated, 3.0),
+      };
+    });
   }
 
   const pd = rates.phaseDuration || { Requirements: 1, Implementation: 3, Validation: 2, Integration: 1 };
@@ -492,7 +526,7 @@ export function computeActivitySegments(alignedTimelineCells) {
     const phaseName = cell.coreM.phaseName;
     const pRelIdx = cell.pMonthIdx - 1;
 
-    if (currentSeg && currentSeg.shortPhase === shortPhase) {
+    if (currentSeg && currentSeg.shortPhase === shortPhase && currentSeg.phaseName === phaseName) {
       currentSeg.gIndices.push(gIdx);
       currentSeg.pRelIndices.push(pRelIdx);
     } else {

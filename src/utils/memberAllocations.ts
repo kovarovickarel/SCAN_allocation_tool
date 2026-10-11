@@ -11,7 +11,7 @@ export function resolveMonthlyMemberAllocations(
   const assignments = card.memberAssignments || {};
   const monthly = card.memberMonthlyAssignments || {};
   const totalStaffed = Object.values(assignments).reduce((sum, value) => sum + (Number(value) || 0), 0);
-  const duration = card.tool === "Other" ? Math.max(1, parseInt(String(card.otherDuration), 10) || 6) : projectDuration;
+  const duration = card.tool === "Other" && !card.complexity ? Math.max(1, parseInt(String(card.otherDuration), 10) || 6) : projectDuration;
   return Object.fromEntries([...new Set([...Object.keys(assignments), ...Object.keys(monthly)])].map((memberId) => {
     const member = members.find((item) => item.id === memberId);
     const cap = member ? Math.max(0, Number(member.fte) || 0) : 1;
@@ -52,7 +52,7 @@ export function calculateWorkpackageCoverage(
   const assignments = card.memberAssignments || {};
   const monthlyAssignments = card.memberMonthlyAssignments || {};
   const totalStaffedWP = Object.values(assignments).reduce((sum, value) => sum + (parseFloat(String(value)) || 0), 0);
-  const wpDurMonths = card.tool === "Other" ? Math.max(1, parseInt(String(card.otherDuration), 10) || 6) : projectDuration;
+  const wpDurMonths = card.tool === "Other" && !card.complexity ? Math.max(1, parseInt(String(card.otherDuration), 10) || 6) : projectDuration;
 
   const monthlyCoverage = months.map((month, monthIdx) => {
     const displayFTE = month.totalWPMonthlyFTE;

@@ -1,5 +1,5 @@
 import React from "react";
-import type { FteCostSettings, ThemeContextValue, SupplierRecord, WorkpackageCard } from "../types";
+import type { FteCostSettings, ThemeContextValue, SupplierRecord, WorkpackageCard, WorkpackagePhase, WorkpackageSupportingPhase } from "../types";
 
 export const DEFAULT_SUPPLIERS: readonly SupplierRecord[] = Object.freeze([
   { id: "supplier-luxoft", name: "Luxoft" }, { id: "supplier-ts", name: "T&S" },
@@ -115,6 +115,13 @@ export const TOOL_VIEW_SWITCHER_STYLES = Object.freeze({
     active: "bg-sky-500 text-white border border-transparent ring-2 ring-sky-300 shadow-xs scale-110",
     inactive: "bg-sky-950/60 text-sky-400 border border-sky-800/60 hover:bg-sky-900/60 hover:text-sky-300",
   },
+});
+
+export const TOOL_BASIC_TYPE_COLORS: Readonly<Record<string, string>> = Object.freeze({
+  KPI: "#059669", "Data Factory": "#0891b2", "Vehicle Tooling": "#d97706",
+  Visualization: "#0d9488", Reprocessing: "#ea580c", "Range & Accuracy": "#db2777",
+  "SYS.4": "#4f46e5", "SYS.5": "#65a30d", "SysVal Operations": "#c026d3",
+  Simulation: "#0284c7", Other: "#334155",
 });
 
 export const TEAM_COMPACT_BTN_STYLES = Object.freeze({
@@ -330,7 +337,24 @@ export const TOOL_CARD_THEMES = Object.freeze({
   },
 });
 
-export const DEFAULT_FTE_RATES = Object.freeze({
+// Seeded basic types use the same definitions as user-created types.
+function defineBasicType(rates: any, color: string) {
+  const phases: WorkpackagePhase[] = ["Requirements", "Implementation", "Validation", "Integration"].map(name => ({
+    id: name, name, kind: "main", rate: rates[name], duration: rates.phaseDuration[name],
+    scaleByReusability: true, notMilestoneBound: false, untilProjectEnd: false,
+  }));
+  phases.push(
+    { id: "initialMaintenance", name: "Initial Maintenance", kind: "maintenance", rate: rates.initialMaintenance, duration: 6, scaleByReusability: false, notMilestoneBound: true, untilProjectEnd: false },
+    { id: "residualMaintenance", name: "Residual Maintenance", kind: "maintenance", rate: rates.residualMaintenance, duration: 1, scaleByReusability: false, notMilestoneBound: true, untilProjectEnd: true },
+  );
+  const supportingPhases: WorkpackageSupportingPhase[] = [
+    { id: "devFunctionsSupport", name: "Functions dev support", rate: rates.devFunctionsSupport, scaleByReusability: false, includeMaintenance: true },
+    { id: "weeklyMeetings", name: "Weekly meeting attendance", rate: rates.weeklyMeetings, scaleByReusability: false, includeMaintenance: true },
+  ];
+  return { ...rates, color, phases, supportingPhases };
+}
+
+export const DEFAULT_FTE_RATES = Object.freeze(Object.fromEntries(Object.entries({
   Supporting: {
     Requirements: 0.1,
     Implementation: 0.3,
@@ -364,12 +388,16 @@ export const DEFAULT_FTE_RATES = Object.freeze({
     weeklyMeetings: 0.1,
     phaseDuration: { Requirements: 2, Implementation: 6, Validation: 4, Integration: 2 },
   },
-});
+}).map(([name, rates]) => [name, defineBasicType(rates, ({ Supporting: "#10b981", "Point Cloud": "#3b82f6", Perception: "#f43f5e" })[name])])));
 
 export const deepClone = (obj) => (typeof structuredClone === "function" ? structuredClone(obj) : JSON.parse(JSON.stringify(obj)));
 
 export const DEFAULT_TOOL_FTE_RATES = Object.freeze(
-  Object.fromEntries(TOOLS.map((t) => [t.name, deepClone(DEFAULT_FTE_RATES)]))
+  Object.fromEntries(TOOLS.map((t) => [t.name, t.name === "KPI" ? deepClone(DEFAULT_FTE_RATES) : t.name === "Other" ? { Standard: {
+    ...deepClone(DEFAULT_FTE_RATES["Point Cloud"]), color: TOOL_BASIC_TYPE_COLORS.Other,
+    phases: [{ id: "main", name: "Main", kind: "main", rate: 0.3, duration: 6, scaleByReusability: true, notMilestoneBound: false, untilProjectEnd: false }],
+    supportingPhases: [],
+  } } : { "Point Cloud": { ...deepClone(DEFAULT_FTE_RATES["Point Cloud"]), color: TOOL_BASIC_TYPE_COLORS[t.name] } }]))
 );
 
 export const DEFAULT_MGMT_SETTINGS = Object.freeze({
@@ -462,14 +490,14 @@ export const INITIAL_FUNCTIONS = [
     id: genId(),
     name: "Config Manager",
     tool: "Other",
-    complexity: null,
+    complexity: "Standard",
     reusability: "New",
     subcategory: null,
     otherEffort: 0.25,
     otherDuration: 6,
     otherStartMonth: null,
     otherFinishMilestone: null,
-    otherHasMaintenance: true,
+    otherHasMaintenance: false,
     otherMaintenanceEffort: 0.05,
   },
 ];

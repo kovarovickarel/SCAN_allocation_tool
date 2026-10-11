@@ -1,3 +1,5 @@
+import { supportingPhaseRates } from "./supportingPhases";
+import { workpackageRateKey } from "./workpackageTypes";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, round2 } from "../constants";
 import type { AllocationProject, MonthlyNumericMap, NumericMap, TeamMemberRecord, WorkpackageCard } from "../types";
 import { calcCardFTE, calculateProjectEffort, computeWorkpackageLifecycleTimeline, getSupportReusabilityFactor } from "./helpers";
@@ -51,22 +53,21 @@ export function reconcileProjectTimelineAllocations(
   const summarize = (card: WorkpackageCard, owner: AllocationProject) => {
     const isNegated = (owner.hiddenTools || []).includes(card.tool) ||
       Boolean(card.subcategory && (owner.hiddenSubcategories || []).includes(card.subcategory));
-    const complexityKey = card.tool === "KPI" ? (card.complexity || "Supporting") : "Point Cloud";
+    const complexityKey = workpackageRateKey(card, config.toolFteRates);
     const rates = config.toolFteRates?.[card.tool]?.[complexityKey] ?? config.fteRates?.[complexityKey] ??
       DEFAULT_FTE_RATES[complexityKey] ?? DEFAULT_FTE_RATES["Point Cloud"];
     const core = computeWorkpackageLifecycleTimeline(card, owner, rates,
       config.reusabilityFactors, config.stabilityFactors, isNegated, duration);
     const stability = config.stabilityFactors[owner.stability] ?? 1;
-    const supportMultiplier = getSupportReusabilityFactor(card, config.reusabilityFactors);
-    const dev = isNegated || card.tool === "Other" ? 0 : round2((rates.devFunctionsSupport ?? 0.1) * stability * supportMultiplier);
-    const meetings = isNegated || card.tool === "Other" ? 0 : round2((rates.weeklyMeetings ?? 0.1) * stability * supportMultiplier);
-    const effort = core.map((month, index) => isNegated || (card.tool !== "Other" && month.phaseName === "Inactive") ? 0 : round2(
+    const supportMultiplier = getSupportReusabilityFactor(card, config.reusabilityFactors, rates);
+    const supportRates = core.map(month => supportingPhaseRates(card, rates, month, config.reusabilityFactors, stability, isNegated));
+    const effort = core.map((month, index) => isNegated || ((card.tool !== "Other" || card.complexity) && month.phaseName === "Inactive") ? 0 : round2(
       (card.customCoreFTE?.[index] ?? month.totalFTE) +
-      round2(((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings)) * supportMultiplier)));
+      round2(((card.customDevSupportFTE?.[index] ?? supportRates[index].dev) + (card.customMeetingsFTE?.[index] ?? supportRates[index].meetings)) * supportMultiplier)));
     const isAltered = core.some((month, index) =>
       (card.customCoreFTE?.[index] !== undefined && Math.abs(card.customCoreFTE[index] - month.totalFTE) > 0.001) ||
-      (supportMultiplier !== 0 && card.tool !== "Other" && card.customDevSupportFTE?.[index] !== undefined && Math.abs(card.customDevSupportFTE[index] - dev) > 0.001) ||
-      (supportMultiplier !== 0 && card.tool !== "Other" && card.customMeetingsFTE?.[index] !== undefined && Math.abs(card.customMeetingsFTE[index] - meetings) > 0.001));
+      (supportMultiplier !== 0 && (card.tool !== "Other" || card.complexity) && card.customDevSupportFTE?.[index] !== undefined && Math.abs(card.customDevSupportFTE[index] - supportRates[index].dev) > 0.001) ||
+      (supportMultiplier !== 0 && (card.tool !== "Other" || card.complexity) && card.customMeetingsFTE?.[index] !== undefined && Math.abs(card.customMeetingsFTE[index] - supportRates[index].meetings) > 0.001));
     const fte = isNegated ? 0 : isAltered ? round2(effort.reduce((sum, value) => sum + value, 0) / duration) :
       calcCardFTE(card, owner, config.fteRates, config.reusabilityFactors, config.stabilityFactors, config.toolFteRates);
     return { effort, card: { ...card, _fte: fte } };
@@ -82,7 +83,7 @@ export function reconcileProjectTimelineAllocations(
     if (!old || !updated) return card;
     const assignments = card.memberAssignments || {};
     const total = Object.values(assignments).reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
-    const wpDuration = card.tool === "Other" ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : duration;
+    const wpDuration = card.tool === "Other" && !card.complexity ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : duration;
     const monthly = reconcileMonthlyAllocations(assignments, card.memberMonthlyAssignments || {},
       old.effort, updated.effort, (id, month) => {
         const assigned = parseFloat(assignments[id]) || 0;

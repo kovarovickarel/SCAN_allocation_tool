@@ -1,5 +1,8 @@
+import { DEFAULT_NON_FTE_TYPES, validNonFteTypes } from "./nonFteBasicTypes";
+import { validSupportingPhases } from "./supportingPhases";
+import { validWorkpackagePhases, normalizeToolBasicTypes } from "./workpackageTypes";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFAULT_MGMT_SETTINGS,
-  DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, PROJECT_TYPES, PURCHASE_TYPES } from "../constants";
+  DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, PROJECT_TYPES } from "../constants";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings, SupplierRecord } from "../types";
 import { workpackageFinishViolation } from "./workpackageFinishTargets";
 import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
@@ -7,6 +10,7 @@ import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
 export const WORKSPACE_FILE_VERSION = 1;
 export const MAX_WORKSPACE_FILE_BYTES = 20 * 1024 * 1024;
 export type WorkspaceConfiguration = {
+  nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
   suppliers: SupplierRecord[]; fteRates: typeof DEFAULT_FTE_RATES; toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
   fteCosts: FteCostSettings; otherDefaults: typeof DEFAULT_OTHER_SETTINGS; management: typeof DEFAULT_MGMT_SETTINGS;
   reusabilityFactors: typeof DEFAULT_REUSABILITY_FACTORS; stabilityFactors: typeof DEFAULT_STABILITY_FACTORS;
@@ -27,7 +31,7 @@ export type WorkspaceFile = { format: "scan-allocation-tool"; schemaVersion: num
 // Derived totals and editor flags are recalculated, never restored from a file.
 export function createWorkspaceFile(data: WorkspaceData, now = new Date()): WorkspaceFile {
   return JSON.parse(JSON.stringify({ format: "scan-allocation-tool", schemaVersion: WORKSPACE_FILE_VERSION,
-    exportedAt: now.toISOString(), data: { ...data, workpackages: data.workpackages.map(card =>
+    exportedAt: now.toISOString(), data: { ...data, configuration: { ...data.configuration, nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }, workpackages: data.workpackages.map(card =>
       Object.fromEntries(Object.entries(card).filter(([key]) => !key.startsWith("_")))) } }));
 }
 export function serializeWorkspace(data: WorkspaceData, now = new Date()) {
@@ -102,6 +106,8 @@ function entities(value: any, path: string): any[] {
 function template(value: any, example: any, path: string) {
   object(value, path);
   for (const [key, expected] of Object.entries(example)) {
+    if (key === "Standard" && value[key] === undefined) continue; // Legacy Other configuration has no basic-type definition.
+    if (["phases", "supportingPhases", "color"].includes(key)) continue; // Optional definitions are validated separately, including older workspace files.
     const field = `${path}.${key}`;
     if (typeof expected === "number") number(value[key], field);
     else if (typeof expected === "boolean") boolean(value[key], field);
@@ -129,14 +135,27 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   if (!Number.isFinite(Date.parse(file.exportedAt))) fail("Export date", "invalid date.");
   const data = object(file.data, "Workspace");
   const config = object(data.configuration, "Configuration");
+  if (config.nonFteTypes !== undefined && !validNonFteTypes(config.nonFteTypes)) fail("Non-FTE basic types", "expected unique names and supported icons.");
+  config.nonFteTypes ??= DEFAULT_NON_FTE_TYPES;
   const suppliers = entities(config.suppliers, "Suppliers");
   suppliers.forEach(s => text(s.name, "Supplier name"));
   const supplierIds = new Set(suppliers.map(s => s.id));
   template(config.fteRates, DEFAULT_FTE_RATES, "FTE rates");
-  template(config.toolFteRates, DEFAULT_TOOL_FTE_RATES, "Tool FTE rates");
+  object(config.toolFteRates, "Tool FTE rates");
+  for (const tool of Object.keys(DEFAULT_TOOL_FTE_RATES)) {
+    const types = object(config.toolFteRates[tool], `Tool FTE rates.${tool}`);
+    for (const [name, rates] of Object.entries(types)) {
+      text(name, "Basic type name");
+      template(rates, DEFAULT_FTE_RATES["Point Cloud"], `Tool FTE rates.${tool}.${name}`);
+    }
+  }
   for (const rateSet of [config.fteRates, ...Object.values(config.toolFteRates)]) {
     for (const rates of Object.values(rateSet) as any[]) {
       object(rates, "Phase rates");
+      if (rates.supportingPhases !== undefined && !validSupportingPhases(rates.supportingPhases)) fail("Supporting activities", "expected unique names and IDs, nonnegative rates, reusability and maintenance flags.");
+      if (rates.builtinLifecycle !== undefined && typeof rates.builtinLifecycle !== "boolean") fail("Built-in lifecycle", "expected a boolean.");
+      if (rates.color !== undefined && (typeof rates.color !== "string" || !/^#[0-9a-f]{6}$/i.test(rates.color))) fail("Basic type color", "expected a six-digit hex color.");
+      if (rates.phases !== undefined && !validWorkpackagePhases(rates.phases)) fail("Basic type phases", "expected ordered main phases followed by maintenance phases, unique names, nonnegative rates, whole maximum durations, consecutive phases outside the milestone and only an optional final maintenance phase running to project end.");
       for (const duration of Object.values(object(rates.phaseDuration, "Phase durations"))) number(duration, "Phase duration", 1, true);
     }
   }
@@ -199,12 +218,13 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     for (const key of ["otherEffort", "otherMaintenanceEffort", "customReusabilityFactor"]) if (card[key] != null) number(card[key], key, 0, false, true);
     for (const key of ["startMonth", "otherStartMonth", "otherDuration"]) if (card[key] != null) number(card[key], key, 1, true, true);
     for (const key of ["complexity", "reusability", "subcategory", "supplierId", "supplierName"]) if (card[key] != null) text(card[key], key, true);
-    if (card.complexity) choice(card.complexity, Object.keys(config.fteRates), "Complexity");
+    if (card.complexity) choice(card.complexity, [...Object.keys(config.fteRates), ...Object.keys(config.toolFteRates[card.tool] ?? {})], "Basic type");
     for (const key of ["memberAssignments", "customCoreFTE", "customDevSupportFTE", "customMeetingsFTE", "purchasePaymentOverrides", "purchasePaymentShares"]) if (card[key] !== undefined) numericMap(card[key], key);
+    if (card.customSupportingActivityFTE !== undefined) for (const months of Object.values(object(card.customSupportingActivityFTE, "Supporting activity overrides"))) numericMap(months, "Supporting activity monthly overrides");
     if (card.memberMonthlyAssignments !== undefined) numericMap(card.memberMonthlyAssignments, "Monthly allocations", 2);
     if (card.memberMaintenancePreferences !== undefined) numericMap(card.memberMaintenancePreferences, "Maintenance preferences", 1, true);
     if (card.kind === "non-fte") {
-      choice(card.purchaseType, PURCHASE_TYPES, "Purchase type"); number(card.purchasePriceEUR, "Purchase price");
+      choice(card.purchaseType, config.nonFteTypes.map(type => type.name), "Purchase type"); number(card.purchasePriceEUR, "Purchase price");
       if (!supplierIds.has(card.supplierId)) fail("Purchase supplier", "not found in the supplier list.");
       if (card.purchaseMonths !== undefined && !Array.isArray(card.purchaseMonths)) fail("Payment months", "expected a list.");
       (card.purchaseMonths || []).forEach(month => number(month, "Payment month", 1, true));
@@ -229,6 +249,8 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   choice(view.summaryFilter, ["all", "nominated", "rfq", "selected"], "Summary filter");
   for (const key of ["teamCompact", "poolCompact", "summaryOpen"]) boolean(view[key], key);
   if (view.selectedProjectIds !== null) strings(view.selectedProjectIds, "Selected projects");
+  config.toolFteRates = normalizeToolBasicTypes(config.toolFteRates);
+  config.fteRates = normalizeToolBasicTypes({ KPI: config.fteRates }).KPI;
   // Round-trip through the exporter strips untrusted computed/editor fields too.
   return createWorkspaceFile(data as WorkspaceData, new Date(file.exportedAt));
 }
