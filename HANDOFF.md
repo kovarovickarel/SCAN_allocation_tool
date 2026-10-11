@@ -3,6 +3,19 @@
 Updated: 2026-10-11. Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
+## Latest overview and capacity batch (2026-10-11)
+
+This section supersedes older pending-publication and verification counts below.
+The batch contains contextual commits for MH overview tags, unused external
+capacity dashboard/drilldown, basic-type JSON regression coverage, and docs.
+Final validation: all 308 app tests passed, TypeScript passed, and both Pages
+production tests and the Pages build passed. Existing salary/deferred tests now
+open the capacity window. Current visual references reflect the accepted MH UI;
+historical references remain unchanged. The remote matched local master at
+c463af8 before this batch. The user authorized pushing after validation; inspect
+origin/master for the final published SHA. A successful push alone does not
+confirm completion of the subsequent Pages deployment.
+
 ## Latest basic-type configuration batch (2026-10-11)
 
 This section supersedes the earlier pending-publication status below. The remote
@@ -155,3 +168,39 @@ the new feature is available on the hosted site.
 ## Supporting activity rows in the project timeline
 
 The project timeline now renders one itemized row per configured supporting activity, in configuration order. It no longer combines custom activity names or adds an absent Weekly meeting attendance row. Each row uses its own rate, reusability setting and maintenance inclusion, with connected dashed cells. Individual edits and resets use `customSupportingActivityFTE` keyed by activity ID and synchronize the legacy aggregate support maps used by shared totals and allocation calculations. These maps are saved with the timeline, validated during workspace import, cleared on full reset/revalidation, and shifted when repositioning a workpackage. Regression coverage is included in tests/basic-types.spec.ts; see the latest verification section below.
+
+## Man-hours and unused external capacity (2026-10-11)
+
+Assigned FTE workpackage Efforts footers and project tool/subcategory headers show
+pale orange MH tags before FTE/yr, after cost when present. Unassigned pool cards
+omit MH. Total hours sum scheduled monthly demand times 160 before rounding the
+average FTE, including saved overrides. Tooltips itemize main, maintenance and
+supporting activity hours. Management overhead has one overall MH tag with purple
+text/border. Derived hour fields are excluded from workspace exports.
+
+Values are whole numbers without grouping separators. Compact workpackage tags
+omit the MH suffix and abbreviate thousands upward to hundreds; responsive cards
+hide MH before FTE when space is tight. Overall tool, subtool and management tags
+retain full numbers and the MH suffix in both layouts. Compact pool nominal FTE
+values omit the approximation prefix.
+
+Summary dashboard orders the lower cards as team, location/supplier, Non-FTE,
+externalisation and unused paid external capacity. The capacity card is visible
+in every filter and always uses the full portfolio. Positive unused capacity is
+highlighted red; zero values are green and omit the breakdown link. Clicking the
+card opens a separate monthly window containing only external members with some
+unused paid capacity. There is no duplicate inline table. Paid values are black,
+allocated values green, and unused values bold red (bold green when both zero).
+Deferred salary payment dates remain visible. Escape, backdrop and both Close
+buttons close the window and restore focus.
+
+## Basic-type JSON transfer verification
+
+Workspace exports already include both the full FTE basic-type configuration and
+non-FTE name/icon registry; imports restore and validate them before changing
+application state. Eight regression tests now cover renamed/custom FTE types,
+colors, phase order/durations/rates/scaling, main/maintenance flags, supporting
+activities and individual overrides, removed types, non-FTE names/icons and
+workpackage references. The real browser import/re-export flow also verifies
+the definitions appear in Workpackages configuration. All 39 workspace tests
+passed.

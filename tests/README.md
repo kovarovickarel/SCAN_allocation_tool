@@ -12,7 +12,8 @@ a separate development server on port 5174 and leaves the interactive app on
 | Optimization | `auto-allocation`, `auto-allocation-calculations`, `auto-allocation-cost`: priorities, coverage, minimum cost, exhaustive small cases and large portfolios |
 | Purchases and external members | `non-fte`, `non-fte-calculations`, `external-member-suppliers`, `external-salary-spending`, `deferred-payment`: suppliers, purchase schedules, allocated salary, unused paid capacity and payments after project end |
 | Costs and summary | `allocation-costs-and-reusability`, `project-spending-calculations`, `project-spending-timeline`, `project-spending-charts`, `summary-dashboard`: pricing, currency, overrides, graphs, project selection and reconciled dashboard totals |
-| Workspace transfer | `workspace-files`: complete JSON round trips, precise validation errors, atomic import, native Save As and download fallback |
+| Overview hours and unused capacity | `man-hours`, `unused-capacity`: whole/compact hour formatting, category totals, management styling, zero/nonzero capacity, filters, affected-member drilldown and focus restoration; existing salary/deferred tests open the new window |
+| Workspace transfer | `workspace-files`: complete JSON round trips including custom FTE phases/colors/supporting activities and non-FTE name/icon types, precise validation errors, atomic import, native Save As and download fallback |
 | UI and guide | `workpackage-layout`, `recent-features`, `screens-and-interactions`, `visual`: themes, responsive layouts, abbreviations, guide navigation and reviewed current screenshots |
 
 The default demo contains three projects (including BMW / SRR / RFQ), four
