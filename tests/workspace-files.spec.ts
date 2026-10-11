@@ -272,3 +272,73 @@ test("invalid project names identify the record, field and received value", () =
     expect(() => parseWorkspaceFile(JSON.stringify(file))).toThrow(`Project name (field: name): expected a non-empty text string; ${value === undefined ? "the field is missing" : "received"}`);
   }
 });
+
+
+function configuredBasicTypesWorkspace(): WorkspaceData {
+  const data = workspace();
+  const definition = {
+    ...deepClone(DEFAULT_FTE_RATES.Supporting), color: "#9c54bd",
+    phases: [
+      { id: "main-requirements", name: "Requirements", kind: "main" as const, rate: 0.23, duration: 2, scaleByReusability: true, notMilestoneBound: false, untilProjectEnd: false },
+      { id: "main-integration", name: "Integration", kind: "main" as const, rate: 0.31, duration: 1, scaleByReusability: false, notMilestoneBound: true, untilProjectEnd: false },
+      { id: "maintenance-first", name: "Initial care", kind: "maintenance" as const, rate: 0.12, duration: 4, scaleByReusability: true, notMilestoneBound: true, untilProjectEnd: false },
+      { id: "maintenance-last", name: "Long-term care", kind: "maintenance" as const, rate: 0.04, duration: 1, scaleByReusability: false, notMilestoneBound: true, untilProjectEnd: true },
+    ],
+    supportingPhases: [
+      { id: "reviews", name: "Reviews", rate: 0.07, scaleByReusability: true, includeMaintenance: false },
+      { id: "meetings", name: "Team meetings", rate: 0.03, scaleByReusability: false, includeMaintenance: true },
+    ],
+  };
+  delete data.configuration.toolFteRates.KPI.Supporting;
+  data.configuration.toolFteRates.KPI["Renamed development"] = definition;
+  data.configuration.toolFteRates["SYS.5"]["Custom validation"] = deepClone(definition);
+  Object.assign(data.configuration.toolFteRates, { Simulation: {} });
+  data.workpackages[0].complexity = "Renamed development";
+  data.workpackages[0].customSupportingActivityFTE = { reviews: { 2: 0.1 }, meetings: { 3: 0.08 } };
+  data.workpackages.push({ id: "custom-validation", name: "Custom validation work", tool: "SYS.5", complexity: "Custom validation", projectId: null, reusability: "New" });
+  data.configuration.nonFteTypes = [{ name: "Cloud service", icon: "Cloud" }, { name: "Supplier service", icon: "Tools" }];
+  data.workpackages[1].purchaseType = "Cloud service";
+  return data;
+}
+
+test("JSON round trip retains edited FTE and non-FTE basic types and their workpackage links", () => {
+  const data = configuredBasicTypesWorkspace();
+  const restored = parseWorkspaceFile(serializeWorkspace(data)).data;
+  expect(restored.configuration).toEqual(data.configuration);
+  expect(restored.configuration.toolFteRates.KPI.Supporting).toBeUndefined();
+  expect(restored.configuration.toolFteRates.Simulation).toEqual({});
+  expect(restored.workpackages).toEqual(createWorkspaceFile(data).data.workpackages);
+});
+
+for (const [label, change, message] of [
+  ["invalid custom phase ordering", (data: WorkspaceData) => { data.configuration.toolFteRates.KPI["Renamed development"].phases.reverse(); }, /Basic type phases/],
+  ["invalid supporting activity", (data: WorkspaceData) => { data.configuration.toolFteRates.KPI["Renamed development"].supportingPhases[0].rate = -1; }, /Supporting activities/],
+  ["invalid basic type color", (data: WorkspaceData) => { data.configuration.toolFteRates.KPI["Renamed development"].color = "orange"; }, /Basic type color/],
+  ["duplicate non-FTE types", (data: WorkspaceData) => { data.configuration.nonFteTypes!.push({ name: "Cloud service", icon: "Server" }); }, /Non-FTE basic types/],
+  ["unsupported non-FTE icon", (data: WorkspaceData) => { data.configuration.nonFteTypes![0].icon = "unknown-icon"; }, /Non-FTE basic types/],
+  ["unconfigured non-FTE type", (data: WorkspaceData) => { data.workpackages[1].purchaseType = "License"; }, /Purchase type/],
+] as const) test(`JSON import rejects ${label}`, () => {
+  const data = configuredBasicTypesWorkspace();
+  change(data);
+  expect(() => parseWorkspaceFile(serializeWorkspace(data))).toThrow(message);
+});
+
+test("real JSON import and re-export preserve both custom basic-type registries", async ({ page }) => {
+  await page.goto("/");
+  const data = configuredBasicTypesWorkspace();
+  await upload(page, data);
+  await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
+  const exported = await exportData(page);
+  expect(exported.data.configuration).toEqual(data.configuration);
+  expect(exported.data.workpackages).toEqual(createWorkspaceFile(data).data.workpackages);
+  await page.getByRole("button", { name: "Workpackages configuration", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Basic type", exact: true }).click();
+  await expect(dialog.getByRole("option", { name: "Renamed development", exact: true })).toBeVisible();
+  await dialog.getByRole("option", { name: "Renamed development", exact: true }).click();
+  await expect(dialog.getByText("Long-term care", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Team meetings", { exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "non-FTE Workpackage Basic Types", exact: true }).click();
+  await expect(dialog.getByText("Cloud service", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("Supplier service", { exact: true })).toBeVisible();
+});
