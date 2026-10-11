@@ -54,6 +54,7 @@ The development server uses React Fast Refresh. Component and styling edits appe
 pnpm typecheck
 pnpm exec playwright install chromium
 pnpm test:e2e
+pnpm test:pages
 ```
 
 Playwright starts a separate Vite server on port 5174. The tests cover the main screens, interactions, form factors, themes, and visual snapshots. Snapshot files are kept with the test suites under `tests/`.
@@ -67,6 +68,8 @@ maintenance preferences, external members, RFQ, and responsive card badges.
 The original screenshots are retained separately. `pnpm test:e2e:historical`
 compares against those references; several differ from the current app because
 they predate the later requested features. Do not overwrite them to hide failures.
+
+The production Pages smoke suite builds the app and checks repository-prefixed assets, dashboard navigation, and workspace export/import on port 4174. The deployment workflow runs it before publication. See [tests/README.md](tests/README.md) for the current coverage map and screenshot policy.
 
 ## Project layout
 

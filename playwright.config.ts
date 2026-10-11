@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: "**/pages/**",
   fullyParallel: true,
   webServer: {
     command: "pnpm exec vite --configLoader native --host 127.0.0.1 --port 5174 --strictPort",
