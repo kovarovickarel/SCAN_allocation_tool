@@ -3,6 +3,32 @@
 Updated: 2026-10-11. Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
+## Workpackage and project duplication (2026-10-12)
+
+FTE and non-FTE cards now have a faded duplicate icon between Details and Edit
+only in expanded layouts in Extended mode. Basic mode and compact layouts hide
+duplication. Copies are inserted
+immediately after their source in the same pool/project/tool/subtool. They have
+a new ID and a `Copy of ` name prefix. Source details and schedules are deeply
+copied, including start/finish targets, payment months/shares/overrides and manual
+effort overrides. FTE copies clear member scalar/monthly allocations and member
+maintenance preferences while keeping their project assignment. Derived/editor
+fields are omitted and recalculated.
+
+Project duplication now has an Extended-mode icon between Configure Category and
+the compact-layout toggle, hidden when collapsed. A prompt offers both kinds,
+FTE only, non-FTE only, or no workpackages. The new project is inserted immediately
+after its source and named `Copy of ...`; included workpackages retain their
+original names and schedules, receive new IDs and point to the copied project.
+Engineering and management member allocations/preferences are cleared, including
+any non-FTE allocation fields. Project settings, hidden categories, milestones,
+management demand overrides and optional workpackage details are deeply copied.
+Cancel, Escape and backdrop clicks close the prompt without copying anything.
+Focused verification passed: 62 workspace/category tests (including nine new
+duplication checks), TypeScript, the Pages build and both Pages production tests.
+The full app/screenshot suite was not run for this batch. The user authorized a
+commit and push to remote master after these checks.
+
 ## Latest workpackage details batch (2026-10-11)
 
 This section supersedes older verification and publication status below.

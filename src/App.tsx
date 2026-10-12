@@ -1,3 +1,4 @@
+import { duplicateWorkpackage } from "./utils/duplicateWorkpackage";
 import { DEFAULT_NON_FTE_TYPES, NonFteTypesContext } from "./utils/nonFteBasicTypes";
 import { nominalWorkpackageManHoursBreakdown } from "./utils/manHours";
 import { supportingPhaseRates } from "./utils/supportingPhases";
@@ -607,6 +608,15 @@ export default function App() {
     );
   }, [functions, projects]);
 
+  const handleDuplicate = useCallback((cardId: string) => {
+    const id = genId();
+    setFunctions(current => {
+      const index = current.findIndex(card => card.id === cardId);
+      if (index < 0) return current;
+      return [...current.slice(0, index + 1), duplicateWorkpackage(current[index], id), ...current.slice(index + 1)];
+    });
+  }, []);
+
   const handleDelete = useCallback((cardId) => {
     setFunctions((prev) => prev.filter((f) => f.id !== cardId));
   }, []);
@@ -646,6 +656,33 @@ export default function App() {
       }
     }
     setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, ...updates } : p)));
+  }, [projects, functions]);
+
+  const handleDuplicateProject = useCallback((projectId: string, content: "fte" | "non-fte" | "both" | "none") => {
+    const source = projects.find(project => project.id === projectId);
+    if (!source) return;
+    const copy = structuredClone(source);
+    copy.id = genId();
+    copy.name = `Copy of ${source.name}`;
+    delete copy.mgmtMemberAssignments;
+    delete copy.mgmtMemberMonthlyAssignments;
+    delete copy.mgmtMemberMaintenancePreferences;
+    const copiedCards = content === "none" ? [] : functions
+      .filter(card => card.projectId === projectId && (content === "both" || (card.kind === "non-fte" ? content === "non-fte" : content === "fte")))
+      .map(card => {
+        const copiedCard = duplicateWorkpackage(card, genId());
+        copiedCard.name = card.name;
+        copiedCard.projectId = copy.id;
+        delete copiedCard.memberAssignments;
+        delete copiedCard.memberMonthlyAssignments;
+        delete copiedCard.memberMaintenancePreferences;
+        return copiedCard;
+      });
+    setProjects(current => {
+      const index = current.findIndex(project => project.id === projectId);
+      return [...current.slice(0, index + 1), copy, ...current.slice(index + 1)];
+    });
+    setFunctions(current => [...current, ...copiedCards]);
   }, [projects, functions]);
 
   const handleDeleteProject = useCallback((projectId) => {
@@ -957,7 +994,7 @@ export default function App() {
               fteRates={config.fteRates}
               toolFteRates={config.toolFteRates}
               onEdit={handleEdit}
-              onDelete={handleDelete}
+              onDelete={handleDelete} onDuplicate={handleDuplicate}
               onDrop={handleDrop}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
@@ -982,7 +1019,7 @@ export default function App() {
                   fteRates={config.fteRates}
                   toolFteRates={config.toolFteRates}
                   onEdit={handleEdit}
-                  onDelete={handleDelete}
+                  onDelete={handleDelete} onDuplicate={handleDuplicate}
                   onDrop={handleDrop}
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
@@ -1088,7 +1125,7 @@ export default function App() {
                       teamMembers={teamMembers}
                       index={idx}
                       onEdit={handleEdit}
-                      onDelete={handleDelete}
+                      onDelete={handleDelete} onDuplicate={handleDuplicate}
                       onDrop={handleDrop}
                       onDragStart={handleDragStart}
                       onDragEnd={handleDragEnd}
@@ -1100,6 +1137,7 @@ export default function App() {
                       onProjectDrop={handleProjectDrop}
                       onUpdateProject={handleUpdateProject}
                       onDeleteProject={handleDeleteProject}
+                      onDuplicateProject={handleDuplicateProject}
                       onToggleSubcategory={handleToggleSubcategory}
                       onToggleTool={handleToggleTool}
                       onResetSubcategories={handleResetSubcategories}

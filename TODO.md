@@ -10,7 +10,5 @@
 
 - [ ] Populate tools with workpackages and set up GM, RIVIAN, and MOTIONAL
 
-- [ ] Workpackage details
-
 - [ ] Add new tool categories
 - [ ] Expanding width of Project(?) swimlines

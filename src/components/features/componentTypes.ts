@@ -45,6 +45,7 @@ export interface FunctionCardProps extends ReusabilityRatesProps {
   isCompact?: boolean;
   onEdit?: CardEditHandler;
   onDelete?: (cardId: string) => void;
+  onDuplicate?: (cardId: string) => void;
   onDragStart?: (card: WorkpackageCard) => void;
   onDragEnd?: (event?: React.DragEvent<HTMLElement>) => void;
   draggedCard?: WorkpackageCard | null;
@@ -74,6 +75,7 @@ export interface ToolRowProps extends ReusabilityRatesProps {
   isCompact?: boolean;
   onEdit?: CardEditHandler;
   onDelete?: (cardId: string) => void;
+  onDuplicate?: (cardId: string) => void;
   onDrop?: (cardId: string, projectId: string, editSchedule?: boolean) => void;
   onDragStart?: (card: WorkpackageCard) => void;
   onDragEnd?: (event?: React.DragEvent<HTMLElement>) => void;
@@ -102,6 +104,7 @@ export interface UnassignedPoolProps extends ReusabilityRatesProps {
   reusabilityFactors?: FactorMap;
   onEdit: CardEditHandler;
   onDelete: (cardId: string) => void;
+  onDuplicate?: (cardId: string) => void;
   onDrop: (cardId: string, projectId: string, editSchedule?: boolean) => void;
   onDragStart: (card: WorkpackageCard) => void;
   onDragEnd: (event?: React.DragEvent<HTMLElement>) => void;
@@ -276,6 +279,7 @@ export interface ProjectBasketProps {
   index: number;
   onEdit: CardEditHandler;
   onDelete: (cardId: string) => void;
+  onDuplicate?: (cardId: string) => void;
   onDrop: (cardId: string, projectId: string, editSchedule?: boolean) => void;
   onDragStart: (card: WorkpackageCard) => void;
   onDragEnd: (event?: React.DragEvent<HTMLElement>) => void;
@@ -287,6 +291,7 @@ export interface ProjectBasketProps {
   onProjectDrop: (draggedIndex: number, targetIndex: number) => void;
   onUpdateProject: (projectId: string, updates: Partial<AllocationProject>) => void;
   onDeleteProject: (projectId: string) => void;
+  onDuplicateProject?: (projectId: string, content: "fte" | "non-fte" | "both" | "none") => void;
   onToggleSubcategory: (projectId: string, subcategory: string) => void;
   onToggleTool: (projectId: string, toolName: string) => void;
   onResetSubcategories: (projectId: string) => void;

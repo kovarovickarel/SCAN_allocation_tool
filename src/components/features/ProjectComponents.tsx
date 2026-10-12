@@ -9,7 +9,8 @@ import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calcu
 import { calculateProjectSpending } from "../../utils/projectSpending";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
-import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon } from '../ui/icons';
+import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon, CopyIcon } from '../ui/icons';
+import { DuplicateProjectModal } from "./DuplicateProjectModal";
 import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
 import { ProjectTimelineModal } from './ProjectTimelineModal';
 import { ProjectRFQBadge } from '../ui/ProjectRFQBadge';
@@ -490,6 +491,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   index,
   onEdit,
   onDelete,
+  onDuplicate,
   onDrop,
   onDragStart,
   onDragEnd,
@@ -501,6 +503,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   onProjectDrop,
   onUpdateProject,
   onDeleteProject,
+  onDuplicateProject,
   onToggleSubcategory,
   onToggleTool,
   onResetSubcategories,
@@ -521,6 +524,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   const [showTimelineModal, setShowTimelineModal] = useState(false);
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDuplicate, setShowDuplicate] = useState(false);
   const [milestoneError, setMilestoneError] = useState(null);
   const [isCompact, setIsCompact] = useState(false);
   const [workpackageView, setWorkpackageView] = useState<WorkpackageView>("both");
@@ -1084,6 +1088,12 @@ export const ProjectBasket = memo(function ProjectBasket({
                     <SlidersIcon size={14} />
                   </button>
                 )}
+                {!isBasicMode && !isCompact && onDuplicateProject && <button
+                  type="button" onClick={() => setShowDuplicate(true)}
+                  aria-label={`Duplicate project ${project.name}`} title="Duplicate Project"
+                  className="p-1 rounded text-slate-400 hover:text-white transition-colors cursor-pointer">
+                  <CopyIcon size={14} />
+                </button>}
                 <button
                   type="button"
                   onClick={() => setIsCompact((c) => !c)}
@@ -1226,7 +1236,7 @@ export const ProjectBasket = memo(function ProjectBasket({
             projectMilestones={project.milestones}
             isCompact={isCompact}
             onEdit={onEdit}
-            onDelete={onDelete}
+            onDelete={onDelete} onDuplicate={onDuplicate}
             onDrop={onDrop}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
@@ -1328,6 +1338,9 @@ export const ProjectBasket = memo(function ProjectBasket({
           onSavePayments={onSavePurchasePayments ? drafts => onSavePurchasePayments(project.id, drafts) : undefined}
         />
       )}
+
+      {showDuplicate && <DuplicateProjectModal name={project.name} onClose={() => setShowDuplicate(false)}
+        onDuplicate={content => { onDuplicateProject?.(project.id, content); setShowDuplicate(false); }} />}
 
       {showDeleteConfirm && (
         <div

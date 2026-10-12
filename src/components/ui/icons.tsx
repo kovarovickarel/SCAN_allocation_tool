@@ -86,6 +86,13 @@ export const CalendarGanttIcon = memo(({ size = 14, className = "" }: SvgIconPro
   </svg>
 ));
 
+export const CopyIcon = memo(({ size = 14 }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="9" y="9" width="12" height="12" rx="2" />
+    <path d="M15 5V3H3v12h2" />
+  </svg>
+));
+
 export const TrashIcon = memo(({ size = 14 }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <polyline points="3 6 5 6 21 6" />

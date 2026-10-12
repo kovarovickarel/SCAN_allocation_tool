@@ -3,6 +3,7 @@ import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFA
   DEFAULT_FTE_COSTS, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, deepClone } from "../src/constants";
 import { createWorkspaceFile, parseWorkspaceFile, serializeWorkspace, type WorkspaceData } from "../src/utils/workspaceFile";
 import { getDefaultMilestones } from "../src/utils/helpers";
+import { duplicateWorkpackage } from "../src/utils/duplicateWorkpackage";
 
 // Exercise the standard-download fallback deterministically; native Save As is tested below.
 test.beforeEach(async ({ page }) => {
@@ -441,4 +442,89 @@ test("real JSON import and re-export preserve both custom basic-type registries"
   await dialog.getByRole("button", { name: "non-FTE Workpackage Basic Types", exact: true }).click();
   await expect(dialog.getByText("Cloud service", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Supplier service", { exact: true })).toBeVisible();
+});
+
+
+test("duplication deep-copies source data and clears FTE allocation and editor fields", () => {
+  const source = workspace().workpackages[0];
+  source.details = { owner: "Original Owner", risks: "- Risk" };
+  const copy = duplicateWorkpackage(source, "copy");
+  expect(copy).toMatchObject({ id: "copy", name: `Copy of ${source.name}`, projectId: source.projectId, startMonth: 3, finishMilestone: "FFV" });
+  for (const key of ["memberAssignments", "memberMonthlyAssignments", "memberMaintenancePreferences", "_editing", "_fte"]) expect(copy[key]).toBeUndefined();
+  copy.details!.owner = "Changed";
+  copy.customCoreFTE![2] = 9;
+  expect(source.details.owner).toBe("Original Owner");
+  expect(source.customCoreFTE![2]).toBe(0.2);
+});
+
+for (const id of ["fte", "purchase", "pool"]) test(`workpackage duplication retains schedule and inserts beside its source (${id})`, async ({ page }) => {
+  await page.goto("/");
+  const data = workspace(); data.workpackages.forEach(card => { card.details = { owner: "Saved Owner", risks: "- Saved risk" }; });
+  await upload(page, data);
+  await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
+  const original = createWorkspaceFile(data).data.workpackages.find(card => card.id === id)!;
+  await page.getByRole("button", { name: `Duplicate ${original.name}`, exact: true }).click();
+  const exported = (await exportData(page)).data;
+  const index = exported.workpackages.findIndex(card => card.id === id);
+  const copy = exported.workpackages[index + 1];
+  const expected = { ...original, id: copy.id, name: `Copy of ${original.name}` };
+  if (id !== "purchase") {
+    delete expected.memberAssignments; delete expected.memberMonthlyAssignments; delete expected.memberMaintenancePreferences;
+  }
+  expect(copy.id).not.toBe(original.id);
+  expect(copy).toEqual(expected);
+  expect(exported.workpackages[index]).toEqual(original);
+  await expect(page.getByText(copy.name, { exact: true })).toBeVisible();
+});
+
+for (const content of ["both", "fte", "non-fte", "none"]) test(`project duplication includes selected workpackages and clears all staffing (${content})`, async ({ page }) => {
+  await page.goto("/");
+  const data = workspace(); data.workpackages[0].details = { description: "Retained details" };
+  await upload(page, data);
+  await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
+  const original = createWorkspaceFile(data).data;
+  await page.getByRole("button", { name: "Duplicate project Transferred RFQ", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Duplicate project", exact: true });
+  const label = { both: "FTE and non-FTE", fte: "FTE only", "non-fte": "Non-FTE only", none: "Without workpackages" }[content];
+  await dialog.getByRole("radio", { name: label, exact: true }).check();
+  await dialog.getByRole("button", { name: "Duplicate project", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  const exported = (await exportData(page)).data;
+  const copy = exported.projects[1];
+  const expected = { ...original.projects[0], id: copy.id, name: "Copy of Transferred RFQ" };
+  delete expected.mgmtMemberAssignments; delete expected.mgmtMemberMonthlyAssignments; delete expected.mgmtMemberMaintenancePreferences;
+  expect(copy).toEqual(expected);
+  expect(exported.projects[0]).toEqual(original.projects[0]);
+  const cards = exported.workpackages.filter(card => card.projectId === copy.id);
+  const sources = original.workpackages.filter(card => card.projectId === "import-project" && (content === "both" || (content === "fte" && card.kind !== "non-fte") || (content === "non-fte" && card.kind === "non-fte")));
+  expect(cards).toHaveLength(sources.length);
+  for (const [index, card] of cards.entries()) {
+    const expectedCard = { ...sources[index], id: card.id, projectId: copy.id };
+    delete expectedCard.memberAssignments; delete expectedCard.memberMonthlyAssignments; delete expectedCard.memberMaintenancePreferences;
+    expect(card).toEqual(expectedCard);
+    expect(card.id).not.toBe(sources[index].id);
+  }
+  expect(exported.teamMembers).toEqual(original.teamMembers);
+});
+
+test("duplication controls are hidden in Basic and compact modes; cancelling is harmless", async ({ page }) => {
+  await page.goto("/");
+  const data = workspace(); await upload(page, data);
+  await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
+  const original = (await exportData(page)).data;
+  const duplicate = page.getByRole("button", { name: "Duplicate project Transferred RFQ", exact: true });
+  for (const route of ["Cancel", "Escape"]) {
+    await duplicate.click();
+    if (route === "Escape") await page.keyboard.press("Escape");
+    else await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+    expect((await exportData(page)).data).toEqual(original);
+  }
+  await page.getByRole("button", { name: "Mode: Extended", exact: true }).click();
+  await expect(page.getByRole("button", { name: /^Duplicate / })).toHaveCount(0);
+  await page.getByRole("button", { name: "Mode: Basic", exact: true }).click();
+  await page.getByRole("button", { name: "Switch to 2-column compact mode", exact: true }).last().click();
+  await expect(duplicate).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Duplicate Imported Development", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Duplicate Imported License", exact: true })).toHaveCount(0);
 });

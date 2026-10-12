@@ -1,3 +1,4 @@
+import { WorkpackageDuplicateButton } from "../ui/WorkpackageDuplicateButton";
 import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
 import { useContext, useId, useLayoutEffect, useRef, useState } from "react";
 import { ThemeContext, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONE_MAP, DEFAULT_SUPPLIERS } from "../../constants";
@@ -17,7 +18,7 @@ const receiptDividerStyle = {
   backgroundPosition: "left top",
 };
 
-export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPLIERS, reusabilityFactors, isCompact = false, teamMembers = [], onEdit, onDelete, onDragStart, onDragEnd, onSchedule }: FunctionCardProps & { project?: AllocationProject; onSchedule?: () => void; suppliers?: readonly SupplierRecord[] }) {
+export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPLIERS, reusabilityFactors, isCompact = false, teamMembers = [], onEdit, onDelete, onDuplicate, onDragStart, onDragEnd, onSchedule }: FunctionCardProps & { project?: AllocationProject; onSchedule?: () => void; suppliers?: readonly SupplierRecord[] }) {
   const { isBasic, isRetro, isBasicMode } = useContext(ThemeContext);
   const [paymentsExpanded, setPaymentsExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
@@ -152,6 +153,7 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
       </div>
       <div className="flex items-center gap-1 shrink-0">
         {!isCompact && !isBasicMode && <WorkpackageDetailsButton expanded={detailsExpanded} onToggle={() => setDetailsExpanded(value => !value)} name={card.name} />}
+        {!isCompact && !isBasicMode && <WorkpackageDuplicateButton name={card.name} onDuplicate={onDuplicate ? () => onDuplicate(card.id) : undefined} />}
         {!isCompact && <button type="button" draggable={false} onClick={() => onEdit?.(card.id, true)} aria-label={`Edit ${card.name}`} className="p-0.5 text-gray-500 hover:text-gray-900 opacity-40 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer"><PencilIcon size={11} /></button>}
         <button type="button" draggable={false} onClick={() => onDelete?.(card.id)} aria-label={`Delete ${card.name}`} className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded opacity-40 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer"><TrashIcon size={11} /></button>
       </div>

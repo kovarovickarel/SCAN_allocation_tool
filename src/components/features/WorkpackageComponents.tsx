@@ -1,3 +1,4 @@
+import { WorkpackageDuplicateButton } from "../ui/WorkpackageDuplicateButton";
 import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
 import { workpackageTypeNames, workpackageRateKey, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
@@ -390,6 +391,7 @@ export const FunctionCard = memo(function FunctionCard({
   isCompact = false,
   onEdit,
   onDelete,
+  onDuplicate,
   onDragStart,
   onDragEnd,
   draggedCard,
@@ -666,6 +668,7 @@ export const FunctionCard = memo(function FunctionCard({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           {!isBasicMode && <WorkpackageDetailsButton expanded={detailsExpanded} onToggle={() => setDetailsExpanded(value => !value)} name={card.name} />}
+          {!isBasicMode && <WorkpackageDuplicateButton name={card.name} onDuplicate={onDuplicate ? () => onDuplicate(card.id) : undefined} />}
           {!isBasicMode && (
             <button
               type="button"
@@ -915,6 +918,7 @@ export const ToolRow = memo(function ToolRow({
   isCompact = false,
   onEdit,
   onDelete,
+  onDuplicate,
   onDrop,
   onDragStart,
   onDragEnd,
@@ -969,7 +973,7 @@ export const ToolRow = memo(function ToolRow({
       <div className={isCompact
         ? `grid ${hasMultipleSlots && visibleSlots.length > 1 ? "grid-cols-2" : "grid-cols-3"} gap-1.5 content-start`
         : "flex flex-col gap-1.5"}>
-        {purchases.map(card => <NonFteWorkpackageCard teamMembers={teamMembers} project={project} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} onSchedule={() => onDrop?.(card.id, projectId, true)} />)}
+        {purchases.map(card => <NonFteWorkpackageCard teamMembers={teamMembers} project={project} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDuplicate={onDuplicate} onDragStart={onDragStart} onDragEnd={onDragEnd} onSchedule={() => onDrop?.(card.id, projectId, true)} />)}
       </div>
     </section>
   );
@@ -1206,7 +1210,7 @@ export const ToolRow = memo(function ToolRow({
                       projectMilestones={projectMilestones}
                       isCompact={isCompact}
                       onEdit={onEdit}
-                      onDelete={onDelete}
+                      onDelete={onDelete} onDuplicate={onDuplicate}
                       onDragStart={onDragStart}
                       onDragEnd={onDragEnd}
                       draggedCard={draggedCard}
@@ -1272,6 +1276,7 @@ export const UnassignedPool = memo(function UnassignedPool({
   toolFteRates,
   onEdit,
   onDelete,
+  onDuplicate,
   onDrop,
   onDragStart,
   onDragEnd,
@@ -1387,7 +1392,7 @@ export const UnassignedPool = memo(function UnassignedPool({
             : "flex flex-col gap-2"
         }`}
       >
-        {poolCards.map((card) => card.kind === "non-fte" ? <NonFteWorkpackageCard teamMembers={teamMembers} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDragStart={onDragStart} onDragEnd={onDragEnd} /> : (
+        {poolCards.map((card) => card.kind === "non-fte" ? <NonFteWorkpackageCard teamMembers={teamMembers} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDuplicate={onDuplicate} onDragStart={onDragStart} onDragEnd={onDragEnd} /> : (
           <FunctionCard
             key={card.id}
             card={card}
@@ -1398,7 +1403,7 @@ export const UnassignedPool = memo(function UnassignedPool({
             projectId="pool"
             isCompact={isCompact}
             onEdit={onEdit}
-            onDelete={onDelete}
+            onDelete={onDelete} onDuplicate={onDuplicate}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             draggedCard={draggedCard}
