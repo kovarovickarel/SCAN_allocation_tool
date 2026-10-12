@@ -147,6 +147,7 @@ export default function App() {
     {
       id: genId(),
       name: "GM",
+      autoStartFte: false,
       type: "Lidar",
       startDate: "2026-01",
       duration: 18,
@@ -159,6 +160,7 @@ export default function App() {
     {
       id: genId(),
       name: "MBAG",
+      autoStartFte: false,
       type: "HDR",
       startDate: "2026-01",
       duration: 12,
@@ -171,6 +173,7 @@ export default function App() {
     {
       id: genId(),
       name: "BMW",
+      autoStartFte: false,
       type: "SRR",
       isRFQ: true,
       startDate: "2026-03",
@@ -247,8 +250,8 @@ export default function App() {
       memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
       customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {},
     } : card));
-    const automatic = invalid.filter(item => !isBasicMode && item.project.autoStartFte !== false);
-    const manual = invalid.filter(item => isBasicMode || item.project.autoStartFte === false);
+    const automatic = invalid.filter(item => !isBasicMode && item.project.autoStartFte === true);
+    const manual = invalid.filter(item => isBasicMode || item.project.autoStartFte !== true);
     if (manual.length) setManualRescheduleQueue(current => [...current, ...manual]);
     if (automatic.length) setAssignmentWarning({ cardName: automatic.map(item => item.card.name).join(", "),
       projectName: [...new Set(automatic.map(item => item.project.name))].join(", "),
@@ -499,7 +502,7 @@ export default function App() {
         setPendingPurchase({ card: { ...targetCard, subcategory: purchaseSubcategory(targetCard) }, project: targetProj });
         return;
       }
-      if (targetCard && targetProj && (isBasicMode || targetProj.autoStartFte === false)) {
+      if (targetCard && targetProj && (isBasicMode || targetProj.autoStartFte !== true)) {
         setPendingOtherAssignment({ card: targetCard, project: targetProj });
         return;
       }
@@ -641,7 +644,7 @@ export default function App() {
   }, []);
 
   const handleAddProject = useCallback((newProject) => {
-    setProjects((prev) => [...prev, { ...newProject, hiddenSubcategories: [], hiddenTools: [], customMgmtMonthlyFTE: {} }]);
+    setProjects((prev) => [...prev, { ...newProject, autoStartFte: newProject.autoStartFte ?? false, hiddenSubcategories: [], hiddenTools: [], customMgmtMonthlyFTE: {} }]);
   }, []);
 
   const handleUpdateProject = useCallback((projectId, updates) => {

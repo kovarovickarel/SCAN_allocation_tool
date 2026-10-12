@@ -229,6 +229,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
     onAdd({
       id: genId(),
       name: draft.name.trim(),
+      autoStartFte: false,
       type: draft.type,
       isRFQ: draft.isRFQ,
       startDate: draft.startDate || "2026-01",
@@ -1073,10 +1074,10 @@ export const ProjectBasket = memo(function ProjectBasket({
                 {!isBasicMode && <button
                   type="button"
                   aria-label={`Automatically start FTE workpackages at project start: ${project.name}`}
-                  aria-pressed={project.autoStartFte !== false}
-                  onClick={() => onUpdateProject(project.id, { autoStartFte: project.autoStartFte === false })}
-                  className={`p-1 rounded transition-colors cursor-pointer ${project.autoStartFte !== false ? "text-amber-400 hover:text-amber-300" : "text-slate-400 hover:text-white"}`}
-                  title={`Automatic FTE start: ${project.autoStartFte !== false ? "On — new FTE workpackages start at M1" : "Off — choose the start month when assigning FTE workpackages"}`}
+                  aria-pressed={project.autoStartFte === true}
+                  onClick={() => onUpdateProject(project.id, { autoStartFte: project.autoStartFte !== true })}
+                  className={`p-1 rounded transition-colors cursor-pointer ${project.autoStartFte === true ? "text-amber-400 hover:text-amber-300" : "text-slate-400 hover:text-white"}`}
+                  title={`Automatic FTE start: ${project.autoStartFte === true ? "On — new FTE workpackages start at M1" : "Off — choose the start month when assigning FTE workpackages"}`}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d="M4 4v16M8 12h12m-5-5 5 5-5 5" />

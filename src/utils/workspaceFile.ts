@@ -211,6 +211,8 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     const legacyCoincidence = project.legacyReqfCoincidence === true && milestones.REQF === 1 && milestones.FFV === 1 && milestones.EFV === 1;
     if (!legacyCoincidence && (counts[milestones.REQF] || 0) >= 2) fail("Project milestones", "more than two milestones in one month.");
     for (const key of ["isRFQ", "autoStartFte"]) if (project[key] !== undefined) boolean(project[key], key);
+    // Missing in baseline exports meant enabled; preserve that saved behavior.
+    project.autoStartFte ??= true;
     for (const key of ["hiddenTools", "hiddenSubcategories", "subSet", "toolSet"]) if (project[key] !== undefined) strings(project[key], key);
     for (const key of ["customMgmtMonthlyFTE", "mgmtMemberAssignments"]) if (project[key] !== undefined) numericMap(project[key], key, 2);
     if (project.mgmtMemberMonthlyAssignments !== undefined) numericMap(project.mgmtMemberMonthlyAssignments, "Management monthly allocations", 3);

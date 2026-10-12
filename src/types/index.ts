@@ -189,7 +189,7 @@ export interface AllocationProject {
   name: string;
   type: string;
   isRFQ?: boolean;
-  /** Defaults to true for projects created before this setting existed. */
+  /** New projects default off; legacy imports without the field restore their old enabled preference. */
   autoStartFte?: boolean;
   startDate: string;
   duration: number;
