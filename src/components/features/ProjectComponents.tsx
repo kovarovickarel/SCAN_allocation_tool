@@ -8,6 +8,7 @@ import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, T
 import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, getManagementMonthlyFTE, calculateWorkpackageAllocationCost, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
 import { calculateProjectSpending } from "../../utils/projectSpending";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { useHorizontalSelectionAutoScroll } from "../../hooks/useHorizontalSelectionAutoScroll";
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon, CopyIcon } from '../ui/icons';
 import { DuplicateProjectModal } from "./DuplicateProjectModal";
@@ -1440,6 +1441,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
 
   const [startMonthInput, setStartMonthInput] = useState(String(initialStart));
   const [spanningError, setSpanningError] = useState(false);
+  const { startAutoScroll, stopAutoScroll } = useHorizontalSelectionAutoScroll();
   const [isScrubbing, setIsScrubbing] = useState(false);
   const isScrubbingRef = useRef(false);
   const previewGridRef = useRef(null);
@@ -1499,32 +1501,28 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
     }
   }, [maxValidStart]);
 
+  const updatePreviewAtX = useCallback((x: number) => {
+    if (!isScrubbingRef.current || !previewGridRef.current) return;
+    const rect = previewGridRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const targetMonth = clamp(Math.floor((x - rect.left) / (rect.width / projectDuration)) + 1, 1, projectDuration);
+    handleSelectMonth(targetMonth);
+  }, [projectDuration, handleSelectMonth]);
+
   useEffect(() => {
-    if (!isScrubbing) return;
-
-    const handleGlobalMouseMove = (e) => {
-      if (!isScrubbingRef.current || !previewGridRef.current) return;
-      const rect = previewGridRef.current.getBoundingClientRect();
-      if (rect.width <= 0) return;
-      const relX = e.clientX - rect.left;
-      const colWidth = rect.width / projectDuration;
-      const rawIndex = Math.floor(relX / colWidth);
-      const targetMonth = clamp(rawIndex + 1, 1, projectDuration);
-      handleSelectMonth(targetMonth);
-    };
-
+    if (!isScrubbing) { stopAutoScroll(); return; }
     const handleGlobalMouseUp = () => {
       isScrubbingRef.current = false;
       setIsScrubbing(false);
+      stopAutoScroll();
     };
-
-    window.addEventListener("mousemove", handleGlobalMouseMove);
     window.addEventListener("mouseup", handleGlobalMouseUp);
+    window.addEventListener("blur", handleGlobalMouseUp);
     return () => {
-      window.removeEventListener("mousemove", handleGlobalMouseMove);
       window.removeEventListener("mouseup", handleGlobalMouseUp);
+      window.removeEventListener("blur", handleGlobalMouseUp);
     };
-  }, [isScrubbing, projectDuration, handleSelectMonth]);
+  }, [isScrubbing, stopAutoScroll]);
 
   const handleInputChange = (e) => {
     const val = e.target.value;
@@ -1796,6 +1794,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
                         isScrubbingRef.current = true;
                         setIsScrubbing(true);
                         handleSelectMonth(mNum);
+                        startAutoScroll(previewGridRef.current, e.clientX, updatePreviewAtX);
                       }}
                       onMouseEnter={() => {
                         if (isScrubbingRef.current) {

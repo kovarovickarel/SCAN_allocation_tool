@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useHorizontalSelectionAutoScroll } from "./useHorizontalSelectionAutoScroll";
 
 export type TimelineRangeMonthData = {
   currentVal?: number;
@@ -50,28 +51,10 @@ export function useTimelineRangeSelection({
   const [cellInputValue, setCellInputValue] = useState("");
   const inputRef = useRef<HTMLInputElement | null>(null);
   const justFinishedSelectingRef = useRef(false);
-
+  const { startAutoScroll, stopAutoScroll } = useHorizontalSelectionAutoScroll();
   useEffect(() => {
-    if (!rangeSelection?.isSelecting) return;
-
-    const handleGlobalMouseMove = (e: globalThis.MouseEvent) => {
-      const rowEl = document.querySelector(`[data-timeline-row="${rangeSelection.rowKey}"]`);
-      if (rowEl) {
-        const rect = rowEl.getBoundingClientRect();
-        if (rect.width > 0) {
-          const colWidth = rect.width / duration;
-          const rawIdx = Math.floor((e.clientX - rect.left) / colWidth);
-          const mIdx = Math.max(0, Math.min(duration - 1, rawIdx));
-          if (mIdx !== rangeSelection.endMonthIdx) {
-            setRangeSelection((prev) => (prev ? { ...prev, endMonthIdx: mIdx } : prev));
-          }
-        }
-      }
-    };
-
-    window.addEventListener("mousemove", handleGlobalMouseMove);
-    return () => window.removeEventListener("mousemove", handleGlobalMouseMove);
-  }, [rangeSelection?.isSelecting, rangeSelection?.rowKey, rangeSelection?.endMonthIdx, duration]);
+    if (!rangeSelection?.isSelecting || !isEnabled) stopAutoScroll();
+  }, [rangeSelection?.isSelecting, isEnabled, stopAutoScroll]);
 
   useEffect(() => {
     const handleGlobalMouseUp = (e: globalThis.MouseEvent) => {
@@ -144,7 +127,15 @@ export function useTimelineRangeSelection({
       isEditing: false,
       ...context,
     });
-  }, [isEnabled, canStartSelection]);
+    const row = e.currentTarget.closest<HTMLElement>("[data-timeline-row]");
+    startAutoScroll(row, e.clientX, x => {
+      const bounds = row?.getBoundingClientRect();
+      if (!bounds || bounds.width <= 0) return;
+      const index = Math.max(0, Math.min(duration - 1, Math.floor((x - bounds.left) / (bounds.width / duration))));
+      setRangeSelection(current => current?.isSelecting && current.rowKey === rowKey && current.endMonthIdx !== index
+        ? { ...current, endMonthIdx: index } : current);
+    });
+  }, [isEnabled, canStartSelection, duration, startAutoScroll]);
 
   return {
     rangeSelection,

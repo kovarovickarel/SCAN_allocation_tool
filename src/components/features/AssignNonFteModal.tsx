@@ -4,6 +4,7 @@ import type { AllocationProject, FactorMap, NumericMap, PurchasePaymentMode, Wor
 import { parsePurchasePaymentAmount, purchaseCost, purchaseDeadline, purchaseMonthlyCosts, validPurchaseMonths } from "../../utils/nonFteWorkpackages";
 import { normalizeMilestones } from "../../utils/helpers";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
+import { useHorizontalSelectionAutoScroll } from "../../hooks/useHorizontalSelectionAutoScroll";
 import { ToolIcon } from "../ui/icons";
 
 export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }: {
@@ -34,6 +35,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
   const canConfirm = months.length > 0 && (mode !== "split" || validSplit);
   const monthlyCosts = mode === "split" ? Array.from({ length: project.duration }, (_, index) => months.includes(index + 1)
     ? (parsePurchasePaymentAmount(paymentInputs[index + 1] ?? "") ?? 0) / 100 : 0) : purchaseMonthlyCosts(scheduledCard, project, factors);
+  const { startAutoScroll, stopAutoScroll } = useHorizontalSelectionAutoScroll();
   const previewGridRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<{ start: number; initial: number[]; inputs: Record<number, string>; add: boolean } | null>(null);
   const [year, month] = (project.startDate || "2026-01").split("-").map(Number);
@@ -59,6 +61,17 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
     setMonths(next);
     setPaymentInputs(Object.fromEntries(Object.entries(selection.inputs).filter(([month]) => next.includes(Number(month)))));
   };
+  const updateSelectionAtX = (x: number) => {
+    const grid = previewGridRef.current;
+    if (!selectionRef.current || !grid) return;
+    const rect = grid.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    selectRange(Math.max(1, Math.min(deadline, Math.floor((x - rect.left) / (rect.width / project.duration)) + 1)));
+  };
+  const finishSelection = () => {
+    selectionRef.current = null;
+    stopAutoScroll();
+  };
   const targetClass = (active: boolean, end = false) => `py-1.5 px-1 text-[10.5px] font-bold border transition-all cursor-pointer flex flex-col items-center justify-center ${isRetro
     ? active ? "bg-[#000080] text-white border-2 border-t-black border-l-black border-b-white border-r-white font-mono"
       : "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black font-mono hover:bg-[#d8d4cc]"
@@ -66,7 +79,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
       : "bg-blue-600 text-white border-blue-600 shadow-xs ring-2 ring-blue-400 rounded-lg"
       : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200 rounded-lg"}`;
   const changeTarget = (key: string) => {
-    selectionRef.current = null;
+    finishSelection();
     setSelectedMilestone(key);
     const boundary = purchaseDeadline({ ...card, purchaseMilestone: key || null }, project);
     updateMonths(months.filter(value => value <= boundary));
@@ -120,14 +133,8 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
               })}
             </div>
             <div ref={previewGridRef} className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${project.duration}, minmax(0, 1fr))`, touchAction: "none" }}
-              onPointerMove={event => {
-                const grid = previewGridRef.current;
-                if (!selectionRef.current || !grid) return;
-                const rect = grid.getBoundingClientRect();
-                if (rect.width <= 0) return;
-                selectRange(Math.max(1, Math.min(deadline, Math.floor((event.clientX - rect.left) / (rect.width / project.duration)) + 1)));
-              }}
-              onPointerUp={() => { selectionRef.current = null; }} onPointerCancel={() => { selectionRef.current = null; }} onLostPointerCapture={() => { selectionRef.current = null; }}>
+              onPointerMove={event => updateSelectionAtX(event.clientX)}
+              onPointerUp={finishSelection} onPointerCancel={finishSelection} onLostPointerCapture={finishSelection}>
               {monthDetails.map(({ value, label }) => <button key={value} type="button" disabled={value > deadline} aria-pressed={months.includes(value)} aria-label={`M${value} · ${label}`} title={value > deadline ? `After payment deadline M${deadline}` : `M${value} (${label}): ${months.includes(value) ? `Payment € ${monthlyCosts[value - 1].toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "No payment"}`}
                 onPointerDown={event => {
                   if (event.button !== 0 || value > deadline) return;
@@ -136,6 +143,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
                   selectionRef.current = { start: value, initial: [...months], inputs: { ...paymentInputs }, add: !months.includes(value) };
                   previewGridRef.current?.setPointerCapture(event.pointerId);
                   selectRange(value);
+                  startAutoScroll(previewGridRef.current, event.clientX, updateSelectionAtX);
                 }}
                 onClick={event => { if (event.detail === 0) toggleMonth(value); }}
                 className={`h-7 min-w-0 py-0.5 px-0.5 ${isRetro ? "rounded-none" : "rounded-xs"} flex flex-col items-center justify-center font-mono transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${selectedMilestone && value === deadline ? isRetro ? "border-b-2 border-black" : "border-b-2 border-indigo-600" : ""} ${isRetro ? months.includes(value) ? "bg-[#000080] text-white border border-black" : "bg-[#e8e4dc] text-black border border-slate-400" : months.includes(value) ? "bg-blue-600 text-white shadow-2xs hover:bg-blue-700" : "bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-700"}`}>
