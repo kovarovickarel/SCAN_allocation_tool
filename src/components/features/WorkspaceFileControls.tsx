@@ -1,3 +1,4 @@
+import { SelectiveImportReview } from "./SelectiveImportReview";
 import { useContext, useEffect, useRef, useState } from "react";
 import { ThemeContext } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
@@ -31,7 +32,7 @@ function ExportNameDialog({ onCancel, onExport, saving, nativeSave }: {
     <form className={`p-6 w-full max-w-lg ${isRetro ? "bg-[#d4d0c8] text-black font-mono border-2 border-black" : "bg-white text-slate-800 rounded-2xl border border-slate-300 shadow-2xl"}`} onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); if (filename && !saving) onExport(filename); }}>
       <div className="flex justify-between items-center gap-3 mb-4">
         <h2 id="workspace-export-heading" className="text-lg font-bold">Export workspace</h2>
-        <button type="button" aria-label="Close export" disabled={saving} className="text-xl cursor-pointer" onClick={event => event.stopPropagation()}>×</button>
+        <button type="button" aria-label="Close export" disabled={saving} className="text-xl cursor-pointer" onClick={onCancel}>×</button>
       </div>
       <label htmlFor="workspace-export-filename" className="block text-sm font-semibold mb-2">File name</label>
       <input id="workspace-export-filename" disabled={saving} autoFocus type="text" value={name} onChange={event => setName(event.target.value)} onFocus={event => event.currentTarget.select()} aria-invalid={Boolean(error)} aria-describedby={error ? "workspace-export-error" : "workspace-export-help"} className={`w-full px-3 py-2 text-sm bg-white text-slate-800 border ${isRetro ? "border-black" : "border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"}`} />
@@ -48,21 +49,28 @@ function ExportNameDialog({ onCancel, onExport, saving, nativeSave }: {
   </div>;
 }
 
-function ImportReview({ file, filename, onCancel, onImport, onExport }: {
-  file: WorkspaceFile; filename: string; onCancel: () => void; onImport: () => void; onExport: () => void;
+function ImportReview({ file, filename, current, suspended, onCancel, onImport, onExport }: {
+  file: WorkspaceFile; filename: string; current: WorkspaceData; suspended: boolean; onCancel: () => void; onImport: (data: WorkspaceData, selective?: boolean) => void; onExport: () => void;
 }) {
   const { isRetro } = useContext(ThemeContext);
-  useEscapeKey(onCancel);
+  useEscapeKey(onCancel, !suspended);
+  const [mode, setMode] = useState("replace");
+  const [detailsOpened, setDetailsOpened] = useState(false);
   const assigned = file.data.workpackages.filter(card => card.projectId).length;
   const secondary = isRetro ? "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black" : "bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200";
-  return <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="workspace-import-heading" onClick={event => event.stopPropagation()}>
-    <div className={`p-6 w-full max-w-lg ${isRetro ? "bg-[#d4d0c8] text-black font-mono border-2 border-black" : "bg-white text-slate-800 rounded-2xl border border-slate-300 shadow-2xl"}`} onClick={event => event.stopPropagation()}>
+  return <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="workspace-import-heading" style={suspended ? { display: "none" } : undefined} onClick={event => event.stopPropagation()}>
+    <div className={`p-6 w-full max-h-[92vh] overflow-y-auto ${mode === "replace" ? "max-w-lg" : "max-w-6xl"} ${isRetro ? "bg-[#d4d0c8] text-black font-mono border-2 border-black" : "bg-white text-slate-800 rounded-2xl border border-slate-300 shadow-2xl"}`} onClick={event => event.stopPropagation()}>
       <div className="flex justify-between items-center gap-3 mb-4">
         <h2 id="workspace-import-heading" className="text-lg font-bold">Import workspace</h2>
-        <button type="button" aria-label="Close import" className="text-xl cursor-pointer" onClick={event => event.stopPropagation()}>×</button>
+        <button type="button" aria-label="Close import" className="text-xl cursor-pointer" onClick={onCancel}>×</button>
       </div>
       <p className="text-sm font-semibold break-all">{filename}</p>
       <p className="text-xs text-slate-500 mt-1">Exported {new Date(file.exportedAt).toLocaleString()}</p>
+      <fieldset className="flex flex-wrap gap-3 text-xs mt-4 border-b border-slate-200 pb-3" aria-label="Import mode">
+        <label className="flex items-center gap-1"><input type="radio" name="workspace-import-mode" checked={mode === "replace"} onChange={() => setMode("replace")} />Replace entire workspace</label>
+        <label className="flex items-center gap-1"><input type="radio" name="workspace-import-mode" checked={mode === "selective"} onChange={() => { setMode("selective"); setDetailsOpened(true); }} />Select what to import</label>
+      </fieldset>
+      <div hidden={mode !== "replace"}>
       <dl className={`grid grid-cols-2 gap-3 text-sm my-5 p-4 ${isRetro ? "bg-white border border-black" : "bg-slate-50 rounded-xl border border-slate-200"}`}>
         <div><dt>Projects</dt><dd className="font-bold">{file.data.projects.length}</dd></div>
         <div><dt>Team members</dt><dd className="font-bold">{file.data.teamMembers.length}</dd></div>
@@ -70,10 +78,12 @@ function ImportReview({ file, filename, onCancel, onImport, onExport }: {
         <div><dt>Unassigned workpackages</dt><dd className="font-bold">{file.data.workpackages.length - assigned}</dd></div>
       </dl>
       <p className="text-sm leading-relaxed">Import replaces the current projects, workpackages, team members, allocations, configuration and view preferences. Export a backup first if you want to keep your current work.</p>
+      </div>
+      {detailsOpened && <div hidden={mode !== "selective"}><SelectiveImportReview current={current} incoming={file.data} isRetro={isRetro} onApply={data => onImport(data, true)} /></div>}
       <button type="button" onClick={onExport} className={`w-full px-3 py-2 mt-4 text-xs font-bold cursor-pointer ${secondary}`}>Export current workspace backup</button>
       <div className="flex gap-2 mt-5">
         <button type="button" onClick={onCancel} className={`flex-1 py-2 text-sm font-bold cursor-pointer ${secondary}`}>Cancel</button>
-        <button type="button" onClick={onImport} className={`flex-1 py-2 text-sm font-bold cursor-pointer text-white ${isRetro ? "bg-[#000080] border-2 border-white" : "bg-blue-600 hover:bg-blue-700 rounded-lg"}`}>Import &amp; Replace</button>
+        {mode === "replace" && <button type="button" onClick={() => onImport(file.data)} className={`flex-1 py-2 text-sm font-bold cursor-pointer text-white ${isRetro ? "bg-[#000080] border-2 border-white" : "bg-blue-600 hover:bg-blue-700 rounded-lg"}`}>Import &amp; Replace</button>}
       </div>
     </div>
   </div>;
@@ -164,8 +174,8 @@ export function WorkspaceFileControls({ getWorkspace, onImport }: {
     <button type="button" onClick={() => input.current?.click()} disabled={reading} className={`${button} disabled:opacity-50`} aria-label="Import workspace" title="Import workspace (.json)"><FileArrowIcon /></button>
     <input ref={input} type="file" accept=".json,application/json" aria-label="Workspace file" className="hidden" onChange={event => void importFile(event.target.files?.[0])} />
     {exportOpen && <ExportNameDialog onCancel={() => setExportOpen(false)} onExport={exportFile} saving={saving} nativeSave={nativeSave} />}
-    {review && !exportOpen && <ImportReview file={review.file} filename={review.filename} onCancel={() => setReview(null)} onExport={requestExport} onImport={() => {
-      onImport(review.file.data); setReview(null); setFeedback({ message: "Workspace imported successfully.", error: false });
+    {review && <ImportReview key={review.filename + review.file.exportedAt} file={review.file} filename={review.filename} current={getWorkspace()} suspended={exportOpen} onCancel={() => setReview(null)} onExport={requestExport} onImport={(data, selective) => {
+      onImport(data); setReview(null); setFeedback({ message: selective ? "Selected changes imported successfully." : "Workspace imported successfully.", error: false });
     }} />}
     {feedback && <div role={feedback.error ? "alert" : "status"} className={`fixed right-4 top-24 max-w-md p-4 flex items-start gap-3 z-[60] text-sm shadow-xl transition-opacity duration-500 motion-reduce:transition-none ${feedbackFading ? "opacity-0 pointer-events-none" : "opacity-100"} ${isRetro ? "bg-white text-black border-2 border-black" : feedback.error ? "bg-red-50 text-red-800 border border-red-300 rounded-xl" : "bg-white text-slate-800 border border-slate-300 rounded-xl"}`}>
       <p className="whitespace-pre-line">{feedback.message}</p><button type="button" aria-label="Dismiss notification" onClick={() => setFeedback(null)} className="font-bold text-lg cursor-pointer">×</button>

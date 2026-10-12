@@ -3,6 +3,50 @@
 Updated: 2026-10-12. Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
+## Selective workspace import implementation (2026-10-12, validated)
+
+Import still defaults to Replace entire workspace. Select what to import opens
+team/category scope selection and Projects, Workpackages, Members & suppliers,
+Basic types, Shared settings and Review sections. ID matches are used where
+shared; unique normalized-name matches are suggested and require confirmation.
+Ambiguous new records require explicit confirmation and are not covered by bulk
+match confirmation. Projects can map to current projects, be created, or skipped;
+PMs choose whether to accept incoming metadata/dates/duration/milestones.
+
+SelectiveImportReview stages a SelectiveImportPlan. selectiveWorkspaceImport.ts
+builds a cloned preview, preserves absent/current records and PM view preferences,
+remaps project/member/supplier IDs, includes missing required dependencies and
+allows per-workpackage allocation inclusion. Existing type definitions are kept
+unless incoming definitions are chosen; missing required definitions are added.
+Accepted independent supporting-activity definitions remap retained current
+per-activity override IDs by activity name. Removed activity overrides are retained
+with a warning. Management plans and shared calculation/cost defaults require
+explicit selection. Multiple sources cannot overwrite the same matched record
+or management/settings plan silently. Supplier/member/type dependencies can be
+reviewed and skipped, but unresolved references block application.
+
+The existing schema-1 parser validates the complete merged document before the
+single App import callback. Additional checks reject new/worsened monthly demand,
+member role/reference and portfolio capacity conflicts, using confirmed member IDs
+rather than treating names as automatic identity. Unchanged historical allocation
+warnings remain visible without preventing import. No current state changes during
+selection/cancellation. Backup export preserves the staged selection; replacement
+remains available and unchanged in semantics. Explicit import/export close buttons
+now call Cancel rather than only stopping propagation.
+
+Selective-import verification is now complete for the focused test matrix:
+`pnpm test:e2e tests/selective-import.spec.ts tests/workspace-files.spec.ts --workers=4`
+passed all 132 tests (76 new selective-import cases and 56 existing workspace
+transfer regressions), with no skips, failures or flaky results. `pnpm typecheck`
+passed. Coverage includes pure merge decisions and real browser application,
+conflict resolution, cancellation, backups, scope choices and schema-1 compatibility.
+Early failures were corrected synthetic fixture values (view name, one-based
+purchase months, supported icon and management threshold); no production fixes
+were needed for this test matrix. The frozen baseline fixture and export schema
+were not changed. The full unrelated app suite and Pages checks were not rerun.
+The scheduled implementation follow-up was paused because the user started work
+immediately. Existing TODO cleanup and debug.log remain separate pending work.
+
 ## Validated user-testing release batch (2026-10-12)
 
 Final verification passed: `pnpm test:e2e --workers=6` ran all 350 application

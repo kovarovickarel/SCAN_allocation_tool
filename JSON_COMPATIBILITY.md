@@ -67,3 +67,15 @@ New and demo projects now explicitly save `autoStartFte: false`. Saved true/fals
 preferences are retained. Older schema-1 exports that omit the field are imported
 with `autoStartFte: true`, preserving the enabled default those files previously
 used. This avoids silently changing their saved behavior when the new default is off.
+
+### Selective import
+
+Selective import consumes the existing parsed schema-1 workspace; exports need no
+new merge metadata. Entire-workspace replacement remains the default. Project,
+workpackage and member suggestions based on names require PM confirmation; merge
+choices exist only in the import draft. The selective preview remaps accepted
+references and validates a cloned complete result with the existing parser before
+atomic application. Missing required records/definitions are reviewed dependencies.
+Skip preserves current records; absence never implies deletion. Shared settings
+and incoming project dates/milestones are applied only when selected. Original
+full-import compatibility and frozen historical documents remain unchanged.
