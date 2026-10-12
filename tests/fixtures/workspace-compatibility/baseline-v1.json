@@ -1,0 +1,1818 @@
+{
+  "format": "scan-allocation-tool",
+  "schemaVersion": 1,
+  "exportedAt": "2026-10-12T00:00:00.000Z",
+  "data": {
+    "projects": [
+      {
+        "id": "import-project",
+        "name": "Transferred RFQ",
+        "type": "SRR",
+        "isRFQ": true,
+        "autoStartFte": false,
+        "startDate": "2026-02",
+        "duration": 18,
+        "stability": "Ideal",
+        "milestones": {
+          "FFV": 9,
+          "EFV": 12,
+          "AFV": 14,
+          "SSSR": 15
+        },
+        "hiddenTools": [
+          "SYS.5"
+        ],
+        "hiddenSubcategories": [
+          "SIL"
+        ],
+        "customMgmtMonthlyFTE": {
+          "KPI": {
+            "2": 0.2
+          }
+        },
+        "mgmtMemberAssignments": {
+          "KPI": {
+            "external": 0.1
+          }
+        },
+        "mgmtMemberMonthlyAssignments": {
+          "KPI": {
+            "external": {
+              "2": 0.1
+            }
+          }
+        },
+        "mgmtMemberMaintenancePreferences": {
+          "KPI": {
+            "external": false
+          }
+        }
+      }
+    ],
+    "workpackages": [
+      {
+        "id": "fte",
+        "name": "Imported Development",
+        "tool": "KPI",
+        "complexity": "Baseline custom",
+        "projectId": "import-project",
+        "startMonth": 3,
+        "finishMilestone": "FFV",
+        "reusability": "Other Reusability",
+        "customReusabilityFactor": 0.5,
+        "reusabilityAppliesToMaintenance": true,
+        "memberAssignments": {
+          "external": 0.2
+        },
+        "memberMonthlyAssignments": {
+          "external": {
+            "2": 0.25,
+            "3": 0.3
+          }
+        },
+        "memberMaintenancePreferences": {
+          "external": false
+        },
+        "customCoreFTE": {
+          "2": 0.2
+        },
+        "customDevSupportFTE": {
+          "2": 0.02
+        },
+        "customMeetingsFTE": {
+          "2": 0.01
+        },
+        "customSupportingActivityFTE": {
+          "devFunctionsSupport": {
+            "2": 0.02
+          }
+        },
+        "details": {
+          "description": "Baseline description\nSecond line",
+          "owner": "Imported External",
+          "assumptions": "- Available data",
+          "deliverables": "- Report",
+          "risks": "- Delay"
+        }
+      },
+      {
+        "id": "purchase",
+        "name": "Imported License",
+        "kind": "non-fte",
+        "tool": "KPI",
+        "projectId": "import-project",
+        "supplierId": "supplier",
+        "supplierName": "Imported Supplier",
+        "purchaseType": "Baseline purchase",
+        "purchasePriceEUR": 12000,
+        "purchaseMonths": [
+          2,
+          4
+        ],
+        "purchaseMilestone": "EFV",
+        "purchasePaymentMode": "split",
+        "purchasePaymentShares": {
+          "2": 0.25,
+          "4": 0.75
+        },
+        "purchasePaymentOverrides": {
+          "2": 3000,
+          "4": 9000
+        },
+        "reusability": "New",
+        "details": {
+          "owner": "Purchase Owner",
+          "risks": "- Supplier delay"
+        }
+      },
+      {
+        "id": "pool",
+        "name": "Imported Pool Work",
+        "tool": "Other",
+        "projectId": null,
+        "otherEffort": "0.2",
+        "otherDuration": "6",
+        "otherStartMonth": null,
+        "otherFinishMilestone": null,
+        "otherHasMaintenance": true,
+        "otherMaintenanceEffort": "0.05",
+        "reusability": "New"
+      }
+    ],
+    "teamMembers": [
+      {
+        "id": "external",
+        "firstName": "Imported",
+        "lastName": "External",
+        "tool": "KPI",
+        "role": "both",
+        "footprint": "PRA",
+        "fte": 1,
+        "isExternal": true,
+        "supplierId": "supplier",
+        "monthlySalaryCost": 1000,
+        "monthlySalaryCurrency": "USD",
+        "deferredPayment": true,
+        "paymentDelayMonths": 12
+      }
+    ],
+    "configuration": {
+      "suppliers": [
+        {
+          "id": "supplier",
+          "name": "Imported Supplier"
+        }
+      ],
+      "fteRates": {
+        "Supporting": {
+          "Requirements": 0.1,
+          "Implementation": 0.3,
+          "Validation": 0.2,
+          "Integration": 0.1,
+          "initialMaintenance": 0.08,
+          "residualMaintenance": 0.05,
+          "devFunctionsSupport": 0.1,
+          "weeklyMeetings": 0.1,
+          "phaseDuration": {
+            "Requirements": 1,
+            "Implementation": 3,
+            "Validation": 2,
+            "Integration": 1
+          },
+          "color": "#10b981",
+          "phases": [
+            {
+              "id": "Requirements",
+              "name": "Requirements",
+              "kind": "main",
+              "rate": 0.1,
+              "duration": 1,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Implementation",
+              "name": "Implementation",
+              "kind": "main",
+              "rate": 0.3,
+              "duration": 3,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Validation",
+              "name": "Validation",
+              "kind": "main",
+              "rate": 0.2,
+              "duration": 2,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Integration",
+              "name": "Integration",
+              "kind": "main",
+              "rate": 0.1,
+              "duration": 1,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "initialMaintenance",
+              "name": "Initial Maintenance",
+              "kind": "maintenance",
+              "rate": 0.08,
+              "duration": 6,
+              "scaleByReusability": false,
+              "notMilestoneBound": true,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "residualMaintenance",
+              "name": "Residual Maintenance",
+              "kind": "maintenance",
+              "rate": 0.05,
+              "duration": 1,
+              "scaleByReusability": false,
+              "notMilestoneBound": true,
+              "untilProjectEnd": true
+            }
+          ],
+          "supportingPhases": [
+            {
+              "id": "devFunctionsSupport",
+              "name": "Functions dev support",
+              "rate": 0.1,
+              "scaleByReusability": false,
+              "includeMaintenance": true
+            },
+            {
+              "id": "weeklyMeetings",
+              "name": "Weekly meeting attendance",
+              "rate": 0.1,
+              "scaleByReusability": false,
+              "includeMaintenance": true
+            }
+          ]
+        },
+        "Point Cloud": {
+          "Requirements": 0.15,
+          "Implementation": 0.5,
+          "Validation": 0.3,
+          "Integration": 0.15,
+          "initialMaintenance": 0.12,
+          "residualMaintenance": 0.05,
+          "devFunctionsSupport": 0.1,
+          "weeklyMeetings": 0.1,
+          "phaseDuration": {
+            "Requirements": 1,
+            "Implementation": 4,
+            "Validation": 3,
+            "Integration": 1
+          },
+          "color": "#3b82f6",
+          "phases": [
+            {
+              "id": "Requirements",
+              "name": "Requirements",
+              "kind": "main",
+              "rate": 0.15,
+              "duration": 1,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Implementation",
+              "name": "Implementation",
+              "kind": "main",
+              "rate": 0.5,
+              "duration": 4,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Validation",
+              "name": "Validation",
+              "kind": "main",
+              "rate": 0.3,
+              "duration": 3,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Integration",
+              "name": "Integration",
+              "kind": "main",
+              "rate": 0.15,
+              "duration": 1,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "initialMaintenance",
+              "name": "Initial Maintenance",
+              "kind": "maintenance",
+              "rate": 0.12,
+              "duration": 6,
+              "scaleByReusability": false,
+              "notMilestoneBound": true,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "residualMaintenance",
+              "name": "Residual Maintenance",
+              "kind": "maintenance",
+              "rate": 0.05,
+              "duration": 1,
+              "scaleByReusability": false,
+              "notMilestoneBound": true,
+              "untilProjectEnd": true
+            }
+          ],
+          "supportingPhases": [
+            {
+              "id": "devFunctionsSupport",
+              "name": "Functions dev support",
+              "rate": 0.1,
+              "scaleByReusability": false,
+              "includeMaintenance": true
+            },
+            {
+              "id": "weeklyMeetings",
+              "name": "Weekly meeting attendance",
+              "rate": 0.1,
+              "scaleByReusability": false,
+              "includeMaintenance": true
+            }
+          ]
+        },
+        "Perception": {
+          "Requirements": 0.2,
+          "Implementation": 0.8,
+          "Validation": 0.5,
+          "Integration": 0.2,
+          "initialMaintenance": 0.18,
+          "residualMaintenance": 0.05,
+          "devFunctionsSupport": 0.1,
+          "weeklyMeetings": 0.1,
+          "phaseDuration": {
+            "Requirements": 2,
+            "Implementation": 6,
+            "Validation": 4,
+            "Integration": 2
+          },
+          "color": "#f43f5e",
+          "phases": [
+            {
+              "id": "Requirements",
+              "name": "Requirements",
+              "kind": "main",
+              "rate": 0.2,
+              "duration": 2,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Implementation",
+              "name": "Implementation",
+              "kind": "main",
+              "rate": 0.8,
+              "duration": 6,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Validation",
+              "name": "Validation",
+              "kind": "main",
+              "rate": 0.5,
+              "duration": 4,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "Integration",
+              "name": "Integration",
+              "kind": "main",
+              "rate": 0.2,
+              "duration": 2,
+              "scaleByReusability": true,
+              "notMilestoneBound": false,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "initialMaintenance",
+              "name": "Initial Maintenance",
+              "kind": "maintenance",
+              "rate": 0.18,
+              "duration": 6,
+              "scaleByReusability": false,
+              "notMilestoneBound": true,
+              "untilProjectEnd": false
+            },
+            {
+              "id": "residualMaintenance",
+              "name": "Residual Maintenance",
+              "kind": "maintenance",
+              "rate": 0.05,
+              "duration": 1,
+              "scaleByReusability": false,
+              "notMilestoneBound": true,
+              "untilProjectEnd": true
+            }
+          ],
+          "supportingPhases": [
+            {
+              "id": "devFunctionsSupport",
+              "name": "Functions dev support",
+              "rate": 0.1,
+              "scaleByReusability": false,
+              "includeMaintenance": true
+            },
+            {
+              "id": "weeklyMeetings",
+              "name": "Weekly meeting attendance",
+              "rate": 0.1,
+              "scaleByReusability": false,
+              "includeMaintenance": true
+            }
+          ]
+        }
+      },
+      "toolFteRates": {
+        "KPI": {
+          "Supporting": {
+            "Requirements": 0.1,
+            "Implementation": 0.3,
+            "Validation": 0.2,
+            "Integration": 0.1,
+            "initialMaintenance": 0.08,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 3,
+              "Validation": 2,
+              "Integration": 1
+            },
+            "color": "#10b981",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.1,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.2,
+                "duration": 2,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.1,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.08,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          },
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#3b82f6",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          },
+          "Perception": {
+            "Requirements": 0.2,
+            "Implementation": 0.8,
+            "Validation": 0.5,
+            "Integration": 0.2,
+            "initialMaintenance": 0.18,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 2,
+              "Implementation": 6,
+              "Validation": 4,
+              "Integration": 2
+            },
+            "color": "#f43f5e",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.2,
+                "duration": 2,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.8,
+                "duration": 6,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.2,
+                "duration": 2,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.18,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          },
+          "Baseline custom": {
+            "Requirements": 0.1,
+            "Implementation": 0.3,
+            "Validation": 0.2,
+            "Integration": 0.1,
+            "initialMaintenance": 0.08,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 3,
+              "Validation": 2,
+              "Integration": 1
+            },
+            "color": "#2563eb",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.1,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.2,
+                "duration": 2,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.1,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.08,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "Data Factory": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#0891b2",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "Vehicle Tooling": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#d97706",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "Visualization": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#0d9488",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "Reprocessing": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#ea580c",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "Range & Accuracy": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#db2777",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "SYS.4": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#4f46e5",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "SYS.5": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#65a30d",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "SysVal Operations": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#c026d3",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "Simulation": {
+          "Point Cloud": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#0284c7",
+            "phases": [
+              {
+                "id": "Requirements",
+                "name": "Requirements",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Implementation",
+                "name": "Implementation",
+                "kind": "main",
+                "rate": 0.5,
+                "duration": 4,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Validation",
+                "name": "Validation",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 3,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "Integration",
+                "name": "Integration",
+                "kind": "main",
+                "rate": 0.15,
+                "duration": 1,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "initialMaintenance",
+                "name": "Initial Maintenance",
+                "kind": "maintenance",
+                "rate": 0.12,
+                "duration": 6,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": false
+              },
+              {
+                "id": "residualMaintenance",
+                "name": "Residual Maintenance",
+                "kind": "maintenance",
+                "rate": 0.05,
+                "duration": 1,
+                "scaleByReusability": false,
+                "notMilestoneBound": true,
+                "untilProjectEnd": true
+              }
+            ],
+            "supportingPhases": [
+              {
+                "id": "devFunctionsSupport",
+                "name": "Functions dev support",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              },
+              {
+                "id": "weeklyMeetings",
+                "name": "Weekly meeting attendance",
+                "rate": 0.1,
+                "scaleByReusability": false,
+                "includeMaintenance": true
+              }
+            ]
+          }
+        },
+        "Other": {
+          "Standard": {
+            "Requirements": 0.15,
+            "Implementation": 0.5,
+            "Validation": 0.3,
+            "Integration": 0.15,
+            "initialMaintenance": 0.12,
+            "residualMaintenance": 0.05,
+            "devFunctionsSupport": 0.1,
+            "weeklyMeetings": 0.1,
+            "phaseDuration": {
+              "Requirements": 1,
+              "Implementation": 4,
+              "Validation": 3,
+              "Integration": 1
+            },
+            "color": "#334155",
+            "phases": [
+              {
+                "id": "main",
+                "name": "Main",
+                "kind": "main",
+                "rate": 0.3,
+                "duration": 6,
+                "scaleByReusability": true,
+                "notMilestoneBound": false,
+                "untilProjectEnd": false
+              }
+            ],
+            "supportingPhases": []
+          }
+        }
+      },
+      "otherDefaults": {
+        "defaultEffort": 0.3,
+        "defaultDuration": 6,
+        "defaultMaintenanceEffort": 0.05,
+        "defaultHasMaintenance": false
+      },
+      "management": {
+        "ftePerCard": 0.2,
+        "threshold": 1.5
+      },
+      "fteCosts": {
+        "currency": "EUR",
+        "hourlyRates": {
+          "PRA": 77,
+          "BIE": null,
+          "CHE": 20,
+          "TRO": 115,
+          "CAI": 40,
+          "TOK": 55
+        }
+      },
+      "reusabilityFactors": {
+        "New": 1,
+        "Minor Deviations": 0.5,
+        "High Reusability": 0.25
+      },
+      "stabilityFactors": {
+        "Ideal": 1,
+        "Average": 1.5,
+        "Unstable": 2.5
+      },
+      "nonFteTypes": [
+        {
+          "name": "License",
+          "icon": "License"
+        },
+        {
+          "name": "Workstation",
+          "icon": "Workstation"
+        },
+        {
+          "name": "Hardware",
+          "icon": "Hardware"
+        },
+        {
+          "name": "Contracted workpackage",
+          "icon": "Contracted workpackage"
+        },
+        {
+          "name": "Baseline purchase",
+          "icon": "Package"
+        }
+      ]
+    },
+    "teamOtherWPScopes": {
+      "KPI": {
+        "included": true,
+        "excludedCardIds": [
+          "pool"
+        ]
+      }
+    },
+    "view": {
+      "theme": "vibrant",
+      "mode": "extended",
+      "activeToolView": "KPI",
+      "teamCompact": false,
+      "poolCompact": false,
+      "workpackageKind": "fte",
+      "summaryOpen": false,
+      "summaryFilter": "selected",
+      "selectedProjectIds": [
+        "import-project"
+      ]
+    }
+  }
+}

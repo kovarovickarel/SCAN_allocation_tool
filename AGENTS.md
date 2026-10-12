@@ -4,6 +4,13 @@ Read this file before changing the application. It describes the current product
 
 ## Start here: current handoff
 
+**JSON compatibility requirement:** Read `JSON_COMPATIBILITY.md` before changing
+export/import, domain fields, validation, defaults or calculations that affect
+saved workspaces. The user-tested `6b4b08e` release (2026-10-12, JSON schema 1) is
+the baseline. All later releases must import valid baseline and later historical
+exports. Forward compatibility is not required. Preserve frozen compatibility
+fixtures; use optional defaults or migrations rather than rejecting older files.
+
 Read `HANDOFF.md` for the latest session status, pending changes, verification results, and laptop-specific setup. Read `TODO.md` for the user's backlog and `tests/README.md` for the test coverage map. Backlog items are future requests, not instructions to implement them automatically.
 
 As of 2026-10-11, the latest batch adds configurable FTE/non-FTE basic types, ordinary built-in and Other phase definitions, colors, main/maintenance sections and independent supporting activity timeline rows. All 296 app tests, both GitHub Pages production checks, TypeScript and the Pages build passed. The user authorized contextual commits and remote publication after these checks. Inspect `git log` and `origin/master` before synchronizing; do not overwrite pending work or assume a successful push means the hosted deployment has completed. Earlier publication history remains in `HANDOFF.md`.

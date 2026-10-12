@@ -3,6 +3,18 @@
 Updated: 2026-10-11. Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
+## JSON compatibility baseline (2026-10-12)
+
+The user established release `6b4b08e` (workspace JSON schema 1) as the baseline.
+All future releases must import valid exports from this and subsequent older
+releases; forward compatibility is not required. Read `JSON_COMPATIBILITY.md`
+before changing saved fields, defaults, validation or scheduling/calculations.
+Use optional defaults or explicit migrations, preserving user data and atomic
+import. An older-format warning may inform users but cannot block import.
+The frozen synthetic export in `tests/fixtures/workspace-compatibility/` must
+remain unchanged; later schema releases should add their own fixtures.
+This establishes the policy and sample data; no new tests were added or run.
+
 ## Workpackage and project duplication (2026-10-12)
 
 FTE and non-FTE cards now have a faded duplicate icon between Details and Edit

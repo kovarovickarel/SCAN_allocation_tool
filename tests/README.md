@@ -32,6 +32,17 @@ export/import. These tests are separate from the development suite; they do not
 use development-only fixtures. The deployment workflow runs them before uploading
 the site, so a failed production check stops publication.
 
+## Workspace JSON compatibility baseline
+
+See `JSON_COMPATIBILITY.md`. Release `6b4b08e` (2026-10-12, schema 1) is the
+user-tested baseline. The synthetic export in
+`fixtures/workspace-compatibility/baseline-v1.json` is frozen: never regenerate it
+from new defaults or edit it to satisfy changed validation. Future format-change
+verification must import/re-export historical fixtures and preserve their source
+data, using explicit defaults/migrations where needed. Add fixtures for later
+released schemas. The baseline fixture is saved data, not yet a separate automated
+test case.
+
 ## Screenshot policy
 
 `current-ui-snapshots/` contains reviewed current references. Inspect failures and

@@ -7,6 +7,9 @@ import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSetti
 import { workpackageFinishViolation } from "./workpackageFinishTargets";
 import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
 
+// Schema 1 is the user-tested compatibility baseline (6b4b08e, 2026-10-12).
+// Future schema increments must retain earlier importers/migrations;
+// see JSON_COMPATIBILITY.md and the frozen workspace-compatibility fixtures.
 export const WORKSPACE_FILE_VERSION = 1;
 export const MAX_WORKSPACE_FILE_BYTES = 20 * 1024 * 1024;
 export type WorkspaceConfiguration = {
