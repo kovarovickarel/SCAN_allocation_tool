@@ -1,6 +1,6 @@
 import { WorkpackageDuplicateButton } from "../ui/WorkpackageDuplicateButton";
 import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
-import { useContext, useId, useLayoutEffect, useRef, useState } from "react";
+import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ThemeContext, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONE_MAP, DEFAULT_SUPPLIERS } from "../../constants";
 import { purchaseCost, purchaseCostDot, purchaseCostSummary, purchaseSubcategory, purchaseMonthlyCosts, validPurchaseMonths } from "../../utils/nonFteWorkpackages";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
@@ -23,6 +23,8 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
   const [paymentsExpanded, setPaymentsExpanded] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [detailsEditing, setDetailsEditing] = useState(false);
+  const dragPreviewRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => () => { dragPreviewRef.current?.remove(); }, []);
   const paymentDetailsId = useId();
   const tool = TOOL_MAP[card.tool] || TOOL_MAP.Other;
   const toolCardTheme = TOOL_CARD_THEMES[card.tool] || TOOL_CARD_THEMES.Other;
@@ -125,12 +127,35 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
     onClose={() => onEdit?.(card.id, false, null)} onSave={updated => onEdit?.(card.id, false, updated)} />;
   return <article draggable={!detailsEditing} onDragStart={event => {
     event.stopPropagation();
+    // Isolate the receipt from its surrounding tool/grid when the browser captures
+    // the native drag image. Clipping prevents adjacent cards appearing in it.
+    dragPreviewRef.current?.remove();
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const preview = document.createElement("div");
+    preview.setAttribute("aria-hidden", "true");
+    preview.inert = true;
+    Object.assign(preview.style, {
+      position: "fixed", left: "-10000px", top: "0", width: `${bounds.width}px`,
+      height: `${bounds.height}px`, overflow: "hidden", pointerEvents: "none",
+    });
+    const receipt = event.currentTarget.cloneNode(true) as HTMLElement;
+    receipt.removeAttribute("id");
+    receipt.querySelectorAll("[id]").forEach(element => element.removeAttribute("id"));
+    receipt.style.width = "100%";
+    receipt.style.margin = "0";
+    receipt.style.font = getComputedStyle(event.currentTarget).font;
+    preview.append(receipt);
+    document.body.append(preview);
+    dragPreviewRef.current = preview;
+    event.dataTransfer.setDragImage(preview,
+      Math.max(0, Math.min(bounds.width, event.clientX - bounds.left)),
+      Math.max(0, Math.min(bounds.height, event.clientY - bounds.top)));
     event.dataTransfer.setData("application/x-scan-card", card.id);
     event.dataTransfer.setData("text/plain", card.id);
     event.dataTransfer.effectAllowed = "move";
     window.__scan_dragged_card_id = card.id;
     onDragStart?.(card);
-  }} onDragEnd={onDragEnd} className={`group w-full min-w-0 shrink-0 bg-white border border-b-2 border-b-amber-300 p-2 rounded shadow-2xs cursor-grab transition-all duration-150 ${hoverHighlightClasses} ${isRetro ? "rounded-none border-black font-mono" : toolCardTheme.border} ${tool.text} ${card._isNegated ? "opacity-50" : ""}`}
+  }} onDragEnd={event => { dragPreviewRef.current?.remove(); dragPreviewRef.current = null; onDragEnd?.(event); }} className={`group w-full min-w-0 shrink-0 bg-white border border-b-2 border-b-amber-300 p-2 rounded shadow-2xs cursor-grab transition-all duration-150 ${hoverHighlightClasses} ${isRetro ? "rounded-none border-black font-mono" : toolCardTheme.border} ${tool.text} ${card._isNegated ? "opacity-50" : ""}`}
     style={{ borderTopWidth: 5, borderBottomStyle: "dashed" }}>
     <div ref={headerRef} className="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-black/10 min-w-0">
       <div className={`flex items-center min-w-0 flex-1 ${isCompact ? "gap-1.5" : "gap-2"}`}>
