@@ -3,6 +3,41 @@
 Updated: 2026-10-11. Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
+## Compact-grid crash fix and verification (2026-10-12)
+
+The compact-grid correction had left a stale setCardWidth call after changing
+state to layout, causing a runtime crash in compact mode. Replaced it with the
+complete width/count calculation and setLayout update. Localhost returned HTTP
+200 and a separate headless browser reported no runtime errors. Compact pool
+verification showed two 145px cards at the 320px minimum lane width. Removed an
+unused round2 import reported by TypeScript. No user session was reloaded.
+
+## Compact minimum-column correction (2026-10-12)
+
+Compact grids now calculate an explicit column count with the original count as
+the minimum (two for the workpackage pool). They account for available content
+width, scrollbar space and fractional pixels; extra lane width still adds columns
+without stretching cards. Lane measurements use layout widths consistently.
+No tests were run for this correction.
+
+## Compact cards in resized swimlanes (2026-10-12)
+
+Compact FTE and non-FTE card grids in the pool, tools and subtools now derive
+card width from the lane's minimum width and original column count. Auto-fill
+adds columns as the lane widens instead of stretching cards. Expanded cards keep
+the existing layout. Measurements observe lane/grid resizing and clean up on
+unmount. No tests were run for this request.
+
+## Resizable workpackage/project swimlanes (2026-10-12)
+
+The pool and individual projects use ResizableSwimlane with a right-edge pointer
+handle. Width scales from 1x to 2x the existing minimum (pool 320px; projects
+440/500/540px at their existing responsive breakpoints). Arrow keys adjust width;
+Home/End set the limits. Width is component-local presentation state, excluded
+from workspace export/import. Tool-specific pool/team split shares its lane width.
+Project reorder transforms now account for differing lane widths. Existing card
+layout measurements respond to resizing. No tests were run for this request.
+
 ## JSON compatibility baseline (2026-10-12)
 
 The user established release `6b4b08e` (workspace JSON schema 1) as the baseline.

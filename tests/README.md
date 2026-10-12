@@ -51,3 +51,9 @@ references to hide failures. The Gantt guide reference now describes repositioni
 all FTE workpackages. Historical references in `*-snapshots/` remain untouched.
 `pnpm test:e2e:historical` is a separate comparison with those older designs, not
 a release gate for the current app.
+
+## Swimlane width regression checks
+
+`swimlane-width` verifies pool/project minimum and maximum widths, pointer and
+keyboard resizing, independent project widths, stable compact FTE/non-FTE card
+sizes with additional columns, and exclusion of widths from exported JSON.

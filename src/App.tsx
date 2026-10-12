@@ -1,3 +1,4 @@
+import { ResizableSwimlane } from "./components/ui/ResizableSwimlane";
 import { duplicateWorkpackage } from "./utils/duplicateWorkpackage";
 import { DEFAULT_NON_FTE_TYPES, NonFteTypesContext } from "./utils/nonFteBasicTypes";
 import { nominalWorkpackageManHoursBreakdown } from "./utils/manHours";
@@ -985,6 +986,7 @@ export default function App() {
             savedFilter={summaryFilter} onFilterChange={setSummaryFilter}
             savedSelectedProjectIds={selectedSummaryProjectIds} onSelectionChange={setSelectedSummaryProjectIds}
             onSavePayments={handleSavePurchasePayments} /> : <>
+          <ResizableSwimlane resizeLabel="Resize workpackage pool" className="[--swimlane-min-width:320px] h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]">
           {activeToolView === "all" ? (
             <UnassignedPool
               teamMembers={teamMembers}
@@ -1009,7 +1011,7 @@ export default function App() {
               onToggleCompact={handleToggleWorkpackagePoolCompact}
             />
           ) : (
-            <div className="w-80 shrink-0 flex flex-col gap-3 h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]">
+            <div className="w-full flex flex-col gap-3 h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]">
               <div className="flex-1 min-h-0 flex flex-col">
                 <UnassignedPool
                   teamMembers={teamMembers}
@@ -1057,6 +1059,8 @@ export default function App() {
             </div>
           )}
 
+          </ResizableSwimlane>
+
           <div className={`w-px ${isRetro ? "bg-black" : "bg-slate-800"} self-stretch shrink-0`} />
 
           {/* Projects Container */}
@@ -1089,13 +1093,23 @@ export default function App() {
                 }
               }
 
-              const transformStyle =
-                shiftCount !== 0
-                  ? `translateX(calc(${shiftCount * 100}% + ${shiftCount * 1.25}rem))`
-                  : "none";
+              // Reordering must account for independently resized project widths.
+              let shiftPixels = 0;
+              if (shiftCount !== 0 && draggedProjectIndex !== null && targetProjectIndex !== null) {
+                const source = slotRefs.current[draggedProjectIndex];
+                const target = slotRefs.current[targetProjectIndex];
+                if (source && target) {
+                  const gap = parseFloat(getComputedStyle(source.parentElement).columnGap) || 0;
+                  shiftPixels = idx === draggedProjectIndex
+                    ? target.offsetLeft - source.offsetLeft + (shiftCount > 0 ? target.offsetWidth - source.offsetWidth : 0)
+                    : (draggedProjectIndex < targetProjectIndex ? -1 : 1) * (source.offsetWidth + gap);
+                }
+              }
+              const transformStyle = shiftPixels ? `translateX(${shiftPixels}px)` : "none";
 
               return (
-                <div
+                <ResizableSwimlane
+                  resizeLabel={`Resize ${project.name} project swimlane`}
                   key={project.id}
                   ref={(el) => {
                     slotRefs.current[idx] = el;
@@ -1108,7 +1122,7 @@ export default function App() {
                       handleProjectDrop(draggedProjectIndex, targetProjectIndex !== null ? targetProjectIndex : idx);
                     }
                   }}
-                  className="w-[440px] md:w-[500px] lg:w-[540px] shrink-0 h-[calc(100vh-110px)] max-h-[calc(100vh-110px)] relative"
+                  className="[--swimlane-min-width:440px] md:[--swimlane-min-width:500px] lg:[--swimlane-min-width:540px] h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]"
                 >
                   <div
                     style={{
@@ -1155,7 +1169,7 @@ export default function App() {
                       activeToolView={activeToolView}
                     />
                   </div>
-                </div>
+                </ResizableSwimlane>
               );
             })}
 

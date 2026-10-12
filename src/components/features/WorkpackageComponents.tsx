@@ -1,3 +1,4 @@
+import { CompactWorkpackageGrid } from "../ui/CompactWorkpackageGrid";
 import { WorkpackageDuplicateButton } from "../ui/WorkpackageDuplicateButton";
 import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
@@ -969,11 +970,11 @@ export const ToolRow = memo(function ToolRow({
         {!isBasicMode && <ReceiptIcon size={13} className="shrink-0" />}
         NON-FTE
       </h3>}
-      <div className={isCompact
+      <CompactWorkpackageGrid enabled={isCompact} columns={hasMultipleSlots && visibleSlots.length > 1 ? 2 : 3} widthDivisor={hasMultipleSlots && visibleSlots.length > 1 ? 2 : 1} className={isCompact
         ? `grid ${hasMultipleSlots && visibleSlots.length > 1 ? "grid-cols-2" : "grid-cols-3"} gap-1.5 content-start`
         : "flex flex-col gap-1.5"}>
         {purchases.map(card => <NonFteWorkpackageCard teamMembers={teamMembers} project={project} suppliers={suppliers} key={card.id} card={card} reusabilityFactors={reusabilityFactors} isCompact={isCompact} onEdit={onEdit} onDelete={onDelete} onDuplicate={onDuplicate} onDragStart={onDragStart} onDragEnd={onDragEnd} onSchedule={() => onDrop?.(card.id, projectId, true)} />)}
-      </div>
+      </CompactWorkpackageGrid>
     </section>
   );
   const cardsBySlot = useMemo(() => {
@@ -1185,7 +1186,10 @@ export const ToolRow = memo(function ToolRow({
                     FTE
                   </h3>
                 )}
-                {(slotCards.length > 0 || slotPurchases.length === 0) && <div
+                {(slotCards.length > 0 || slotPurchases.length === 0) && <CompactWorkpackageGrid
+                  enabled={isCompact && slotCards.length > 0}
+                  columns={hasMultipleSlots && visibleSlots.length > 1 ? 2 : 3}
+                  widthDivisor={hasMultipleSlots && visibleSlots.length > 1 ? 2 : 1}
                   className={`flex-1 w-full min-w-0 h-auto transition-all duration-200 ${
                     slotCards.length === 0
                       ? "flex flex-col flex-1 h-full"
@@ -1228,7 +1232,7 @@ export const ToolRow = memo(function ToolRow({
                       </span>
                     </div>
                   )}
-                </div>}
+                </CompactWorkpackageGrid>}
                 {hasMultipleSlots && renderPurchases(slotPurchases, showSlotCategories)}
               </div>
             );
@@ -1324,7 +1328,7 @@ export const UnassignedPool = memo(function UnassignedPool({
           ? "bg-[#d4d0c8] border-2 border-t-white border-l-white border-b-black border-r-black shadow-[4px_4px_0px_#000]"
           : "bg-white rounded-xl shadow-xl border border-slate-300"
         }
-        ${isSplitView ? "w-full h-full min-h-0 flex-1" : "w-80 shrink-0 h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]"}
+        ${isSplitView ? "w-full h-full min-h-0 flex-1" : "w-full h-[calc(100vh-110px)] max-h-[calc(100vh-110px)]"}
         ${isDragOver ? "border-blue-500 ring-4 ring-blue-400/40 shadow-2xl" : ""}
       `}
     >
@@ -1382,7 +1386,7 @@ export const UnassignedPool = memo(function UnassignedPool({
         </div>
       </div>
 
-      <div
+      <CompactWorkpackageGrid enabled={isCompact} columns={2}
         className={`p-2.5 overflow-y-auto overflow-x-hidden flex-1 min-h-0 ${isRetro ? "bg-[#c0c0c0]" : "bg-slate-50/50"} transition-all duration-300 ${
           poolCards.length === 0
             ? "flex flex-col flex-1 h-full"
@@ -1411,13 +1415,13 @@ export const UnassignedPool = memo(function UnassignedPool({
         {poolCards.length === 0 && (
           <div
             className={`flex-1 min-h-[100px] flex items-center justify-center border-2 border-dashed ${isRetro ? "border-black bg-[#d4d0c8]" : "border-slate-300"} rounded-lg p-3 text-center ${
-              isCompact ? "col-span-2" : ""
+              isCompact ? "col-span-full" : ""
             }`}
           >
             <span className={`text-xs ${isRetro ? "text-black font-mono" : "text-slate-400"} italic`}>{workpackageKind === "non-fte" ? "No unassigned purchases. Add a non-FTE workpackage to start." : "All workpackages assigned to projects"}</span>
           </div>
         )}
-      </div>
+      </CompactWorkpackageGrid>
     </div>
   );
 });
