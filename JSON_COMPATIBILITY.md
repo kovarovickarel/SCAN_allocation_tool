@@ -50,3 +50,20 @@ sufficient evidence of backwards compatibility.
 The current parser already accepts the baseline schema. No older/newer schema
 migration is needed yet; future schema increments must ship their migrations
 alongside the new exporter.
+
+### Optional REQF milestone
+
+Schema-1 files without REQF receive floor(duration / 4), at least Month 1, limited
+to a date on/before their existing FFV. If FFV and EFV coincide, an earlier REQF
+month is chosen where possible. Existing milestone dates and workpackage targets
+are preserved. For the legacy case FFV = EFV = Month 1, optional project flag
+`legacyReqfCoincidence` preserves REQF/FFV/EFV at Month 1 as an import exception
+to the two-milestones-per-month rule. It survives re-export and duplication.
+New projects and explicit milestone edits use the normal five-milestone rules.
+
+### Automatic FTE start default
+
+New and demo projects now explicitly save `autoStartFte: false`. Saved true/false
+preferences are retained. Older schema-1 exports that omit the field are imported
+with `autoStartFte: true`, preserving the enabled default those files previously
+used. This avoids silently changing their saved behavior when the new default is off.

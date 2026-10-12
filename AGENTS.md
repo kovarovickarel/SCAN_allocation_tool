@@ -13,7 +13,15 @@ fixtures; use optional defaults or migrations rather than rejecting older files.
 
 Read `HANDOFF.md` for the latest session status, pending changes, verification results, and laptop-specific setup. Read `TODO.md` for the user's backlog and `tests/README.md` for the test coverage map. Backlog items are future requests, not instructions to implement them automatically.
 
-As of 2026-10-11, the latest batch adds configurable FTE/non-FTE basic types, ordinary built-in and Other phase definitions, colors, main/maintenance sections and independent supporting activity timeline rows. All 296 app tests, both GitHub Pages production checks, TypeScript and the Pages build passed. The user authorized contextual commits and remote publication after these checks. Inspect `git log` and `origin/master` before synchronizing; do not overwrite pending work or assume a successful push means the hosted deployment has completed. Earlier publication history remains in `HANDOFF.md`.
+As of 2026-10-12, the app includes monthly tool management thresholds, REQF,
+deferred schedule-input validation, intentional prompt closing, default-off new
+project automatic starts, Travel, isolated non-FTE drag ghosts, month-selection
+auto-scroll and resizable swimlanes. All 350 app tests and two separate GitHub
+Pages production checks passed, along with TypeScript and the Pages build. Width
+changes are isolated in commit `00e8e30`; widths are local presentation state and
+are excluded from export/import. The user authorized pushing the validated batch
+to master. Inspect Git state before synchronizing, and do not assume that a remote
+push confirms the hosted deployment has finished.
 
 The app is hosted at https://kovarovickarel.github.io/SCAN_allocation_tool/. `vite.config.mjs` uses `/SCAN_allocation_tool/` only in `pages` mode and `/` for local development. Header images use `import.meta.env.BASE_URL`. Preserve prefix-safe asset paths. The Pages workflow deploys `master`; it runs `pnpm test:pages` before uploading the site. Hosting adds no shared persistence: users transfer planning data through JSON export/import.
 
@@ -27,9 +35,36 @@ The default demo includes GM (Lidar), MBAG (HDR), and BMW (SRR, RFQ), the existi
 
 The project began as a client-provided monolithic TSX application. Its original source is retained at `legacy/Initial_Monolith_SCAN_allocation_tool.tsx` as a reference. The active application is under `src/`.
 
-Each project has an `autoStartFte` toggle (omitted means enabled) beside its configuration control. In basic mode the toggle is hidden and automatic start is always off, without changing the saved extended-mode project preference. In extended mode it applies to new standard FTE assignments: enabled starts at M1; disabled opens the shared Other/FTE scheduling dialog. Standard FTE `startMonth` shifts core, support, meetings and maintenance; all pre-start demand and costs are zero. Existing schedules survive toggle changes. Invalid automatic assignments return to the pool with a warning; invalid manual schedules are returned to the pool and queued for rescheduling without that warning. Other retains its existing start/finish fields and scheduling flow.
+Each project has an `autoStartFte` toggle (new projects default off; schema-1 imports with an omitted flag explicitly restore the former enabled behavior) beside its configuration control. In basic mode the toggle is hidden and automatic start is always off, without changing the saved extended-mode project preference. In extended mode it applies to new standard FTE assignments: enabled starts at M1; disabled opens the shared Other/FTE scheduling dialog. Standard FTE `startMonth` shifts core, support, meetings and maintenance; all pre-start demand and costs are zero. Existing schedules survive toggle changes. Invalid automatic assignments return to the pool with a warning; invalid manual schedules are returned to the pool and queued for rescheduling without that warning. Other retains its existing start/finish fields and scheduling flow.
+
+## User-testing refinements (2026-10-12)
+
+REQF (Requirements freeze) is the first milestone and defaults to one quarter of
+project duration, rounded down (at least M1). Ordering is REQF <= FFV <= EFV <=
+AFV <= SSSR; normal schedules allow at most two milestones per month. Existing
+schema-1 imports add REQF without moving saved dates; the optional
+`legacyReqfCoincidence` marker preserves old FFV=EFV=M1 schedules. Keep the frozen
+baseline fixture unchanged. Project duration and milestone numeric edits stage
+locally and commit checks/linked updates on blur or Enter.
+
+Management overhead is calculated per tool and month from combined active FTE
+demand: floor(monthly demand / configured threshold) times the management block
+rate. Below-threshold/inactive months have no management demand, even with saved
+manual overrides. Monthly arrays are derived and are not exported. Staffing,
+costing, spending, summary, reposition previews and reconciliation share these
+monthly calculations.
+
+Travel is a default non-FTE basic type with an airplane icon. Explicit imported
+registries remain unchanged. Non-FTE drag ghosts clone only the dragged receipt,
+and remove the clone after dragging. Timeline range selections and FTE/Other and
+purchase scheduling previews auto-scroll horizontally at the visible edges while
+dragging, clamped to available content, and clean up on release/cancellation.
 
 ## Main user workflows
+
+- Application prompt/modal backdrops must never dismiss their windows. Closing
+  requires an explicit Save, Cancel, Close, cross, or supported Escape action.
+  Keep this behavior for new and nested dialogs; outside clicks must preserve drafts.
 
 - Create and edit workpackages, including tool-specific options and custom `Other` effort, duration, and maintenance assumptions.
 - Drag workpackages from the unassigned pool into projects and reorder projects.
@@ -38,7 +73,7 @@ Each project has an `autoStartFte` toggle (omitted means enabled) beside its con
 - Open Summary dashboard beside Default Global Overview to compare Nominated and RFQ projects, existing allocated costs, required effort, coverage, suppliers, and unused paid external capacity.
 - Click the project cost amount to review monthly and cumulative allocated spending, with tool, workpackage, management support, and member breakdowns.
 - Review combined team timelines and assign or adjust member allocations.
-- Team timeline allocations are staged locally. `Save & Close` applies the draft; `Close`, `Discard & Close`, the header close button, Escape, and backdrop clicks discard it. Saving an allocation inside a nested dialog updates the timeline draft only.
+- Team timeline allocations are staged locally. `Save & Close` applies the draft; `Close`, `Discard & Close`, the header close button and Escape discard it. Backdrop clicks preserve the open draft. Saving an allocation inside a nested dialog updates the timeline draft only.
 - Override monthly values in timelines, reset overrides, and save or cancel edits.
 - Configure FTE rates, management overhead, stability, reusability, and other defaults.
 - Switch tool views, layout density, app mode, and visual theme.

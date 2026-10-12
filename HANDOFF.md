@@ -1,7 +1,36 @@
 # Development handoff
 
-Updated: 2026-10-11. Read this together with `AGENTS.md`, `tests/README.md`, and
+Updated: 2026-10-12. Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
+
+## Validated user-testing release batch (2026-10-12)
+
+Final verification passed: `pnpm test:e2e --workers=6` ran all 350 application
+tests with 0 failures, skips or flaky tests; `pnpm typecheck` passed;
+`pnpm test:pages` passed the Pages production build and both production tests.
+The tests use 5174/4174 and leave the interactive 5173 planning session alone.
+
+Feature changes are split into focused commits: monthly management demand,
+REQF/deferred schedule inputs, intentional dialog closing, default-off automatic
+FTE starts with legacy migration, Travel, isolated purchase drag previews, and
+horizontal month-selection auto-scroll. All swimlane sizing code, dedicated
+regressions and width documentation are isolated in `00e8e30` for a possible
+future revert. Width remains presentation-only and is excluded from JSON files.
+
+Existing tests explicitly opt into automatic placement where needed; backdrop
+cases assert that drafts remain open before an explicit close. Management
+assertions retain inactive months and salary fixtures use an eligible configured
+threshold. Added regressions cover width bounds/card sizes/JSON exclusion,
+monthly threshold scaling, REQF ordering, deferred add/edit inputs, auto-scroll,
+non-FTE ghost cleanup, and import/re-export of the frozen schema-1 baseline.
+Reviewed current screenshot references include REQF, management help text,
+compact geometry and the previously accepted duplication controls. Historical
+screenshots and the frozen JSON baseline were not changed.
+
+The user authorized pushing this complete validated batch to origin/master.
+Inspect Git state for the current remote status; a push alone does not confirm
+completion of the GitHub Pages deployment. Unrelated untracked debug.log is
+preserved and excluded from commits. Completed user-testing TODO items are marked.
 
 ## Compact-grid crash fix and verification (2026-10-12)
 
@@ -37,6 +66,66 @@ Home/End set the limits. Width is component-local presentation state, excluded
 from workspace export/import. Tool-specific pool/team split shares its lane width.
 Project reorder transforms now account for differing lane widths. Existing card
 layout measurements respond to resizing. No tests were run for this request.
+
+## Deferred project-duration editing (2026-10-12)
+
+Add Project and inline project editing use the same staged numeric input as
+milestone months for project duration. Typing does not normalize milestones or
+apply workpackage duration constraints; blur or Enter commits the completed value
+and runs the existing checks. Add Project also displays the clamped duration after
+commit. No tests were run for this request.
+
+## Month-selection horizontal auto-scroll (2026-10-12)
+
+The shared timeline range-selection hook and FTE/Other and non-FTE scheduling
+previews now scroll their horizontal viewport while the held pointer approaches
+or passes a visible edge. Selection follows the newly revealed months even when
+the pointer is stationary. Scroll movement is clamped to the available range and
+stops on release, cancellation, window blur or unmount. Sticky timeline labels are
+excluded from the visible month area. No tests were run for this request.
+
+## REQF milestone and deferred month editing (2026-10-12)
+
+REQF (Requirements freeze) is the first shared milestone, styled cyan, defaulting
+to floor(project duration / 4), at least Month 1. It participates in project
+editors, timelines/graphs, scheduling previews, FTE/Other finish targets and
+purchase deadlines. Ordering is REQF <= FFV <= EFV <= AFV <= SSSR, with at most
+two milestones per month. Month inputs now stage their text locally and normalize
+linked milestones only on blur or Enter; existing workpackage constraints remain.
+
+Older schema-1 imports receive REQF without changing saved milestone dates.
+The rare FFV=EFV=Month 1 case receives an optional legacyReqfCoincidence marker to
+preserve its dates on display/deadline calculations and re-export. See
+JSON_COMPATIBILITY.md. Frozen baseline fixtures remain unchanged. No tests were
+requested or run for this change.
+
+## Explicit prompt closing (2026-10-12)
+
+Clicking outside an application prompt no longer closes it or discards drafts.
+All existing timelines, scheduling, configuration, add/edit, duplication, member
+allocation, priority, import/export, help, capacity and warning/confirmation windows
+ignore backdrop clicks. Explicit buttons/crosses and existing Escape behavior
+remain. Obsolete backdrop pointer-dismissal tracking was removed from spending
+and non-FTE scheduling. Help text reflects the new behavior. Future dialogs must
+follow this same rule. No tests were requested or run for this change.
+
+## Monthly management overhead correction (2026-10-12)
+
+Management demand now uses each project's combined active engineering demand for
+each tool in each month. A full configured threshold adds one configured management
+block: defaults are floor(monthly tool FTE / 1.5) × 0.2. Exact threshold equality
+qualifies. Below-threshold, inactive, hidden/negated and purchase-only months do not
+generate management demand; Other retains its exclusion. Scaling is monthly.
+The overview's management FTE remains an average over project duration.
+
+`calculateWorkpackageMonthlyFTE`, `calculateProjectEffort` and
+`getManagementMonthlyFTE` share this across overview hours/costs, project/team
+timelines, automatic staffing inputs, spending, external salary totals, summary
+and allocation reconciliation. Drag-to-reposition previews recalculate it too.
+Saved manual management overrides remain in source data and contribute only in
+eligible months. Old JSON schema-1 imports need no new fields or migration; monthly
+management arrays are derived, not exported. This is an explicit requested change
+to derived calculation semantics. No tests were requested or run for this change.
 
 ## JSON compatibility baseline (2026-10-12)
 
