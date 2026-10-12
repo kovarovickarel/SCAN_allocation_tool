@@ -1,13 +1,10 @@
-import { supportingPhaseRates } from "./supportingPhases";
-import { workpackageRateKey } from "./workpackageTypes";
 import { purchaseMonthlyCosts as scheduledPurchaseCosts, purchaseCostSummary, purchaseSubcategory } from "./nonFteWorkpackages";
-import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, round2 } from "../constants";
+import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS } from "../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
   ProjectSpendingTool, PurchasePaymentDrafts, TeamMemberRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
 import { calculateMemberMonthlyAllocationCost, calculateWorkpackageAllocationCost, sumWorkpackageAllocationCosts } from "./allocationCosts";
 import { resolveMonthlyMemberAllocations } from "./memberAllocations";
-import { computeWorkpackageLifecycleTimeline, calculateProjectEffort } from "./helpers";
-import { getSupportReusabilityFactor } from "./reusability";
+import { calculateProjectEffort, getManagementMonthlyFTE, calculateWorkpackageMonthlyFTE } from "./helpers";
 import { externalSalaryCharge, salaryMonthKey, applySalaryTotals, withoutSalary, externalPaymentDelay } from "./externalSalaries";
 
 interface ProjectSpendingOptions {
@@ -74,23 +71,13 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
       return { id: card.id, name: card.name, tool: card.tool, isManagement: false, isNonFte: true,
         members: [], monthlyCosts, totalCost: sumWorkpackageAllocationCosts(monthlyCosts, fteCosts.currency) };
     }
-    const complexity = workpackageRateKey(card, toolFteRates);
-    const rates = toolFteRates?.[card.tool]?.[complexity] ?? fteRates[complexity] ?? DEFAULT_FTE_RATES["Point Cloud"];
-    const lifecycle = computeWorkpackageLifecycleTimeline(card, project, rates, reusabilityFactors, stabilityFactors, false, project.duration);
-    const support = getSupportReusabilityFactor(card, reusabilityFactors, rates);
-    const stability = stabilityFactors[project.stability] ?? 1;
-    const required = lifecycle.map((month, index) => {
-      if ((card.tool !== "Other" || card.complexity) && month.phaseName === "Inactive") return 0;
-      const { dev, meetings } = supportingPhaseRates(card, rates, month, reusabilityFactors, stability);
-      return round2((card.customCoreFTE?.[index] ?? month.totalFTE) +
-        (support === 0 ? 0 : round2((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings))));
-    });
+    const required = calculateWorkpackageMonthlyFTE(card, project, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
     return buildTrack(card, required, project, members, fteCosts);
   });
   // Member tracks contain only positive allocations during active workpackage months.
   // The parent supplies the same scoped overheads that feed its total cost badge.
   for (const overhead of overheads) {
-    const required = Array.from({ length: project.duration }, (_, month) => project.customMgmtMonthlyFTE?.[overhead.tool]?.[month] ?? overhead.fte);
+    const required = getManagementMonthlyFTE(overhead, project);
     tracks.push(buildTrack({ id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support", tool: overhead.tool,
       projectId: project.id, _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
       memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {} }, required, project, members, fteCosts));
@@ -153,7 +140,7 @@ export function calculatePortfolioSalaryTotals(options: Omit<ProjectSpendingOpti
   if (!options.members.some(member => member.isExternal)) return {};
   const costs = options.projects.map(project => calculateProjectSpending({ ...options, project, activeToolView: "all",
     overheads: calculateProjectEffort(options.cards.filter(card => card.projectId === project.id && !card._isNegated &&
-      !(project.hiddenTools || []).includes(card.tool) && !(project.hiddenSubcategories || []).includes(card.subcategory)), options.mgmtSettings, project).overheads,
+      !(project.hiddenTools || []).includes(card.tool) && !(project.hiddenSubcategories || []).includes(card.subcategory)), options.mgmtSettings, project, options).overheads,
     salaryAllocationTotals: undefined, deferExternalPayments: false }).totalCost);
   const combined = sumWorkpackageAllocationCosts(costs, options.fteCosts.currency);
   return Object.fromEntries(Object.entries(combined.externalSalaryCharges || {}).map(([key, charge]) => [key, charge.allocatedFTE]));

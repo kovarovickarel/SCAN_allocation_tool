@@ -5,7 +5,7 @@ import { applySalaryTotals } from "../../utils/externalSalaries";
 import { purchaseScheduleExceedsProject } from "../../utils/nonFteWorkpackages";
 import React, { useCallback, useEffect, useMemo, useRef, useState, memo } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, SUBCAT_TOOL_MAP, DEFAULT_MGMT_SETTINGS, DEFAULT_FTE_COSTS, PROJECT_TYPES, PROJECT_TYPE_COLORS, MILESTONES_DEF, clamp, round2, genId } from "../../constants";
-import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, calculateWorkpackageAllocationCost, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
+import { getDefaultMilestones, normalizeMilestones, getMinMilestoneMonths, calculateProjectEffort, getManagementMonthlyFTE, calculateWorkpackageAllocationCost, getReusabilityFactor, getMaintenanceReusabilityFactor } from "../../utils/helpers";
 import { calculateProjectSpending } from "../../utils/projectSpending";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
@@ -563,12 +563,12 @@ export const ProjectBasket = memo(function ProjectBasket({
 
   const effortSummary = useMemo(() => {
     if (activeToolView === "all") {
-      return calculateProjectEffort(projectCards, mgmtSettings, project);
+      return calculateProjectEffort(projectCards, mgmtSettings, project, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
     }
     const scopedCards = projectCards.filter(
       (c) => c.tool === activeToolView || c.tool === "Other"
     );
-    const fullEffort = calculateProjectEffort(scopedCards, mgmtSettings, project);
+    const fullEffort = calculateProjectEffort(scopedCards, mgmtSettings, project, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
     const filteredOverheads = fullEffort.overheads.filter((o) => o.tool === activeToolView);
     const mgmtFTE = filteredOverheads.reduce((sum, o) => sum + (o.fte ?? 0), 0);
     return {
@@ -577,11 +577,10 @@ export const ProjectBasket = memo(function ProjectBasket({
       totalFTE: round2(fullEffort.engFTE + mgmtFTE),
       overheads: filteredOverheads,
     };
-  }, [projectCards, mgmtSettings, project, activeToolView]);
+  }, [projectCards, mgmtSettings, project, activeToolView, fteRates, toolFteRates, reusabilityFactors, stabilityFactors]);
 
   const managementAllocationCosts = useMemo(() => new Map(effortSummary.overheads.map((overhead) => {
-    const monthlyEffort = Array.from({ length: project.duration }, (_, monthIdx) =>
-      project.customMgmtMonthlyFTE?.[overhead.tool]?.[monthIdx] ?? overhead.fte);
+    const monthlyEffort = getManagementMonthlyFTE(overhead, project);
     return [overhead.tool, applySalaryTotals(calculateWorkpackageAllocationCost({
       id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support", tool: overhead.tool,
       _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},

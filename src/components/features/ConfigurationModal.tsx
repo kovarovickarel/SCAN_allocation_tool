@@ -753,7 +753,7 @@ export function ConfigurationModal({
                   Management Support Rules
                 </h3>
                 <p className={`text-xs leading-relaxed ${isRetro ? "text-black" : "text-purple-700"}`}>
-                  Management support is automatically allocated per tool domain (excluding Other) when total engineering effort in that domain exceeds the threshold.
+                  Management support is calculated for each month and tool domain (excluding Other). Each full threshold of combined monthly engineering FTE adds one management block; months below the threshold have none.
                 </p>
               </div>
 
@@ -766,7 +766,7 @@ export function ConfigurationModal({
                   <div className="max-w-[70%]">
                     <span className="text-xs font-bold text-slate-800 block">Effort Trigger Threshold</span>
                     <span className={`text-[11px] ${isRetro ? "text-slate-700" : "text-gray-500"}`}>
-                      Total engineering FTE within a tool needed to trigger 1 overhead management block (default: 1.50 FTE).
+                      Combined engineering FTE within a tool in one month needed to trigger 1 management block (default: 1.50 FTE).
                     </span>
                   </div>
                   <div className="w-28">

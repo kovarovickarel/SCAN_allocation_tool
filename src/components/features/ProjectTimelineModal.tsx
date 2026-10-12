@@ -3,7 +3,7 @@ import { supportingPhaseRates, supportingActivityRate, getSupportingPhases } fro
 import { workpackageRateKey, workpackageTypeColor, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_COLORS, TOOLS, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, MILESTONE_MAP, clamp, round2 } from "../../constants";
-import { normalizeMilestones, calculateProjectEffort, getFTEGradientStyle, computeWorkpackageLifecycleTimeline, getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "../../utils/helpers";
+import { normalizeMilestones, calculateProjectEffort, getManagementMonthlyFTE, getFTEGradientStyle, computeWorkpackageLifecycleTimeline, getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "../../utils/helpers";
 import { workpackageStartMonth, workpackageFinishTarget, workpackageRepositionLimits, repositionWorkpackage } from "../../utils/workpackageFinishTargets";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
@@ -213,8 +213,10 @@ export function ProjectTimelineModal({
   const projectCards = useMemo(() => localCards.filter((c) => c.projectId === localProject.id && c.kind !== "non-fte"), [localCards, localProject.id]);
 
   const mgmtEffortSummary = useMemo(() => {
-    return calculateProjectEffort(projectCards, mgmtSettings, localProject);
-  }, [projectCards, mgmtSettings, localProject]);
+    const effectiveCards = activityDrag ? projectCards.map(card => card.id === activityDrag.cardId
+      ? repositionWorkpackage(card, activityDrag.currentStartMonth, duration) : card) : projectCards;
+    return calculateProjectEffort(effectiveCards, mgmtSettings, localProject, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
+  }, [projectCards, mgmtSettings, localProject, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activityDrag, duration]);
 
   const toolTimelineData = useMemo(() => {
     const cardsByTool = new Map();
@@ -410,31 +412,28 @@ export function ProjectTimelineModal({
       const totalToolFTE = round2(totalEngFTE + mgmtFTE);
 
       let mgmtRow = null;
-      if (toolOverhead && (mgmtFTE > 0 || toolOverhead.isAltered)) {
-        const threshold = mgmtSettings?.threshold ?? 1.5;
-        const ftePerUnit = mgmtSettings?.ftePerCard ?? 0.2;
-        const baseMgmtCount = Math.floor(totalEngFTE / threshold);
-        const defaultMgmtFTE = baseMgmtCount * ftePerUnit;
-
-        const toolCustomMgmt = localProject.customMgmtMonthlyFTE?.[t.name] || {};
+      if (toolOverhead && (toolOverhead.defaultMonthlyFTE.some(value => value > 0) || toolOverhead.isAltered)) {
+        const baseMgmtCount = toolOverhead.count;
+        const defaultMgmtFTE = round2(toolOverhead.defaultMonthlyFTE.reduce((sum, value) => sum + value, 0) / duration);
+        const managementMonths = getManagementMonthlyFTE(toolOverhead, localProject);
         let hasAnyMgmtOverride = false;
         const monthEffort = [];
 
         for (let m = 0; m < duration; m++) {
-          const customVal = toolCustomMgmt[m];
-          const isOverridden = customVal !== undefined && Math.abs(customVal - defaultMgmtFTE) > 0.001;
+          const monthDefault = toolOverhead.defaultMonthlyFTE[m];
+          const isOverridden = Math.abs(managementMonths[m] - monthDefault) > 0.001;
           if (isOverridden) hasAnyMgmtOverride = true;
-          const effMgmtFTE = isOverridden ? customVal : defaultMgmtFTE;
+          const effMgmtFTE = managementMonths[m];
 
           monthEffort.push({
             phaseName: "Management Support",
             shortPhase: "Mgmt",
             phaseSpan: duration,
             phaseMonthIndex: m + 1,
-            isPhaseStart: m === 0,
-            isPhaseEnd: m === duration - 1,
+            isPhaseStart: effMgmtFTE > 0 && !(managementMonths[m - 1] > 0),
+            isPhaseEnd: effMgmtFTE > 0 && !(managementMonths[m + 1] > 0),
             totalFTE: effMgmtFTE,
-            defaultFTE: defaultMgmtFTE,
+            defaultFTE: monthDefault,
             isOverridden,
             style: getFTEGradientStyle(effMgmtFTE, false, 3.0),
           });

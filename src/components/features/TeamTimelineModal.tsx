@@ -3,7 +3,7 @@ import { supportingPhaseRates } from "../../utils/supportingPhases";
 import { workpackageRateKey, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, DEFAULT_FTE_RATES, deepClone, DEFAULT_MGMT_SETTINGS, PROJECT_TYPE_COLORS, MILESTONES_DEF, round2 } from "../../constants";
-import { normalizeMilestones, calculateProjectEffort, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, calculateWorkpackageAllocationCost, formatMemberMonthlyAllocationCost, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
+import { normalizeMilestones, calculateProjectEffort, getManagementMonthlyFTE, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, calculateWorkpackageAllocationCost, formatMemberMonthlyAllocationCost, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
 import { DEFAULT_FTE_COSTS } from "../../constants";
 import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
@@ -263,17 +263,18 @@ export function TeamTimelineModal({
 
       let mgmtRow = null;
       if (toolName !== "Other") {
-        const fullEffort = calculateProjectEffort(allProjectCards, mgmtSettings, p);
+        const fullEffort = calculateProjectEffort(allProjectCards, mgmtSettings, p, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
         const toolOverhead = fullEffort.overheads?.find((o) => o.tool === toolName);
 
-        if (toolOverhead && (toolOverhead.fte > 0 || toolOverhead.isAltered)) {
-          const toolCustomMgmt = p.customMgmtMonthlyFTE?.[toolName] || {};
-          const baseMgmtFTE = toolOverhead.fte;
+        if (toolOverhead && (toolOverhead.defaultMonthlyFTE.some(value => value > 0) || toolOverhead.isAltered)) {
+          const managementMonths = getManagementMonthlyFTE(toolOverhead, p);
           const monthEffort = Array.from({ length: pDur }, (_, m) => {
-            const effFTE = toolCustomMgmt[m] !== undefined ? toolCustomMgmt[m] : baseMgmtFTE;
+            const effFTE = managementMonths[m];
             return {
               phaseName: "Management Support", shortPhase: "Mgmt", phaseSpan: pDur,
-              phaseMonthIndex: m + 1, isPhaseStart: m === 0, isPhaseEnd: m === pDur - 1, totalFTE: effFTE,
+              phaseMonthIndex: m + 1,
+              isPhaseStart: effFTE > 0 && !(managementMonths[m - 1] > 0),
+              isPhaseEnd: effFTE > 0 && !(managementMonths[m + 1] > 0), totalFTE: effFTE,
             };
           });
 

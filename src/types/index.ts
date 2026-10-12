@@ -231,6 +231,9 @@ export interface ToolDefinition {
 }
 
 export interface ManagementOverhead {
+  monthlyFTE?: number[];
+  defaultMonthlyFTE?: number[];
+  engineeringMonthlyFTE?: number[];
   tool: string;
   fte: number;
   engFTE: number;

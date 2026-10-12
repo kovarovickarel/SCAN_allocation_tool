@@ -240,6 +240,9 @@ export function HelpGuideModal({
                 <p className="text-slate-600 leading-relaxed mb-2.5">
                   Management Support Overhead in the combined timeline is an active workpackage that requires staffed coverage just like engineering tasks:
                 </p>
+                <p className="text-slate-600 leading-relaxed mb-2.5">
+                  It is calculated separately for each tool and month. With the default settings, each full 1.5 engineering FTE adds 0.2 management FTE: 1.5 needs 0.2, 3.0 needs 0.4, and months below 1.5 need none. Other workpackages do not generate management overhead. Manual management adjustments apply only in eligible months.
+                </p>
                 <ul className="list-disc pl-5 space-y-2 text-slate-600">
                   <li>
                     <strong>Strict Role Constraints:</strong>

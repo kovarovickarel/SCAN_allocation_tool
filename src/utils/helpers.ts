@@ -1,6 +1,6 @@
 import { supportingPhaseRates } from "./supportingPhases";
 import { workpackageRateKey, isMaintenancePhase } from "./workpackageTypes";
-import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, DEFAULT_MGMT_SETTINGS, TOOLS, clamp, round2 } from "../constants";
+import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, DEFAULT_MGMT_SETTINGS, TOOLS, clamp, round2 } from "../constants";
 import { getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "./reusability";
 
 // Preserve the shared helper API while keeping each calculation domain separate.
@@ -176,59 +176,68 @@ export function calcCardFTE(
   return round2((totalFTEMonths * stabilityMultiplier) / project.duration);
 }
 
-export function calculateProjectEffort(projectCards, mgmtSettings = DEFAULT_MGMT_SETTINGS, project = null) {
+export function calculateWorkpackageMonthlyFTE(card, project, {
+  fteRates = DEFAULT_FTE_RATES, toolFteRates, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
+  stabilityFactors = DEFAULT_STABILITY_FACTORS,
+}: { fteRates?: typeof DEFAULT_FTE_RATES; toolFteRates?: typeof DEFAULT_TOOL_FTE_RATES; reusabilityFactors?: Record<string, number>; stabilityFactors?: Record<string, number> } = {}) {
+  const duration = project?.duration || 12;
+  if (card.kind === "non-fte" || card._isNegated || project?.hiddenTools?.includes(card.tool) ||
+      project?.hiddenSubcategories?.includes(card.subcategory)) return Array(duration).fill(0);
+  if (!project) return Array(duration).fill(card._fte ?? 0);
+  const complexity = workpackageRateKey(card, toolFteRates);
+  const rates = toolFteRates?.[card.tool]?.[complexity] ?? fteRates[complexity] ?? DEFAULT_FTE_RATES["Point Cloud"];
+  const lifecycle = computeWorkpackageLifecycleTimeline(card, project, rates, reusabilityFactors, stabilityFactors, false, duration);
+  const support = getSupportReusabilityFactor(card, reusabilityFactors, rates);
+  const stability = stabilityFactors[project.stability] ?? 1;
+  return lifecycle.map((month, index) => {
+    if ((card.tool !== "Other" || card.complexity) && month.phaseName === "Inactive") return 0;
+    const { dev, meetings } = supportingPhaseRates(card, rates, month, reusabilityFactors, stability);
+    return round2((card.customCoreFTE?.[index] ?? month.totalFTE) +
+      (support === 0 ? 0 : round2((card.customDevSupportFTE?.[index] ?? dev) + (card.customMeetingsFTE?.[index] ?? meetings))));
+  });
+}
+
+// Monthly demand is derived, so old workspace files need no new saved fields.
+export function getManagementMonthlyFTE(overhead, project) {
+  return overhead?.monthlyFTE ?? Array.from({ length: project.duration }, (_, month) =>
+    overhead ? project.customMgmtMonthlyFTE?.[overhead.tool]?.[month] ?? overhead.fte : 0);
+}
+
+export function calculateProjectEffort(projectCards, mgmtSettings: { ftePerCard: number; threshold: number } = DEFAULT_MGMT_SETTINGS, project = null, options: Parameters<typeof calculateWorkpackageMonthlyFTE>[2] = {}) {
   let engFTE = 0;
   const toolSums = new Map();
-
-  for (let i = 0; i < projectCards.length; i++) {
-    const card = projectCards[i];
-    if (card.kind === "non-fte") continue;
+  const toolMonths = new Map();
+  const duration = project?.duration || 12;
+  for (const card of projectCards) {
+    if (card.kind === "non-fte" || card._isNegated || project?.hiddenTools?.includes(card.tool) ||
+        project?.hiddenSubcategories?.includes(card.subcategory)) continue;
     const fte = card._fte ?? 0;
     engFTE += fte;
     toolSums.set(card.tool, (toolSums.get(card.tool) || 0) + fte);
+    const months = toolMonths.get(card.tool) ?? Array(duration).fill(0);
+    calculateWorkpackageMonthlyFTE(card, project, options).forEach((value, month) => { months[month] += value; });
+    toolMonths.set(card.tool, months);
   }
-
   const overheads = [];
   let totalMgmtFTE = 0;
-  const threshold = mgmtSettings?.threshold ?? 1.5;
+  const threshold = mgmtSettings?.threshold > 0 ? mgmtSettings.threshold : 1.5;
   const ftePerUnit = mgmtSettings?.ftePerCard ?? 0.2;
-  const duration = project?.duration || 12;
-
-  for (let i = 0; i < TOOLS.length; i++) {
-    const tool = TOOLS[i];
-    if (tool.name === "Other") continue; // No PO/SM management overhead for Other workpackages
-    const toolFTE = toolSums.get(tool.name) || 0;
-    const baseMgmtCount = Math.floor(toolFTE / threshold);
-    const baseFte = baseMgmtCount * ftePerUnit;
-
-    const toolCustomMgmt = project?.customMgmtMonthlyFTE?.[tool.name];
-    let fte = baseFte;
-    let isAltered = false;
-
-    if (toolCustomMgmt && Object.keys(toolCustomMgmt).length > 0) {
-      let monthSum = 0;
-      for (let m = 0; m < duration; m++) {
-        const val = toolCustomMgmt[m] !== undefined ? toolCustomMgmt[m] : baseFte;
-        if (toolCustomMgmt[m] !== undefined && Math.abs(toolCustomMgmt[m] - baseFte) > 0.001) {
-          isAltered = true;
-        }
-        monthSum += val;
-      }
-      fte = round2(monthSum / duration);
-    }
-
-    if (baseMgmtCount > 0 || isAltered) {
-      totalMgmtFTE += fte;
-      overheads.push({ tool: tool.name, count: baseMgmtCount, fte, engFTE: toolFTE, isAltered });
-    }
+  for (const tool of TOOLS) {
+    if (tool.name === "Other") continue;
+    const engineeringMonthlyFTE = toolMonths.get(tool.name) ?? Array(duration).fill(0);
+    const counts = engineeringMonthlyFTE.map(value => Math.floor((value + 1e-9) / threshold));
+    const defaultMonthlyFTE = counts.map(count => round2(count * ftePerUnit));
+    const overrides = project?.customMgmtMonthlyFTE?.[tool.name] ?? {};
+    // Retain saved overrides, but only eligible months contribute management effort.
+    const monthlyFTE = defaultMonthlyFTE.map((value, month) => counts[month] > 0 ? overrides[month] ?? value : 0);
+    const isAltered = monthlyFTE.some((value, month) => Math.abs(value - defaultMonthlyFTE[month]) > 0.001);
+    if (!counts.some(count => count > 0)) continue;
+    const average = monthlyFTE.reduce((sum, value) => sum + value, 0) / duration;
+    totalMgmtFTE += average;
+    overheads.push({ tool: tool.name, count: Math.max(...counts), fte: round2(average),
+      engFTE: toolSums.get(tool.name) || 0, isAltered, monthlyFTE, defaultMonthlyFTE, engineeringMonthlyFTE });
   }
-
-  return {
-    engFTE: round2(engFTE),
-    mgmtFTE: round2(totalMgmtFTE),
-    totalFTE: round2(engFTE + totalMgmtFTE),
-    overheads,
-  };
+  return { engFTE: round2(engFTE), mgmtFTE: round2(totalMgmtFTE), totalFTE: round2(engFTE + totalMgmtFTE), overheads };
 }
 
 

@@ -2,7 +2,7 @@ import { supportingPhaseRates } from "./supportingPhases";
 import { workpackageRateKey } from "./workpackageTypes";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, round2 } from "../constants";
 import type { AllocationProject, MonthlyNumericMap, NumericMap, TeamMemberRecord, WorkpackageCard } from "../types";
-import { calcCardFTE, calculateProjectEffort, computeWorkpackageLifecycleTimeline, getSupportReusabilityFactor } from "./helpers";
+import { calcCardFTE, calculateProjectEffort, getManagementMonthlyFTE, computeWorkpackageLifecycleTimeline, getSupportReusabilityFactor } from "./helpers";
 
 type TimelineAllocationConfig = {
   fteRates: typeof DEFAULT_FTE_RATES;
@@ -94,15 +94,13 @@ export function reconcileProjectTimelineAllocations(
     return { ...card, memberMonthlyAssignments: monthly };
   });
 
-  const oldOverheads = calculateProjectEffort([...oldSummaries.values()].map((item) => item.card), config.management, project).overheads;
-  const newOverheads = calculateProjectEffort([...newSummaries.values()].map((item) => item.card), config.management, updatedProject).overheads;
+  const oldOverheads = calculateProjectEffort([...oldSummaries.values()].map((item) => item.card), config.management, project, config).overheads;
+  const newOverheads = calculateProjectEffort([...newSummaries.values()].map((item) => item.card), config.management, updatedProject, config).overheads;
   const mgmtMonthly = { ...project.mgmtMemberMonthlyAssignments };
   const tools = new Set([...Object.keys(project.mgmtMemberAssignments || {}), ...Object.keys(mgmtMonthly)]);
   for (const tool of tools) {
-    const oldBase = oldOverheads.find((overhead) => overhead.tool === tool)?.fte || 0;
-    const newBase = newOverheads.find((overhead) => overhead.tool === tool)?.fte || 0;
-    const oldEffort = Array.from({ length: duration }, (_, month) => project.customMgmtMonthlyFTE?.[tool]?.[month] ?? oldBase);
-    const newEffort = Array.from({ length: duration }, (_, month) => updatedProject.customMgmtMonthlyFTE?.[tool]?.[month] ?? newBase);
+    const oldEffort = getManagementMonthlyFTE(oldOverheads.find(overhead => overhead.tool === tool), project);
+    const newEffort = getManagementMonthlyFTE(newOverheads.find(overhead => overhead.tool === tool), updatedProject);
     const assignments = project.mgmtMemberAssignments?.[tool] || {};
     const total = Object.values(assignments).reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
     mgmtMonthly[tool] = reconcileMonthlyAllocations(assignments, mgmtMonthly[tool] || {}, oldEffort, newEffort,

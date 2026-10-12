@@ -13,7 +13,7 @@ import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
-import { getCrossTeamMemberIds, calculateManagementCoverage, hasAllocatedCost, sumWorkpackageAllocationCosts, getReusabilityFactor, getReusabilityLabel, getMaintenanceReusabilityFactor, hasWorkpackageMaintenance, normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
+import { getManagementMonthlyFTE, getCrossTeamMemberIds, calculateManagementCoverage, hasAllocatedCost, sumWorkpackageAllocationCosts, getReusabilityFactor, getReusabilityLabel, getMaintenanceReusabilityFactor, hasWorkpackageMaintenance, normalizeReusability, parseReusabilityFactor } from "../../utils/helpers";
 import { DEFAULT_FTE_COSTS } from "../../constants";
 import { sumManHoursBreakdowns } from "../../utils/manHours";
 import { ManHoursLabel, WORKPACKAGE_EFFORT_BADGE_SIZE } from "../ui/ManHoursLabel";
@@ -821,7 +821,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
   if (!overheads || overheads.length === 0) return null;
   const totalMgmtFTE = overheads.reduce((sum, o) => sum + (o.fte ?? 0), 0);
-  const totalMgmtHours = overheads.reduce((total, overhead) => total + Array.from({ length: project.duration }, (_, month) => project.customMgmtMonthlyFTE?.[overhead.tool]?.[month] ?? overhead.fte).reduce((sum, fte) => sum + fte, 0) * WORKING_HOURS_PER_MONTH, 0);
+  const totalMgmtHours = overheads.reduce((total, overhead) => total + getManagementMonthlyFTE(overhead, project).reduce((sum, fte) => sum + fte, 0) * WORKING_HOURS_PER_MONTH, 0);
   const anyAltered = overheads.some((o) => o.isAltered);
 
   const containerStyle = isRetro
@@ -856,8 +856,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
         {overheads.map((o) => {
           const assignments = project.mgmtMemberAssignments?.[o.tool] || {};
           const monthlyAssignments = project.mgmtMemberMonthlyAssignments?.[o.tool] || {};
-          const monthlyEffort = Array.from({ length: project.duration }, (_, monthIdx) =>
-            project.customMgmtMonthlyFTE?.[o.tool]?.[monthIdx] ?? o.fte);
+          const monthlyEffort = getManagementMonthlyFTE(o, project);
           const { coveragePct } = calculateManagementCoverage(assignments, monthlyAssignments, monthlyEffort);
           const allocationCost = allocationCosts.get(o.tool);
           const allocatedMembers = !isCompact ? teamMembers.filter((member) =>

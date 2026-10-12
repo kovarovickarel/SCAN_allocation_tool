@@ -11,7 +11,7 @@ export function calculateSummaryDashboard(options: SummaryDashboardOptions, filt
   const salaryAllocationTotals = calculatePortfolioSalaryTotals(options);
   const allRows = options.projects.map(project => {
     const cards = options.cards.filter(card => card.projectId === project.id);
-    const effort = calculateProjectEffort(cards, options.mgmtSettings, project);
+    const effort = calculateProjectEffort(cards, options.mgmtSettings, project, options);
     const spending = calculateProjectSpending({ ...options, project, overheads: effort.overheads, salaryAllocationTotals, activeToolView: "all", deferExternalPayments: false });
     let required = 0, staffed = 0, external = 0;
     const byTeam: Record<string, number> = {};
