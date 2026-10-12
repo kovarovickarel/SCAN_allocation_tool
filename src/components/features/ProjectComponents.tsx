@@ -11,6 +11,7 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon, CopyIcon } from '../ui/icons';
 import { DuplicateProjectModal } from "./DuplicateProjectModal";
+import { MilestoneMonthInput } from "../ui/MilestoneMonthInput";
 import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
 import { ProjectTimelineModal } from './ProjectTimelineModal';
 import { ProjectRFQBadge } from '../ui/ProjectRFQBadge';
@@ -199,7 +200,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
     const d = clamp(parseInt(newDuration, 10) || 6, 6, 60);
     setDraft((prev) => ({
       ...prev,
-      duration: newDuration,
+      duration: d,
       milestones: normalizeMilestones(prev.milestones, d),
     }));
   };
@@ -350,7 +351,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
               <label className={`text-xs font-semibold block mb-1 ${isRetro ? "text-black font-mono font-bold" : "text-gray-700"}`}>
                 Duration (Months: 6-60)
               </label>
-              <input
+              <MilestoneMonthInput
                 type="number"
                 min="6"
                 max="60"
@@ -359,8 +360,9 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
                     ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white font-mono text-black font-bold"
                     : "border border-gray-300 rounded"
                 }`}
+                aria-label="Project duration in months"
                 value={draft.duration}
-                onChange={(e) => handleDurationChange(e.target.value)}
+                onCommit={handleDurationChange}
               />
             </div>
           </div>
@@ -414,7 +416,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
                 Reset Defaults
               </button>
             </div>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-5 gap-1.5">
               {MILESTONES_DEF.map((m) => (
                 <div key={m.key} className="flex flex-col">
                   <label className={`text-[10px] font-bold flex items-center gap-1 mb-0.5 ${
@@ -424,7 +426,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
                     {m.label}
                   </label>
                   <div className="relative">
-                    <input
+                    <MilestoneMonthInput
                       type="number"
                       min="1"
                       max={durationNum}
@@ -434,7 +436,8 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
                           : "border border-gray-300 rounded bg-white"
                       }`}
                       value={draft.milestones[m.key]}
-                      onChange={(e) => handleMilestoneChange(m.key, e.target.value)}
+                      aria-label={`${m.label} milestone month`}
+                      onCommit={value => handleMilestoneChange(m.key, value)}
                     />
                   </div>
                   <span className={`text-[8px] text-center mt-0.5 truncate ${
@@ -448,7 +451,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
             <p className={`text-[9px] mt-1.5 leading-tight ${
               isRetro ? "text-slate-700 font-mono" : "text-slate-500"
             }`}>
-              Order is strictly preserved: <strong>FFV &le; EFV &le; AFV &le; SSSR</strong> (max 2 milestones per month).
+              Order is strictly preserved: <strong>REQF &le; FFV &le; EFV &le; AFV &le; SSSR</strong> (max 2 milestones per month).
             </p>
           </div>
         </div>
@@ -536,7 +539,7 @@ export const ProjectBasket = memo(function ProjectBasket({
     startDate: project.startDate || "2026-01",
     duration: project.duration,
     stability: project.stability,
-    milestones: normalizeMilestones(project.milestones, project.duration),
+    milestones: normalizeMilestones(project.milestones, project.duration, null, project.legacyReqfCoincidence),
   });
 
   useEffect(() => {
@@ -632,13 +635,9 @@ export const ProjectBasket = memo(function ProjectBasket({
   const totalUnusedCount = unusedTools.length + scopedHiddenSubs.length;
 
   const handleDurationDraftChange = (newDuration) => {
-    let rawDuration = parseInt(newDuration, 10);
-    if (isNaN(rawDuration)) {
-      setHeaderDraft((prev) => ({ ...prev, duration: newDuration }));
-      return;
-    }
+    const rawDuration = parseInt(newDuration, 10) || 6;
 
-    const { minMonths, limitingWPs } = getMinMilestoneMonths(boundOtherWPs);
+    const { minMonths, limitingWPs } = getMinMilestoneMonths(boundOtherWPs, project.legacyReqfCoincidence);
     let minRequiredDuration = Math.max(6, minMonths.SSSR);
     for (let i = 0; i < projectCards.length; i++) {
       const c = projectCards[i];
@@ -664,7 +663,7 @@ export const ProjectBasket = memo(function ProjectBasket({
           .join(", ");
         err = `Cannot decrease project duration to ${rawDuration} months: Workpackage${directBlocking.length > 1 ? "s" : ""} ${wpListStr} cannot start before project start (Month 1). Earliest possible duration automatically set to ${minRequiredDuration} months.`;
       } else {
-        const limitingWP = limitingWPs.SSSR || limitingWPs.AFV || limitingWPs.EFV || limitingWPs.FFV;
+        const limitingWP = limitingWPs.SSSR || limitingWPs.AFV || limitingWPs.EFV || limitingWPs.FFV || limitingWPs.REQF;
         err = `Cannot decrease project duration to ${rawDuration} months: Milestone conditions (SSSR <= project duration and max 2 milestones per month) require at least ${minRequiredDuration} months${limitingWP ? ` due to workpackage "${limitingWP.name}" (${limitingWP.otherDuration} mo -> ${limitingWP.otherFinishMilestone})` : ""}. Earliest possible duration automatically set to ${minRequiredDuration} months.`;
       }
       finalDuration = minRequiredDuration;
@@ -680,7 +679,8 @@ export const ProjectBasket = memo(function ProjectBasket({
           normalized[k] = minMonths[k];
         }
       }
-      normalized.EFV = Math.max(normalized.EFV, normalized.FFV);
+      normalized.FFV = Math.max(normalized.FFV, normalized.REQF);
+      normalized.EFV = Math.max(normalized.EFV, normalized.FFV, normalized.REQF + (project.legacyReqfCoincidence && normalized.REQF === 1 && normalized.FFV === 1 && normalized.EFV === 1 ? 0 : 1));
       normalized.AFV = Math.max(normalized.AFV, normalized.EFV, normalized.FFV + 1);
       normalized.SSSR = Math.max(normalized.SSSR, normalized.AFV, normalized.EFV + 1);
 
@@ -702,7 +702,7 @@ export const ProjectBasket = memo(function ProjectBasket({
       return c.otherFinishMilestone === key && dur > rawNum;
     });
 
-    const { minMonths, limitingWPs } = getMinMilestoneMonths(boundOtherWPs);
+    const { minMonths, limitingWPs } = getMinMilestoneMonths(boundOtherWPs, project.legacyReqfCoincidence);
     const minRequired = minMonths[key] || 1;
     let err = null;
     let num = rawNum;
@@ -731,7 +731,8 @@ export const ProjectBasket = memo(function ProjectBasket({
         }
       }
 
-      normalized.EFV = Math.max(normalized.EFV, normalized.FFV);
+      normalized.FFV = Math.max(normalized.FFV, normalized.REQF);
+      normalized.EFV = Math.max(normalized.EFV, normalized.FFV, normalized.REQF + (project.legacyReqfCoincidence && normalized.REQF === 1 && normalized.FFV === 1 && normalized.EFV === 1 ? 0 : 1));
       normalized.AFV = Math.max(normalized.AFV, normalized.EFV, normalized.FFV + 1);
       normalized.SSSR = Math.max(normalized.SSSR, normalized.AFV, normalized.EFV + 1);
 
@@ -746,7 +747,7 @@ export const ProjectBasket = memo(function ProjectBasket({
 
   const resetDraftMilestones = () => {
     const defaults = getDefaultMilestones(headerDraft.duration);
-    const { minMonths, limitingWPs } = getMinMilestoneMonths(boundOtherWPs);
+    const { minMonths, limitingWPs } = getMinMilestoneMonths(boundOtherWPs, project.legacyReqfCoincidence);
     let err = null;
     const blockedMs = [];
 
@@ -763,7 +764,8 @@ export const ProjectBasket = memo(function ProjectBasket({
         defaults[k] = minMonths[k];
       }
     }
-    defaults.EFV = Math.max(defaults.EFV, defaults.FFV);
+    defaults.FFV = Math.max(defaults.FFV, defaults.REQF);
+    defaults.EFV = Math.max(defaults.EFV, defaults.FFV, defaults.REQF + (project.legacyReqfCoincidence && defaults.REQF === 1 && defaults.FFV === 1 && defaults.EFV === 1 ? 0 : 1));
     defaults.AFV = Math.max(defaults.AFV, defaults.EFV, defaults.FFV + 1);
     defaults.SSSR = Math.max(defaults.SSSR, defaults.AFV, defaults.EFV + 1);
 
@@ -779,7 +781,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   };
 
   const saveHeader = () => {
-    const { minMonths } = getMinMilestoneMonths(boundOtherWPs);
+    const { minMonths } = getMinMilestoneMonths(boundOtherWPs, project.legacyReqfCoincidence);
     let minRequiredDuration = Math.max(6, minMonths.SSSR);
     for (let i = 0; i < projectCards.length; i++) {
       const c = projectCards[i];
@@ -790,14 +792,15 @@ export const ProjectBasket = memo(function ProjectBasket({
     }
     const d = clamp(parseInt(headerDraft.duration, 10) || minRequiredDuration, minRequiredDuration, 60);
 
-    const finalMilestones = normalizeMilestones(headerDraft.milestones, d);
+    const finalMilestones = normalizeMilestones(headerDraft.milestones, d, null, project.legacyReqfCoincidence);
     for (let i = 0; i < MILESTONES_DEF.length; i++) {
       const k = MILESTONES_DEF[i].key;
       if (finalMilestones[k] < minMonths[k]) {
         finalMilestones[k] = minMonths[k];
       }
     }
-    finalMilestones.EFV = Math.max(finalMilestones.EFV, finalMilestones.FFV);
+    finalMilestones.FFV = Math.max(finalMilestones.FFV, finalMilestones.REQF);
+    finalMilestones.EFV = Math.max(finalMilestones.EFV, finalMilestones.FFV, finalMilestones.REQF + (project.legacyReqfCoincidence && finalMilestones.REQF === 1 && finalMilestones.FFV === 1 && finalMilestones.EFV === 1 ? 0 : 1));
     finalMilestones.AFV = Math.max(finalMilestones.AFV, finalMilestones.EFV, finalMilestones.FFV + 1);
     finalMilestones.SSSR = Math.max(finalMilestones.SSSR, finalMilestones.AFV, finalMilestones.EFV + 1);
 
@@ -943,13 +946,14 @@ export const ProjectBasket = memo(function ProjectBasket({
               </div>
               <div>
                 <label className="text-[10px] text-gray-400 block mb-0.5">Duration (6-60)</label>
-                <input
+                <MilestoneMonthInput
                   type="number"
                   min="6"
                   max="60"
                   className="text-xs bg-slate-800 border border-slate-600 rounded px-1.5 py-1 text-white w-full"
+                  aria-label="Project duration in months"
                   value={headerDraft.duration}
-                  onChange={(e) => handleDurationDraftChange(e.target.value)}
+                  onCommit={handleDurationDraftChange}
                 />
               </div>
               <div>
@@ -991,20 +995,21 @@ export const ProjectBasket = memo(function ProjectBasket({
                   Reset Defaults
                 </button>
               </div>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-5 gap-1.5">
                 {MILESTONES_DEF.map((m) => (
                   <div key={m.key} className="flex flex-col">
                     <label className="text-[9px] font-semibold text-slate-300 flex items-center gap-1 mb-0.5" title={m.name}>
                       <span className={`w-1.5 h-1.5 rounded-full ${m.dot}`} />
                       {m.label}
                     </label>
-                    <input
+                    <MilestoneMonthInput
                       type="number"
                       min={1}
                       max={headerDraft.duration}
                       className="text-xs bg-slate-800 border border-slate-600 rounded px-1 py-0.5 text-center text-white font-mono font-bold"
                       value={headerDraft.milestones[m.key]}
-                      onChange={(e) => handleMilestoneDraftChange(m.key, e.target.value)}
+                      aria-label={`${m.label} milestone month`}
+                      onCommit={value => handleMilestoneDraftChange(m.key, value)}
                     />
                   </div>
                 ))}
@@ -1114,7 +1119,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                       startDate: project.startDate || "2026-01",
                       duration: project.duration,
                       stability: project.stability,
-                      milestones: normalizeMilestones(project.milestones, project.duration),
+                      milestones: normalizeMilestones(project.milestones, project.duration, null, project.legacyReqfCoincidence),
                     });
                     setIsEditingHeader(true);
                   }}
@@ -1414,8 +1419,8 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
   const [selectedMilestone, setSelectedMilestone] = useState(workpackageFinishTarget(card) || "");
 
   const milestones = useMemo(
-    () => normalizeMilestones(project.milestones, projectDuration),
-    [project.milestones, projectDuration]
+    () => normalizeMilestones(project.milestones, projectDuration, null, project.legacyReqfCoincidence),
+    [project.milestones, projectDuration, project.legacyReqfCoincidence]
   );
 
   const milestoneBoundaryMonth =
@@ -1626,7 +1631,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
           <label className={`text-xs font-bold block mb-1 ${isRetro ? "text-black font-mono" : "text-slate-800"}`}>
             Finish Target (Milestone Boundary)
           </label>
-          <div className="grid grid-cols-5 gap-1">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
             <button
               type="button"
               onClick={() => handleMilestoneTargetChange("")}

@@ -41,7 +41,7 @@ export function ProjectTimelineModal({
   }, [localProject.startDate]);
 
   const duration = Math.max(1, localProject.duration || 12);
-  const milestones = useMemo(() => normalizeMilestones(localProject.milestones, duration), [localProject.milestones, duration]);
+  const milestones = useMemo(() => normalizeMilestones(localProject.milestones, duration, null, localProject.legacyReqfCoincidence), [localProject.milestones, duration, localProject.legacyReqfCoincidence]);
 
   const [isManualEditEnabled, setIsManualEditEnabled] = useState(false);
   const [globalSupportCollapsed, setGlobalSupportCollapsed] = useState(true);

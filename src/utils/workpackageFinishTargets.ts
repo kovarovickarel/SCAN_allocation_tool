@@ -14,7 +14,7 @@ export function workpackageStartMonth(card: WorkpackageCard): number {
 export function workpackageRepositionLimits(card: WorkpackageCard, project: AllocationProject, fteRates = DEFAULT_FTE_RATES, toolFteRates = null) {
   const finishMilestone = workpackageFinishTarget(card);
   const boundaryMonth = finishMilestone
-    ? normalizeMilestones(project.milestones, project.duration)[finishMilestone]
+    ? normalizeMilestones(project.milestones, project.duration, null, project.legacyReqfCoincidence)[finishMilestone]
     : project.duration;
   const duration = workpackageDevelopmentMonths(card, fteRates, toolFteRates);
   const mainDuration = workpackageMainMonths(card, fteRates, toolFteRates);
@@ -57,7 +57,7 @@ export function workpackageMainMonths(card: WorkpackageCard, fteRates = DEFAULT_
 export function workpackageFinishViolation(card: WorkpackageCard, project: AllocationProject, fteRates = DEFAULT_FTE_RATES, toolFteRates = null): string | null {
   if (card.kind === "non-fte") return null;
   const target = workpackageFinishTarget(card);
-  const milestone = target ? normalizeMilestones(project.milestones, project.duration)[target] : null;
+  const milestone = target ? normalizeMilestones(project.milestones, project.duration, null, project.legacyReqfCoincidence)[target] : null;
   if (target && !milestone) return `The finish target ${target} is not available in this project.`;
   const boundary = milestone ?? project.duration;
   const duration = workpackageDevelopmentMonths(card, fteRates, toolFteRates);

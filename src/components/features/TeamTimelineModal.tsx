@@ -340,7 +340,7 @@ export function TeamTimelineModal({
         visibleWorkpackages.reduce((s, wp) => (wp.isNegated ? s : s + wp.activeCardFTE), 0) + (mgmtRow ? mgmtRow.fte : 0)
       );
 
-      const normMilestones = normalizeMilestones(p.milestones, pDur);
+      const normMilestones = normalizeMilestones(p.milestones, pDur, null, p.legacyReqfCoincidence);
 
       return { project: p, pDur, pOffset, normMilestones, workpackages: visibleWorkpackages,
         displayedWorkpackages: [...visibleWorkpackages,

@@ -68,7 +68,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const gridStyle = { gridTemplateColumns: "300px 1fr" };
   const monthGridStyle = { gridTemplateColumns: `repeat(${paymentDuration}, minmax(52px, 1fr))` };
   const minTableWidth = Math.max(940, 300 + paymentDuration * 56);
-  const milestones = useMemo(() => normalizeMilestones(project.milestones, project.duration), [project.milestones, project.duration]);
+  const milestones = useMemo(() => normalizeMilestones(project.milestones, project.duration, null, project.legacyReqfCoincidence), [project.milestones, project.duration, project.legacyReqfCoincidence]);
   const cardIndex = useMemo(() => new Map(options.cards.map((card) => [card.id, card])), [options.cards]);
   const editableTracks = spending.tools.flatMap(tool => tool.tracks.filter(track => track.isNonFte));
   const dirty = Object.keys(paymentDrafts).length > 0;

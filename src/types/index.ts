@@ -183,6 +183,8 @@ export interface WorkpackageCard {
 }
 
 export interface AllocationProject {
+  /** Preserve old first-month FFV/EFV coincidence when adding REQF during import. */
+  legacyReqfCoincidence?: boolean;
   id: string;
   name: string;
   type: string;

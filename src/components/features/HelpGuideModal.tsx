@@ -594,7 +594,7 @@ export function HelpGuideModal({
                 </h3>
                 <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                   <li>
-                    <strong>Strict Chronological Sequence:</strong> Milestones always maintain chronological ordering: <strong>FFV &le; EFV &le; AFV &le; SSSR &le; Duration</strong>.
+                    <strong>Strict Chronological Sequence:</strong> Milestones always maintain chronological ordering: <strong>REQF &le; FFV &le; EFV &le; AFV &le; SSSR &le; Duration</strong>. REQF (Requirements freeze) defaults to one quarter of the project duration, rounded down. Enter or leave a milestone field to apply its month and update linked milestones.
                   </li>
                   <li>
                     <strong>Max 2 Milestones Per Month:</strong> No more than two milestones may occupy the same month.

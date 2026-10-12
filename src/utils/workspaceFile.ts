@@ -5,6 +5,7 @@ import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFA
   DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, PROJECT_TYPES } from "../constants";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings, SupplierRecord } from "../types";
 import { workpackageFinishViolation } from "./workpackageFinishTargets";
+import { getDefaultMilestones } from "./helpers";
 import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
 
 // Schema 1 is the user-tested compatibility baseline (6b4b08e, 2026-10-12).
@@ -198,6 +199,17 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
       previous = milestones[key]; counts[previous] = (counts[previous] || 0) + 1;
       if (counts[previous] > 2) fail("Project milestones", "more than two milestones in one month.");
     }
+    if (project.legacyReqfCoincidence !== undefined) boolean(project.legacyReqfCoincidence, "Legacy REQF coincidence");
+    if (milestones.REQF === undefined) {
+      // Add the optional milestone without moving any baseline project's dates.
+      const latest = milestones.FFV - (milestones.FFV === milestones.EFV ? 1 : 0);
+      milestones.REQF = Math.max(1, Math.min(getDefaultMilestones(project.duration).REQF, latest));
+      if (latest === 0) project.legacyReqfCoincidence = true;
+    }
+    number(milestones.REQF, "Milestone REQF", 1, true);
+    if (milestones.REQF > milestones.FFV) fail("Milestone REQF", "must be on or before FFV.");
+    const legacyCoincidence = project.legacyReqfCoincidence === true && milestones.REQF === 1 && milestones.FFV === 1 && milestones.EFV === 1;
+    if (!legacyCoincidence && (counts[milestones.REQF] || 0) >= 2) fail("Project milestones", "more than two milestones in one month.");
     for (const key of ["isRFQ", "autoStartFte"]) if (project[key] !== undefined) boolean(project[key], key);
     for (const key of ["hiddenTools", "hiddenSubcategories", "subSet", "toolSet"]) if (project[key] !== undefined) strings(project[key], key);
     for (const key of ["customMgmtMonthlyFTE", "mgmtMemberAssignments"]) if (project[key] !== undefined) numericMap(project[key], key, 2);
@@ -230,7 +242,7 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     }
     if (card.kind !== undefined) choice(card.kind, ["fte", "non-fte"], "Workpackage kind");
     if (card.projectId != null && !projectIds.has(card.projectId)) fail("Workpackage project", "not found in the project list.");
-    for (const key of ["finishMilestone", "otherFinishMilestone", "purchaseMilestone"]) if (card[key] != null) choice(card[key], ["", "FFV", "EFV", "AFV", "SSSR"], key);
+    for (const key of ["finishMilestone", "otherFinishMilestone", "purchaseMilestone"]) if (card[key] != null) choice(card[key], ["", "REQF", "FFV", "EFV", "AFV", "SSSR"], key);
     for (const key of ["reusabilityAppliesToMaintenance", "otherHasMaintenance"]) if (card[key] !== undefined) boolean(card[key], key);
     for (const key of ["otherEffort", "otherMaintenanceEffort", "customReusabilityFactor"]) if (card[key] != null) number(card[key], key, 0, false, true);
     for (const key of ["startMonth", "otherStartMonth", "otherDuration"]) if (card[key] != null) number(card[key], key, 1, true, true);

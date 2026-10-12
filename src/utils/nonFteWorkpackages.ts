@@ -22,7 +22,7 @@ export function purchaseCost(card: WorkpackageCard, factors: FactorMap = DEFAULT
 }
 
 export function purchaseDeadline(card: WorkpackageCard, project: AllocationProject): number {
-  const milestones = normalizeMilestones(project.milestones, project.duration);
+  const milestones = normalizeMilestones(project.milestones, project.duration, null, project.legacyReqfCoincidence);
   return card.purchaseMilestone ? milestones[card.purchaseMilestone] ?? project.duration : project.duration;
 }
 

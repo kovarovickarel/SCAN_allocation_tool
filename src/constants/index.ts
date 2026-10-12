@@ -452,6 +452,7 @@ export const PROJECT_TYPE_COLORS = Object.freeze({
 export const NOMINAL_BASELINE_PROJECT = Object.freeze({ duration: 12, stability: "Ideal" });
 
 export const MILESTONES_DEF = Object.freeze([
+  { key: "REQF", label: "REQF", name: "Requirements freeze", color: "bg-cyan-600 text-white border-cyan-700 ring-cyan-300", badge: "bg-cyan-100 text-cyan-900 border-cyan-300", dot: "bg-cyan-600", textColor: "text-cyan-600" },
   { key: "FFV", label: "FFV", name: "Fundamental Functions Validated", color: "bg-amber-500 text-white border-amber-600 ring-amber-300", badge: "bg-amber-100 text-amber-900 border-amber-300", dot: "bg-amber-500", textColor: "text-amber-600" },
   { key: "EFV", label: "EFV", name: "Established Functions Validated", color: "bg-blue-600 text-white border-blue-700 ring-blue-300", badge: "bg-blue-100 text-blue-900 border-blue-300", dot: "bg-blue-600", textColor: "text-blue-600" },
   { key: "AFV", label: "AFV", name: "Advanced Functions Validated", color: "bg-purple-600 text-white border-purple-700 ring-purple-300", badge: "bg-purple-100 text-purple-900 border-purple-300", dot: "bg-purple-600", textColor: "text-purple-600" },

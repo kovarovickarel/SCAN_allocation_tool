@@ -21,7 +21,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
     const costs = purchaseMonthlyCosts(card, project, factors);
     return Object.fromEntries(validPurchaseMonths(card, project).map(month => [month, costs[month - 1].toFixed(2)]));
   });
-  const milestones = useMemo(() => normalizeMilestones(project.milestones, project.duration), [project.milestones, project.duration]);
+  const milestones = useMemo(() => normalizeMilestones(project.milestones, project.duration, null, project.legacyReqfCoincidence), [project.milestones, project.duration, project.legacyReqfCoincidence]);
   const mode: PurchasePaymentMode = months.length === 1 ? "at-once" : splitPayments ? "split" : "even";
   const scheduledCard = { ...card, purchaseMilestone: selectedMilestone || null, purchaseMonths: months, purchasePaymentMode: mode,
     purchasePaymentOverrides: undefined,
@@ -103,7 +103,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
 
       <div>
         <label className={`text-xs font-bold block mb-1 ${isRetro ? "text-black font-mono" : "text-slate-800"}`}>Payment Target (Milestone Boundary)</label>
-        <div className="grid grid-cols-5 gap-1" role="group" aria-label="Payment target">
+        <div className="grid grid-cols-3 sm:grid-cols-6 gap-1" role="group" aria-label="Payment target">
           <button type="button" aria-pressed={!selectedMilestone} onClick={() => changeTarget("")} className={targetClass(!selectedMilestone, true)}>End (M{project.duration})</button>
           {MILESTONES_DEF.map(milestone => <button key={milestone.key} type="button" aria-pressed={selectedMilestone === milestone.key} onClick={() => changeTarget(milestone.key)} className={targetClass(selectedMilestone === milestone.key)} title={`${milestone.label}: ${milestone.name} (Month ${milestones[milestone.key]})`}>
             <span className="leading-tight">{milestone.label}</span><span className={`text-[8.5px] font-mono leading-none ${selectedMilestone === milestone.key ? "text-blue-100" : "text-slate-500"}`}>M{milestones[milestone.key]}</span>

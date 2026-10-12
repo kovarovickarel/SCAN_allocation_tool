@@ -15,61 +15,38 @@ export function getDefaultMilestones(duration) {
   const efv = clamp(Math.floor(d * (2 / 3)), ffv, d - 1);
   const afv = clamp(Math.ceil(d * 0.75), Math.max(efv, ffv + 1), d);
   const sssr = clamp(Math.ceil(d * 0.8), Math.max(afv, efv + 1), d);
-  return { FFV: ffv, EFV: efv, AFV: afv, SSSR: sssr };
+  return { REQF: Math.max(1, Math.floor(d / 4)), FFV: ffv, EFV: efv, AFV: afv, SSSR: sssr };
 }
 
-export function normalizeMilestones(ms, duration, changedKey = null) {
+export function normalizeMilestones(ms, duration, changedKey = null, legacyReqfCoincidence = false): Record<string, number> {
   const d = clamp(parseInt(duration, 10) || 12, 6, 60);
   const defaults = getDefaultMilestones(d);
-
-  let rawFFV = parseInt(ms?.FFV, 10) || defaults.FFV;
-  let rawEFV = parseInt(ms?.EFV, 10) || defaults.EFV;
-  let rawAFV = parseInt(ms?.AFV, 10) || defaults.AFV;
-  let rawSSSR = parseInt(ms?.SSSR, 10) || defaults.SSSR;
-
-  let ffv, efv, afv, sssr;
-
-  if (changedKey === "FFV") {
-    ffv = clamp(rawFFV, 1, d - 1);
-    efv = clamp(rawEFV, ffv, d - 1);
-    afv = clamp(rawAFV, Math.max(efv, ffv + 1), d);
-    sssr = clamp(rawSSSR, Math.max(afv, efv + 1), d);
-  } else if (changedKey === "EFV") {
-    efv = clamp(rawEFV, 1, d - 1);
-    ffv = clamp(rawFFV, 1, efv);
-    afv = clamp(rawAFV, Math.max(efv, ffv + 1), d);
-    sssr = clamp(rawSSSR, Math.max(afv, efv + 1), d);
-  } else if (changedKey === "AFV") {
-    afv = clamp(rawAFV, 2, d);
-    sssr = clamp(rawSSSR, afv, d);
-    const maxEFV = afv === sssr ? afv - 1 : afv;
-    efv = clamp(rawEFV, 1, maxEFV);
-    ffv = clamp(rawFFV, 1, Math.min(efv, afv - 1));
-  } else if (changedKey === "SSSR") {
-    sssr = clamp(rawSSSR, 2, d);
-    afv = clamp(rawAFV, 2, sssr);
-    const maxEFV = afv === sssr ? afv - 1 : afv;
-    efv = clamp(rawEFV, 1, maxEFV);
-    ffv = clamp(rawFFV, 1, Math.min(efv, afv - 1));
-  } else {
-    ffv = clamp(rawFFV, 1, d - 1);
-    efv = clamp(rawEFV, ffv, d - 1);
-    afv = clamp(rawAFV, Math.max(efv, ffv + 1), d);
-    sssr = clamp(rawSSSR, Math.max(afv, efv + 1), d);
+  // Old files can have FFV and EFV at M1. Preserve their dates on import/display.
+  const legacy = !changedKey && (legacyReqfCoincidence || ms?.REQF === undefined) &&
+    ms?.FFV === 1 && ms?.EFV === 1 && (ms?.REQF === undefined || ms.REQF === 1);
+  const keys = legacy ? ["FFV", "EFV", "AFV", "SSSR"] : ["REQF", "FFV", "EFV", "AFV", "SSSR"];
+  const fallbackReqf = Math.max(1, Math.min(defaults.REQF, (ms?.FFV ?? defaults.FFV) - (ms?.FFV === ms?.EFV ? 1 : 0)));
+  const raw = keys.map(key => parseInt(ms?.[key], 10) || (key === "REQF" ? fallbackReqf : defaults[key]));
+  const values = [...raw];
+  const anchor = Math.max(0, keys.indexOf(changedKey));
+  const minimum = index => Math.floor(index / 2) + 1;
+  const maximum = index => d - Math.floor((keys.length - 1 - index) / 2);
+  values[anchor] = clamp(raw[anchor], minimum(anchor), maximum(anchor));
+  for (let index = anchor - 1; index >= 0; index--) {
+    const upper = Math.min(values[index + 1], index + 2 <= anchor ? values[index + 2] - 1 : d);
+    values[index] = clamp(raw[index], minimum(index), upper);
   }
-
-  // Ensure strict ordering and no more than two milestones in any given month
-  ffv = clamp(ffv, 1, d - 1);
-  efv = clamp(efv, ffv, d - 1);
-  afv = clamp(afv, Math.max(efv, ffv + 1), d);
-  sssr = clamp(sssr, Math.max(afv, efv + 1), d);
-
-  return { FFV: ffv, EFV: efv, AFV: afv, SSSR: sssr };
+  for (let index = anchor + 1; index < keys.length; index++) {
+    const lower = Math.max(values[index - 1], index >= 2 ? values[index - 2] + 1 : 1);
+    values[index] = clamp(raw[index], lower, maximum(index));
+  }
+  return { REQF: legacy ? 1 : values[0], ...Object.fromEntries(keys.map((key, index) => [key, values[index]])) };
 }
 
-export function getMinMilestoneMonths(boundOtherWPs) {
-  const minMonths = { FFV: 1, EFV: 1, AFV: 1, SSSR: 1 };
-  const limitingWPs = { FFV: null, EFV: null, AFV: null, SSSR: null };
+
+export function getMinMilestoneMonths(boundOtherWPs, legacyReqfCoincidence = false) {
+  const minMonths = { REQF: 1, FFV: 1, EFV: 1, AFV: 1, SSSR: 1 };
+  const limitingWPs = { REQF: null, FFV: null, EFV: null, AFV: null, SSSR: null };
 
   for (let i = 0; i < boundOtherWPs.length; i++) {
     const c = boundOtherWPs[i];
@@ -83,6 +60,15 @@ export function getMinMilestoneMonths(boundOtherWPs) {
     }
   }
 
+  if (minMonths.FFV < minMonths.REQF) {
+    minMonths.FFV = minMonths.REQF;
+    limitingWPs.FFV = limitingWPs.REQF;
+  }
+  const reqfGap = legacyReqfCoincidence && minMonths.REQF === 1 ? 0 : 1;
+  if (minMonths.EFV < minMonths.REQF + reqfGap) {
+    minMonths.EFV = minMonths.REQF + reqfGap;
+    limitingWPs.EFV = limitingWPs.REQF;
+  }
   if (minMonths.EFV < minMonths.FFV) {
     minMonths.EFV = minMonths.FFV;
     limitingWPs.EFV = limitingWPs.FFV;
