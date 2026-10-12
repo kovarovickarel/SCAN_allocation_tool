@@ -23,6 +23,7 @@ export function NonFteTypeIcon({ purchaseType, icon, size = 13, className = "" }
       {selectedIcon === "Support" && <><path d="M3 13v-1a9 9 0 0 1 18 0v1M21 17v2a2 2 0 0 1-2 2h-5" /><rect x="2" y="11" width="4" height="7" rx="2" /><rect x="18" y="11" width="4" height="7" rx="2" /></>}
       {selectedIcon === "Package" && <><path d="m12 2 9 5v10l-9 5-9-5V7l9-5ZM3 7l9 5 9-5M12 12v10M7.5 4.5l9 5V13" /></>}
       {selectedIcon === "Vehicle" && <><path d="m4 9 2-6h12l2 6M3 9h18v10H3V9ZM3 19v2M21 19v2M6 13h2M16 13h2" /></>}
+      {selectedIcon === "Travel" && <path d="M12 2a2 2 0 0 1 2 2v5l7 4v3l-7-2v5l3 2v1l-5-1-5 1v-1l3-2v-5l-7 2v-3l7-4V4a2 2 0 0 1 2-2Z" />}
       {selectedIcon === "Subscription" && <><path d="M20 8a9 9 0 0 0-15-3L2 8M2 3v5h5M4 16a9 9 0 0 0 15 3l3-3M22 21v-5h-5" /><path d="M10 9h4M12 7v10M10 15h4" /></>}
     </svg>
   );
