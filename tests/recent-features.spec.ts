@@ -1,7 +1,9 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Page } from "@playwright/test";
 
 async function openApp(page: Page) {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.waitForLoadState("networkidle");
 }
 async function costConfiguration(page: Page) {

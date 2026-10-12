@@ -1,8 +1,10 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
 const packages = ["Lane Detection KPI", "Object Distance KPI", "Reflectivity Check"];
 async function setup(page: Page, names = packages, locations: Record<string, string> = {}) {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.waitForLoadState("networkidle");
   for (const name of names) {
     await page.locator('[draggable="true"]').filter({ hasText: name }).first()
@@ -37,7 +39,13 @@ async function allocationValues(timeline: Locator, name: string, id: string) {
     await expand.click();
   }
   if (await row.count() === 0) return [];
-  return row.locator('[title*=" FTE to "]').evaluateAll((cells) => cells.map((cell) =>
+  if (name === "Management Support") {
+    // This management scenario is GM: retain all 18 project months, including
+    // inactive management cells, and omit BMW's two trailing calendar months.
+    return row.locator(":scope > div").evaluateAll(cells => cells.slice(0, 18).map(cell =>
+      Number((cell.querySelector('[title*=" FTE to "]') || cell).getAttribute("title")?.match(/: ([\d.]+) FTE to /)?.[1] || 0)));
+  }
+  return row.locator('[title*=" FTE to "]').evaluateAll(cells => cells.map(cell =>
     Number(cell.getAttribute("title")?.match(/: ([\d.]+) FTE to /)?.[1] || 0)));
 }
 

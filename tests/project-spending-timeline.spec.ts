@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Page } from "@playwright/test";
 import { harnessHtml } from "./fixtures/harnessHtml";
 
@@ -53,7 +54,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`equal large workpackage
   await expect.poll(() => workpackage.evaluate((element) => parseFloat(getComputedStyle(element).fontSize))).toBeLessThan(10);
 });
 
-test("tool title and scope match the cost button; close button and backdrop dismiss safely", async ({ page }) => {
+test("tool title and scope match the cost button; close button dismisses and backdrop keeps the window open", async ({ page }) => {
   let dialog = await openSpending(page, "tool=KPI");
   await expect(dialog.getByRole("heading", { name: "Spending Test Project KPI Spending" })).toBeVisible();
   await expect(dialog.getByText("Simulation Work", { exact: true })).toHaveCount(0);
@@ -63,6 +64,8 @@ test("tool title and scope match the cost button; close button and backdrop dism
   await page.getByRole("button", { name: /Project cost:/ }).click();
   dialog = page.getByRole("dialog");
   await dialog.click({ position: { x: 1, y: 1 } });
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
 });
 
@@ -76,6 +79,7 @@ test("missing rates are flagged and currency conversion failure never plots untr
 
 test("project dashboard cost button opens the production spending dialog", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.getByRole("button", { name: /Project cost:/ }).first().click();
   await expect(page.getByRole("heading", { name: "GM Project Spending", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Close project spending", exact: true }).click();
@@ -138,6 +142,7 @@ test("Other spending appears only for an allocated team in both timeline and gra
 
 test("production project cost and spending scope agree when Other belongs to a different team", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.locator('[draggable="true"]').filter({ hasText: "Config Manager" }).first()
     .dragTo(page.getByRole("heading", { name: "GM", exact: true }));
   await page.getByRole("button", { name: "Confirm & Place in Project", exact: true }).click();

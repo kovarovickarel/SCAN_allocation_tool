@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect } from "@playwright/test";
 import { calculateProjectSpending, calculatePortfolioSalaryTotals } from "../src/utils/projectSpending";
 import { calculateSummaryDashboard } from "../src/utils/summaryDashboard";
@@ -9,7 +10,7 @@ import { harnessHtml } from "./fixtures/harnessHtml";
 
 const members = spendingMembers.map(member => member.id === "manager" ? { ...member, isExternal: true, deferredPayment: true, paymentDelayMonths: 12, supplierId: "supplier-luxoft" } : member);
 const base = { project: spendingProject, cards: spendingCards, members, overheads: spendingOverheads, fteCosts: spendingRates };
-const portfolio = { ...base, cards: spendingCards.map(card => ({ ...card, _fte: card.tool === "Other" ? 0.25 : 0.5 })), projects: [{ ...spendingProject, customMgmtMonthlyFTE: { KPI: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.1])), Simulation: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.2])) } }], mgmtSettings: DEFAULT_MGMT_SETTINGS, fteRates: DEFAULT_FTE_RATES, toolFteRates: DEFAULT_TOOL_FTE_RATES, reusabilityFactors: DEFAULT_REUSABILITY_FACTORS, stabilityFactors: DEFAULT_STABILITY_FACTORS };
+const portfolio = { ...base, cards: spendingCards.map(card => ({ ...card, _fte: card.tool === "Other" ? 0.25 : 0.5 })), projects: [{ ...spendingProject, customMgmtMonthlyFTE: { KPI: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.1])), Simulation: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.2])) } }], mgmtSettings: { ...DEFAULT_MGMT_SETTINGS, threshold: 0.5 }, fteRates: DEFAULT_FTE_RATES, toolFteRates: DEFAULT_TOOL_FTE_RATES, reusabilityFactors: DEFAULT_REUSABILITY_FACTORS, stabilityFactors: DEFAULT_STABILITY_FACTORS };
 
 test("deferred payments extend spending without changing project totals, staffing or unused capacity", () => {
   const cash = calculateProjectSpending(base);
@@ -71,6 +72,7 @@ test("zero allocations do not extend a timeline; missing and zero salaries still
 
 for (const theme of ["vibrant", "basic", "retro"]) test(`deferred payment form defaults, validates and remembers settings (${theme})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   if (theme !== "vibrant") await page.getByRole("button", { name: "Theme: Vibrant", exact: true }).click();
   if (theme === "retro") await page.getByRole("button", { name: "Theme: Basic", exact: true }).click();
   await page.getByTitle("KPI Team View", { exact: true }).click();

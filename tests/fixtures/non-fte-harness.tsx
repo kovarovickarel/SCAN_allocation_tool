@@ -7,9 +7,9 @@ import { DEFAULT_REUSABILITY_FACTORS, DEFAULT_SUPPLIERS, ThemeContext } from "..
 import type { WorkpackageCard } from "../../src/types";
 import "../../src/index.css";
 
-const project = { id: "purchase-project", name: "Purchase Project", type: "LIDAR", duration: 6,
-  startDate: "2026-01", stability: "Stable", milestones: { FFV: 2, EFV: 3, AFV: 4, SSSR: 5 } };
 const params = new URLSearchParams(location.search);
+const project = { id: "purchase-project", name: "Purchase Project", type: "LIDAR", duration: Number(params.get("duration")) || 6,
+  startDate: "2026-01", stability: "Stable", milestones: { FFV: 2, EFV: 3, AFV: 4, SSSR: 5 } };
 const theme = params.get("theme") || "vibrant";
 function Harness() {
   const [card, setCard] = useState<WorkpackageCard>({ id: "purchase", name: "Test Purchase", kind: "non-fte",

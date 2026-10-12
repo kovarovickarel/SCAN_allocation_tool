@@ -1,8 +1,10 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
 async function openTimeline(page: Page, workpackages = ["Lane Detection KPI"]) {
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.waitForLoadState("networkidle");
   for (const name of workpackages) {
     await page.locator('[draggable="true"]').filter({ hasText: name }).first().dragTo(
@@ -240,29 +242,31 @@ test("range edits respect the remaining workpackage effort in each selected mont
 test("manual management allocation is limited by the effort reserved for other members", async ({ page }) => {
   const timeline = await openTimeline(page, ["Lane Detection KPI", "Object Distance KPI", "Reflectivity Check"]);
   const demand = await requiredEffort(timeline, "Management Support");
+  const month = demand.findIndex(value => value > 0);
+  expect(month).toBeGreaterThanOrEqual(0);
   await assignAlexPartially(page, timeline, "0.5");
   await dropMember(timeline, "Alex Novak", "Management Support");
   await dropMember(timeline, "Marcus Vogel", "Management Support");
   const alexBefore = await memberValues(timeline, "Management Support", "tm_1");
-  let editor = await openMemberEditor(timeline, "Management Support", "tm_3", 0);
-  await expect(editor).toHaveAttribute("max", String(round(demand[0] - alexBefore[0])));
+  let editor = await openMemberEditor(timeline, "Management Support", "tm_3", month);
+  await expect(editor).toHaveAttribute("max", String(round(demand[month] - alexBefore[month])));
   await editor.fill("0.5");
   await editor.press("Enter");
-  expect((await memberValues(timeline, "Management Support", "tm_3"))[0]).toBe(round(demand[0] - alexBefore[0]));
+  expect((await memberValues(timeline, "Management Support", "tm_3"))[month]).toBe(round(demand[month] - alexBefore[month]));
 
-  editor = await openMemberEditor(timeline, "Management Support", "tm_1", 0);
+  editor = await openMemberEditor(timeline, "Management Support", "tm_1", month);
   await editor.fill("0");
   await editor.press("Enter");
-  editor = await openMemberEditor(timeline, "Management Support", "tm_3", 0);
-  await expect(editor).toHaveAttribute("max", String(demand[0]));
+  editor = await openMemberEditor(timeline, "Management Support", "tm_3", month);
+  await expect(editor).toHaveAttribute("max", String(demand[month]));
   await editor.fill("0.5");
   await editor.press("Enter");
-  expect((await memberValues(timeline, "Management Support", "tm_3"))[0]).toBe(demand[0]);
-  editor = await openMemberEditor(timeline, "Management Support", "tm_1", 0);
+  expect((await memberValues(timeline, "Management Support", "tm_3"))[month]).toBe(demand[month]);
+  editor = await openMemberEditor(timeline, "Management Support", "tm_1", month);
   await expect(editor).toHaveAttribute("max", "0");
   await editor.fill("0.1");
   await editor.press("Enter");
-  expect((await memberValues(timeline, "Management Support", "tm_1"))[0]).toBe(0);
+  expect((await memberValues(timeline, "Management Support", "tm_1"))[month]).toBe(0);
 });
 
 test("whole-workpackage drop fills every phase to the available capacity and survives reopening", async ({ page }) => {

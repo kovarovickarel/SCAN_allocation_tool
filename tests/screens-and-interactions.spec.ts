@@ -1,7 +1,9 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect } from "@playwright/test";
 
 async function openApp(page: import("@playwright/test").Page) {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.waitForLoadState("networkidle");
   await expect(page.getByRole("heading", { name: "SCAN Tooling Effort Calculator" })).toBeVisible();
 }

@@ -40,8 +40,9 @@ user-tested baseline. The synthetic export in
 from new defaults or edit it to satisfy changed validation. Future format-change
 verification must import/re-export historical fixtures and preserve their source
 data, using explicit defaults/migrations where needed. Add fixtures for later
-released schemas. The baseline fixture is saved data, not yet a separate automated
-test case.
+released schemas. `user-feedback-calculations` imports and re-exports this frozen baseline and
+verifies that migrations preserve saved source data, including the legacy
+first-month milestone exception and omitted automatic-start flag.
 
 ## Screenshot policy
 
@@ -57,3 +58,18 @@ a release gate for the current app.
 `swimlane-width` verifies pool/project minimum and maximum widths, pointer and
 keyboard resizing, independent project widths, stable compact FTE/non-FTE card
 sizes with additional columns, and exclusion of widths from exported JSON.
+
+## User-testing feedback regression checks
+
+`user-feedback-calculations` covers monthly management thresholds/scaling,
+zero/negated demand, REQF defaults/order and frozen JSON compatibility.
+`user-feedback-ui` checks default-off automatic start, deferred duration and
+milestone inputs in add/edit project forms, backdrop preservation, timeline and
+purchase-preview edge scrolling, and isolated non-FTE drag ghosts.
+
+Existing staffing/cost tests explicitly enable automatic placement when it is
+part of their setup. Inactive management months retain their array positions in
+capacity assertions. Summary/external-salary fixtures use a configured threshold
+of 0.5 FTE so their 0.5-FTE engineering demand legitimately activates management.
+Only reviewed current screenshot references were updated; historical references
+and the frozen JSON baseline were preserved.

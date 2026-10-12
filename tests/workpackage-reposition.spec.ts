@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect } from "@playwright/test";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS } from "../src/constants";
 import { repositionWorkpackage, workpackageRepositionLimits, workpackageFinishViolation } from "../src/utils/workpackageFinishTargets";
@@ -78,7 +79,11 @@ for (const close of ["Escape", "header", "backdrop"]) test(`repositioning is dis
   await moveRow(page, dialog.locator('[data-timeline-row="core_simulation"]'), 4);
   if (close === "Escape") await page.keyboard.press("Escape");
   else if (close === "header") await dialog.getByRole("button", { name: "Close modal without saving" }).click();
-  else await dialog.click({ position: { x: 2, y: 2 } });
+  else {
+      await dialog.click({ position: { x: 2, y: 2 } });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: "Close modal without saving" }).click();
+    }
   await expect(dialog).toBeHidden();
   const saved = JSON.parse(await page.getByTestId("saved-workpackages").innerText());
   expect(saved.find((item: WorkpackageCard) => item.id === "simulation").startMonth).toBe(1);
@@ -131,6 +136,7 @@ test("repositioning moves core and support overrides together without mutating s
 
 for (const theme of ["vibrant", "basic", "retro"]) test(`standard workpackage drag clamps to its milestone, saves, and discards later changes (${theme})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   if (theme !== "vibrant") await page.getByRole("button", { name: "Theme: Vibrant", exact: true }).click();
   if (theme === "retro") await page.getByRole("button", { name: "Theme: Basic", exact: true }).click();
   await page.getByTitle("KPI Team View", { exact: true }).click();

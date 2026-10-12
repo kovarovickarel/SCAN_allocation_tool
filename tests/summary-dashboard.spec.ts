@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect } from "@playwright/test";
 import { calculateSummaryDashboard } from "../src/utils/summaryDashboard";
 import { costInEUR } from "../src/utils/nonFteWorkpackages";
@@ -6,7 +7,7 @@ import { spendingProject, spendingCards, spendingMembers, spendingRates } from "
 
 const project = { ...spendingProject, customMgmtMonthlyFTE: { KPI: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.1])), Simulation: Object.fromEntries(Array.from({ length: 6 }, (_, month) => [month, 0.2])) } };
 const options = { projects: [project], cards: spendingCards.map(card => ({ ...card, _fte: card.tool === "Other" ? 0.25 : 0.5 })),
-  members: spendingMembers, fteCosts: spendingRates, mgmtSettings: DEFAULT_MGMT_SETTINGS,
+  members: spendingMembers, fteCosts: spendingRates, mgmtSettings: { ...DEFAULT_MGMT_SETTINGS, threshold: 0.5 },
   fteRates: DEFAULT_FTE_RATES, toolFteRates: DEFAULT_TOOL_FTE_RATES, reusabilityFactors: DEFAULT_REUSABILITY_FACTORS, stabilityFactors: DEFAULT_STABILITY_FACTORS };
 
 test("summary reconciles project prices, staffing, management and delivery groups", () => {
@@ -68,6 +69,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`summary navigation, sta
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   if (theme !== "vibrant") await page.getByRole("button", { name: "Theme: Vibrant", exact: true }).click();
   if (theme === "retro") await page.getByRole("button", { name: "Theme: Basic", exact: true }).click();
   await page.getByRole("button", { name: "Summary dashboard", exact: true }).click();
@@ -150,6 +152,7 @@ test("missing external salaries mark Non-FTE totals without marking priced inter
 for (const theme of ["vibrant", "basic", "retro"] as const) test(`header buttons stay in place when switching summary views (${theme})`, async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   if (theme !== "vibrant") await page.getByRole("button", { name: "Theme: Vibrant", exact: true }).click();
   if (theme === "retro") await page.getByRole("button", { name: "Theme: Basic", exact: true }).click();
   await page.locator("header").evaluate(async header => {

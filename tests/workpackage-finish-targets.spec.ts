@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect } from "@playwright/test";
 import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS } from "../src/constants";
 import { computeWorkpackageLifecycleTimeline, getDefaultMilestones } from "../src/utils/helpers";
@@ -37,6 +38,7 @@ test("project end, legacy Other targets and purchases retain their respective se
 
 for (const theme of ["vibrant", "basic", "retro"]) test(`targets save and impossible assignment or editing returns the card to the pool (${theme})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   if (theme !== "vibrant") await page.getByRole("button", { name: "Theme: Vibrant", exact: true }).click();
   if (theme === "retro") await page.getByRole("button", { name: "Theme: Basic", exact: true }).click();
   await page.getByTitle("KPI Team View", { exact: true }).click();
@@ -77,6 +79,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`targets save and imposs
 
 test("changing configured phase durations revalidates assigned finish targets", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.getByTitle("KPI Team View", { exact: true }).click();
   await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   let dialog = page.getByRole("dialog");

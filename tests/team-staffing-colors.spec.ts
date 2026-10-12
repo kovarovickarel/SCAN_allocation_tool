@@ -1,7 +1,9 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect } from "@playwright/test";
 
 test("team staffing colors use inclusive 95–105% warning thresholds", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.waitForLoadState("networkidle");
   await page.locator('[draggable="true"]').filter({ hasText: "Lane Detection KPI" }).first().dragTo(
     page.getByRole("heading", { name: "GM", exact: true })
@@ -23,7 +25,8 @@ test("team staffing colors use inclusive 95–105% warning thresholds", async ({
   for (let index = 0; index < demand.length; index++) {
     await row.locator(":scope > div.cursor-crosshair").nth(index).click();
     const editor = row.locator('input[inputmode="decimal"]:visible');
-    await editor.fill(demand[index]);
+    // Monthly management adds 0.2 FTE at these engineering thresholds.
+    await editor.fill(String(Number(demand[index]) - 0.2));
     await editor.press("Enter");
   }
   await projectTimeline.getByRole("button", { name: "Save & Close" }).click();

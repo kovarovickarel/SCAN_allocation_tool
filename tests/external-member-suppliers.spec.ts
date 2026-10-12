@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Page } from "@playwright/test";
 
 async function suppliers(page: Page) {
@@ -16,6 +17,7 @@ async function member(page: Page) {
 
 test("configured member suppliers survive editing and reset and are released for internal members", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   let dialog = await suppliers(page);
   await dialog.getByLabel("New supplier name").fill("Custom Staffing");
   await dialog.getByRole("button", { name: "Add Supplier", exact: true }).click();
@@ -61,6 +63,7 @@ test("configured member suppliers survive editing and reset and are released for
 
 test("empty supplier lists block external saving while internal members need no supplier", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   // Remove supplier-backed demo records before testing an empty configuration.
   for (const [tool, memberName, purchases] of [
     ["KPI", "Nina Weber", ["KPI Analysis License"]],
@@ -88,6 +91,7 @@ test("empty supplier lists block external saving while internal members need no 
 
 test("member names abbreviate alongside tags and restore when cards become wider", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.getByTitle("KPI Team View").click();
   const dialog = await member(page);
   await dialog.getByPlaceholder("e.g. John").fill("Alexandra");
@@ -143,6 +147,7 @@ test("member names abbreviate alongside tags and restore when cards become wider
 
 for (const theme of ["vibrant", "basic", "retro"] as const) test(`existing member name remeasures when supplier tags change (${theme})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   if (theme !== "vibrant") await page.getByRole("button", { name: "Theme: Vibrant", exact: true }).click();
   if (theme === "retro") await page.getByRole("button", { name: "Theme: Basic", exact: true }).click();
   await page.getByTitle("KPI Team View", { exact: true }).click();

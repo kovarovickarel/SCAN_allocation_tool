@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Page } from "@playwright/test";
 import { harnessHtml } from "./fixtures/harnessHtml";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings } from "../src/types";
@@ -161,7 +162,11 @@ for (const close of ["Cancel", "Escape", "header", "backdrop"]) {
     if (close === "Cancel") await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
     else if (close === "Escape") await page.keyboard.press("Escape");
     else if (close === "header") await dialog.getByRole("button", { name: "Close priority dialog" }).click();
-    else await dialog.click({ position: { x: 2, y: 2 } });
+    else {
+      await dialog.click({ position: { x: 2, y: 2 } });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    }
     await expect(page.getByRole("dialog")).toHaveCount(1);
     await expect(page.getByRole("status")).toContainText("A: 100%");
     await expect(page.getByRole("button", { name: "Save & Close", exact: true })).toBeEnabled();
@@ -238,6 +243,7 @@ test("larger browser portfolio respects date overlaps, roles, hidden work and ma
 
 test("production App wiring persists project and team wand allocations", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   for (const [name, location] of [["Lane Detection KPI", "GM"], ["Object Distance KPI", "MBAG"]]) {
     await page.locator('[draggable="true"]').filter({ hasText: name }).first()
       .dragTo(page.getByRole("heading", { name: location, exact: true }));

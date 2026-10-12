@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Page } from "@playwright/test";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFAULT_MGMT_SETTINGS,
   DEFAULT_FTE_COSTS, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, deepClone } from "../src/constants";
@@ -89,6 +90,7 @@ for (const invalid of ["text", { owner: 123 }, { unknown: "text" }]) test(`inval
 
 for (const kind of ["fte", "purchase"]) test(`details editing preserves schedules and same-project drops (${kind})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const data = workspace();
   data.teamMembers.push({ id: "other-owner", firstName: "Cross", lastName: "Team", tool: "SYS.5", role: "engineering", footprint: "PRA", fte: 1 });
   await upload(page, data);
@@ -149,6 +151,7 @@ async function upload(page: Page, data: WorkspaceData) {
 
 for (const kind of ["fte", "non-fte"] as const) test(`creation details stay in the draft until Add (${kind})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const data = workspace(); data.view.workpackageKind = kind;
   await upload(page, data);
   await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
@@ -185,6 +188,7 @@ for (const kind of ["fte", "non-fte"] as const) test(`creation details stay in t
 
 test("real default workspace exports and can be imported without loss", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const file = await exportData(page);
   expect(file.data.projects).toHaveLength(3);
   expect(file.data.workpackages.filter(c => c.kind === "non-fte")).toHaveLength(4);
@@ -197,6 +201,7 @@ test("real default workspace exports and can be imported without loss", async ({
 for (const theme of ["vibrant", "basic", "retro"] as const) test(`import restores allocated and unallocated data, settings and preferences (${theme})`, async ({ page }) => {
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const data = workspace(); data.view.theme = theme; data.view.mode = "basic";
   await upload(page, data);
   const review = page.getByRole("dialog");
@@ -219,6 +224,7 @@ for (const theme of ["vibrant", "basic", "retro"] as const) test(`import restore
 
 test("review cancellation, backup and invalid files leave the current workspace intact", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const original = await exportData(page);
   await upload(page, workspace());
   const downloadPromise = page.waitForEvent("download");
@@ -239,6 +245,7 @@ test("review cancellation, backup and invalid files leave the current workspace 
 
 for (const theme of ["vibrant", "basic", "retro"] as const) test(`export filename dialog validates, cancels and downloads the chosen name (${theme})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   if (theme !== "vibrant") await page.getByRole("button", { name: "Theme: Vibrant", exact: true }).click();
   if (theme === "retro") await page.getByRole("button", { name: "Theme: Basic", exact: true }).click();
   let downloads = 0;
@@ -266,6 +273,7 @@ for (const theme of ["vibrant", "basic", "retro"] as const) test(`export filenam
 
 test("backup naming can be cancelled without cancelling the import review", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await upload(page, workspace());
   await page.getByRole("button", { name: "Export current workspace backup", exact: true }).click();
   await expect(page.getByRole("dialog").getByRole("heading", { name: "Export workspace", exact: true })).toBeVisible();
@@ -293,6 +301,7 @@ test("native Save As receives the chosen name and writes the complete workspace 
     };
   });
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   let downloads = 0; page.on("download", () => downloads++);
   await page.getByRole("button", { name: "Export workspace", exact: true }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
@@ -311,6 +320,7 @@ test("native Save As receives the chosen name and writes the complete workspace 
 test("cancelling direct Save As never starts a fallback download", async ({ page }) => {
   await page.addInitScript(() => { (window as any).showSaveFilePicker = async () => { throw new DOMException("Cancelled", "AbortError"); }; });
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   let downloads = 0; page.on("download", () => downloads++);
   await page.getByRole("button", { name: "Export workspace", exact: true }).click();
   await expect(page.getByRole("button", { name: "Export workspace", exact: true })).toBeEnabled();
@@ -330,6 +340,7 @@ test("failed native writes abort and do not claim a successful export", async ({
     }) });
   });
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.getByRole("button", { name: "Export workspace", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("could not be saved");
   expect(await page.evaluate(() => (window as any).saveEvents)).toEqual(["abort"]);
@@ -340,6 +351,7 @@ test("failed native writes abort and do not claim a successful export", async ({
 test("blocked system picker offers an explicit download fallback", async ({ page }) => {
   await page.addInitScript(() => { (window as any).showSaveFilePicker = async () => { throw new DOMException("Blocked", "SecurityError"); }; });
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.getByRole("button", { name: "Export workspace", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("cannot open Save As");
   const downloadPromise = page.waitForEvent("download");
@@ -355,6 +367,7 @@ for (const scenario of [
   { name: "workspace.json", contents: '{"unrelated":true}', mimeType: "application/json" },
 ]) test(`import rejects unexpected format: ${scenario.name} ${scenario.contents}`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const original = await exportData(page);
   const contents = scenario.contents === "valid" ? JSON.stringify(original) : scenario.contents;
   await page.getByLabel("Workspace file", { exact: true }).setInputFiles({ name: scenario.name, mimeType: scenario.mimeType, buffer: Buffer.from(contents) });
@@ -426,6 +439,7 @@ for (const [label, change, message] of [
 
 test("real JSON import and re-export preserve both custom basic-type registries", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const data = configuredBasicTypesWorkspace();
   await upload(page, data);
   await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
@@ -459,6 +473,7 @@ test("duplication deep-copies source data and clears FTE allocation and editor f
 
 for (const id of ["fte", "purchase", "pool"]) test(`workpackage duplication retains schedule and inserts beside its source (${id})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const data = workspace(); data.workpackages.forEach(card => { card.details = { owner: "Saved Owner", risks: "- Saved risk" }; });
   await upload(page, data);
   await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
@@ -479,6 +494,7 @@ for (const id of ["fte", "purchase", "pool"]) test(`workpackage duplication reta
 
 for (const content of ["both", "fte", "non-fte", "none"]) test(`project duplication includes selected workpackages and clears all staffing (${content})`, async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const data = workspace(); data.workpackages[0].details = { description: "Retained details" };
   await upload(page, data);
   await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
@@ -509,6 +525,7 @@ for (const content of ["both", "fte", "non-fte", "none"]) test(`project duplicat
 
 test("duplication controls are hidden in Basic and compact modes; cancelling is harmless", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   const data = workspace(); await upload(page, data);
   await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
   const original = (await exportData(page)).data;

@@ -22,7 +22,7 @@ test("overall charts show priced totals, per-tool management inclusion, aligned 
   const lower = dialog.locator('section[aria-label="Monthly engineering and management spending"] svg');
   await expect(upper.locator('text[text-anchor="end"]')).toHaveCount(11);
   await expect(lower.locator('text[text-anchor="end"]')).toHaveCount(11);
-  await expect(upper.locator("foreignObject")).toHaveCount(4);
+  await expect(upper.locator("foreignObject")).toHaveCount(5);
   await expect(lower.locator("foreignObject")).toHaveCount(0);
   expect(await upper.locator('line[stroke-dasharray="3 4"][class]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute("x1"))))
     .toEqual(await lower.locator('line[stroke-dasharray="3 4"][class]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute("x1"))));

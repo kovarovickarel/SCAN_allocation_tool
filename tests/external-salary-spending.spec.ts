@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect } from "@playwright/test";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard } from "../src/types";
 import { calculateProjectSpending, calculatePortfolioSalaryTotals } from "../src/utils/projectSpending";
@@ -49,6 +50,7 @@ test("salary conversion uses its own exchange rate and never plots untranslated 
 
 test("production allocations activate salary on Save and release it on Clear", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.getByTitle("KPI Team View").click();
   await page.getByRole("button", { name: "Add Member", exact: true }).click();
   const form = page.getByRole("dialog");

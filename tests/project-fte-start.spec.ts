@@ -41,8 +41,6 @@ for (const mode of ["extended", "retro"]) test(`manual project start selection, 
   }
   await page.getByTitle("KPI Team View", { exact: true }).click();
   const toggle = page.getByRole("button", { name: "Automatically start FTE workpackages at project start: MBAG", exact: true });
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
-  await toggle.click();
   await expect(toggle).toHaveAttribute("aria-pressed", "false");
   await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   let dialog = page.getByRole("dialog");
@@ -85,7 +83,7 @@ test("manual schedules re-open for deadline correction instead of automatic warn
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
   await page.getByTitle("KPI Team View", { exact: true }).click();
-  await page.getByRole("button", { name: "Automatically start FTE workpackages at project start: MBAG" }).click();
+  await expect(page.getByRole("button", { name: "Automatically start FTE workpackages at project start: MBAG" })).toHaveAttribute("aria-pressed", "false");
   await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   let dialog = page.getByRole("dialog");
   await dialog.getByPlaceholder("e.g. Doppler Velocity Ground Truth").fill("Reschedule test");
@@ -131,7 +129,8 @@ test("basic mode always schedules manually, hides the toggle and preserves exten
   await page.goto("/");
   await page.getByTitle("KPI Team View", { exact: true }).click();
   const automatic = page.getByRole("button", { name: "Automatically start FTE workpackages at project start: MBAG", exact: true });
-  await expect(automatic).toHaveAttribute("aria-pressed", "true");
+  await expect(automatic).toHaveAttribute("aria-pressed", "false");
+  await automatic.click();
   await page.getByRole("button", { name: "Mode: Extended", exact: true }).click();
   await expect(page.getByRole("button", { name: /Automatically start FTE/ })).toHaveCount(0);
   await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();

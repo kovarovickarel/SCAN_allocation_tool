@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
 const names = ["Lane Detection KPI", "Object Distance KPI", "Reflectivity Check"];
@@ -6,6 +7,7 @@ const ids: Record<string, string> = { "Alex Novak": "tm_1", "Elena Russo": "tm_2
 async function setup(page: Page, packages = names, locations: Record<string, string> = {}) {
   await page.setViewportSize({ width: 1280, height: 1100 });
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.waitForLoadState("networkidle");
   for (const name of packages) {
     await page.locator('[draggable="true"]').filter({ hasText: name }).first()
@@ -170,7 +172,11 @@ for (const close of ["Cancel", "Escape", "header", "backdrop"]) {
     await dialog.getByRole("checkbox").uncheck();
     await dialog.getByRole("button", { name: "25%", exact: true }).click();
     if (close === "Escape") await page.keyboard.press("Escape");
-    else if (close === "backdrop") await dialog.click({ position: { x: 5, y: 5 } });
+    else if (close === "backdrop") {
+      await dialog.click({ position: { x: 2, y: 2 } });
+      await expect(dialog).toBeVisible();
+      await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    }
     else await dialog.getByRole("button", { name: close === "header" ? "Close" : "Cancel", exact: true }).click();
     await expect(page.getByRole("dialog")).toHaveCount(1);
     expect(await values(timeline, "Reflectivity Check", "Elena Russo")).toEqual(before);
@@ -250,7 +256,7 @@ test("management commitments limit the engineering percentage ceiling", async ({
   await drop(timeline, "Alex Novak", "Lane Detection KPI");
   const mgmt = await values(timeline, "Management Support", "Alex Novak");
   const dialog = await editor(page, timeline, "Lane Detection KPI", "Alex Novak");
-  await expect(dialog.getByRole("button", { name: "75%", exact: true })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "75%", exact: true })).toBeEnabled();
   await dialog.getByRole("button", { name: /^Max / }).click();
   await save(dialog);
   const lane = await values(timeline, "Lane Detection KPI", "Alex Novak");

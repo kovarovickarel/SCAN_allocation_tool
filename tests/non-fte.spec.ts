@@ -1,3 +1,4 @@
+import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Page } from "@playwright/test";
 import { harnessHtml } from "./fixtures/harnessHtml";
 
@@ -77,6 +78,8 @@ test("dragging a split input to the backdrop does not dismiss or save the dialog
   await expect(page.getByRole("dialog")).toBeVisible();
   expect((await saved(page)).projectId).toBeNull();
   await page.mouse.click(10, 10);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toBeHidden();
   expect((await saved(page)).projectId).toBeNull();
 });
@@ -160,6 +163,7 @@ test("purchase creation validates positive prices, required suppliers and select
 
 test("used suppliers cannot be removed from defaults and unused ones can", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.getByRole("button", { name: "Non-FTE", exact: true }).click();
   await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   const create = page.getByRole("dialog");
@@ -188,6 +192,7 @@ test("used suppliers cannot be removed from defaults and unused ones can", async
 
 test("the app assigns and unassigns purchases without changing staffing and filters only displayed cards", async ({ page }) => {
   await page.goto("/");
+  await enableAutomaticFteStart(page);
   await page.getByRole("button", { name: "Non-FTE", exact: true }).click();
   await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   const create = page.getByRole("dialog");
