@@ -33,7 +33,7 @@ export function SubcategoryManagerModal({ project, onClose, onToggleSubcategory,
   useEscapeKey(onClose);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={event => event.stopPropagation()} role="dialog" aria-modal="true">
       <div
         className={`${
           isRetro
@@ -245,7 +245,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
   const durationNum = clamp(parseInt(draft.duration, 10) || 12, 6, 60);
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={event => event.stopPropagation()} role="dialog" aria-modal="true">
       <div
         className={`${
           isRetro
@@ -1349,7 +1349,7 @@ export const ProjectBasket = memo(function ProjectBasket({
       {showDeleteConfirm && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4"
-          onClick={() => setShowDeleteConfirm(false)}
+          onClick={event => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
         >

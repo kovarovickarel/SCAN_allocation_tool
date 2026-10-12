@@ -506,7 +506,7 @@ export function ProjectTimelineModal({
   const minTableWidth = Math.max(940, 300 + duration * 56);
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-3 md:p-6" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-3 md:p-6" onClick={event => event.stopPropagation()} role="dialog" aria-modal="true">
       <div
         className={`${
           isRetro

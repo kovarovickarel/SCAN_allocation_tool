@@ -27,11 +27,11 @@ function ExportNameDialog({ onCancel, onExport, saving, nativeSave }: {
   useEscapeKey(() => { if (!saving) onCancel(); });
   let filename = "", error = "";
   try { filename = workspaceExportFilename(name); } catch (reason) { error = (reason as Error).message; }
-  return <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="workspace-export-heading" onClick={() => { if (!saving) onCancel(); }}>
+  return <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="workspace-export-heading" onClick={event => event.stopPropagation()}>
     <form className={`p-6 w-full max-w-lg ${isRetro ? "bg-[#d4d0c8] text-black font-mono border-2 border-black" : "bg-white text-slate-800 rounded-2xl border border-slate-300 shadow-2xl"}`} onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); if (filename && !saving) onExport(filename); }}>
       <div className="flex justify-between items-center gap-3 mb-4">
         <h2 id="workspace-export-heading" className="text-lg font-bold">Export workspace</h2>
-        <button type="button" aria-label="Close export" disabled={saving} className="text-xl cursor-pointer" onClick={onCancel}>×</button>
+        <button type="button" aria-label="Close export" disabled={saving} className="text-xl cursor-pointer" onClick={event => event.stopPropagation()}>×</button>
       </div>
       <label htmlFor="workspace-export-filename" className="block text-sm font-semibold mb-2">File name</label>
       <input id="workspace-export-filename" disabled={saving} autoFocus type="text" value={name} onChange={event => setName(event.target.value)} onFocus={event => event.currentTarget.select()} aria-invalid={Boolean(error)} aria-describedby={error ? "workspace-export-error" : "workspace-export-help"} className={`w-full px-3 py-2 text-sm bg-white text-slate-800 border ${isRetro ? "border-black" : "border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"}`} />
@@ -55,11 +55,11 @@ function ImportReview({ file, filename, onCancel, onImport, onExport }: {
   useEscapeKey(onCancel);
   const assigned = file.data.workpackages.filter(card => card.projectId).length;
   const secondary = isRetro ? "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black" : "bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200";
-  return <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="workspace-import-heading" onClick={onCancel}>
+  return <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="workspace-import-heading" onClick={event => event.stopPropagation()}>
     <div className={`p-6 w-full max-w-lg ${isRetro ? "bg-[#d4d0c8] text-black font-mono border-2 border-black" : "bg-white text-slate-800 rounded-2xl border border-slate-300 shadow-2xl"}`} onClick={event => event.stopPropagation()}>
       <div className="flex justify-between items-center gap-3 mb-4">
         <h2 id="workspace-import-heading" className="text-lg font-bold">Import workspace</h2>
-        <button type="button" aria-label="Close import" className="text-xl cursor-pointer" onClick={onCancel}>×</button>
+        <button type="button" aria-label="Close import" className="text-xl cursor-pointer" onClick={event => event.stopPropagation()}>×</button>
       </div>
       <p className="text-sm font-semibold break-all">{filename}</p>
       <p className="text-xs text-slate-500 mt-1">Exported {new Date(file.exportedAt).toLocaleString()}</p>

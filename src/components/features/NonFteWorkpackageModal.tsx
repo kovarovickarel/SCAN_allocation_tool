@@ -144,5 +144,5 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
       </div> : <footer className="flex gap-2 mt-4 border-t pt-3"><button type="button" onClick={onClose} className="flex-1 bg-slate-100 rounded py-2 text-xs font-bold cursor-pointer">Cancel</button><button type="button" onClick={save} disabled={!valid} className="flex-1 bg-blue-600 text-white rounded py-2 text-xs font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">{card ? "Save Workpackage" : "Add Workpackage"}</button></footer>}
     </div>;
   if (inline) return content;
-  return <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={card ? "Edit non-FTE workpackage" : "Add non-FTE workpackage"} onClick={onClose}>{content}</div>;
+  return <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={card ? "Edit non-FTE workpackage" : "Add non-FTE workpackage"} onClick={event => event.stopPropagation()}>{content}</div>;
 }

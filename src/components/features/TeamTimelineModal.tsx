@@ -1060,7 +1060,7 @@ export function TeamTimelineModal({
   return (
     <div
       className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-3 md:p-6"
-      onClick={onClose}
+      onClick={event => event.stopPropagation()}
       role="dialog"
       aria-modal="true"
     >
@@ -2677,7 +2677,7 @@ export function TeamTimelineModal({
       {roleWarning && (
         <div
           className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4"
-          onClick={() => setRoleWarning(null)}
+          onClick={event => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
         >

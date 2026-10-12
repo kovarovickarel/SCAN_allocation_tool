@@ -11,7 +11,6 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
   onConfirm: (months: number[], milestone: string | null, mode: PurchasePaymentMode, shares?: NumericMap) => void; onClose: () => void;
 }) {
   const { isRetro } = useContext(ThemeContext);
-  const backdropPressRef = useRef(false);
   useEscapeKey(onClose);
   const [months, setMonths] = useState<number[]>(() => card.projectId === project.id ? validPurchaseMonths(card, project).filter(month => month <= purchaseDeadline(card, project)) : []);
   const [selectedMilestone, setSelectedMilestone] = useState(card.purchaseMilestone || "");
@@ -74,14 +73,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
   };
 
   return <div role="dialog" aria-modal="true" aria-label="Select purchase payment months" className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
-    onPointerDown={event => { backdropPressRef.current = event.button === 0 && event.target === event.currentTarget; }}
-    onPointerUp={event => { backdropPressRef.current = backdropPressRef.current && event.target === event.currentTarget; }}
-    onPointerCancel={() => { backdropPressRef.current = false; }}
-    onClick={event => {
-      const dismiss = backdropPressRef.current && event.target === event.currentTarget;
-      backdropPressRef.current = false;
-      if (dismiss) onClose();
-    }}>
+    onClick={event => event.stopPropagation()}>
     <div className={`${isRetro ? "bg-[#d4d0c8] rounded-none border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono" : "bg-white rounded-2xl shadow-2xl border border-slate-300"} p-6 w-full max-w-md max-h-[92vh] overflow-y-auto flex flex-col gap-4`} onClick={event => event.stopPropagation()}>
       <header className={`flex items-center justify-between pb-2.5 ${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] text-white p-2.5 -mx-6 -mt-6 mb-1 border-b-2 border-black" : "border-b"}`}>
         <div className="flex items-center gap-2 min-w-0">

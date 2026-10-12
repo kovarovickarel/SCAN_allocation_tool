@@ -41,7 +41,6 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const [paymentInputs, setPaymentInputs] = useState<Record<string, Record<number, string>>>({});
   const [editingPayment, setEditingPayment] = useState<{ id: string; month: number } | null>(null);
   const [editNotice, setEditNotice] = useState("");
-  const backdropPressRef = useRef(false);
   useEscapeKey(onClose);
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -293,13 +292,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
 
   return <div role="dialog" aria-modal="true" aria-labelledby="project-spending-title"
     className="fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-3 md:p-6"
-    onPointerDown={event => { backdropPressRef.current = event.button === 0 && event.target === event.currentTarget; }}
-    onPointerUp={event => { backdropPressRef.current = backdropPressRef.current && event.target === event.currentTarget; }}
-    onPointerCancel={() => { backdropPressRef.current = false; }}
-    onClick={event => {
-      if (backdropPressRef.current && event.target === event.currentTarget) onClose();
-      backdropPressRef.current = false;
-    }}>
+    onClick={event => event.stopPropagation()}>
     <div onClick={(event) => event.stopPropagation()} className={`w-[1360px] max-w-[97vw] h-[92vh] max-h-[95vh] flex flex-col overflow-hidden ${
       isRetro ? "bg-[#d4d0c8] rounded-none border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono text-black" : "bg-white rounded-2xl shadow-2xl border border-slate-300"}`}>
       <div className={`flex items-center justify-between gap-3 flex-wrap shrink-0 ${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] text-white px-4 py-2 border-b-2 border-black font-mono" : "bg-slate-900 text-white px-6 py-3.5 border-b border-slate-800"}`}>

@@ -144,7 +144,7 @@ export function AssignMemberToWPModal({
       className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4"
       role="dialog"
       aria-modal="true"
-      onClick={onClose}
+      onClick={event => event.stopPropagation()}
     >
       <div
         className={`${

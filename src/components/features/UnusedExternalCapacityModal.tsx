@@ -19,7 +19,7 @@ export function UnusedExternalCapacityModal({ monthlyCosts, monthLabels, members
     dialogRef.current?.focus();
     return () => { previous?.focus(); };
   }, []);
-  return <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-3 md:p-6" onClick={onClose}>
+  return <div className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-3 md:p-6" onClick={event => event.stopPropagation()}>
     <div ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby="unused-capacity-title" tabIndex={-1}
       className={`w-full max-w-[1600px] max-h-[90vh] flex flex-col overflow-hidden outline-none ${isRetro ? "bg-white border-2 border-black font-mono" : "bg-slate-100 rounded-2xl shadow-2xl border border-slate-300"}`}
       onClick={event => event.stopPropagation()}

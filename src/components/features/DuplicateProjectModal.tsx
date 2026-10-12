@@ -10,7 +10,7 @@ export function DuplicateProjectModal({ name, onClose, onDuplicate }: {
   const [content, setContent] = useState<ProjectCopyContent>("both");
   useEscapeKey(onClose);
   return <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4"
-    role="dialog" aria-modal="true" aria-label="Duplicate project" onClick={onClose}>
+    role="dialog" aria-modal="true" aria-label="Duplicate project" onClick={event => event.stopPropagation()}>
     <form onClick={event => event.stopPropagation()} onSubmit={event => { event.preventDefault(); onDuplicate(content); }}
       className="w-full max-w-sm rounded-xl bg-white border border-slate-200 shadow-xl p-5 text-slate-900">
       <h2 className="flex items-center gap-2 text-base font-bold mb-2"><CopyIcon size={17} /> Duplicate project</h2>

@@ -106,7 +106,6 @@ export function AdjustMemberAllocationModal({
       aria-modal="true"
       onClick={(e) => {
         e.stopPropagation();
-        onClose();
       }}
     >
       <div

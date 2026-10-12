@@ -322,7 +322,7 @@ export function ConfigurationModal({
   const currentOtherDefaults = draft.otherDefaults || DEFAULT_OTHER_SETTINGS;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={event => event.stopPropagation()} role="dialog" aria-modal="true">
       <div
         className={`${
           isRetro

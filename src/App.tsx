@@ -1311,7 +1311,7 @@ export default function App() {
         {assignmentWarning && (
           <div
             className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4"
-            onClick={() => setAssignmentWarning(null)}
+            onClick={event => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >

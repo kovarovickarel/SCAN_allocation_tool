@@ -74,7 +74,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={event => event.stopPropagation()} role="dialog" aria-modal="true">
       <div
         className={`${
           isRetro

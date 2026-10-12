@@ -41,7 +41,7 @@ export function HelpGuideModal({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={onClose} role="dialog" aria-modal="true">
+    <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4" onClick={event => event.stopPropagation()} role="dialog" aria-modal="true">
       <div
         className={`${
           isRetro
@@ -135,7 +135,7 @@ export function HelpGuideModal({
               <h3 className="font-bold text-slate-900 text-sm mb-2">Schedule payments</h3>
               <p>Drag a purchase into a project, choose a payment deadline, and click or drag across the schedule preview to select at least one payment month. Click a selected month or drag from it to remove payments. One month uses At once. Multiple months default to Evenly distributed. Choose Split, or deselect Evenly distributed, to enter each month’s EUR payment. The remaining balance limits each entry, and the full price must be assigned before saving. A milestone deadline allows only months through that milestone, including the milestone month; otherwise payments are due by project end.</p>
               <p className="mt-2">Purchases appear within their tool, below FTE workpackages. Click <strong>Payments</strong> to show or hide the monthly payment receipt. Use the calendar button to change payment months or the pencil to edit the purchase in the expanded card view. Payments are included in project and tool costs and spending views. They use no staffing capacity and are excluded from automatic team allocation and management effort.</p>
-              <p className="mt-2">In the <strong>Project Spending</strong> timeline, enable <strong>Non-FTE Adjust</strong> to freely edit payments in any project month, including empty cells and months after the original milestone. The total cost follows your entered amounts; enter 0 to remove a payment. Altered workpackages have an asterisk, and changed cells have red stars and outlines. <strong>Reset</strong> restores the configured price and payment schedule in the draft. <strong>Save &amp; Close</strong> applies the changes to the payment receipt and totals in the main overview. <strong>Discard &amp; Close</strong>, Escape, the header close button, or closing the backdrop discards the draft.</p>
+              <p className="mt-2">In the <strong>Project Spending</strong> timeline, enable <strong>Non-FTE Adjust</strong> to freely edit payments in any project month, including empty cells and months after the original milestone. The total cost follows your entered amounts; enter 0 to remove a payment. Altered workpackages have an asterisk, and changed cells have red stars and outlines. <strong>Reset</strong> restores the configured price and payment schedule in the draft. <strong>Save &amp; Close</strong> applies the changes to the payment receipt and totals in the main overview. <strong>Discard &amp; Close</strong>, Escape, the header close button discards the draft. Clicking outside the window leaves it open.</p>
             </section>
           </div>}
           {activeTab === "summary" && <div className="space-y-4">
@@ -192,7 +192,7 @@ export function HelpGuideModal({
             <section className="p-4 bg-white border border-amber-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2">Adjust purchase payments</h3>
               <p>In Timeline View, enable <strong>Non-FTE Adjust</strong> to edit purchase amounts in any project month, including empty months or months after the original payment target. Enter 0 to remove a payment. These edits may change the total purchase cost and are not limited to the original price. External salaries and internal FTE costs remain read-only.</p>
-              <p className="mt-2">Changed cells have red outlines and stars; altered workpackages have an asterisk. <strong>Reset</strong> restores the configured schedule in the draft. <strong>Save &amp; Close</strong> applies the payment changes to receipts, project totals and the dashboard. Discard &amp; Close, Escape, the header close button or the backdrop discards the draft. Save before exporting the workspace.</p>
+              <p className="mt-2">Changed cells have red outlines and stars; altered workpackages have an asterisk. <strong>Reset</strong> restores the configured schedule in the draft. <strong>Save &amp; Close</strong> applies the payment changes to receipts, project totals and the dashboard. Discard &amp; Close, Escape or the header close button discards the draft. Clicking outside the window leaves it open. Save before exporting the workspace.</p>
             </section>
           </div>}
           {/* Tab 1: Team Staffing & Combined Timeline */}
@@ -340,7 +340,7 @@ export function HelpGuideModal({
                   <li><strong>Expand Allocation</strong> shows individual member rows beneath a workpackage, including management support. <strong>Expanded Allocation</strong> / <strong>Collapsed Allocation</strong> in the header controls all member tracks; <strong>Expand All</strong> / <strong>Collapse All</strong> controls the project sections.</li>
                   <li><strong>Include &quot;Other&quot; WPs</strong> includes custom Other workpackages in this team&apos;s allocation scope. Turning it off releases this team&apos;s allocations to them. Other teams&apos; allocations are kept. The setting and allocation changes follow <strong>Save &amp; Close</strong> / <strong>Discard &amp; Close</strong>.</li>
                   <li>Use <strong>Exclude</strong> on an individual Other workpackage to leave it for another team. This releases the current team&apos;s allocation and removes its effort from this team&apos;s totals and automatic allocation. The muted row&apos;s <strong>Include</strong> button restores it to the scope. Selections are saved per team with <strong>Save &amp; Close</strong>.</li>
-                  <li>Saving inside an allocation dialog updates only the timeline draft. Choose the timeline&apos;s <strong>Save &amp; Close</strong> to apply it, or <strong>Discard &amp; Close</strong> to cancel all changes. Closing the timeline with its header button, Escape, or the backdrop also discards its draft.</li>
+                  <li>Saving inside an allocation dialog updates only the timeline draft. Choose the timeline&apos;s <strong>Save &amp; Close</strong> to apply it, or <strong>Discard &amp; Close</strong> to cancel all changes. Closing the timeline with its header button or Escape also discards its draft. Clicking outside the window leaves it open.</li>
                   <li>Canceling or closing a nested allocation dialog leaves the timeline and its existing draft open.</li>
                 </ul>
               </div>

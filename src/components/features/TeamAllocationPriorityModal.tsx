@@ -18,7 +18,7 @@ export function TeamAllocationPriorityModal({ toolName, projects, initialPriorit
       aria-modal="true"
       aria-labelledby={titleId}
       className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center z-50 p-4"
-      onClick={(e) => { e.stopPropagation(); onClose(); }}
+      onClick={event => event.stopPropagation()}
     >
       <div className={`${isRetro
         ? "bg-[#d4d0c8] rounded-none border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono text-black"
