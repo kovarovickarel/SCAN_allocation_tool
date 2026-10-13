@@ -16,10 +16,10 @@ for (const viewport of [900, 1600]) test(`pool width limits preserve compact FTE
   await edge.focus();
   await page.keyboard.press("End");
   await expect.poll(() => lane.evaluate(el => (el as HTMLElement).offsetWidth)).toBe(640);
-  expect(await tracks()).toBeGreaterThan(2);
+  await expect.poll(tracks).toBeGreaterThan(2);
   expect(Math.abs((await first.boundingBox())!.width - original)).toBeLessThan(1);
   await lane.getByRole("button", { name: "Non-FTE", exact: true }).click();
-  expect(await tracks()).toBeGreaterThan(2);
+  await expect.poll(tracks).toBeGreaterThan(2);
   await page.keyboard.press("Tab");
   await edge.focus();
   await page.keyboard.press("Home");
@@ -49,7 +49,7 @@ test("project lanes resize independently and compact cards retain width", async 
   const edge = page.getByRole("separator", { name: "Resize GM project swimlane" });
   await edge.focus(); await page.keyboard.press("End");
   await expect.poll(() => project.evaluate(el => (el as HTMLElement).offsetWidth)).toBe(1080);
-  expect(Math.abs((await compact.boundingBox())!.width - width)).toBeLessThan(1);
+  await expect.poll(async () => Math.abs((await compact.boundingBox())!.width - width)).toBeLessThan(1);
   expect(await pool.evaluate(el => (el as HTMLElement).offsetWidth)).toBe(320);
   expect(await page.locator("[data-resizable-swimlane]").nth(2).evaluate(el => (el as HTMLElement).offsetWidth)).toBe(540);
 });

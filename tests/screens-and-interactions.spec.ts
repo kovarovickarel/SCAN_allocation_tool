@@ -58,7 +58,7 @@ test.describe("visual coverage across screens and interactions", () => {
 
     await page.getByRole("button", { name: "Add Workpackage" }).first().click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "Add Workpackage" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Add FTE Workpackage" })).toBeVisible();
     await expect(page).toHaveScreenshot("add-workpackage-dialog.png", {
       fullPage: true,
       maxDiffPixelRatio: 0.002,

@@ -89,22 +89,22 @@ test("percentage input, slider and presets stay within workpackage demand", asyn
   await expect(dialog.getByRole("spinbutton")).toHaveValue("0");
   await dialog.getByRole("button", { name: "25%", exact: true }).click();
   await expect(dialog.getByRole("slider")).toHaveValue("25");
-  await dialog.getByRole("slider").fill("50");
-  await expect(dialog.getByRole("spinbutton")).toHaveValue("50");
+  await dialog.getByRole("slider").fill(String(Math.min(50, max)));
+  await expect(dialog.getByRole("spinbutton")).toHaveValue(String(Math.min(50, max)));
   await save(dialog);
   const actual = await values(timeline, "Object Distance KPI", "Elena Russo");
-  expect(actual).toEqual(demand.map((month) => Math.min(0.5, month.fte)));
+  expect(actual).toEqual(demand.map((month) => Math.min(Math.min(50, max) / 100, month.fte)));
 });
 
 test("saving and reopening retains a percentage ceiling rather than its monthly average", async ({ page }) => {
   const timeline = await setup(page);
   await drop(timeline, "Elena Russo", "Object Distance KPI");
   let dialog = await editor(page, timeline, "Object Distance KPI", "Elena Russo");
-  await dialog.getByRole("button", { name: "50%", exact: true }).click();
+  await dialog.getByRole("button", { name: "25%", exact: true }).click();
   await save(dialog);
   const before = await values(timeline, "Object Distance KPI", "Elena Russo");
   dialog = await editor(page, timeline, "Object Distance KPI", "Elena Russo");
-  await expect(dialog.getByRole("spinbutton")).toHaveValue("50");
+  await expect(dialog.getByRole("spinbutton")).toHaveValue("25");
   await save(dialog);
   expect(await values(timeline, "Object Distance KPI", "Elena Russo")).toEqual(before);
 });
@@ -170,7 +170,7 @@ for (const close of ["Cancel", "Escape", "header", "backdrop"]) {
     const before = await values(timeline, "Reflectivity Check", "Elena Russo");
     const dialog = await editor(page, timeline, "Reflectivity Check", "Elena Russo");
     await dialog.getByRole("checkbox").uncheck();
-    await dialog.getByRole("button", { name: "25%", exact: true }).click();
+    await dialog.getByRole("spinbutton").fill("10");
     if (close === "Escape") await page.keyboard.press("Escape");
     else if (close === "backdrop") {
       await dialog.click({ position: { x: 2, y: 2 } });
@@ -286,7 +286,7 @@ test("maintenance preferences are isolated by member and workpackage", async ({ 
   await drop(timeline, "Elena Russo", "Reflectivity Check");
   let dialog = await editor(page, timeline, "Reflectivity Check", "Elena Russo");
   await dialog.getByRole("checkbox").uncheck();
-  await dialog.getByRole("button", { name: "25%", exact: true }).click();
+  await dialog.getByRole("spinbutton").fill("10");
   await save(dialog);
   await drop(timeline, "Alex Novak", "Reflectivity Check");
   dialog = await editor(page, timeline, "Reflectivity Check", "Alex Novak");
