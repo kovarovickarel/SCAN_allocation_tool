@@ -1,3 +1,4 @@
+import { ensureOtherSupplier } from "../src/utils/nonFteWorkpackages";
 import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Page } from "@playwright/test";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFAULT_MGMT_SETTINGS,
@@ -210,7 +211,7 @@ for (const theme of ["vibrant", "basic", "retro"] as const) test(`import restore
   await expect(page.getByRole("heading", { name: "Transferred RFQ", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "GM", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Mode: Basic", exact: true })).toBeVisible();
-  expect((await exportData(page)).data).toEqual(createWorkspaceFile(data).data);
+  expect((await exportData(page)).data).toEqual(createWorkspaceFile({ ...data, configuration: { ...data.configuration, suppliers: ensureOtherSupplier(data.configuration.suppliers) } }).data);
   await page.getByRole("button", { name: "Summary dashboard", exact: true }).click();
   await expect(page.getByRole("button", { name: "Selected projects", exact: true })).toHaveAttribute("aria-pressed", "true");
   await page.getByRole("checkbox", { name: "Include project Transferred RFQ", exact: true }).uncheck();
@@ -444,7 +445,7 @@ test("real JSON import and re-export preserve both custom basic-type registries"
   await upload(page, data);
   await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
   const exported = await exportData(page);
-  expect(exported.data.configuration).toEqual(data.configuration);
+  expect(exported.data.configuration).toEqual({ ...data.configuration, suppliers: ensureOtherSupplier(data.configuration.suppliers) });
   expect(exported.data.workpackages).toEqual(createWorkspaceFile(data).data.workpackages);
   await page.getByRole("button", { name: "Workpackages configuration", exact: true }).click();
   const dialog = page.getByRole("dialog");
@@ -501,8 +502,8 @@ for (const content of ["both", "fte", "non-fte", "none"]) test(`project duplicat
   const original = createWorkspaceFile(data).data;
   await page.getByRole("button", { name: "Duplicate project Transferred RFQ", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Duplicate project", exact: true });
-  const label = { both: "FTE and non-FTE", fte: "FTE only", "non-fte": "Non-FTE only", none: "Without workpackages" }[content];
-  await dialog.getByRole("radio", { name: label, exact: true }).check();
+  const label = { both: "All", fte: "FTE", "non-fte": "Non-FTE", none: "Without workpackages" }[content];
+  await dialog.getByRole("button", { name: label, exact: true }).click();
   await dialog.getByRole("button", { name: "Duplicate project", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   const exported = (await exportData(page)).data;

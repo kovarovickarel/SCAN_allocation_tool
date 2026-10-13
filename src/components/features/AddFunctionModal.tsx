@@ -89,7 +89,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
             : "border-b"
         }`}>
           <h2 className={`text-base font-bold ${isRetro ? "text-white font-mono font-black" : "text-gray-800"}`}>
-            Add Workpackage
+            Add FTE Workpackage
           </h2>
           <button
             type="button"
