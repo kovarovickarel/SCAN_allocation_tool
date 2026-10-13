@@ -632,6 +632,11 @@ export default function App() {
     );
   }, [functions, projects]);
 
+  const handleApplyProjectReusability = useCallback((projectId: string, cardIds: string[], updates: Pick<WorkpackageCard, "reusability" | "customReusabilityFactor">) => {
+    const selected = new Set(cardIds);
+    setFunctions(current => current.map(card => card.projectId === projectId && selected.has(card.id) ? { ...card, ...updates } : card));
+  }, []);
+
   const handleDuplicate = useCallback((cardId: string) => {
     const id = genId();
     setFunctions(current => {
@@ -1175,6 +1180,7 @@ export default function App() {
                       onUpdateProject={handleUpdateProject}
                       onDeleteProject={handleDeleteProject}
                       onDuplicateProject={handleDuplicateProject}
+                      onApplyProjectReusability={handleApplyProjectReusability}
                       onToggleSubcategory={handleToggleSubcategory}
                       onToggleTool={handleToggleTool}
                       onResetSubcategories={handleResetSubcategories}

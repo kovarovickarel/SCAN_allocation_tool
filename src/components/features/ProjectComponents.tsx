@@ -12,6 +12,7 @@ import { useHorizontalSelectionAutoScroll } from "../../hooks/useHorizontalSelec
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon, CopyIcon } from '../ui/icons';
 import { DuplicateProjectModal } from "./DuplicateProjectModal";
+import { ProjectReusabilityModal } from "./ProjectReusabilityModal";
 import { MilestoneMonthInput } from "../ui/MilestoneMonthInput";
 import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
 import { ProjectTimelineModal } from './ProjectTimelineModal';
@@ -509,6 +510,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   onUpdateProject,
   onDeleteProject,
   onDuplicateProject,
+  onApplyProjectReusability,
   onToggleSubcategory,
   onToggleTool,
   onResetSubcategories,
@@ -530,6 +532,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   const [showSpendingModal, setShowSpendingModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDuplicate, setShowDuplicate] = useState(false);
+  const [showReusability, setShowReusability] = useState(false);
   const [milestoneError, setMilestoneError] = useState(null);
   const [isCompact, setIsCompact] = useState(false);
   const [workpackageView, setWorkpackageView] = useState<WorkpackageView>("both");
@@ -1174,7 +1177,11 @@ export const ProjectBasket = memo(function ProjectBasket({
               </div>
 
               <div className={`flex flex-col items-end ${isBasicMode ? "justify-end" : "justify-between"} self-stretch gap-1 shrink-0`}>
-                {!isBasicMode && <div className="flex items-center gap-1" role="group" aria-label="Project workpackage view">
+                {!isBasicMode && <div className="flex items-center gap-1" style={{ width: !isCompact && onDuplicateProject ? 126 : 100 }} role="group" aria-label="Project workpackage view">
+                  <button type="button" onClick={() => setShowReusability(true)} title="Apply global reusability" aria-label="Apply global reusability"
+                    className="w-[22px] h-[22px] mr-auto shrink-0 inline-flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer">
+                    <RotateCcwIcon size={14} />
+                  </button>
                   {([
                     { value: "fte", label: "Show FTE workpackages", Icon: StaffingIcon, colour: "text-amber-300 hover:text-amber-200" },
                     { value: "non-fte", label: "Show non-FTE workpackages", Icon: ReceiptIcon, colour: "text-red-300 hover:text-red-200" },
@@ -1345,6 +1352,8 @@ export const ProjectBasket = memo(function ProjectBasket({
         />
       )}
 
+      {showReusability && <ProjectReusabilityModal name={project.name} cards={cards.filter(card => card.projectId === project.id)} factors={reusabilityFactors} activeToolView={activeToolView}
+        onClose={() => setShowReusability(false)} onApply={(ids, updates) => { onApplyProjectReusability?.(project.id, ids, updates); setShowReusability(false); }} />}
       {showDuplicate && <DuplicateProjectModal name={project.name} onClose={() => setShowDuplicate(false)}
         onDuplicate={content => { onDuplicateProject?.(project.id, content); setShowDuplicate(false); }} />}
 

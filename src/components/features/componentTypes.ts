@@ -292,6 +292,7 @@ export interface ProjectBasketProps {
   onUpdateProject: (projectId: string, updates: Partial<AllocationProject>) => void;
   onDeleteProject: (projectId: string) => void;
   onDuplicateProject?: (projectId: string, content: "fte" | "non-fte" | "both" | "none") => void;
+  onApplyProjectReusability?: (projectId: string, cardIds: string[], updates: Pick<WorkpackageCard, "reusability" | "customReusabilityFactor">) => void;
   onToggleSubcategory: (projectId: string, subcategory: string) => void;
   onToggleTool: (projectId: string, toolName: string) => void;
   onResetSubcategories: (projectId: string) => void;
