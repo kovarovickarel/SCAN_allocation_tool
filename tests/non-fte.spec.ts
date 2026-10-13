@@ -154,14 +154,13 @@ test("purchase creation validates positive prices, required suppliers and select
   for (const invalid of ["0", "-1", "0.004"]) { await price.fill(invalid); await expect(save).toBeDisabled(); }
   await price.fill("1000,25");
   await expect(save).toBeEnabled();
-  await dialog.getByRole("combobox", { name: "Supplier *", exact: true }).selectOption("");
-  await expect(save).toBeDisabled();
+  await expect(dialog.getByRole("combobox", { name: "Supplier *", exact: true }).locator("option:checked")).toHaveText("Other");
   await dialog.getByRole("combobox", { name: "Supplier *", exact: true }).selectOption({ label: "Luxoft" });
   await save.click();
   expect(await saved(page)).toMatchObject({ kind: "non-fte", tool: "Reprocessing", subcategory: "PIL", purchasePriceEUR: 1000.25, supplierName: "Luxoft" });
 });
 
-test("used suppliers cannot be removed from defaults and unused ones can", async ({ page }) => {
+test("used suppliers cannot be removed from workpackage configuration and unused ones can", async ({ page }) => {
   await page.goto("/");
   await enableAutomaticFteStart(page);
   await page.getByRole("button", { name: "Non-FTE", exact: true }).click();
@@ -170,9 +169,9 @@ test("used suppliers cannot be removed from defaults and unused ones can", async
   await create.getByRole("textbox", { name: "Workpackage Name *", exact: true }).fill("Supplier protection");
   await create.getByRole("textbox", { name: "Base price (EUR)", exact: true }).fill("100");
   await create.getByRole("button", { name: "Add Workpackage", exact: true }).click();
-  await page.getByRole("button", { name: "Default's Configuration" }).click();
+  await page.getByRole("button", { name: "Workpackages configuration", exact: true }).click();
   const config = page.getByRole("dialog");
-  await config.getByRole("button", { name: "Suppliers", exact: true }).click();
+  await config.getByRole("button", { name: "Non-FTE Suppliers", exact: true }).click();
   await expect(config.getByRole("button", { name: "Remove supplier Luxoft", exact: true })).toBeDisabled();
   await expect(config.getByRole("button", { name: "Remove supplier T&S", exact: true })).toBeDisabled();
   await config.getByRole("textbox", { name: "New supplier name" }).fill("Unused vendor");
@@ -183,8 +182,8 @@ test("used suppliers cannot be removed from defaults and unused ones can", async
   await config.getByRole("button", { name: "Add Supplier", exact: true }).click();
   await expect(config.getByRole("button", { name: "Remove supplier New vendor" })).toBeEnabled();
   await config.getByRole("button", { name: "Save Configuration", exact: true }).click();
-  await page.getByRole("button", { name: "Default's Configuration" }).click();
-  await config.getByRole("button", { name: "Suppliers", exact: true }).click();
+  await page.getByRole("button", { name: "Workpackages configuration", exact: true }).click();
+  await config.getByRole("button", { name: "Non-FTE Suppliers", exact: true }).click();
   await expect(config.getByRole("button", { name: "Remove supplier Luxoft", exact: true })).toBeDisabled();
   await expect(config.getByText("Unused vendor", { exact: true })).toHaveCount(0);
   await expect(config.getByText("New vendor", { exact: true })).toBeVisible();

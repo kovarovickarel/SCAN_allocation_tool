@@ -74,6 +74,6 @@ test("hidden or foreign purchases do not add spending", () => {
 
 test("supplier reset preserves used records while allowing unused suppliers to be removed", () => {
   const used = { id: "used", name: "Used supplier" }, unused = { id: "unused", name: "Unused supplier" };
-  expect(retainUsedSuppliers([], [used, unused], new Set([used.id]))).toEqual([used]);
+  expect(retainUsedSuppliers([], [used, unused], new Set([used.id]))).toEqual([{ id: "supplier-other", name: "Other" }, used]);
   expect(retainUsedSuppliers(DEFAULT_SUPPLIERS, [used, unused], new Set([used.id]))).toEqual([...DEFAULT_SUPPLIERS, used]);
 });

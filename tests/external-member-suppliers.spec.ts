@@ -2,9 +2,9 @@ import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 import { test, expect, type Page } from "@playwright/test";
 
 async function suppliers(page: Page) {
-  await page.getByRole("button", { name: "Default's Configuration" }).click();
+  await page.getByRole("button", { name: "Workpackages configuration", exact: true }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Suppliers", exact: true }).click();
+  await dialog.getByRole("button", { name: "Non-FTE Suppliers", exact: true }).click();
   return dialog;
 }
 async function member(page: Page) {
@@ -26,7 +26,7 @@ test("configured member suppliers survive editing and reset and are released for
   dialog = await member(page);
   await dialog.getByRole("checkbox", { name: "External team member", exact: true }).check();
   await dialog.getByLabel("Monthly salary cost *", { exact: true }).fill("0");
-  await expect(dialog.getByRole("button", { name: "Add Member", exact: true })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Add Member", exact: true })).toBeEnabled();
   await dialog.getByLabel("Supplier *", { exact: true }).selectOption({ label: "Custom Staffing" });
   await dialog.getByRole("checkbox", { name: "External team member", exact: true }).uncheck();
   await expect(dialog.getByLabel("Supplier *", { exact: true })).toHaveCount(0);
@@ -57,11 +57,11 @@ test("configured member suppliers survive editing and reset and are released for
   await page.getByTitle("Edit Supplier Tester", { exact: true }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByRole("checkbox", { name: "External team member", exact: true }).check();
-  await expect(dialog.getByLabel("Supplier *", { exact: true })).toHaveValue("");
-  await expect(dialog.getByRole("button", { name: "Save Changes", exact: true })).toBeDisabled();
+  await expect(dialog.getByLabel("Supplier *", { exact: true })).toHaveValue("supplier-other");
+  await expect(dialog.getByRole("button", { name: "Save Changes", exact: true })).toBeEnabled();
 });
 
-test("empty supplier lists block external saving while internal members need no supplier", async ({ page }) => {
+test("Other remains available after removing every configurable supplier", async ({ page }) => {
   await page.goto("/");
   await enableAutomaticFteStart(page);
   // Remove supplier-backed demo records before testing an empty configuration.
@@ -84,9 +84,11 @@ test("empty supplier lists block external saving while internal members need no 
   await expect(dialog.getByRole("button", { name: "Add Member", exact: true })).toBeEnabled();
   await dialog.getByRole("checkbox", { name: "External team member", exact: true }).check();
   await dialog.getByLabel("Monthly salary cost *", { exact: true }).fill("5000");
-  await expect(dialog.getByRole("button", { name: "Add Member", exact: true })).toBeDisabled();
-  await expect(dialog.getByText("Add a supplier in Defaults → Suppliers before saving an external member.", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("button", { name: "Add Member", exact: true })).toBeEnabled();
+  await expect(dialog.getByLabel("Supplier *", { exact: true }).locator("option:checked")).toHaveText("Other");
   await expect(dialog.getByLabel("Supplier *", { exact: true }).locator("option")).toHaveCount(1);
+  await dialog.getByRole("button", { name: "Add Member", exact: true }).click();
+  await expect(page.getByTitle("Supplier: Other", { exact: true })).toHaveCSS("color", "rgb(255, 255, 255)");
 });
 
 test("member names abbreviate alongside tags and restore when cards become wider", async ({ page }) => {

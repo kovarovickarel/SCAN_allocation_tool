@@ -1,7 +1,9 @@
 import React from "react";
 import type { FteCostSettings, ThemeContextValue, SupplierRecord, WorkpackageCard, WorkpackagePhase, WorkpackageSupportingPhase } from "../types";
 
+export const DEFAULT_OTHER_SUPPLIER: SupplierRecord = Object.freeze({ id: "supplier-other", name: "Other" });
 export const DEFAULT_SUPPLIERS: readonly SupplierRecord[] = Object.freeze([
+  DEFAULT_OTHER_SUPPLIER,
   { id: "supplier-luxoft", name: "Luxoft" }, { id: "supplier-ts", name: "T&S" },
   { id: "supplier-akoddis", name: "Akoddis" }, { id: "supplier-rprocess", name: "rProcess" },
 ]);

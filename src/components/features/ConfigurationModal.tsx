@@ -28,7 +28,7 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import type { FteCostSettings, SupplierRecord } from "../../types";
 import { parseFteHourlyRate } from "../../utils/helpers";
 import { convertHourlyRateInputs, fetchLatestExchangeRate } from "../../utils/currencyRates";
-import { retainUsedSuppliers } from "../../utils/nonFteWorkpackages";
+import { retainUsedSuppliers, ensureOtherSupplier, isOtherSupplier } from "../../utils/nonFteWorkpackages";
 
 type ConfigurationModalConfig = {
   nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
@@ -74,7 +74,7 @@ export function ConfigurationModal({
   RotateCcwIcon,
 }: ConfigurationModalProps) {
   const { isRetro } = React.useContext(ThemeContext);
-  const [draft, setDraft] = useState(() => deepClone({ ...config, nonFteTypes: config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES, toolFteRates: normalizeToolBasicTypes(config.toolFteRates), suppliers: config.suppliers ?? [...DEFAULT_SUPPLIERS], fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
+  const [draft, setDraft] = useState(() => deepClone({ ...config, nonFteTypes: config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES, toolFteRates: normalizeToolBasicTypes(config.toolFteRates), suppliers: ensureOtherSupplier(config.suppliers ?? DEFAULT_SUPPLIERS), fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
   const [hourlyRateInputs, setHourlyRateInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(config.fteCosts?.hourlyRates?.[location.code] ?? "")])));
   const hasInvalidHourlyRates = FOOTPRINTS.some((location) => parseFteHourlyRate(hourlyRateInputs[location.code]) === undefined);
@@ -288,6 +288,7 @@ export function ConfigurationModal({
     if (isWorkpackages) {
       if (isEditingType) return;
       setDraft((current) => ({ ...current,
+        suppliers: retainUsedSuppliers(DEFAULT_SUPPLIERS, current.suppliers, usedSupplierIds),
         toolFteRates: Object.fromEntries(TOOLS.map(tool => [tool.name, {
           ...deepClone(DEFAULT_TOOL_FTE_RATES[tool.name]),
           ...Object.fromEntries(Object.entries(current.toolFteRates[tool.name]).filter(([name, rates]: [string, any]) => rates.phases && !DEFAULT_TOOL_FTE_RATES[tool.name]?.[name])),
@@ -305,7 +306,7 @@ export function ConfigurationModal({
     setConversionError(null);
     setDraft({
       nonFteTypes: deepClone(config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES),
-      suppliers: retainUsedSuppliers(DEFAULT_SUPPLIERS, config.suppliers ?? DEFAULT_SUPPLIERS, usedSupplierIds),
+      suppliers: ensureOtherSupplier(config.suppliers ?? DEFAULT_SUPPLIERS),
       fteRates: deepClone(DEFAULT_FTE_RATES),
       fteCosts: deepClone(DEFAULT_FTE_COSTS),
       toolFteRates: deepClone(config.toolFteRates),
@@ -342,7 +343,7 @@ export function ConfigurationModal({
             </div>
             <div>
               <h2 className={`text-base font-black tracking-tight ${isRetro ? "font-mono text-white" : ""}`}>{isWorkpackages ? "Workpackages configuration" : "Calculation Configuration"}</h2>
-              <p className={`text-xs ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>{isWorkpackages ? "Basic types, phase rates, durations & supporting activities" : "Costs, suppliers, management overheads & multipliers"}</p>
+              <p className={`text-xs ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>{isWorkpackages ? "Basic types, suppliers, phase rates, durations & supporting activities" : "Costs, management overheads & multipliers"}</p>
             </div>
           </div>
           <button
@@ -366,11 +367,11 @@ export function ConfigurationModal({
             { key: "tools", label: "FTE Workpackage Basic Types Rates & Durations" },
             { key: "purchases", label: "non-FTE Workpackage Basic Types" },
             { key: "costs", label: "FTE costs" },
-            { key: "suppliers", label: "Suppliers" },
+            { key: "suppliers", label: "Non-FTE Suppliers" },
             { key: "management", label: "Management Support" },
             { key: "reusability", label: "Reusability Factors" },
             { key: "stability", label: "Stability Factors" },
-          ].filter((tab) => isWorkpackages ? ["tools", "purchases"].includes(tab.key) : !["tools", "purchases"].includes(tab.key)).map((tab) => {
+          ].filter((tab) => isWorkpackages ? ["tools", "purchases", "suppliers"].includes(tab.key) : !["tools", "purchases", "suppliers"].includes(tab.key)).map((tab) => {
             const isTabActive = activeTab === tab.key;
             return (
               <button
@@ -820,10 +821,10 @@ export function ConfigurationModal({
           )}
 
           {activeTab === "suppliers" && <div className="flex flex-col gap-3">
-            <h3 className="text-sm font-bold text-slate-900">External suppliers</h3>
+            <h3 className="text-sm font-bold text-slate-900">Non-FTE Suppliers</h3>
             <p className="text-xs text-slate-500">Suppliers can only be removed when no non-FTE workpackages or external team members use them.</p>
-            {draft.suppliers.map(supplier => <div key={supplier.id} className="flex items-center justify-between border border-slate-200 rounded p-2 text-xs"><span>{supplier.name}</span><button type="button" disabled={usedSupplierIds.has(supplier.id)} title={usedSupplierIds.has(supplier.id) ? "Used by existing non-FTE workpackages or external team members" : undefined} onClick={() => {
-              if (usedSupplierIds.has(supplier.id)) return;
+            {draft.suppliers.filter(supplier => !isOtherSupplier(supplier.name)).map(supplier => <div key={supplier.id} className="flex items-center justify-between border border-slate-200 rounded p-2 text-xs"><span>{supplier.name}</span><button type="button" disabled={isOtherSupplier(supplier.name) || usedSupplierIds.has(supplier.id)} title={isOtherSupplier(supplier.name) ? "Default supplier" : usedSupplierIds.has(supplier.id) ? "Used by existing non-FTE workpackages or external team members" : undefined} onClick={() => {
+              if (isOtherSupplier(supplier.name) || usedSupplierIds.has(supplier.id)) return;
               setDraft(current => ({ ...current, suppliers: current.suppliers.filter(item => item.id !== supplier.id) }));
             }} className="text-rose-600 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" aria-label={`Remove supplier ${supplier.name}`}>Remove</button></div>)}
             <form className="flex gap-2" onSubmit={event => { event.preventDefault(); const name = supplierName.trim(); if (!name || draft.suppliers.some(item => item.name.toLowerCase() === name.toLowerCase())) return; setDraft(current => ({ ...current, suppliers: [...current.suppliers, { id: genId(), name }] })); setSupplierName(""); }}>

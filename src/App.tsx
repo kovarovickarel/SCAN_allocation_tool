@@ -11,7 +11,7 @@ import { SummaryDashboard } from "./components/features/SummaryDashboard";
 import { ProjectIcon } from "./components/ui/icons";
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
 import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
-import { purchaseCost, purchaseCostSummary, purchaseMonthlyCosts, purchasePaymentSchedule, purchaseScheduleExceedsProject, isPurchasePaymentAltered, validPurchaseMonths, purchaseSubcategory, retainUsedSuppliers, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
+import { purchaseCost, purchaseCostSummary, purchaseMonthlyCosts, purchasePaymentSchedule, purchaseScheduleExceedsProject, isPurchasePaymentAltered, validPurchaseMonths, purchaseSubcategory, retainUsedSuppliers, ensureOtherSupplier, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
 import { calculatePortfolioSalaryTotals } from "./utils/projectSpending";
 import { applySalaryTotals } from "./utils/externalSalaries";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -228,6 +228,11 @@ export default function App() {
     reusabilityFactors: DEFAULT_REUSABILITY_FACTORS,
     stabilityFactors: DEFAULT_STABILITY_FACTORS,
   });
+
+  useEffect(() => {
+    const suppliers = ensureOtherSupplier(config.suppliers);
+    if (suppliers.length !== config.suppliers.length) setConfig(current => ({ ...current, suppliers: ensureOtherSupplier(current.suppliers) }));
+  }, [config.suppliers]);
 
   useEffect(() => {
     const tools = normalizeToolBasicTypes(config.toolFteRates);
@@ -781,7 +786,7 @@ export default function App() {
   const importWorkspace = useCallback((data: WorkspaceData) => {
     stopAutoScroll();
     setProjects(data.projects); setFunctions(data.workpackages); setTeamMembers(data.teamMembers);
-    setConfig({ ...data.configuration, nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }); setTeamOtherWPScopes(data.teamOtherWPScopes);
+    setConfig({ ...data.configuration, suppliers: ensureOtherSupplier(data.configuration.suppliers), nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }); setTeamOtherWPScopes(data.teamOtherWPScopes);
     restoreViewPreferences(data.view); setWorkpackageKind(data.view.workpackageKind);
     setShowSummaryDashboard(data.view.summaryOpen); setSummaryFilter(data.view.summaryFilter);
     setSelectedSummaryProjectIds(data.view.selectedProjectIds);
@@ -1266,12 +1271,13 @@ export default function App() {
         {showWorkpackagesConfigModal && (
           <ConfigurationModal
             scope="workpackages"
+            usedSupplierIds={usedSupplierIds}
             usedFteTypes={functions.filter(card => card.kind !== "non-fte" && !(card.tool === "Other" && !card.complexity)).map(card => ({ tool: card.tool, name: workpackageRateKey(card, config.toolFteRates) }))}
             usedPurchaseTypes={new Set(functions.filter(card => card.kind === "non-fte").map(card => card.purchaseType))}
             initialTool={workpackagesConfigTool}
             onToolChange={setWorkpackagesConfigTool}
             config={config}
-            onSave={(updated, renames) => handleSaveConfig({ ...config, toolFteRates: updated.toolFteRates, otherDefaults: updated.otherDefaults, nonFteTypes: updated.nonFteTypes }, renames)}
+            onSave={(updated, renames) => handleSaveConfig({ ...config, suppliers: updated.suppliers, toolFteRates: updated.toolFteRates, otherDefaults: updated.otherDefaults, nonFteTypes: updated.nonFteTypes }, renames)}
             onClose={() => setShowWorkpackagesConfigModal(false)}
             SettingsIcon={SettingsIcon}
             ToolIcon={ToolIcon}

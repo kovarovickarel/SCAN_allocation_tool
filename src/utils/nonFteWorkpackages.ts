@@ -1,13 +1,23 @@
-import { DEFAULT_REUSABILITY_FACTORS, TOOL_MAP, round2 } from "../constants";
+import { DEFAULT_OTHER_SUPPLIER, DEFAULT_REUSABILITY_FACTORS, TOOL_MAP, round2 } from "../constants";
 import type { AllocationProject, FactorMap, NumericMap, PurchasePaymentSchedule, SupplierRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
 import { normalizeMilestones } from "./helpers";
 import { getReusabilityFactor } from "./reusability";
 
 export const isNonFte = (card: WorkpackageCard) => card.kind === "non-fte";
 
+export const isOtherSupplier = (name: string | undefined) => name?.trim().toLowerCase() === "other";
+
+// Older workspaces may omit the default supplier. Preserve their existing IDs and names.
+export function ensureOtherSupplier(suppliers: readonly SupplierRecord[]): SupplierRecord[] {
+  if (suppliers.some(supplier => isOtherSupplier(supplier.name))) return [...suppliers];
+  let id = DEFAULT_OTHER_SUPPLIER.id;
+  for (let suffix = 1; suppliers.some(supplier => supplier.id === id); suffix++) id = `${DEFAULT_OTHER_SUPPLIER.id}-${suffix}`;
+  return [{ ...DEFAULT_OTHER_SUPPLIER, id }, ...suppliers];
+}
+
 export function retainUsedSuppliers(next: readonly SupplierRecord[], current: readonly SupplierRecord[], usedIds: ReadonlySet<string>): SupplierRecord[] {
   const nextIds = new Set(next.map(supplier => supplier.id));
-  return [...next, ...current.filter(supplier => usedIds.has(supplier.id) && !nextIds.has(supplier.id))];
+  return ensureOtherSupplier([...next, ...current.filter(supplier => usedIds.has(supplier.id) && !nextIds.has(supplier.id))]);
 }
 
 export function purchaseSubcategory(card: Pick<WorkpackageCard, "tool" | "subcategory">): string | null {

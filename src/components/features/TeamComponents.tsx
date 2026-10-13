@@ -308,10 +308,10 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", supplier
   const parsedPaymentDelay = Number(paymentDelayMonths);
   const isPaymentDelayValid = /^\d+$/.test(paymentDelayMonths) && Number.isInteger(parsedPaymentDelay) && parsedPaymentDelay >= 1 && parsedPaymentDelay <= MAX_EXTERNAL_PAYMENT_DELAY_MONTHS;
   const paymentDelayError = isExternal && deferredPayment && !isPaymentDelayValid ? `Enter a whole number of months from 1 to ${MAX_EXTERNAL_PAYMENT_DELAY_MONTHS}.` : null;
-  const [supplierId, setSupplierId] = useState(initialMember?.supplierId ?? "");
+  const [supplierId, setSupplierId] = useState(initialMember?.isExternal ? initialMember.supplierId ?? "" : suppliers.find(supplier => supplier.name.trim().toLowerCase() === "other")?.id ?? "");
   const isSupplierValid = suppliers.some(supplier => supplier.id === supplierId);
   const supplierError = isExternal && !isSupplierValid
-    ? suppliers.length === 0 ? "Add a supplier in Defaults → Suppliers before saving an external member." : "Select a supplier for this external member."
+    ? suppliers.length === 0 ? "Add a supplier in Workpackages configuration → Non-FTE Suppliers before saving an external member." : "Select a supplier for this external member."
     : null;
   const [monthlySalaryCost, setMonthlySalaryCost] = useState(initialMember?.monthlySalaryCost !== undefined
     ? String(initialMember.monthlySalaryCost) : "");
@@ -520,7 +520,8 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", supplier
                 className={`px-2.5 py-1.5 w-full text-xs focus:outline-none ${isRetro
                   ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white font-mono text-black font-bold"
                   : "border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"}`}>
-                <option value="">Select supplier</option>
+
+                {!isSupplierValid && <option value="" hidden disabled />}
                 {suppliers.map(supplier => <option key={supplier.id} value={supplier.id}>{supplier.name}</option>)}
               </select>
               {supplierError && <p id="member-supplier-error" className="mt-1 text-[10px] text-red-700" role="status">{supplierError}</p>}

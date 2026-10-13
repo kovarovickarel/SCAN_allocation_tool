@@ -63,7 +63,8 @@ test("external members require a supplier and salary and retain both when editin
   await dialog.getByLabel("Monthly salary cost *", { exact: true }).fill("-10");
   await expect(save).toBeDisabled();
   await dialog.getByLabel("Monthly salary cost *", { exact: true }).fill("5000,25");
-  await expect(save).toBeDisabled();
+  await expect(save).toBeEnabled();
+  await expect(dialog.getByLabel("Supplier *", { exact: true }).locator("option:checked")).toHaveText("Other");
   await dialog.getByLabel("Supplier *", { exact: true }).selectOption("supplier-luxoft");
   await save.click();
   const memberCard = page.locator('.group[title="External Tester"]');

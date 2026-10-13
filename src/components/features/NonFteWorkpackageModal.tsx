@@ -4,7 +4,7 @@ import { useContext, useLayoutEffect, useRef, useState } from "react";
 import { DEFAULT_REUSABILITY_FACTORS, MILESTONES_DEF, ThemeContext, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, genId } from "../../constants";
 import type { FactorMap, SupplierRecord, WorkpackageCard, WorkpackageDetails, TeamMemberRecord } from "../../types";
 import { normalizeReusability, parseReusabilityFactor } from "../../utils/reusability";
-import { purchaseCost, purchaseSubcategory } from "../../utils/nonFteWorkpackages";
+import { purchaseCost, purchaseSubcategory, isOtherSupplier } from "../../utils/nonFteWorkpackages";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { ReusabilityFactorInput } from "../ui/ReusabilityFactorInput";
 
@@ -50,7 +50,7 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
   useEscapeKey(onClose, !inline);
   const [draft, setDraft] = useState<WorkpackageCard>(() => card ? { ...card, subcategory: purchaseSubcategory(card) } : {
     id: genId(), name: "", kind: "non-fte", tool: activeToolView === "all" ? "KPI" : activeToolView,
-    purchaseType: types[0]?.name ?? "", supplierId: suppliers[0]?.id || "", purchaseMilestone: null, reusability: "New",
+    purchaseType: types[0]?.name ?? "", supplierId: suppliers.find(supplier => isOtherSupplier(supplier.name))?.id ?? suppliers[0]?.id ?? "", purchaseMilestone: null, reusability: "New",
     customReusabilityFactor: 0.5, projectId: null,
     subcategory: purchaseSubcategory({ tool: activeToolView === "all" ? "KPI" : activeToolView }),
   });
@@ -122,8 +122,8 @@ export function NonFteWorkpackageModal({ card, suppliers, reusabilityFactors = D
             {selectedTool.subcategories.map(sub => <option key={sub} value={sub}>{sub}</option>)}
           </select>
         </label>}
-        <label className={`${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}><span className={inline ? "sr-only" : undefined}>Supplier *</span><select title="Supplier" className={`${inputClass} ${inline ? "" : "mt-1"}`} value={draft.supplierId} onChange={e => setDraft(d => ({ ...d, supplierId: e.target.value }))}><option value="">Select supplier</option>{card?.supplierId && !suppliers.some(s => s.id === card.supplierId) && <option value={card.supplierId} disabled>{card.supplierName} (removed)</option>}{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-        {suppliers.length === 0 && <p className="text-xs text-amber-800">Add a supplier in Defaults → Suppliers before creating a purchase.</p>}
+        <label className={`${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}><span className={inline ? "sr-only" : undefined}>Supplier *</span><select title="Supplier" className={`${inputClass} ${inline ? "" : "mt-1"}`} value={draft.supplierId} onChange={e => setDraft(d => ({ ...d, supplierId: e.target.value }))}>{card?.supplierId && !suppliers.some(s => s.id === card.supplierId) && <option value={card.supplierId} disabled>{card.supplierName} (removed)</option>}{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+        {suppliers.length === 0 && <p className="text-xs text-amber-800">Add a supplier in Workpackages configuration → Non-FTE Suppliers before creating a purchase.</p>}
 
         <label className={`${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}><span className={inline ? "sr-only" : undefined}>Payment Deadline</span><select title="Payment Deadline" className={`${inputClass} ${inline ? "" : "mt-1"}`} value={draft.purchaseMilestone || ""} onChange={e => setDraft(d => ({ ...d, purchaseMilestone: e.target.value || null }))}><option value="">Project End (Default)</option>{MILESTONES_DEF.map(m => <option key={m.key} value={m.key}>{m.label} ({m.name})</option>)}</select></label>
         <div><span className={`${inline ? "sr-only" : ""} ${inline ? "text-[9px] text-gray-600" : "text-xs text-slate-700"} font-semibold`}>Reusability</span>{inline ? <select aria-label="Reusability" title="Reusability" className={`${inputClass} ${inline ? "" : "mt-1"}`} value={draft.reusability} onChange={e => setDraft(d => ({ ...d, reusability: e.target.value, customReusabilityFactor: d.customReusabilityFactor ?? 0.5 }))}>

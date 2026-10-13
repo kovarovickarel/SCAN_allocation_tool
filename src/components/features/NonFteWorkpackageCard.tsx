@@ -2,7 +2,7 @@ import { WorkpackageDuplicateButton } from "../ui/WorkpackageDuplicateButton";
 import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
 import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { ThemeContext, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONE_MAP, DEFAULT_SUPPLIERS } from "../../constants";
-import { purchaseCost, purchaseCostDot, purchaseCostSummary, purchaseSubcategory, purchaseMonthlyCosts, validPurchaseMonths } from "../../utils/nonFteWorkpackages";
+import { purchaseCost, purchaseCostDot, purchaseCostSummary, purchaseSubcategory, purchaseMonthlyCosts, validPurchaseMonths, isOtherSupplier } from "../../utils/nonFteWorkpackages";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { CalendarGanttIcon, PencilIcon, TrashIcon } from "../ui/icons";
 import { NonFteTypeIcon } from "../ui/NonFteTypeIcon";
@@ -188,7 +188,7 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
         <h3 className={`min-w-0 max-w-full break-words text-[11px] font-bold text-slate-900 ${card._isNegated ? "line-through" : ""}`}>{card.name}</h3>
         {!isCompact && <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold shrink-0 shadow-2xs whitespace-nowrap ${isRetro ? "bg-white text-black border border-black font-mono shadow-[1px_1px_0px_#000]" : "bg-white text-gray-700 border border-gray-300"}`}><ReusabilityLabel card={card} factors={reusabilityFactors} /></span>}
       </div>
-      {!isCompact && card.supplierName && <span title={`Supplier: ${card.supplierName}`} className={`text-[9px] px-1.5 py-0.2 font-semibold shrink-0 max-w-[40%] truncate bg-red-300 text-red-950 border border-red-300 ${isRetro ? "rounded-none font-mono shadow-[1px_1px_0px_#000]" : "rounded shadow-2xs"}`}>{card.supplierName}</span>}
+      {!isCompact && card.supplierName && <span title={`Supplier: ${card.supplierName}`} className={`text-[9px] px-1.5 py-0.2 font-semibold shrink-0 max-w-[40%] truncate bg-red-300 ${isOtherSupplier(card.supplierName) ? "text-white" : "text-red-950"} border border-red-300 ${isRetro ? "rounded-none font-mono shadow-[1px_1px_0px_#000]" : "rounded shadow-2xs"}`}>{card.supplierName}</span>}
     </div>}
     {!isCompact && card.projectId && <div className="flex items-center justify-between gap-2 mt-1 min-w-0">
       <button type="button" draggable={false} onClick={event => {
