@@ -3,6 +3,7 @@ import { genId, ThemeContext } from "../../constants";
 import type { WorkpackagePhase } from "../../types";
 import { validWorkpackagePhases, validPhaseOrder, isPhaseNotMilestoneBound, isMaintenancePhase } from "../../utils/workpackageTypes";
 import { GoldPhaseIcon } from "../ui/GoldPhaseIcon";
+import { PhaseManHoursInput } from "../ui/PhaseManHoursInput";
 
 export function WorkpackagePhaseEditor({ phases, onChange }: {
   phases: WorkpackagePhase[]; onChange: (phases: WorkpackagePhase[]) => void;
@@ -45,12 +46,12 @@ export function WorkpackagePhaseEditor({ phases, onChange }: {
         <button type="button" className={button} disabled={index === phases.length - 1 || isMaintenancePhase(phases[index + 1]) !== maintenance || !validPhaseOrder(reordered(index, 1))} aria-label={`Move phase ${index + 1} down`} onClick={() => { const next = reordered(index, 1); if (validPhaseOrder(next)) onChange(next); }}>↓</button>
         <button type="button" className={button} disabled={phases.length === 1} aria-label={`Remove phase ${index + 1}`} onClick={() => onChange(phases.filter((_, i) => i !== index))}>✕</button>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <label className="text-[11px] font-semibold text-slate-600">FTE Rate / Mo
           <input aria-label={`Phase ${index + 1} FTE rate`} type="text" inputMode="decimal" className={`${input} mt-1`} value={rateInputs[phase.id] ?? (Number.isFinite(phase.rate) ? String(phase.rate) : "")} onChange={event => {
             const value = event.target.value.replace(/,/g, ".");
             setRateInputs(current => ({ ...current, [phase.id]: value }));
-            update(index, { rate: value.trim() === "" ? NaN : Number(value) });
+            update(index, { rate: value.trim() === "" ? NaN : Math.round(Number(value) * 1000) / 1000 });
           }} onBlur={() => setRateInputs(current => {
             const next = { ...current };
             delete next[phase.id];
@@ -58,7 +59,15 @@ export function WorkpackagePhaseEditor({ phases, onChange }: {
           })} />
         </label>
         <label className="text-[11px] font-semibold text-slate-600">{maintenance ? "Duration (up to Mo)" : "Duration (Mo)"}
-          {phase.untilProjectEnd ? <span className={`${input} mt-1 block text-slate-500`}>Until project end</span> : <input aria-label={`Phase ${index + 1} duration`} type="number" min="1" max="60" step="1" className={`${input} mt-1`} value={Number.isFinite(phase.duration) ? phase.duration : ""} onChange={event => update(index, { duration: event.target.value === "" ? NaN : Number(event.target.value) })} />}
+          {phase.untilProjectEnd ? <span className={`${input} mt-1 block text-slate-500 whitespace-nowrap`} style={{ whiteSpace: "nowrap" }}>Until project end</span> : <input aria-label={`Phase ${index + 1} duration`} type="number" min="1" max="60" step="1" className={`${input} mt-1`} value={Number.isFinite(phase.duration) ? phase.duration : ""} onChange={event => update(index, { duration: event.target.value === "" ? NaN : Number(event.target.value) })} />}
+        </label>
+        <label className="text-[11px] font-semibold text-slate-600">{phase.untilProjectEnd ? "Man-hours / Mo" : maintenance ? "Man-hours (up to)" : "Man-hours"}
+          <PhaseManHoursInput rate={phase.rate} duration={phase.duration} monthly={phase.untilProjectEnd}
+            label={`Phase ${index + 1} man-hours${phase.untilProjectEnd ? " per month" : ""}`} className={`${input} mt-1`}
+            onChange={rate => {
+              setRateInputs(current => { const next = { ...current }; delete next[phase.id]; return next; });
+              update(index, { rate });
+            }} />
         </label>
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-slate-700">

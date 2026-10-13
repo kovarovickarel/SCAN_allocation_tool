@@ -4,6 +4,7 @@ import { getBasicTypePhases, isMaintenancePhase, isPhaseNotMilestoneBound, workp
 import { SupportingPhasePanel } from "./SupportingPhasePanel";
 import { getSupportingPhases } from "../../utils/supportingPhases";
 import { GoldPhaseIcon } from "../ui/GoldPhaseIcon";
+import { PhaseManHoursLabel } from "../ui/PhaseManHoursLabel";
 
 export function WorkpackageTypeSummary({ tool, name, rates, onEdit, onRemove, canRemove = true }: {
   tool: string; name: string; rates: any; onEdit: () => void; onRemove?: () => void; canRemove?: boolean;
@@ -29,9 +30,10 @@ export function WorkpackageTypeSummary({ tool, name, rates, onEdit, onRemove, ca
     <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${isRetro ? "bg-[#d4d0c8]" : "bg-white"}`}>
       {phases.map(phase => isMaintenancePhase(phase) === maintenance && <div key={phase.id} className={`p-2.5 flex flex-col gap-1.5 ${isRetro ? "bg-[#ffffec] border-2 border-black font-mono" : "border border-slate-200 rounded-lg bg-slate-50/60"}`}>
         <span className="text-xs font-bold text-slate-800">{phase.name}</span>
-        <dl className="grid grid-cols-2 gap-2">
+        <dl className={`grid gap-y-2 gap-x-4 ${maintenance ? "grid-cols-[minmax(0,1fr)_max-content_max-content]" : "grid-cols-3"}`}>
           <div><dt className="text-[10px] font-semibold text-gray-500">FTE Rate / Mo</dt><dd className="text-xs font-mono font-semibold text-slate-900 mt-1">{phase.rate}</dd></div>
-          <div><dt className="text-[10px] font-semibold text-gray-500">Duration (Mo)</dt><dd className="text-xs font-mono font-semibold text-slate-900 mt-1">{phase.durationLabel}</dd></div>
+          <div><dt className="text-[10px] font-semibold text-gray-500">Duration (Mo)</dt><dd className="text-xs font-mono font-semibold text-slate-900 mt-1 whitespace-nowrap" style={{ whiteSpace: "nowrap" }}>{phase.durationLabel}</dd></div>
+          <div><dt className="text-[10px] font-semibold text-gray-500">Man-hours{phase.untilProjectEnd ? " / Mo" : ""}</dt><dd className="text-xs font-mono font-semibold text-slate-900 mt-1"><PhaseManHoursLabel rate={phase.rate} duration={phase.duration} monthly={phase.untilProjectEnd} upTo={isMaintenancePhase(phase)} /></dd></div>
         </dl>
         <span className={`self-start inline-flex items-center text-[9px] font-semibold uppercase px-1.5 py-0.5 border ${
           isRetro ? "bg-[#ffff80] text-black border-black font-mono" : phase.scaling === "Not scaled by reusability"

@@ -3,6 +3,8 @@ import { genId } from "../../constants";
 import type { WorkpackageSupportingPhase } from "../../types";
 import { validSupportingPhases } from "../../utils/supportingPhases";
 import { GoldPhaseIcon } from "../ui/GoldPhaseIcon";
+import { PhaseManHoursLabel } from "../ui/PhaseManHoursLabel";
+import { PhaseManHoursInput } from "../ui/PhaseManHoursInput";
 
 export function SupportingPhasePanel({ phases, onChange }: {
   phases: WorkpackageSupportingPhase[]; onChange?: (phases: WorkpackageSupportingPhase[]) => void;
@@ -18,13 +20,24 @@ export function SupportingPhasePanel({ phases, onChange }: {
       }} className="p-3 border rounded-lg flex flex-col gap-2">
         {onChange ? <div className="flex items-center gap-2"><input aria-label={`Supporting activity ${index + 1} name`} value={phase.name} onChange={event => update(index, { name: event.target.value })} placeholder="Supporting activity name" className="w-full min-w-0 text-xs px-2 py-1.5 border border-slate-300 rounded bg-white text-slate-900" /><button type="button" aria-label={`Remove supporting activity ${index + 1}`} onClick={() => onChange(phases.filter((_, i) => i !== index))} className="text-xs text-slate-600 cursor-pointer">✕</button></div>
           : <h4 className="text-xs font-bold text-slate-800">{phase.name}</h4>}
+        <div className="grid grid-cols-2 gap-2">
         <div className="text-[10px] font-semibold text-slate-500">FTE Rate / Mo
           {onChange ? <input type="text" inputMode="decimal" aria-label={`Supporting activity ${index + 1} FTE rate`} value={rateInputs[phase.id] ?? (Number.isFinite(phase.rate) ? String(phase.rate) : "")} onChange={event => {
             const value = event.target.value.replace(/,/g, ".");
             setRateInputs(current => ({ ...current, [phase.id]: value }));
-            update(index, { rate: value.trim() === "" ? NaN : Number(value) });
+            update(index, { rate: value.trim() === "" ? NaN : Math.round(Number(value) * 1000) / 1000 });
           }} onBlur={() => setRateInputs(current => { const next = { ...current }; delete next[phase.id]; return next; })} className="block mt-1 w-full text-xs px-2 py-1.5 font-mono border border-slate-300 rounded bg-white text-slate-900" />
             : <p className="text-xs font-mono font-semibold text-slate-900 mt-1">{phase.rate}</p>}
+        </div>
+        <div className="text-[10px] font-semibold text-gray-500">Man-hours / Mo
+          {onChange ? <PhaseManHoursInput rate={phase.rate} monthly label={`Supporting activity ${index + 1} man-hours per month`}
+            className="block mt-1 w-full min-w-0 text-xs px-2 py-1.5 font-mono border border-slate-300 rounded bg-white text-slate-900"
+            onChange={rate => {
+              setRateInputs(current => { const next = { ...current }; delete next[phase.id]; return next; });
+              update(index, { rate });
+            }} />
+            : <p className="text-xs font-mono font-semibold text-slate-900 mt-1"><PhaseManHoursLabel rate={phase.rate} monthly /></p>}
+        </div>
         </div>
         {onChange ? <>
           <label className="flex items-center gap-1.5 text-xs text-emerald-700"><input type="checkbox" checked={phase.scaleByReusability} onChange={event => update(index, { scaleByReusability: event.target.checked })} /><span><span aria-hidden="true">⚡</span>Scaled by reusability</span></label>
