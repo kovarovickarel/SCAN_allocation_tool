@@ -1,9 +1,213 @@
 # Development handoff
 
-Updated: 2026-10-12. Read this together with `AGENTS.md`, `tests/README.md`, and
+Updated: 2026-10-13 (Europe/Prague). Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
-## Selective workspace import implementation (2026-10-12, validated)
+## Start here on the other PC
+
+This section is the current handoff. Sections below it retain earlier session
+history; older statements about unpublished commits or tests not run must be
+read against the current Git and verification summary here.
+
+- Current checkout: `C:/Users/kovar/Desktop/SCAN_Allocation_tool`, branch `master`.
+  Remote: `https://github.com/kovarovickarel/SCAN_allocation_tool.git`.
+- This release builds on pushed selective import commit `90494ef`. The October 13
+  changes are grouped into seven feature commits listed below, with separate
+  regression-test, TODO and handoff documentation commits. Inspect Git status and
+  fetch before synchronizing on another PC; do not overwrite local edits.
+- Release validation passed: all 445 app tests, TypeScript, the Pages production
+  build and both production checks. This ten-commit batch is ready for transfer
+  through `origin/master`; check Git synchronization after pulling on the other PC.
+  A Git push alone does not confirm that the Pages deployment has finished.
+- The new component files are tracked: `ProjectReusabilityModal.tsx`,
+  `ResponsiveSubtoolTag.tsx`, `PhaseManHoursLabel.tsx`, and
+  `PhaseManHoursInput.tsx`. The regression fixture and suite are
+  `tests/fixtures/recent-release-harness.tsx` and `tests/recent-release.spec.ts`.
+  `debug.log` is unrelated and remains untracked.
+- `TODO.md` removes the nine previously requested completed/unreplicated items
+  and marks the latest delivered feedback features complete. Selective export,
+  contractor defaults and average-calculation questions remain pending. Backlog
+  wording is not an instruction to implement further features automatically.
+- Export the live browser workspace JSON before changing PCs, closing/reloading
+  the app or transferring source. Planning is session state; Git does not contain
+  the user's current projects, configuration, members or allocations. Import the
+  saved JSON on the new PC. Do not reload the current 5173 session to check code.
+
+### Portable setup
+
+Use the new PC's checkout path, Node.js 20.19+ or 22.12+, and pnpm 10:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+Windows can also use `start-app.bat`. Install dependencies locally; do not copy
+this PC's `node_modules` or assume bundled runtime paths are portable. The app is
+at `http://127.0.0.1:5173/`. For later verification, install Chromium with
+`pnpm exec playwright install chromium`, then use `pnpm typecheck`,
+`pnpm test:e2e --workers=4`, and `pnpm test:pages`. Development tests use 5174;
+Pages tests use 4174 and the `/SCAN_allocation_tool/` prefix. Run test batches
+sequentially to avoid shared test-server/output-directory conflicts.
+
+This PC needed per-command Git ownership allowance
+`git -c safe.directory=C:/Users/kovar/Desktop/SCAN_Allocation_tool ...`.
+Its commit environment had no configured identity; commit `90494ef` used the
+existing repository author `kovarovickarel <kovarovickarel@gmail.com>` through
+per-command options. Inspect local Git setup on the new PC rather than copying
+global settings or using older laptop workarounds below.
+
+## Latest product changes (2026-10-12–13)
+
+### Category totals and supplier configuration
+
+- Project tool/subtool header cost tags follow the FTE/non-FTE visibility filter.
+  Both shows combined costs; FTE includes its workpackage costs and tool management
+  overhead; non-FTE-only excludes management and hides MH tags. Other project
+  totals/calculations are not changed by this display filter.
+- Other is a permanent default supplier for new non-FTE workpackages and new
+  external members. Its tag has white text with the existing supplier background.
+  It remains in assignment dropdowns, but is hidden from the editable supplier list
+  and cannot be removed. The Select supplier placeholder was removed.
+- `ensureOtherSupplier` preserves existing supplier names/IDs, recognizes an
+  independently created Other by name, and adds a collision-safe ID when missing.
+  Import/configuration save/reset and the open development session retain the
+  option. Existing imported member/purchase selections are not reassigned.
+- Suppliers moved from Defaults to **Workpackages configuration → Non-FTE
+  Suppliers**. Workpackages Reset now resets suppliers while retaining referenced
+  records; Defaults Reset preserves supplier configuration. Help/form guidance
+  points to the new section.
+- Seeded built-in basic types no longer include Functions dev support. Weekly
+  meeting attendance remains. A mount effect updates the open session's seeded
+  definitions; later JSON imports retain their saved supporting activities.
+- The FTE creation dialog's header now says **Add FTE Workpackage**.
+
+Files: `src/constants/index.ts`, `src/utils/nonFteWorkpackages.ts`, `src/App.tsx`,
+`ConfigurationModal.tsx`, `TeamComponents.tsx`, `NonFteWorkpackageModal.tsx`,
+`NonFteWorkpackageCard.tsx`, `MemberSupplierBadge.tsx`, `WorkpackageComponents.tsx`,
+`HelpGuideModal.tsx`, and `AddFunctionModal.tsx`.
+
+### Apply global reusability
+
+- The project header's extended-mode circular-arrow button sits left of the FTE
+  filter and aligns below Configure Category. Alignment accounts for the optional
+  duplication button/compact mode. Hover remains white; the dialog icon is violet.
+- Despite the label **Apply global reusability**, scope is the current project,
+  not the entire portfolio. Overall tool view offers all families; team-specific
+  views offer that family plus Other. All offered families are selected initially.
+  Hidden project workpackages are included when their family is selected.
+- Choose a configured preset or Other/custom factor. All/FTE/Non-FTE are exclusive
+  icon buttons. Tool-family buttons are independent toggles using configuration
+  colours/icons, laid out in two full-width columns (odd last button spans both).
+- Overall view alone has small Select all/Select none controls beside Tool families.
+  Their active state is blue like OK. Unselected category buttons use slate; selected
+  All uses dark slate, FTE uses yellow/amber, and Non-FTE uses red.
+- The window matches Add FTE Workpackage's width/padding/buttons, with a Categories-
+  style two-row header: coloured icon, title, project name. The selection screen
+  has no selected/change count paragraph.
+- OK is allowed for a no-op and closes immediately. If anything changes, a second
+  confirmation warns how many workpackages will be overwritten, itemizes names,
+  and requires Confirm changes. Back returns to the draft. No edits apply until
+  final confirmation; Cancel/cross/Escape discard. Backdrop clicks do not close.
+- OK fades only when no family is selected. Invalid custom factors or factors
+  producing zero purchase base costs still block application. Applying updates
+  selected source cards atomically; manual overrides, schedules, allocations and
+  maintenance scaling preferences remain stored. Only reusability/custom factor
+  fields change. No new JSON fields/schema version.
+
+Files: `ProjectReusabilityModal.tsx`, `ProjectComponents.tsx`, `componentTypes.ts`,
+and the `handleApplyProjectReusability` callback in `src/App.tsx`.
+
+### Duplication and timeline labels
+
+- Duplicate project now has the two-row Categories-style header and a blue icon
+  matching its action button. Radio options became All/FTE/Non-FTE icon buttons
+  plus a separate Without workpackages button; only one is selected. Without
+  workpackages uses light violet when selected, distinct from All.
+- Combined team and project spending timelines now show subtool tags like the
+  project staffing timeline. `ResponsiveSubtoolTag` measures the full label and
+  sibling badges, abbreviating Trace Checker to TC or Pipeline to PL when needed
+  to keep cost on the row; it restores the name when space returns. Hover retains
+  the full name; ResizeObserver/font/mutation observers handle layout changes.
+- Reusability tags were moved briefly in spending, then **removed altogether**.
+  Do not restore them based on intermediate session notes.
+
+Files: `DuplicateProjectModal.tsx`, `TeamTimelineModal.tsx`,
+`ProjectSpendingModal.tsx`, and `ResponsiveSubtoolTag.tsx`.
+
+### Phase man-hours: latest accepted behavior
+
+- Base conversion: **1 FTE-month = 160 MH**. These configuration values are derived
+  from the phase's configured rate/duration, before workpackage reusability scaling.
+- Overview displays MH alongside FTE Rate / Mo and Duration, with matching label/
+  value styling, not orange badges. Fixed main phases show total MH; limited
+  maintenance shows Up to X MH; project-end phases/supporting activities show
+  X MH / Mo. MH display is a whole number without grouping separators.
+- Main overview cards use three equal columns with Duration in the middle and
+  left-aligned text. Maintenance uses content-sized duration/MH columns and wider
+  gaps. Until project end is kept on one line in both overview and edit mode.
+  The attempted centered-text layout was reverted; do not reintroduce it.
+- Add/edit phase forms now include editable MH; supporting activities include
+  editable MH / Mo. Changing FTE or duration recalculates MH in real time.
+- **Editing total MH preserves the current duration** and computes
+  `FTE = MH / (160 × duration)`. The earlier automatic one-month duration change
+  was explicitly rejected. Monthly MH computes `FTE = MH / 160` without duration.
+- Computed FTE and manually entered phase/supporting FTE rates round to at most
+  three decimal places, with no trailing zeros. Raw FTE text remains editable until
+  blur. MH may recompute slightly after blur due to rounding the rate; it is not
+  stored independently. Blank/invalid/negative MH uses the existing invalid-rate
+  validation and prevents saving. Existing rates in historical imports are preserved.
+- JSON still stores rate/duration, not a redundant MH field. Keep backwards
+  compatibility with the frozen schema-1 baseline; do not regenerate its fixture.
+
+Files: `WorkpackageTypeSummary.tsx`, `WorkpackagePhaseEditor.tsx`,
+`SupportingPhasePanel.tsx`, `PhaseManHoursLabel.tsx`, `PhaseManHoursInput.tsx`.
+
+## Release commits and verification
+
+Feature commits:
+
+1. `84a8508` — Category-scoped tool/subtool header costs and MH visibility.
+2. `b3551c2` — Permanent Other supplier and Workpackages supplier configuration.
+3. `9d485fd` — Remove Functions dev support from seeded basic types.
+4. `b663d33` — Scoped project reusability and two-step overwrite confirmation.
+5. `521f9ba` — Project duplication controls and Add FTE Workpackage header.
+6. `3cf0cbf` — Responsive subtool tags in combined team/spending timelines.
+7. `7d9e7ca` — Phase man-hours overview and bidirectional editing.
+
+Additional commits: `dee9f6d` contains regression tests/reviewed current screenshots;
+`0f47d41` records the TODO cleanup. The final documentation commit contains this
+handoff plus the agent guide and JSON compatibility notes.
+
+Final validation on October 13:
+
+- All **445 application tests passed**, with 0 failures, skips or flaky results
+  (`playwright test --config playwright.current-ui.config.ts --workers=1`).
+- TypeScript passed (`tsc --noEmit`).
+- `pnpm test:pages --workers=1` passed the production build and both Pages checks.
+- The focused release suite passed all 19 new cases. The first full run passed
+  443/445: a purchase-input timeout passed three isolated reruns, and the compact-
+  card test was corrected to wait for the resize observer. All 12 repeated width
+  checks and the subsequent complete suite passed. No application width changes
+  were needed for that timing correction.
+- Remote refs were refreshed before pushing; `origin/master` contained no
+  additional commits. No force push is needed. Verify the hosted deployment
+  separately if the next task depends on the published site being updated.
+
+Current screenshot updates were reviewed for accepted supplier, dialog, seeded
+support-effort and MH presentation changes. Historical screenshots and the frozen
+schema-1 JSON fixture remain unchanged. Existing tests now exercise the new
+supplier/default-support behavior and duplication buttons; the new fixture covers
+reusability scope/confirmation/discard/no-op, category totals/MH, responsive tags,
+and phase MH conversion/duration preservation/rounding.
+
+On this PC, concurrent test workers exhausted Windows memory/pagefile resources
+and killed the test-managed Vite server. Validation uses an independently started
+Vite on 5174 and one Playwright worker. If a new PC has similar constraints, use
+`pnpm test:e2e --workers=1`. Keep the interactive planning session on 5173 untouched.
+Run app and Pages test batches sequentially.
+
+## Selective workspace import implementation (2026-10-12, pushed in 90494ef)
 
 Import still defaults to Replace entire workspace. Select what to import opens
 team/category scope selection and Projects, Workpackages, Members & suppliers,
@@ -43,9 +247,10 @@ conflict resolution, cancellation, backups, scope choices and schema-1 compatibi
 Early failures were corrected synthetic fixture values (view name, one-based
 purchase months, supported icon and management threshold); no production fixes
 were needed for this test matrix. The frozen baseline fixture and export schema
-were not changed. The full unrelated app suite and Pages checks were not rerun.
+were not changed. At that checkpoint, the full unrelated app suite and Pages checks were not rerun;
+the current release verification above supersedes that status.
 The scheduled implementation follow-up was paused because the user started work
-immediately. Existing TODO cleanup and debug.log remain separate pending work.
+immediately. The TODO cleanup is included in the current release; debug.log remains unrelated.
 
 ## Validated user-testing release batch (2026-10-12)
 
@@ -258,7 +463,7 @@ This checkout is `C:/Users/kovar/Desktop/SCAN_Allocation_tool`. Tests used the
 package scripts with servers on 5174 and 4174, independently of the user's 5173
 planning session. The older laptop paths below describe prior sessions.
 
-## Current state
+## Historical state before the October 12 releases
 
 This is the existing React/Vite front-end application, not a new project. Its
 domain rules and earlier features are documented in `AGENTS.md`: FTE and purchase
@@ -266,11 +471,11 @@ workpackages, suppliers and external salaries, deferred payments, summary filter
 project/team staffing and spending timelines, automatic/manual starts, finish
 targets, themes, and full-workspace JSON transfer.
 
-The last verified published commit is `7288164` (`Deploy application to GitHub
-Pages`). The hosted app is https://kovarovickarel.github.io/SCAN_allocation_tool/.
-The changes below are committed locally and awaiting the user's push; they have not been
-published. Check `git status` and remote history before continuing. Preserve these local commits when synchronizing; do not reset to the older remote or
-replace the checkout with a fresh clone before transferring them.
+At this older checkpoint the last verified publication was `7288164` (`Deploy
+application to GitHub Pages`), and the session's commits awaited a push. This is
+historical status, superseded by the current Git summary at the top of this file.
+The hosted URL remains https://kovarovickarel.github.io/SCAN_allocation_tool/;
+inspect Actions separately before claiming a particular deployment is live.
 
 ## Latest feature: reposition every FTE workpackage
 
@@ -342,7 +547,8 @@ Planning data lives in the browser session. Export the workspace JSON before
 closing/reloading or moving to another PC; the repository and this handoff do not
 contain the user's live planning data. Import restores it after opening the app.
 
-Laptop-specific locations (these are not portable setup requirements):
+Earlier laptop-specific locations (historical; not the current checkout and not
+portable setup requirements):
 
 - Desktop app source: `C:/Users/kovar/Desktop/SCAN_allocation_tool-master/SCAN_allocation_tool-master`.
   This is a ZIP extraction without Git history.
@@ -366,22 +572,18 @@ Laptop-specific locations (these are not portable setup requirements):
 
 ## Backlog and next steps
 
-`TODO.md` preserves all requested future items: externalisation underusage,
-Excel export, timeline help, default/configurable tool workpackages, perpetual
-support/meeting tasks, hours breakdown and total WP hours, refactoring, theme
-review, GM/RIVIAN/MOTIONAL examples, WP details, and new tool categories.
-No backlog item was implemented merely by adding it to the list.
+Read the current `TODO.md` for the remaining backlog; removed items in older
+session notes are not pending work. Several user-testing items were implemented
+in the latest local batch; the current summary above describes their actual status.
 
-The completed local commit groups are:
+The historical commit groups from that earlier checkpoint were:
 
 - `08a3587`: all-FTE repositioning, domain/UI regression tests and the reviewed guide reference.
 - `4457c4b`: production Pages smoke tests, deployment gate and coverage documentation.
 - A documentation commit: agent guidance, this handoff, and the user's backlog.
 
-The user requested local commits and will push to the remote after validation.
-No remote push has been performed for this batch. Once pushed, the Pages workflow
-will validate and redeploy the app; inspect the workflow result before claiming
-the new feature is available on the hosted site.
+These older commits are no longer the pending batch. Use the current Git summary
+above and inspect the checkout before synchronizing or preparing new commits.
 
 ## Supporting activity rows in the project timeline
 

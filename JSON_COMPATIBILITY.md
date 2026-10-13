@@ -1,5 +1,18 @@
 # Workspace JSON compatibility
 
+## October 13 configuration refinements
+
+The schema remains version 1. Phase MH displays/inputs derive from saved FTE rates
+and durations; they do not add an independent exported hours field. Three-decimal
+rounding applies to edits, not historical imported rate precision.
+
+The application adds a permanent Other supplier when an imported workspace omits
+it, preserving existing supplier IDs, names and selections. An existing supplier
+named Other is reused; an occupied default ID receives a collision-safe suffix.
+Imported supporting activity definitions retain Functions dev support if it was
+saved, even though new seeded defaults no longer include it. Frozen compatibility
+fixtures must remain unchanged. Global reusability updates existing card fields.
+
 ## Baseline
 
 The user-tested application at commit `6b4b08e` (2026-10-12) is the compatibility
