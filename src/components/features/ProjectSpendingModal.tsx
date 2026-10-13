@@ -1,4 +1,5 @@
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
+import { ResponsiveSubtoolTag } from "../ui/ResponsiveSubtoolTag";
 import { workpackageRateKey, workpackageTypeColor, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import { costInEUR, parsePurchasePaymentAmount, purchaseMonthlyCosts, purchasePaymentSchedule } from "../../utils/nonFteWorkpackages";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
@@ -13,7 +14,6 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { CalendarGanttIcon, ChevronDownIcon, ChevronRightIcon, LockIcon, UnlockIcon, ManagementIcon, RotateCcwIcon, ToolIcon } from "../ui/icons";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
-import { ReusabilityLabel } from "../ui/ReusabilityLabel";
 import { ProjectSpendingCharts } from "../ui/ProjectSpendingCharts";
 import { SpendingCellAmount } from "../ui/SpendingCellAmount";
 
@@ -258,11 +258,8 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
           </button>}
           </div>
           <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0 pl-5">
+            {card?.subcategory && <ResponsiveSubtoolTag name={card.subcategory} />}
             {card?.kind !== "non-fte" && card?.complexity && card.tool !== "Other" && <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border" style={workpackageTypeBadgeStyle(card, options.toolFteRates)}>{workpackageTypeLabel(card)}</span>}
-            {card && <span className={`text-[8.5px] px-1.5 py-0.5 rounded font-semibold border ${isRetro ? "bg-white text-black border-black font-mono" : "bg-white text-gray-700 border-gray-300 shadow-2xs"}`}>
-              <ReusabilityLabel card={card} factors={options.reusabilityFactors} factorOnly />
-            </span>}
-            {card?.subcategory && <span className={`text-[9px] px-1 py-0.5 rounded ${isRetro ? "text-black" : "text-slate-500"}`}>{card.subcategory}</span>}
             {altered && <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-900 border border-red-300">*Manually adjusted</span>}
             <span className="ml-auto">{totalBadge(track.totalCost, track.isManagement, false, true)}</span>
           </div>

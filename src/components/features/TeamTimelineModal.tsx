@@ -1,4 +1,5 @@
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
+import { ResponsiveSubtoolTag } from "../ui/ResponsiveSubtoolTag";
 import { supportingPhaseRates } from "../../utils/supportingPhases";
 import { workpackageRateKey, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
@@ -2009,6 +2010,7 @@ export function TeamTimelineModal({
                                   </div>
 
                                   <div className="flex items-center gap-0.5 mt-1 flex-wrap min-w-0">
+                                    {card.subcategory && <ResponsiveSubtoolTag name={card.subcategory} className="mr-1" />}
                                     {card.complexity && (card.tool !== "Other" || card.complexity) && <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border mr-1" style={workpackageTypeBadgeStyle(card, toolFteRates)}>{workpackageTypeLabel(card)}</span>}
                                     {card.tool === "Other" && toolName !== "Other" && (
                                       <button
