@@ -942,9 +942,11 @@ export const ToolRow = memo(function ToolRow({
     [toolCards]
   );
   const toolTotalCost = useMemo(() => sumWorkpackageAllocationCosts(
-    [...toolCards.filter((card) => card.projectId === projectId && !card._isNegated).map((card) => card._allocationCost), managementAllocationCost],
+    [...toolCards.filter((card) => card.projectId === projectId && !card._isNegated
+      && (workpackageView === "both" || (card.kind === "non-fte" ? "non-fte" : "fte") === workpackageView))
+      .map((card) => card._allocationCost), workpackageView === "non-fte" ? undefined : managementAllocationCost],
     fteCosts.currency
-  ), [toolCards, projectId, fteCosts.currency, managementAllocationCost]);
+  ), [toolCards, projectId, fteCosts.currency, managementAllocationCost, workpackageView]);
 
   const allSubcategories = tool.subcategories;
   const hasMultipleSlots = allSubcategories !== null;
@@ -1034,7 +1036,7 @@ export const ToolRow = memo(function ToolRow({
             </span>
           )}
           <WorkpackageCostLabel cost={toolTotalCost} />
-          <ManHoursLabel size="tool" breakdown={sumManHoursBreakdowns(toolCards)} hours={toolCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />
+          {workpackageView !== "non-fte" && <ManHoursLabel size="tool" breakdown={sumManHoursBreakdowns(toolCards)} hours={toolCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />}
           <span
             className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded ${isRetro ? "bg-white border-2 border-black text-black shadow-[1px_1px_0px_#000]" : "bg-white/90 border border-black/10 text-gray-800 shadow-2xs"}`}
             title={`${toolCards.length} workpackage(s) · Total: ${toolTotalFTE.toFixed(2)} FTE/yr`}
@@ -1086,7 +1088,7 @@ export const ToolRow = memo(function ToolRow({
             const showSlotCategories = slotCards.length > 0 && slotPurchases.length > 0;
             const slotTotalFTE = allSlotCards.reduce((sum, c) => sum + (c._fte ?? 0), 0);
             const slotTotalCost = sumWorkpackageAllocationCosts(
-              [...allSlotCards, ...slotPurchases]
+              [...slotCards, ...slotPurchases]
                 .filter(card => card.projectId === projectId && !card._isNegated)
                 .map(card => card._allocationCost),
               fteCosts.currency
@@ -1168,7 +1170,7 @@ export const ToolRow = memo(function ToolRow({
                     <div className="flex items-center gap-1 shrink-0">
                       <WorkpackageCostLabel cost={slotTotalCost} size="subcategory" />
                       {!isBasicMode && <>
-                      <ManHoursLabel size="subcategory" breakdown={sumManHoursBreakdowns(allSlotCards)} hours={allSlotCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />
+                      {workpackageView !== "non-fte" && <ManHoursLabel size="subcategory" breakdown={sumManHoursBreakdowns(allSlotCards)} hours={allSlotCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />}
                       <span
                         className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/90 border border-black/10 text-gray-800 shadow-2xs shrink-0"
                         title={`${sub}: ${slotTotalFTE.toFixed(2)} FTE/yr`}
