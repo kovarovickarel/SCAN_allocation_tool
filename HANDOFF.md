@@ -11,23 +11,29 @@ read against the current Git and verification summary here.
 
 - Current checkout: `C:/Users/kovar/Desktop/SCAN_Allocation_tool`, branch `master`.
   Remote: `https://github.com/kovarovickarel/SCAN_allocation_tool.git`.
-- This release builds on pushed selective import commit `90494ef`. The October 13
-  changes are grouped into seven feature commits listed below, with separate
-  regression-test, TODO and handoff documentation commits. Inspect Git status and
-  fetch before synchronizing on another PC; do not overwrite local edits.
-- Release validation passed: all 445 app tests, TypeScript, the Pages production
-  build and both production checks. This ten-commit batch is ready for transfer
-  through `origin/master`; check Git synchronization after pulling on the other PC.
-  A Git push alone does not confirm that the Pages deployment has finished.
+- Latest pushed application/TODO revision: `27c5124` on `origin/master`, following
+  compact-layout fix `007da70`. Both were pushed after the validated release ending
+  at `6b33840`. This handoff update is a further documentation-only commit.
+- The October 13 release builds on selective import `90494ef` and groups changes
+  into seven feature commits plus regression tests, TODO cleanup and release docs.
+  All ten release commits were pushed. The two later commits are detailed below.
+  Inspect Git status and fetch before synchronizing; do not overwrite local edits.
+- The last full validation applies to `6b33840`: 445 app tests, TypeScript, Pages
+  production build and both production checks passed. Tests were **not rerun** for
+  compact-layout fix `007da70` or TODO cleanup `27c5124`. A push alone does not
+  confirm that the GitHub Pages deployment has finished.
 - The new component files are tracked: `ProjectReusabilityModal.tsx`,
   `ResponsiveSubtoolTag.tsx`, `PhaseManHoursLabel.tsx`, and
   `PhaseManHoursInput.tsx`. The regression fixture and suite are
   `tests/fixtures/recent-release-harness.tsx` and `tests/recent-release.spec.ts`.
   `debug.log` is unrelated and remains untracked.
-- `TODO.md` removes the nine previously requested completed/unreplicated items
-  and marks the latest delivered feedback features complete. Selective export,
-  contractor defaults and average-calculation questions remain pending. Backlog
-  wording is not an instruction to implement further features automatically.
+- `TODO.md` now removes the seven additional entries requested by the user:
+  category header costs/MH, bulk reusability, Other supplier, contractor defaults,
+  selective import/export, subtool spending tags and phase hours. Removing a TODO
+  is not proof that all its original scope was implemented: selective export and
+  moving contractor defaults are not delivered by this batch. Do not re-add or
+  implement them without a new request. Remaining feedback items are releases
+  every six weeks and the activity/project average questions.
 - Export the live browser workspace JSON before changing PCs, closing/reloading
   the app or transferring source. Planning is session state; Git does not contain
   the user's current projects, configuration, members or allocations. Import the
@@ -37,10 +43,19 @@ read against the current Git and verification summary here.
 
 Use the new PC's checkout path, Node.js 20.19+ or 22.12+, and pnpm 10:
 
+For an existing checkout, inspect local changes first, then synchronize without
+creating an accidental merge commit:
+
 ```sh
+git fetch origin
+git pull --ff-only origin master
 pnpm install --frozen-lockfile
 pnpm dev
 ```
+
+For a new checkout, clone `https://github.com/kovarovickarel/SCAN_allocation_tool.git`
+and run the install/dev commands from its root. If fast-forward pull is blocked,
+inspect the local commits/edits before proceeding; do not reset them automatically.
 
 Windows can also use `start-app.bat`. Install dependencies locally; do not copy
 this PC's `node_modules` or assume bundled runtime paths are portable. The app is
@@ -56,6 +71,31 @@ Its commit environment had no configured identity; commit `90494ef` used the
 existing repository author `kovarovickarel <kovarovickarel@gmail.com>` through
 per-command options. Inspect local Git setup on the new PC rather than copying
 global settings or using older laptop workarounds below.
+
+## Latest follow-up pushes (2026-10-13)
+
+- `007da70` — Collapsed project tool/subtool boxes hide the FTE/NON-FTE headings
+  and their category icons, retaining the dashed divider when both kinds exist.
+  Compact populated FTE slots no longer reserve the expanded minimum height or
+  stretch the FTE grid. Mixed compact tool boxes remove the extra bottom padding
+  above the divider. Expanded headings/layout and empty drop targets are retained.
+- The same commit adds responsive compact receipt headers: when the non-FTE type
+  icon would crowd the milestone tag, hide the type icon and keep the milestone.
+  Resize/font measurements restore the icon when room returns. It only applies to
+  compact cards with a purchase type and milestone; expanded type labels remain.
+  Measurement does not depend on the hidden icon state, avoiding oscillation, and
+  observers/font listeners are cleaned up on unmount.
+- `27c5124` — Removes the seven requested TODO entries listed above.
+- Changed files: `src/components/features/WorkpackageComponents.tsx`,
+  `src/components/features/NonFteWorkpackageCard.tsx`, and `TODO.md`.
+- Both commits are pushed to `origin/master`. `git diff --check` passed; no tests
+  or TypeScript checks were run for this follow-up. Before relying on regression
+  coverage for these layouts, add focused checks for mixed compact tool/subtool
+  spacing and narrow/wide receipt icon restoration, then review affected current
+  screenshots. Frozen JSON fixtures and historical screenshots remain unchanged.
+- At handoff, tracked files were committed; only unrelated `debug.log` remained
+  untracked. The local development server was started on 5173; processes and live
+  browser planning data do not transfer to another PC. Export JSON separately.
 
 ## Latest product changes (2026-10-12–13)
 
@@ -176,10 +216,11 @@ Feature commits:
 7. `7d9e7ca` — Phase man-hours overview and bidirectional editing.
 
 Additional commits: `dee9f6d` contains regression tests/reviewed current screenshots;
-`0f47d41` records the TODO cleanup. The final documentation commit contains this
-handoff plus the agent guide and JSON compatibility notes.
+`0f47d41` records the earlier TODO cleanup. `6b33840` contains the validated release
+handoff, agent guide and JSON compatibility notes. Later follow-ups `007da70` and
+`27c5124` are described above and are not covered by the results below.
 
-Final validation on October 13:
+Full release validation on October 13 (before compact-layout follow-up):
 
 - All **445 application tests passed**, with 0 failures, skips or flaky results
   (`playwright test --config playwright.current-ui.config.ts --workers=1`).
