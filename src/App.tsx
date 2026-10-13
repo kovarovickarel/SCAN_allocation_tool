@@ -229,6 +229,21 @@ export default function App() {
     stabilityFactors: DEFAULT_STABILITY_FACTORS,
   });
 
+  // Update the open session's seeded defaults too, without rewriting later JSON imports.
+  useEffect(() => {
+    setConfig(current => {
+      let changed = false;
+      const withoutDevSupport = (types, seededTypes) => Object.fromEntries(Object.entries(types).map(([name, value]: [string, any]) => {
+        if (!seededTypes?.[name] || !value.supportingPhases?.some(activity => activity.id === "devFunctionsSupport")) return [name, value];
+        changed = true;
+        return [name, { ...value, supportingPhases: value.supportingPhases.filter(activity => activity.id !== "devFunctionsSupport") }];
+      }));
+      const fteRates = withoutDevSupport(current.fteRates, DEFAULT_FTE_RATES);
+      const toolFteRates = Object.fromEntries(Object.entries(current.toolFteRates).map(([tool, types]) => [tool, withoutDevSupport(types, DEFAULT_TOOL_FTE_RATES[tool])]));
+      return changed ? { ...current, fteRates, toolFteRates } : current;
+    });
+  }, []);
+
   useEffect(() => {
     const suppliers = ensureOtherSupplier(config.suppliers);
     if (suppliers.length !== config.suppliers.length) setConfig(current => ({ ...current, suppliers: ensureOtherSupplier(current.suppliers) }));

@@ -350,7 +350,6 @@ function defineBasicType(rates: any, color: string) {
     { id: "residualMaintenance", name: "Residual Maintenance", kind: "maintenance", rate: rates.residualMaintenance, duration: 1, scaleByReusability: false, notMilestoneBound: true, untilProjectEnd: true },
   );
   const supportingPhases: WorkpackageSupportingPhase[] = [
-    { id: "devFunctionsSupport", name: "Functions dev support", rate: rates.devFunctionsSupport, scaleByReusability: false, includeMaintenance: true },
     { id: "weeklyMeetings", name: "Weekly meeting attendance", rate: rates.weeklyMeetings, scaleByReusability: false, includeMaintenance: true },
   ];
   return { ...rates, color, phases, supportingPhases };

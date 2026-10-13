@@ -20,7 +20,7 @@ test("chosen start shifts all development phases and maintenance, respecting inc
   expect(workpackageFinishViolation(card, project)).toBeNull();
   expect(workpackageFinishViolation({ ...card, startMonth: 4 }, project)).toContain("starting at M4");
   const rates = DEFAULT_FTE_RATES.Supporting;
-  const expected = (months.reduce((sum, m) => sum + m.totalFTE, 0) + 16 * (rates.devFunctionsSupport + rates.weeklyMeetings)) / 18;
+  const expected = (months.reduce((sum, m) => sum + m.totalFTE, 0) + 16 * rates.weeklyMeetings) / 18;
   expect(calcCardFTE(card, project)).toBeCloseTo(round2(expected), 2);
 });
 
