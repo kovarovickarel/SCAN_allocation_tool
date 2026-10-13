@@ -117,6 +117,43 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
   const categoryName = isCompact
     ? (subcategory === "Trace Checker" ? "TC" : subcategory || TOOL_ABBREVIATIONS[card.tool] || card.tool) + alterationSuffix
     : useToolAbbreviation ? abbreviatedCategoryName : expandedCategoryName;
+  const [hideCompactPurchaseType, setHideCompactPurchaseType] = useState(false);
+  useLayoutEffect(() => {
+    if (!isCompact || card._editing || !card.purchaseType || !card.purchaseMilestone) {
+      setHideCompactPurchaseType(false);
+      return;
+    }
+    const header = headerRef.current;
+    const category = categoryRef.current;
+    if (!header || !category) return;
+    let disposed = false;
+    const measure = () => {
+      if (disposed) return;
+      const left = category.parentElement!;
+      const categoryStyle = getComputedStyle(category);
+      const categoryWidth = category.children[1].scrollWidth
+        + category.children[0].getBoundingClientRect().width
+        + (parseFloat(categoryStyle.columnGap) || 0)
+        + (parseFloat(categoryStyle.paddingLeft) || 0) + (parseFloat(categoryStyle.paddingRight) || 0)
+        + (parseFloat(categoryStyle.borderLeftWidth) || 0) + (parseFloat(categoryStyle.borderRightWidth) || 0);
+      const otherWidth = Array.from(left.children).filter(child => child !== category && child !== typeRef.current)
+        .reduce((sum, child) => sum + child.getBoundingClientRect().width, 0);
+      // Measure the complete row independently of whether the type icon is hidden,
+      // so it restores on widening without alternating between visible and hidden.
+      const required = categoryWidth + 16 + otherWidth + 2
+        + Math.max(0, left.children.length - 1) * (parseFloat(getComputedStyle(left).columnGap) || 0)
+        + header.lastElementChild!.getBoundingClientRect().width + (parseFloat(getComputedStyle(header).columnGap) || 0);
+      setHideCompactPurchaseType(required > header.clientWidth);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    observer.observe(category);
+    observer.observe(header.lastElementChild!);
+    void document.fonts.ready.then(measure);
+    document.fonts.addEventListener("loadingdone", measure);
+    return () => { disposed = true; observer.disconnect(); document.fonts.removeEventListener("loadingdone", measure); };
+  }, [isCompact, card._editing, card.purchaseType, card.purchaseMilestone, categoryName, isBasic, isRetro, isBasicMode]);
   const finishMsDef = card.purchaseMilestone ? MILESTONE_MAP[card.purchaseMilestone] : null;
   const total = purchaseCost(card, reusabilityFactors);
   const price = total.toLocaleString("en-US", { maximumFractionDigits: 2 });
@@ -163,7 +200,7 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${purchaseCostDot(total)}`} /><span className={isCompact ? "truncate" : useToolAbbreviation || (card.projectId && subcategory) ? "whitespace-nowrap" : "min-w-0 whitespace-normal break-words"}>{categoryName}</span>
         {!isCompact && <span ref={fullCategoryRef} aria-hidden="true" className="absolute invisible whitespace-nowrap pointer-events-none">{expandedCategoryName}</span>}
       </span>
-        {card.purchaseType && <span ref={typeRef} className={`relative inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 ${isCompact ? "shrink-0" : "min-w-0"}`} title={card.purchaseType} aria-label={isCompact ? card.purchaseType : undefined}>
+        {card.purchaseType && <span ref={typeRef} className={`relative inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 ${isCompact ? hideCompactPurchaseType ? "hidden" : "shrink-0" : "min-w-0"}`} title={card.purchaseType} aria-label={isCompact ? card.purchaseType : undefined}>
           {(isCompact || !isBasicMode) && <NonFteTypeIcon purchaseType={card.purchaseType} size={16} className={`shrink-0 ${tool.text}`} />}
           {!isCompact && <span className="truncate">{card.purchaseType === "Contracted workpackage" ? useShortPurchaseType ? "Contr. WP" : "Contracted WP" : card.purchaseType}</span>}
           {!isCompact && card.purchaseType === "Contracted workpackage" && <span ref={fullTypeRef} aria-hidden="true" className="absolute invisible whitespace-nowrap pointer-events-none">Contracted WP</span>}

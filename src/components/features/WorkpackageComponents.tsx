@@ -968,7 +968,7 @@ export const ToolRow = memo(function ToolRow({
   const showToolCategories = !hasMultipleSlots && hasFteCards && purchaseCards.length > 0;
   const renderPurchases = (purchases: typeof toolCards, showCategories: boolean) => purchases.length > 0 && (
     <section className={`${hasMultipleSlots ? (showCategories ? "mt-2" : "") : "mx-[18px] mb-2.5 mt-2"} min-w-0 ${showCategories ? "border-t border-dashed border-purple-200 pt-2" : ""}`}>
-      {showCategories && <h3 className={`flex items-center gap-1.5 text-[10px] uppercase font-bold mb-2 ${tool.text}`}>
+      {showCategories && !isCompact && <h3 className={`flex items-center gap-1.5 text-[10px] uppercase font-bold mb-2 ${tool.text}`}>
         {!isBasicMode && <ReceiptIcon size={13} className="shrink-0" />}
         NON-FTE
       </h3>}
@@ -1046,7 +1046,7 @@ export const ToolRow = memo(function ToolRow({
         </div>
       </div>
 
-      {showToolCategories && (
+      {showToolCategories && !isCompact && (
         <div className={`flex items-center gap-1.5 px-4 pt-2 text-[10px] font-bold uppercase ${tool.text}`}>
           {!isBasicMode && <StaffingIcon size={13} className="shrink-0" />}
           FTE
@@ -1078,7 +1078,7 @@ export const ToolRow = memo(function ToolRow({
               ? visibleSlots.length > 2
                 ? "grid grid-cols-2 p-2.5 gap-2.5 w-full"
                 : "grid grid-flow-col auto-cols-fr p-2.5 gap-2.5 w-full"
-              : `p-2.5 ${purchaseCards.length > 0 ? "pt-0" : ""} flex flex-col gap-2`
+              : `p-2.5 ${purchaseCards.length > 0 ? "pt-0" : ""} ${isCompact && showToolCategories ? "pb-0" : ""} flex flex-col gap-2`
           }
         >
           {visibleSlots.map((sub, idx) => {
@@ -1138,7 +1138,9 @@ export const ToolRow = memo(function ToolRow({
                 onDrop={handleDrop}
                 className={`
                   min-w-0 transition-all duration-150 flex flex-col
-                  ${hasMultipleSlots ? `p-2 min-h-[90px] h-auto ${spanClass} rounded-lg border ${slotStyle}` : `p-2 min-h-[90px] h-auto ${slotStyle}`}
+                  ${hasMultipleSlots ? `p-2 h-auto ${spanClass} rounded-lg border ${slotStyle}` : `p-2 h-auto ${slotStyle}`}
+                  ${!isCompact || slotCards.length === 0 ? "min-h-[90px]" : ""}
+                  ${isCompact && showToolCategories ? "pb-0" : ""}
                 `}
               >
                 {hasMultipleSlots && (
@@ -1182,7 +1184,7 @@ export const ToolRow = memo(function ToolRow({
                   </div>
                 )}
 
-                {hasMultipleSlots && showSlotCategories && (
+                {hasMultipleSlots && showSlotCategories && !isCompact && (
                   <h3 className={`flex items-center gap-1.5 text-[10px] uppercase font-bold mb-2 ${tool.text}`}>
                     {!isBasicMode && <StaffingIcon size={13} className="shrink-0" />}
                     FTE
@@ -1192,7 +1194,7 @@ export const ToolRow = memo(function ToolRow({
                   enabled={isCompact && slotCards.length > 0}
                   columns={hasMultipleSlots && visibleSlots.length > 1 ? 2 : 3}
                   widthDivisor={hasMultipleSlots && visibleSlots.length > 1 ? 2 : 1}
-                  className={`flex-1 w-full min-w-0 h-auto transition-all duration-200 ${
+                  className={`${isCompact && slotCards.length > 0 ? "flex-none" : "flex-1"} w-full min-w-0 h-auto transition-all duration-200 ${
                     slotCards.length === 0
                       ? "flex flex-col flex-1 h-full"
                       : isCompact
