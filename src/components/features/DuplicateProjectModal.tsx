@@ -19,6 +19,8 @@ export function DuplicateProjectModal({ name, onClose, onDuplicate }: {
           <h2 className="text-sm font-bold text-gray-800">Duplicate project</h2>
           <p className="text-[11px] text-gray-500">{name}</p>
         </div>
+        <button type="button" aria-label="Close duplicate project" onClick={onClose}
+          className="ml-auto shrink-0 text-gray-400 hover:text-gray-700 font-bold cursor-pointer">✕</button>
       </div>
       <p className="text-xs text-slate-600 mb-4">Create “Copy of {name}”. Choose which workpackages to include.</p>
       <fieldset className="space-y-2">
