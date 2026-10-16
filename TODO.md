@@ -2,6 +2,9 @@
 
 - [ ] Export to Excel (.xlsx)
 - [ ] Help for timelines
+- [ ] Add a member availability calendar with monthly capacity for holidays, part-time changes, joining/leaving dates and other commitments; use that availability in allocation checks and suggestions.
+- [ ] Add Undo / Redo for deletions, moves, allocation edits and other committed workspace changes; treat bulk operations as one undoable action.
+- [ ] Deploy on a company server with browser access and persistent private workspaces per user, restored after browser closure and isolated from other users; retain JSON sharing. Confirm IT hosting/authentication requirements and define autosave, conflict handling and backups.
 
 - [ ] Hours breakdown
 
