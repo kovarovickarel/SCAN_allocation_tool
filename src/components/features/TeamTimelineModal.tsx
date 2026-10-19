@@ -49,6 +49,7 @@ export function TeamTimelineModal({
   onSaveMonthlyAssignments: persistMonthlyAssignments,
   onSaveMgmtAssignments: persistMgmtAssignments,
   onSaveMgmtMonthlyAssignments: persistMgmtMonthlyAssignments,
+  onCommit,
 }: TeamTimelineModalProps) {
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
@@ -104,6 +105,7 @@ export function TeamTimelineModal({
   }, []);
 
   const handleSave = useCallback(() => {
+    const commit = () => {
     for (const card of cards) {
       const original = sourceCards.find((item) => item.id === card.id);
       if (JSON.stringify(card.memberAssignments || {}) !== JSON.stringify(original?.memberAssignments || {})) {
@@ -130,8 +132,10 @@ export function TeamTimelineModal({
     }
     persistOtherWPs?.(showOtherWPs, [...excludedOtherWPIds]);
     onClose();
+    };
+    if (onCommit) onCommit(commit); else commit();
   }, [cards, projects, sourceCards, sourceProjects, toolName, persistAssignments, persistMonthlyAssignments,
-    persistMgmtAssignments, persistMgmtMonthlyAssignments, persistOtherWPs, showOtherWPs, excludedOtherWPIds, onClose]);
+    persistMgmtAssignments, persistMgmtMonthlyAssignments, persistOtherWPs, showOtherWPs, excludedOtherWPIds, onClose, onCommit]);
 
   const [collapsedProjects, setCollapsedProjects] = useState({});
   const [collapsedPersonalCapacity, setCollapsedPersonalCapacity] = useState(false);

@@ -920,7 +920,7 @@ export const ProjectBasket = memo(function ProjectBasket({
           : "bg-gradient-to-r from-slate-900 via-[#131d36] to-slate-900 border-b border-indigo-900/50 rounded-t-xl"
       } text-white p-3 shrink-0 min-h-[82px] flex flex-col justify-center`}>
         {isEditingHeader ? (
-          <div className="flex flex-col gap-2">
+          <div data-workspace-editor="true" className="flex flex-col gap-2">
             <input
               autoFocus
               className="text-xs bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
@@ -1381,9 +1381,9 @@ export const ProjectBasket = memo(function ProjectBasket({
             <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-900 leading-relaxed">
               <p className="font-semibold mb-1 text-rose-950 flex items-center gap-1.5">
                 <span>⚠️</span>
-                <span>Warning: Irreversible Action</span>
+                <span>Delete Project</span>
               </p>
-              Are you sure you want to delete <strong>&quot;{project.name}&quot;</strong>? All project configurations, timeline alterations, and <strong>{projectCards.length} workpackage{projectCards.length === 1 ? "" : "s"}</strong> assigned to this project will be permanently lost.
+              Are you sure you want to delete <strong>&quot;{project.name}&quot;</strong>? All project configurations, timeline alterations, and <strong>{projectCards.length} workpackage{projectCards.length === 1 ? "" : "s"}</strong> assigned to this project will be removed.
             </div>
 
             <div className="flex gap-2.5 pt-2 border-t border-slate-200">

@@ -1,4 +1,6 @@
 import { SelectiveImportReview } from "./SelectiveImportReview";
+import { WorkspaceHistoryButtons } from "../ui/WorkspaceHistoryButtons";
+import type { WorkspaceHistory } from "../../utils/workspaceHistory";
 import { useContext, useEffect, useRef, useState } from "react";
 import { ThemeContext } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
@@ -6,7 +8,7 @@ import { MAX_WORKSPACE_FILE_BYTES, parseWorkspaceFile, serializeWorkspace, works
 import type { WorkspaceData, WorkspaceFile } from "../../utils/workspaceFile";
 
 function FileArrowIcon({ downward = false }: { downward?: boolean }) {
-  return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+  return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M4 16v4h16v-4" />
     {downward ? <path d="M12 3v12m-4-4 4 4 4-4" /> : <path d="M12 15V3m-4 4 4-4 4 4" />}
   </svg>;
@@ -89,8 +91,9 @@ function ImportReview({ file, filename, current, suspended, onCancel, onImport, 
   </div>;
 }
 
-export function WorkspaceFileControls({ getWorkspace, onImport }: {
+export function WorkspaceFileControls({ getWorkspace, onImport, history, historyDisabled = false }: {
   getWorkspace: () => WorkspaceData; onImport: (data: WorkspaceData) => void;
+  history?: WorkspaceHistory; historyDisabled?: boolean;
 }) {
   const { isRetro } = useContext(ThemeContext);
   const input = useRef<HTMLInputElement>(null);
@@ -166,12 +169,15 @@ export function WorkspaceFileControls({ getWorkspace, onImport }: {
       setFeedback({ message: `The file does not correspond to the expected .json format.\nDetails: ${error instanceof Error ? error.message : "Could not read this file."}`, error: true });
     } finally { setReading(false); if (input.current) input.current.value = ""; }
   };
-  const button = `inline-flex items-center justify-center p-2 text-xs transition-all shadow-xs cursor-pointer ${isRetro
+  const button = `inline-flex items-center justify-center w-4 h-4 shrink-0 p-0 text-xs transition-all shadow-xs cursor-pointer ${isRetro
     ? "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
-    : "bg-slate-800 text-sky-300 hover:bg-slate-700 hover:text-sky-200 border border-slate-700 rounded-lg"}`;
+    : "bg-slate-800 text-sky-300 hover:bg-slate-700 hover:text-sky-200 border border-slate-700 rounded"}`;
   return <>
+    <div role="group" aria-label="Workspace actions" className="grid grid-cols-2 gap-1 shrink-0">
     <button type="button" onClick={requestExport} disabled={saving} className={`${button} disabled:opacity-50`} aria-label="Export workspace" title="Export workspace (.json)"><FileArrowIcon downward /></button>
     <button type="button" onClick={() => input.current?.click()} disabled={reading} className={`${button} disabled:opacity-50`} aria-label="Import workspace" title="Import workspace (.json)"><FileArrowIcon /></button>
+    {history && <WorkspaceHistoryButtons history={history} buttonClass={button} disabled={historyDisabled || reading || saving} />}
+    </div>
     <input ref={input} type="file" accept=".json,application/json" aria-label="Workspace file" className="hidden" onChange={event => void importFile(event.target.files?.[0])} />
     {exportOpen && <ExportNameDialog onCancel={() => setExportOpen(false)} onExport={exportFile} saving={saving} nativeSave={nativeSave} />}
     {review && <ImportReview key={review.filename + review.file.exportedAt} file={review.file} filename={review.filename} current={getWorkspace()} suspended={exportOpen} onCancel={() => setReview(null)} onExport={requestExport} onImport={(data, selective) => {

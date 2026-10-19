@@ -29,7 +29,7 @@ export function WorkpackageDetailsPanel({ card, onEdit, expanded, onTextInteract
   const { isRetro, isBasic } = useContext(ThemeContext);
   useEffect(() => { if (!expanded) onTextInteraction(false); }, [expanded, onTextInteraction]);
   const headingClass = `block text-[9px] font-bold uppercase mb-1 ${isRetro ? "text-black font-mono" : "text-gray-600"}`;
-  return <div aria-hidden={!expanded} inert={!expanded} className={`grid min-w-0 transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none ${expanded ? "opacity-100" : "opacity-0"}`} style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }} onClick={event => event.stopPropagation()}
+  return <div data-workspace-details={showAll ? undefined : card.name} aria-hidden={!expanded} inert={!expanded} className={`grid min-w-0 transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none ${expanded ? "opacity-100" : "opacity-0"}`} style={{ gridTemplateRows: expanded ? "1fr" : "0fr" }} onClick={event => event.stopPropagation()}
     onPointerDownCapture={event => { if (event.target instanceof HTMLElement && event.target.matches("input, textarea")) onTextInteraction(true); }}
     onFocusCapture={event => { if (event.target.matches("input, textarea")) onTextInteraction(true); }}
     onBlurCapture={event => { if (!(event.relatedTarget instanceof HTMLElement) || !event.currentTarget.contains(event.relatedTarget) || !event.relatedTarget.matches("input, textarea")) onTextInteraction(false); }}
@@ -47,7 +47,7 @@ export function WorkpackageDetailsPanel({ card, onEdit, expanded, onTextInteract
     <div className={showAll ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : ""}>
     {sections.map(section => {
       const sectionOpen = showAll || selected === section.key;
-      return <div key={section.key} id={`${id}-${section.key}`} aria-hidden={!sectionOpen} inert={!sectionOpen}
+      return <div key={section.key} id={`${id}-${section.key}`} data-workspace-detail-field={section.label} aria-hidden={!sectionOpen} inert={!sectionOpen}
         className={`min-w-0 ${showAll ? (section.key === "description" ? "sm:col-span-2" : "") : `grid transition-[grid-template-rows,opacity] duration-300 ease-in-out motion-reduce:transition-none ${sectionOpen ? "opacity-100" : "opacity-0"}`}`}
         style={showAll ? undefined : { gridTemplateRows: sectionOpen ? "1fr" : "0fr" }}>
       <div className="min-h-0 overflow-hidden"><div className="mt-2 min-w-0">

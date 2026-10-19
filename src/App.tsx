@@ -1,9 +1,11 @@
+import { useWorkspaceHistory, useWorkspaceAction } from "./hooks/useWorkspaceHistory";
+import { samePlanningValue, type PlanningState } from "./utils/workspaceHistory";
 import { ResizableSwimlane } from "./components/ui/ResizableSwimlane";
 import { duplicateWorkpackage } from "./utils/duplicateWorkpackage";
 import { DEFAULT_NON_FTE_TYPES, NonFteTypesContext } from "./utils/nonFteBasicTypes";
 import { nominalWorkpackageManHoursBreakdown } from "./utils/manHours";
 import { supportingPhaseRates } from "./utils/supportingPhases";
-import { workpackageRateKey, normalizeToolBasicTypes } from "./utils/workpackageTypes";
+import { workpackageRateKey } from "./utils/workpackageTypes";
 import { WorkspaceFileControls } from "./components/features/WorkspaceFileControls";
 import type { WorkspaceData, WorkspaceView } from "./utils/workspaceFile";
 import { workpackageFinishViolation } from "./utils/workpackageFinishTargets";
@@ -72,37 +74,17 @@ import {
   ToolIcon,
   UnassignedPool,
 } from "./components/features/AppComponents";
-export default function App() {
-  const {
-    theme,
-    setTheme,
-    appMode,
-    setAppMode,
-    activeToolView,
-    setActiveToolView,
-    showTeamTimeline,
-    setShowTeamTimeline,
-    isTeamBucketCompact,
-    handleToggleTeamBucketCompact,
-    isWorkpackagePoolCompact,
-    handleToggleWorkpackagePoolCompact,
-    isBasic,
-    isRetro,
-    isBasicMode,
-    restoreViewPreferences,
-  } = useAppViewState();
-  const [functions, setFunctions] = useState<WorkpackageCard[]>(() =>
-    [...INITIAL_FUNCTIONS, ...INITIAL_NON_FTE_WORKPACKAGES].map((f) => ({
+function createInitialPlanningState(): PlanningState {
+  return {
+    workpackages: [...INITIAL_FUNCTIONS, ...INITIAL_NON_FTE_WORKPACKAGES].map((f) => ({
       ...f,
       projectId: null,
       _editing: false,
       customCoreFTE: {},
       customDevSupportFTE: {},
       customMeetingsFTE: {}, customSupportingActivityFTE: {},
-    }))
-  );
-
-  const [teamMembers, setTeamMembers] = useState<TeamMemberRecord[]>([
+    })),
+    teamMembers: [
     { id: "tm_1", firstName: "Alex", lastName: "Novak", tool: "KPI", fte: 0.6, role: "both", footprint: "PRA" },
     { id: "tm_1_df", firstName: "Alex", lastName: "Novak", tool: "Data Factory", fte: 0.4, role: "both", footprint: "PRA" },
     { id: "tm_2", firstName: "Elena", lastName: "Russo", tool: "KPI", fte: 1.0, role: "engineering", footprint: "BIE" },
@@ -121,30 +103,8 @@ export default function App() {
     { id: "tm_ext_kpi", firstName: "Nina", lastName: "Weber", tool: "KPI", fte: 1.0, role: "engineering", footprint: "BIE", isExternal: true, supplierId: "supplier-luxoft", monthlySalaryCost: 6000, monthlySalaryCurrency: "EUR" },
     { id: "tm_ext_df", firstName: "Daniel", lastName: "Costa", tool: "Data Factory", fte: 0.8, role: "both", footprint: "PRA", isExternal: true, supplierId: "supplier-ts", monthlySalaryCost: 4800, monthlySalaryCurrency: "EUR" },
     { id: "tm_ext_reproc", firstName: "Priya", lastName: "Sharma", tool: "Reprocessing", fte: 1.0, role: "engineering", footprint: "CHE", isExternal: true, supplierId: "supplier-akoddis", monthlySalaryCost: 4500, monthlySalaryCurrency: "EUR", deferredPayment: true, paymentDelayMonths: 12 },
-  ]);
-
-  const [showAddMember, setShowAddMember] = useState(false);
-  const [teamOtherWPScopes, setTeamOtherWPScopes] = useState<Record<string, {
-    included: boolean;
-    excludedCardIds: string[];
-  }>>({});
-  const [editingMember, setEditingMember] = useState<TeamMemberRecord | null>(null);
-
-  const handleAddMember = useCallback((newMember) => {
-    setTeamMembers((prev) => [...prev, newMember]);
-  }, []);
-
-  const handleUpdateMember = useCallback((updatedMember) => {
-    setTeamMembers((prev) =>
-      prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
-    );
-  }, []);
-
-  const handleDeleteMember = useCallback((memberId) => {
-    setTeamMembers((prev) => prev.filter((m) => m.id !== memberId));
-  }, []);
-
-  const [projects, setProjects] = useState<AllocationProject[]>([
+  ],
+    projects: [
     {
       id: genId(),
       name: "GM",
@@ -185,7 +145,59 @@ export default function App() {
       hiddenTools: [],
       customMgmtMonthlyFTE: {},
     },
-  ]);
+  ],
+    configuration: {
+    nonFteTypes: DEFAULT_NON_FTE_TYPES,
+    suppliers: DEFAULT_SUPPLIERS.map(supplier => ({ ...supplier })),
+    fteRates: deepClone(DEFAULT_FTE_RATES),
+    fteCosts: deepClone(DEFAULT_FTE_COSTS),
+    toolFteRates: deepClone(DEFAULT_TOOL_FTE_RATES),
+    otherDefaults: { ...DEFAULT_OTHER_SETTINGS },
+    management: DEFAULT_MGMT_SETTINGS,
+    reusabilityFactors: DEFAULT_REUSABILITY_FACTORS,
+    stabilityFactors: DEFAULT_STABILITY_FACTORS,
+  },
+    teamOtherWPScopes: {},
+  };
+}
+export default function App() {
+  const {
+    theme,
+    setTheme,
+    appMode,
+    setAppMode,
+    activeToolView,
+    setActiveToolView,
+    showTeamTimeline,
+    setShowTeamTimeline,
+    isTeamBucketCompact,
+    handleToggleTeamBucketCompact,
+    isWorkpackagePoolCompact,
+    handleToggleWorkpackagePoolCompact,
+    isBasic,
+    isRetro,
+    isBasicMode,
+    restoreViewPreferences,
+  } = useAppViewState();
+  const { history, functions, projects, teamMembers, config, teamOtherWPScopes,
+    setFunctions, setProjects, setTeamMembers, setConfig, setTeamOtherWPScopes } = useWorkspaceHistory(createInitialPlanningState);
+
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMemberRecord | null>(null);
+
+  const handleAddMember = useWorkspaceAction(history, "Add team member", (newMember) => {
+    setTeamMembers((prev) => [...prev, newMember]);
+  }, []);
+
+  const handleUpdateMember = useWorkspaceAction(history, "Edit team member", (updatedMember) => {
+    setTeamMembers((prev) =>
+      prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
+    );
+  }, []);
+
+  const handleDeleteMember = useWorkspaceAction(history, "Delete team member", (memberId) => {
+    setTeamMembers((prev) => prev.filter((m) => m.id !== memberId));
+  }, []);
 
   const [workpackageKind, setWorkpackageKind] = useState<"fte" | "non-fte">("fte");
   const [pendingPurchase, setPendingPurchase] = useState<{card: WorkpackageCard; project: AllocationProject; edited?: boolean} | null>(null);
@@ -217,60 +229,9 @@ export default function App() {
     setTargetProjectIndex,
   });
 
-  const [config, setConfig] = useState({
-    nonFteTypes: DEFAULT_NON_FTE_TYPES,
-    suppliers: DEFAULT_SUPPLIERS.map(supplier => ({ ...supplier })),
-    fteRates: deepClone(DEFAULT_FTE_RATES),
-    fteCosts: deepClone(DEFAULT_FTE_COSTS),
-    toolFteRates: deepClone(DEFAULT_TOOL_FTE_RATES),
-    otherDefaults: { ...DEFAULT_OTHER_SETTINGS },
-    management: DEFAULT_MGMT_SETTINGS,
-    reusabilityFactors: DEFAULT_REUSABILITY_FACTORS,
-    stabilityFactors: DEFAULT_STABILITY_FACTORS,
-  });
-
-  // Update the open session's seeded defaults too, without rewriting later JSON imports.
   useEffect(() => {
-    setConfig(current => {
-      let changed = false;
-      const withoutDevSupport = (types, seededTypes) => Object.fromEntries(Object.entries(types).map(([name, value]: [string, any]) => {
-        if (!seededTypes?.[name] || !value.supportingPhases?.some(activity => activity.id === "devFunctionsSupport")) return [name, value];
-        changed = true;
-        return [name, { ...value, supportingPhases: value.supportingPhases.filter(activity => activity.id !== "devFunctionsSupport") }];
-      }));
-      const fteRates = withoutDevSupport(current.fteRates, DEFAULT_FTE_RATES);
-      const toolFteRates = Object.fromEntries(Object.entries(current.toolFteRates).map(([tool, types]) => [tool, withoutDevSupport(types, DEFAULT_TOOL_FTE_RATES[tool])]));
-      return changed ? { ...current, fteRates, toolFteRates } : current;
-    });
-  }, []);
-
-  useEffect(() => {
-    const suppliers = ensureOtherSupplier(config.suppliers);
-    if (suppliers.length !== config.suppliers.length) setConfig(current => ({ ...current, suppliers: ensureOtherSupplier(current.suppliers) }));
-  }, [config.suppliers]);
-
-  useEffect(() => {
-    const tools = normalizeToolBasicTypes(config.toolFteRates);
-    const rates = normalizeToolBasicTypes({ KPI: config.fteRates }).KPI;
-    const needsMigration = Object.entries(tools).some(([tool, types]) => Object.entries(types).some(([name, value]) => value !== config.toolFteRates[tool][name])) ||
-      Object.entries(rates).some(([name, value]) => value !== config.fteRates[name]);
-    if (needsMigration) setConfig(current => ({ ...current, toolFteRates: tools, fteRates: rates }));
-  }, [config.toolFteRates, config.fteRates]);
-
-  useEffect(() => {
-    const invalid = functions.flatMap(card => {
-      const project = projects.find(item => item.id === card.projectId);
-      if (!project || card.kind === "non-fte") return [];
-      const reason = workpackageFinishViolation(card, project, config.fteRates, config.toolFteRates);
-      return reason ? [{ card, project, reason }] : [];
-    });
+    const invalid = history.invalid;
     if (!invalid.length) return;
-    const ids = new Set(invalid.map(item => item.card.id));
-    setFunctions(current => current.map(card => ids.has(card.id) ? {
-      ...card, projectId: null, startMonth: null, otherStartMonth: null, _editing: false,
-      memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
-      customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {},
-    } : card));
     const automatic = invalid.filter(item => !isBasicMode && item.project.autoStartFte === true);
     const manual = invalid.filter(item => isBasicMode || item.project.autoStartFte !== true);
     if (manual.length) setManualRescheduleQueue(current => [...current, ...manual]);
@@ -278,7 +239,7 @@ export default function App() {
       projectName: [...new Set(automatic.map(item => item.project.name))].join(", "),
       reason: automatic.map(item => `"${item.card.name}": ${item.reason}`).join("\n"),
     });
-  }, [functions, projects, config.fteRates, config.toolFteRates, isBasicMode]);
+  }, [history.invalid, isBasicMode]);
 
   useEffect(() => {
     if (pendingOtherAssignment || !manualRescheduleQueue.length) return;
@@ -294,7 +255,7 @@ export default function App() {
     ...teamMembers.filter(member => member.isExternal && member.supplierId).map(member => member.supplierId!),
   ]), [functions, teamMembers]);
 
-  const handleSaveConfig = useCallback((newConfig, renames: { tool: string; from: string; to: string }[] = []) => {
+  const handleSaveConfig = useWorkspaceAction(history, "Save configuration", (newConfig, renames: { tool: string; from: string; to: string }[] = []) => {
     if (renames.length) setFunctions(current => current.map(card => {
       if (card.kind === "non-fte" || (card.tool === "Other" && !card.complexity)) return card;
       let name = workpackageRateKey(card, config.toolFteRates);
@@ -473,9 +434,16 @@ export default function App() {
     toolFteRates: config.toolFteRates, reusabilityFactors: config.reusabilityFactors, stabilityFactors: config.stabilityFactors }),
     [projects, functionsWithFTE, teamMembers, config]);
 
-  const handleSaveTimelineEdits = useCallback((projectId, customMgmtMonthlyFTE, updatedCards) => {
+  const handleSaveTimelineEdits = useWorkspaceAction(history, "Save project timeline", (projectId, customMgmtMonthlyFTE, updatedCards) => {
     const project = projects.find((p) => p.id === projectId);
     if (!project) return;
+    if (samePlanningValue(project.customMgmtMonthlyFTE ?? {}, customMgmtMonthlyFTE ?? {}) &&
+      updatedCards.every(updated => {
+        const original = functions.find(card => card.id === updated.id && card.projectId === projectId);
+        if (!original || original.kind === "non-fte") return true;
+        return ["otherStartMonth", "startMonth", "customCoreFTE", "customDevSupportFTE", "customMeetingsFTE", "customSupportingActivityFTE"]
+          .every(key => samePlanningValue(original[key] ?? (key.endsWith("Month") ? null : {}), updated[key] ?? (key.endsWith("Month") ? null : {})));
+      })) return;
     const editedCards = functions.map((f) => {
       const updated = updatedCards.find((c) => c.id === f.id);
       if (!updated || f.projectId !== projectId || f.kind === "non-fte") return f;
@@ -513,7 +481,7 @@ export default function App() {
     );
   }, [projects, functions, teamMembers, config]);
 
-  const handleDrop = useCallback((cardId, targetProjectId, editSchedule = false) => {
+  const handleDrop = useWorkspaceAction(history, "Move workpackage", (cardId, targetProjectId, editSchedule = false) => {
     setDraggedCard(null);
     if (targetProjectId !== "pool") {
       const targetCard = functions.find((f) => f.id === cardId);
@@ -567,7 +535,7 @@ export default function App() {
     );
   }, [functions, projects, config.fteRates, config.toolFteRates, isBasicMode]);
 
-  const handleConfirmOtherAssignment = useCallback((startMonth, finishMilestone) => {
+  const handleConfirmOtherAssignment = useWorkspaceAction(history, "Schedule workpackage", (startMonth, finishMilestone) => {
     if (!pendingOtherAssignment) return;
     const { card } = pendingOtherAssignment;
     const project = projects.find(item => item.id === pendingOtherAssignment.project.id);
@@ -597,7 +565,7 @@ export default function App() {
   const handleDragStart = useCallback((card) => setDraggedCard(card), []);
   const handleDragEnd = useCallback(() => setDraggedCard(null), []);
 
-  const handleEdit = useCallback((cardId, startEditing, draft) => {
+  const handleEdit = useWorkspaceAction(history, "Edit workpackage", (cardId, startEditing, draft) => {
     if (!startEditing && draft && Object.keys(draft).length === 1 && draft.details !== undefined) {
       setFunctions(current => current.map(card => card.id === cardId ? { ...card, details: draft.details } : card));
       return;
@@ -632,12 +600,12 @@ export default function App() {
     );
   }, [functions, projects]);
 
-  const handleApplyProjectReusability = useCallback((projectId: string, cardIds: string[], updates: Pick<WorkpackageCard, "reusability" | "customReusabilityFactor">) => {
+  const handleApplyProjectReusability = useWorkspaceAction(history, "Apply global reusability", (projectId: string, cardIds: string[], updates: Pick<WorkpackageCard, "reusability" | "customReusabilityFactor">) => {
     const selected = new Set(cardIds);
     setFunctions(current => current.map(card => card.projectId === projectId && selected.has(card.id) ? { ...card, ...updates } : card));
   }, []);
 
-  const handleDuplicate = useCallback((cardId: string) => {
+  const handleDuplicate = useWorkspaceAction(history, "Duplicate workpackage", (cardId: string) => {
     const id = genId();
     setFunctions(current => {
       const index = current.findIndex(card => card.id === cardId);
@@ -646,11 +614,11 @@ export default function App() {
     });
   }, []);
 
-  const handleDelete = useCallback((cardId) => {
+  const handleDelete = useWorkspaceAction(history, "Delete workpackage", (cardId) => {
     setFunctions((prev) => prev.filter((f) => f.id !== cardId));
   }, []);
 
-  const handleSavePurchasePayments = useCallback((projectId: string, drafts: PurchasePaymentDrafts) => {
+  const handleSavePurchasePayments = useWorkspaceAction(history, "Save purchase payments", (projectId: string, drafts: PurchasePaymentDrafts) => {
     const project = projects.find(item => item.id === projectId);
     if (!project) return false;
     const schedules = Object.entries(drafts).map(([id, payments]) => {
@@ -665,15 +633,15 @@ export default function App() {
     return true;
   }, [projects, functions, config.reusabilityFactors]);
 
-  const handleAddFunction = useCallback((newFn) => {
+  const handleAddFunction = useWorkspaceAction(history, "Add workpackage", (newFn) => {
     setFunctions((prev) => [{ ...newFn, _editing: false, customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {} }, ...prev]);
   }, []);
 
-  const handleAddProject = useCallback((newProject) => {
+  const handleAddProject = useWorkspaceAction(history, "Add project", (newProject) => {
     setProjects((prev) => [...prev, { ...newProject, autoStartFte: newProject.autoStartFte ?? false, hiddenSubcategories: [], hiddenTools: [], customMgmtMonthlyFTE: {} }]);
   }, []);
 
-  const handleUpdateProject = useCallback((projectId, updates) => {
+  const handleUpdateProject = useWorkspaceAction(history, "Edit project", (projectId, updates) => {
     const current = projects.find(project => project.id === projectId);
     if (current) {
       const next = { ...current, ...updates };
@@ -687,7 +655,7 @@ export default function App() {
     setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, ...updates } : p)));
   }, [projects, functions]);
 
-  const handleDuplicateProject = useCallback((projectId: string, content: "fte" | "non-fte" | "both" | "none") => {
+  const handleDuplicateProject = useWorkspaceAction(history, "Duplicate project", (projectId: string, content: "fte" | "non-fte" | "both" | "none") => {
     const source = projects.find(project => project.id === projectId);
     if (!source) return;
     const copy = structuredClone(source);
@@ -714,18 +682,18 @@ export default function App() {
     setFunctions(current => [...current, ...copiedCards]);
   }, [projects, functions]);
 
-  const handleDeleteProject = useCallback((projectId) => {
+  const handleDeleteProject = useWorkspaceAction(history, "Delete project", (projectId) => {
     setProjects((prev) => prev.filter((p) => p.id !== projectId));
     setFunctions((prev) => prev.filter((f) => f.projectId !== projectId));
   }, []);
 
-  const handleUpdateCardAssignments = useCallback((cardId, newAssignments) => {
+  const handleUpdateCardAssignments = useWorkspaceAction(history, "Save member allocations", (cardId, newAssignments) => {
     setFunctions((prev) =>
       prev.map((f) => (f.id === cardId ? { ...f, memberAssignments: newAssignments } : f))
     );
   }, []);
 
-  const handleUpdateCardMonthlyAssignments = useCallback((cardId, newMonthlyAssignments, maintenancePreferences?: MemberMaintenancePreferences) => {
+  const handleUpdateCardMonthlyAssignments = useWorkspaceAction(history, "Save member allocations", (cardId, newMonthlyAssignments, maintenancePreferences?: MemberMaintenancePreferences) => {
     setFunctions((prev) =>
       prev.map((f) => (f.id === cardId ? {
         ...f,
@@ -735,7 +703,7 @@ export default function App() {
     );
   }, []);
 
-  const handleUpdateProjectMgmtAssignments = useCallback((projectId, tName, newAssignments) => {
+  const handleUpdateProjectMgmtAssignments = useWorkspaceAction(history, "Save management allocations", (projectId, tName, newAssignments) => {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
@@ -746,7 +714,7 @@ export default function App() {
     );
   }, []);
 
-  const handleUpdateProjectMgmtMonthlyAssignments = useCallback((projectId, tName, newMonthlyAssignments, maintenancePreferences?: MemberMaintenancePreferences) => {
+  const handleUpdateProjectMgmtMonthlyAssignments = useWorkspaceAction(history, "Save management allocations", (projectId, tName, newMonthlyAssignments, maintenancePreferences?: MemberMaintenancePreferences) => {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
@@ -763,7 +731,7 @@ export default function App() {
     );
   }, []);
 
-  const handleToggleSubcategory = useCallback((projectId, subcategory) => {
+  const handleToggleSubcategory = useWorkspaceAction(history, "Toggle subtool", (projectId, subcategory) => {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
@@ -776,7 +744,7 @@ export default function App() {
     );
   }, []);
 
-  const handleToggleTool = useCallback((projectId, toolName) => {
+  const handleToggleTool = useWorkspaceAction(history, "Toggle tool", (projectId, toolName) => {
     setProjects((prev) =>
       prev.map((p) => {
         if (p.id !== projectId) return p;
@@ -789,7 +757,7 @@ export default function App() {
     );
   }, []);
 
-  const handleResetSubcategories = useCallback((projectId) => {
+  const handleResetSubcategories = useWorkspaceAction(history, "Restore project categories", (projectId) => {
     setProjects((prev) =>
       prev.map((p) => (p.id === projectId ? { ...p, hiddenSubcategories: [], hiddenTools: [] } : p))
     );
@@ -803,7 +771,7 @@ export default function App() {
   }), [projects, functions, teamMembers, config, teamOtherWPScopes, theme, appMode, activeToolView,
     isTeamBucketCompact, isWorkpackagePoolCompact, workpackageKind, showSummaryDashboard, summaryFilter, selectedSummaryProjectIds]);
 
-  const importWorkspace = useCallback((data: WorkspaceData) => {
+  const importWorkspace = useWorkspaceAction(history, "Import workspace", (data: WorkspaceData) => {
     stopAutoScroll();
     setProjects(data.projects); setFunctions(data.workpackages); setTeamMembers(data.teamMembers);
     setConfig({ ...data.configuration, suppliers: ensureOtherSupplier(data.configuration.suppliers), nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }); setTeamOtherWPScopes(data.teamOtherWPScopes);
@@ -838,7 +806,6 @@ export default function App() {
           <div className={`w-px h-7 ${isRetro ? "bg-slate-400" : "bg-slate-800"} shrink-0`} />
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <WorkspaceFileControls getWorkspace={getWorkspace} onImport={importWorkspace} />
             <button
               type="button"
               onClick={() => setShowHelpModal(true)}
@@ -885,6 +852,9 @@ export default function App() {
           <div className="flex-1 min-w-4" />
 
           {/* Test Tool View Switcher */}
+          <div className="flex items-center gap-2 shrink-0">
+            <WorkspaceFileControls getWorkspace={getWorkspace} onImport={importWorkspace} history={history}
+              historyDisabled={functions.some(card => card._editing) || Boolean(draggedCard) || draggedProjectIndex !== null} />
           <div className={`flex items-center gap-1.5 p-1 ${isRetro ? "bg-[#d4d0c8] border-2 border-t-black border-l-black border-b-white border-r-white" : "bg-slate-950/80 rounded-xl border border-slate-800"} shrink-0`}>
             <button type="button" aria-label="Summary dashboard" title="Summary dashboard" aria-pressed={showSummaryDashboard}
               onClick={() => setShowSummaryDashboard(true)}
@@ -976,6 +946,8 @@ export default function App() {
                 })}
               </div>
             </div>
+          </div>
+
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
@@ -1225,7 +1197,7 @@ export default function App() {
           }} />}
         {pendingPurchase && <AssignNonFteModal card={pendingPurchase.card} project={pendingPurchase.project}
           factors={config.reusabilityFactors} onClose={() => setPendingPurchase(null)}
-          onConfirm={(months, milestone, mode, shares) => {
+          onConfirm={(months, milestone, mode, shares) => history.run("Schedule purchase", () => {
             const { card, project } = pendingPurchase;
             const valid = validPurchaseMonths({ ...card, purchaseMilestone: milestone, purchaseMonths: months, purchasePaymentOverrides: undefined }, project);
             if (valid.length === 0 || valid.length !== months.length || (mode === "split" && !hasValidPurchasePaymentShares(valid, shares))) return;
@@ -1237,7 +1209,7 @@ export default function App() {
             setFunctions(current => current.map(item => item.id === card.id ? { ...(pendingPurchase.edited ? card : item), projectId: project.id, subcategory: purchaseSubcategory(card), purchaseMilestone: milestone, purchaseMonths: valid,
               purchasePaymentMode: mode, purchasePaymentShares: mode === "split" ? shares : undefined, purchasePaymentOverrides: overrides } : item));
             setPendingPurchase(null);
-          }} />}
+          })} />}
 
         {showAddFunction && workpackageKind === "fte" && (
           <AddFunctionModal teamMembers={teamMembers}
@@ -1321,9 +1293,11 @@ export default function App() {
             toolName={activeToolView}
             initialShowOtherWPs={teamOtherWPScopes[activeToolView]?.included ?? false}
             initialExcludedOtherWPIds={teamOtherWPScopes[activeToolView]?.excludedCardIds ?? []}
-            onSaveOtherWPs={(shown, excludedCardIds) => setTeamOtherWPScopes((prev) => ({
-              ...prev, [activeToolView]: { included: shown, excludedCardIds },
-            }))}
+            onCommit={save => history.run("Save team timeline", save)}
+            onSaveOtherWPs={(shown, excludedCardIds) => setTeamOtherWPScopes(prev =>
+              !prev[activeToolView] && !shown && !excludedCardIds.length ? prev : {
+                ...prev, [activeToolView]: { included: shown, excludedCardIds },
+              })}
             members={teamMembers.filter((m) => m.tool === activeToolView)}
             allMembers={teamMembers}
             projects={projects}

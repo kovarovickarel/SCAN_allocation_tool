@@ -230,6 +230,7 @@ export interface AdjustMemberAllocationModalProps {
 }
 
 export interface TeamTimelineModalProps {
+  onCommit?: (save: () => void) => void;
   suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;
   toolName: string;
