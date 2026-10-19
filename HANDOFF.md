@@ -1,6 +1,70 @@
 # Development handoff
 
-Updated: 2026-10-13 (Europe/Prague). Read this together with `AGENTS.md`, `tests/README.md`, and
+Updated: 2026-10-19 (Europe/Prague).
+
+## October 19: Undo / Redo release
+
+The current session adds a 2x2 Export/Import/Undo/Redo toolbar and session-only
+planning history. The final accepted toolbar uses 16x16 buttons with 11px icons,
+positioned immediately left of Summary dashboard, outside the view-switcher
+background with an 8px gap. This section supersedes older descriptions of the pending
+Undo/Redo backlog. Previous pushed release history below remains historical.
+
+- `src/utils/workspaceHistory.ts` owns the synchronous transaction engine, planning
+  source snapshots, structural sharing, no-op detection and limits: 50 actions
+  across past/future, with a conservative 64 MiB estimated serialized source budget
+  including the current snapshot. Oldest history is trimmed; current work is never
+  discarded. This is not a browser heap guarantee. Very large states may have no
+  retained history. Import/export format remains schema 1; history is not exported.
+- `useWorkspaceHistory` replaces the five separate planning state owners in App;
+  `useWorkspaceAction` groups each completed callback. Schedule invalidation and
+  clearing affected allocations run before recording, within the originating
+  transaction. UI warnings/rescheduling dialogs are still handled by App. Undo and
+  Redo restore saved source states without replaying allocation or migration logic.
+- Project/workpackage deletion and duplication, moves/schedules, configuration,
+  bulk reusability, imports/merges and saved timelines are undoable. Team timeline
+  `onCommit` wraps all existing save callbacks into one transaction. Cancelled and
+  unchanged saves do not consume history; a new planning edit clears Redo.
+- `WorkspaceHistoryButtons` handles available-action tooltips, disabled states,
+  Ctrl/Cmd+Z, Ctrl/Cmd+Y and Ctrl/Cmd+Shift+Z. Native input text undo is preserved.
+  Dialogs, inline editors and dragging block workspace history. Details editing is
+  grouped by its description/owner/list box until focus leaves that box, including
+  adding list rows and blank-row cleanup. DOM/font/layout preferences stay outside
+  history. Project inline drafts carry a `data-workspace-editor` marker.
+- New tests: `tests/workspace-history.spec.ts` and `fixtures/historyWorkspace.ts`.
+  They cover the engine and real application integration, frozen JSON compatibility,
+  grouping/limits/no-op behavior, imports/merges, bulk changes, allocation saves,
+  draft/shortcut behavior and the toolbar layout. Final verification: all 28 new
+  Undo/Redo cases passed. The broader 209-case regression run passed with no
+  failures/skips/flaky results (imports/selective imports, staffing, scheduling,
+  project starts/finish targets/repositioning and feedback UI, including the then
+  27-case history suite). TypeScript, the Pages build and both Pages checks passed.
+  One added no-op-timeline test initially tried clicking the intentionally disabled
+  Save button; it was corrected to assert that state and close without saving.
+  The first full 473-case run passed 457 tests; its 16 failures were screenshot
+  differences for the new toolbar and the previously approved compact-card spacing
+  (007da70). All 22 changed current PNG references were inspected. The 16 visual
+  tests then passed after updating those references. Final verification on
+  October 19: **all 473 application tests passed** with 0 failures, skips or flaky
+  results (`pnpm test:e2e --workers=2`, current screenshot comparisons enabled).
+  `pnpm typecheck` passed. `pnpm test:pages --workers=1` passed the production build
+  and both Pages deployment checks. Frozen JSON and historical screenshots stay
+  unchanged; no JSON schema bump or new planning fields were introduced.
+- Initialization/normalization is now centralized; the former mount-only seeded
+  Dev-support cleanup effect is removed. New seeded constants already omit that
+  activity, while historical imported activity definitions remain intact.
+- Context commits: `b88b232` (feature and toolbar), `c044f64` (28-case history
+  regression suite/coverage map), `215d4cf` (reviewed visual references). A final
+  documentation/backlog commit records the final results and removes Undo/Redo
+  from TODO as requested after all tests passed. The user authorized pushing this
+  validated four-commit batch to master. Keep unrelated `debug.log` out. Inspect
+  Git synchronization when continuing on another PC; a push does not confirm that
+  the hosted Pages deployment has finished.
+- Tests run on 5174, leaving the user's live 5173 session alone. App and Pages
+  suites run sequentially. Two workers are used for the final rerun after verifying
+  sufficient memory; older low-memory workarounds below describe a previous run.
+
+Historical handoff (2026-10-13, Europe/Prague). Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
 
 ## Start here on the other PC

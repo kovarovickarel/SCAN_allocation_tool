@@ -1,5 +1,13 @@
 # Workspace JSON compatibility
 
+## Session Undo / Redo (October 19)
+
+History contains committed planning source data only, using the existing domain
+fields. It is kept in memory and is never exported. Workspace files remain schema
+1; imports are ordinary undoable planning transactions. Undo/Redo preserves current
+view preferences and restores saved source values without rerunning migrations or
+replaying automatic allocation. Historical imported rate precision is unchanged.
+
 ## October 13 configuration refinements
 
 The schema remains version 1. Phase MH displays/inputs derive from saved FTE rates

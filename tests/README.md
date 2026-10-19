@@ -56,6 +56,11 @@ all FTE workpackages. Historical references in `*-snapshots/` remain untouched.
 `pnpm test:e2e:historical` is a separate comparison with those older designs, not
 a release gate for the current app.
 
+The October 19 references include the compact 2x2 workspace toolbar beside the
+view controls and the previously approved compact-card spacing. The affected
+current screenshots were inspected before updating; frozen JSON and historical
+screenshots remain unchanged.
+
 ## Swimlane width regression checks
 
 `swimlane-width` verifies pool/project minimum and maximum widths, pointer and

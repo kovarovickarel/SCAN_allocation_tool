@@ -87,6 +87,21 @@ spending timeline workpackages omit reusability tags.
 
 ## Main user workflows
 
+- October 19 Undo/Redo release validation: all 473 app tests (including current
+  screenshot comparisons), TypeScript, the Pages production build and both Pages
+  checks passed. See HANDOFF.md for the four context commits and verification.
+
+- Workspace Undo/Redo stores up to 50 completed planning transactions in session
+  memory, bounded by a conservative 64 MiB source-data estimate. Export/Import sit
+  above Undo/Redo in a 2x2 toolbar. Keep data changes inside `WorkspaceHistory.run`
+  or `useWorkspaceAction`; multi-callback saves must share one outer transaction.
+  Normalize schedules and dependent allocation cleanup before recording. View
+  preferences, editor flags and computed values are excluded. Never export history.
+  Undo/Redo must not replay mutation handlers, clear native text history shortcuts,
+  or operate through an open dialog/inline draft. Detail boxes group their edits
+  until focus leaves; no-op/cancelled saves retain Redo. See HANDOFF.md and the
+  `workspace-history` suite before adding new planning mutation paths.
+
 - Application prompt/modal backdrops must never dismiss their windows. Closing
   requires an explicit Save, Cancel, Close, cross, or supported Escape action.
   Keep this behavior for new and nested dialogs; outside clicks must preserve drafts.
