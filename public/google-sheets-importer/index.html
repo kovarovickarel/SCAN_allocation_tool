@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SCAN Google Sheets importer setup</title>
+<style>body{font:16px/1.6 Arial,sans-serif;color:#1e293b;max-width:850px;margin:40px auto;padding:0 24px}h1{font-size:28px}h2{font-size:20px;margin-top:30px}a{color:#1d4ed8}li{margin:12px 0}.note{background:#fff7ed;border-left:4px solid #fb923c;padding:14px 18px}code{background:#f1f5f9;padding:2px 5px;border-radius:3px}footer{border-top:1px solid #cbd5e1;margin-top:32px;padding-top:16px;color:#64748b;font-size:13px}</style></head><body>
+<h1>SCAN Google Sheets importer</h1>
+<p>This prototype imports the project-planning download into a <strong>new blank Google spreadsheet</strong>. It creates Resource Planning, Expenses Proj Spec and Site hourly rates, with native dropdown chips.</p>
+<p><a href="scan-importer.zip" download>Download importer files (.zip)</a></p>
+<p class="note"><strong>Appearance:</strong> native Google Sheets tables create the chips and add table header controls. Project chip option colours may need a final adjustment in Google Sheets. The script has not yet been run in a signed-in Google account; this is the prepared prototype for that next step.</p>
+<h2>Set up a blank spreadsheet</h2>
+<ol>
+<li>Download and unzip the importer files. Create a <strong>new blank Google spreadsheet</strong>.</li>
+<li>Open <strong>Extensions → Apps Script</strong>. Replace the contents of <code>Code.gs</code> with the downloaded <code>Code.gs</code>.</li>
+<li>In Apps Script, use <strong>+ → HTML</strong>, name the file <code>Import</code>, and paste in the downloaded <code>Import.html</code>.</li>
+<li>Open <strong>Project Settings</strong> and enable <strong>Show “appsscript.json” manifest file in editor</strong>. Return to the editor and replace that manifest with the downloaded <code>appsscript.json</code>. This enables the Google Sheets advanced service. It should appear under <strong>Services</strong> as <code>Sheets</code>. If you use a custom Google Cloud project, enable its Google Sheets API as well.</li>
+<li>Save. Select <code>showScanImport</code> in the editor's function selector and click <strong>Run</strong>. Google will request authorization. The script needs spreadsheet access to use the Sheets API and display the importer. If company policy blocks authorization, ask your Workspace administrator; do not bypass the restriction.</li>
+<li>Return to the spreadsheet. The import dialog should be open. On later visits, use <strong>SCAN Import → Import planning file…</strong>; reload the sheet once if that menu is missing.</li>
+</ol>
+<h2>Export and import a project</h2>
+<ol>
+<li>In SCAN, use the orange <strong>Export</strong> control next to View timeline.</li>
+<li>Choose the resulting <code>.scan-planning.json</code> in the Google Sheets import dialog, then click <strong>Import planning</strong>. Use this planning export, not a workspace JSON backup.</li>
+<li>The blank sheet is populated and renamed using the project, P1/P2 and export date/time. Source JSON files and the SCAN workspace are unchanged.</li>
+<li>Inspect the two planning tabs. Grey chips are expected in FTE C/D/G/J and Expenses B/C/F/I/L. Project chips are in FTE H/I and Expenses G/H. To match their option colours to the timeline, select those project-chip ranges, open <strong>Data → Data validation</strong>, edit the project's option colour and click <strong>Done</strong>. Google does not expose that option colour in the documented table API.</li>
+</ol>
+<h2>What it carries across</h2>
+<p>The download includes the calculated FTE and expense values, formulas, project milestones, date/colour bands, row heights, column widths, groups, initial hidden columns, frozen panes, merges and the site rates. Coincident milestone labels retain line breaks; row 3 keeps the standard row height you requested.</p>
+<h2>Before importing</h2>
+<p>The importer refuses non-empty spreadsheets and does not read or change other documents. If an import fails before completion, it attempts to remove only the tabs created by that attempt. Do not edit the destination while an import is running. Missing hourly rates stay unpriced and can be filled in Site hourly rates.</p>
+<p>This is a local Apps Script installation, not a published or company-installed add-on. Once the prototype is reviewed in Google Sheets, it can be packaged for organizational distribution.</p>
+<footer>Planning-file format 1. No scripts, requests or formulas that fetch external data are accepted from the uploaded file.</footer>
+</body></html>

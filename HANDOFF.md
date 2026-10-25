@@ -2,7 +2,31 @@
 
 Updated: 2026-10-25 (Europe/Prague).
 
-## October 25: single-project Resource Planning and Expenses export
+## Pending: Google Sheets planning importer prototype
+
+The orange project Export control now downloads .scan-planning.json rather than
+XLSX, preserving the requested project/class/Prague date-time naming. The existing
+XLSX generator is retained internally to carry the complete template layout into
+projectPlanningGoogle.ts. Workspace JSON format/schema and frozen fixtures are
+unchanged. The new file is not a workspace backup.
+
+public/google-sheets-importer contains Code.gs, Import.html, appsscript.json,
+setup index.html/README and a downloadable ZIP. The user installs these in Apps
+Script bound to a blank spreadsheet, authorizes the Google Sheets advanced
+service, and imports the file via SCAN Import. No published/company add-on exists.
+Unlike the earlier API assessment below, the documented Google Tables API DOES
+create native chips through DROPDOWN column types. It adds table header controls;
+per-option project chip colours remain undocumented and may need manual adjustment.
+The script refuses non-empty targets and validates all fields/formulas before
+writing. It never reads another document or executes uploaded JavaScript.
+
+TypeScript and script syntax checks passed during preparation. No live Google
+authorization/import or automated test suite was run. Review the native chips,
+table/format interaction and grouped columns in a signed-in blank spreadsheet
+next. The user requested preserving this prototype in its own commit, then reverting
+it to restore XLSX export. No push was requested.
+
+## Pending: single-project Resource Planning and Expenses export
 
 The new project Excel button exports the FTE Resource Planning sheet using the
 user's exact bundled template, plus editable Site hourly rates. Expenses now
@@ -12,7 +36,7 @@ the Expenses calendar beyond SOP without moving the project end. Downloads and
 workbook titles use ProjectName_P1-DD-MM-YYYY-HH-mm (or P2), dated in Europe/Prague.
 Read PROJECT_PLANNING_EXPORT.md for the complete user-agreed column mapping,
 grouping/allocation rules, template provenance and implementation details.
-External members are excluded from Resource Planning, management remains per tool/site, and partially
+External members are excluded, management remains per tool/site, and partially
 allocated demand splits into site rows and unallocated remainder rows.
 
 New runtime dependency: fflate, lazy loaded to patch OOXML without dropping
@@ -21,11 +45,11 @@ projectPlanningXlsx.ts, projectExpensesPlanning.ts, ProjectPlanningExportButton.
 public/templates/project-planning.xlsx. Export is read-only and JSON schema 1
 is unchanged. TypeScript and Pages build pass. Automated tests, native Excel/
 Google Sheets validation and screenshot updates were not requested/run. Keep
-the export TODO until the user requests backlog cleanup. The user requested that
-the Google Sheets importer prototype be preserved in a separate commit and then
-reverted, restoring this XLSX download. Its setup was considered too complicated
-for the added value. Recover that isolated commit if the importer is revisited;
-XLSX cannot carry native Google Sheets dropdown chips. No push was requested.
+this feature uncommitted until the user requests saving/pushing it. Do not remove
+the export TODO until the user requests backlog cleanup. The user ultimately
+wants a download imported into a blank Google Sheet with native dropdown chips.
+That importer/add-on is discussed, not implemented: XLSX cannot carry the chip
+presentation. Do not claim that a SCAN Import add-on already exists.
 
 ## October 25: Project classification
 

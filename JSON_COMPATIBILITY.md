@@ -108,3 +108,11 @@ fields import as P1; new projects and exports explicitly include the choice.
 Explicit invalid values and P2 with RFQ are rejected before import changes state.
 Classification is informational and does not change calculations. Selective
 project settings imports include it; duplication and Undo/Redo retain it.
+
+### Google Sheets planning transfer
+
+Project .scan-planning.json downloads are a separate, versioned presentation
+format (scan-google-sheets-planning, schemaVersion 1), not workspace backups.
+The normal workspace JSON exporter/importer, historical migrations and frozen
+fixtures remain unchanged. The Google script rejects workspace files and the
+workspace importer rejects these planning files without changing app data.
