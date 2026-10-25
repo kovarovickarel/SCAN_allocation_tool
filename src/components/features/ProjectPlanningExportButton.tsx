@@ -19,14 +19,12 @@ export function ProjectPlanningExportButton({ options }: { options: ResourcePlan
       ]);
       if (!response.ok) throw new Error("The project planning template could not be loaded. Please try again.");
       const { bytes, missingSites, fileName } = await createProjectPlanningXlsx(options, new Uint8Array(await response.arrayBuffer()), controller.signal, exportedAt);
-      const { createGooglePlanningFile } = await import("../../utils/projectPlanningGoogle");
-      const planning = createGooglePlanningFile(bytes, fileName, exportedAt);
-      const blob = new Blob([JSON.stringify(planning)], { type: "application/json" });
+      const blob = new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
       const url = URL.createObjectURL(blob), link = document.createElement("a");
-      link.href = url; link.download = fileName.replace(/\.xlsx$/i, ".scan-planning.json");
+      link.href = url; link.download = fileName;
       document.body.append(link); link.click(); link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setFeedback({ message: `Downloaded. Use SCAN Import in a blank Google spreadsheet.${missingSites.length ? ` Enter missing EUR hourly rates for ${missingSites.join(", ")} in Site hourly rates to calculate their costs.` : ""}`, error: false });
+      if (missingSites.length) setFeedback({ message: `Downloaded. Enter missing EUR hourly rates for ${missingSites.join(", ")} in Site hourly rates to calculate their costs.`, error: false });
     } catch (error) {
       if (pending.current === controller) setFeedback({ error: true, message: controller.signal.aborted
         ? "The export timed out. Please try again."
@@ -37,8 +35,8 @@ export function ProjectPlanningExportButton({ options }: { options: ResourcePlan
     }
   }
   return <div className="relative inline-flex shrink-0">
-    <button type="button" onClick={download} disabled={busy} aria-busy={busy} aria-label="Export project planning for Google Sheets"
-      title={busy ? "Preparing project planning…" : "Export project planning for Google Sheets"}
+    <button type="button" onClick={download} disabled={busy} aria-busy={busy} aria-label="Export project planning to Excel"
+      title={busy ? "Preparing project planning…" : "Export project planning to Excel"}
       className="group inline-flex items-center gap-1.5 pl-2 pr-[3px] py-1 rounded text-orange-400 hover:text-orange-300 hover:bg-slate-800/80 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-wait">
       <span className="text-xs font-bold">Export</span>
       <svg width="16" height="16" className="transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -47,7 +45,6 @@ export function ProjectPlanningExportButton({ options }: { options: ResourcePlan
     </button>
     {feedback && <div role={feedback.error ? "alert" : "status"} className="absolute right-0 top-full mt-2 z-40 w-72 p-3 pr-7 rounded border border-slate-300 bg-white text-slate-800 shadow-lg text-xs font-normal">
       {feedback.message}
-      {!feedback.error && <a className="block mt-2 text-blue-700 underline" href={`${import.meta.env.BASE_URL}google-sheets-importer/`} target="_blank" rel="noopener noreferrer">Importer setup and files</a>}
       <button type="button" onClick={() => setFeedback(null)} aria-label="Close export message" className="absolute top-1 right-2 text-slate-500 hover:text-slate-900 cursor-pointer">×</button>
     </div>}
   </div>;

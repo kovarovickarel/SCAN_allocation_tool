@@ -7,15 +7,13 @@ button is immediately left of View timeline, with an orange Export label in both
 of the selected tool view or FTE/non-FTE card filter. Export is read-only and does
 not create Undo/Redo history or change workspace JSON.
 
-Expenses Proj Spec is now populated as well, including deferred external salary
-payments. The current download is .scan-planning.json for the prepared Google Apps Script
-importer. The XLSX generator remains an internal layout intermediate. The importer
-uses Google Tables DROPDOWN columns to create native chips in a blank spreadsheet.
-Native table header controls are added; per-option project chip colours may need
-a manual adjustment. Live Google Sheets execution has not been verified.
+Expenses Proj Spec is populated as well, including deferred external salary
+payments. The download is an XLSX workbook with Resource Planning, Expenses Proj
+Spec and editable Site hourly rates. Excel dropdowns remain ordinary dropdowns;
+XLSX cannot preserve Google Sheets' native chip display.
 
 Downloads and workbook titles use ProjectName_P1-DD-MM-YYYY-HH-mm (or P2), with the
-export date/time in Europe/Prague and the .scan-planning.json extension on the download.
+export date/time in Europe/Prague and the .xlsx extension on the download.
 
 ## Template preservation
 
@@ -131,29 +129,3 @@ and places SOP at actual project end, even when cash payments continue afterward
 O12 and monthly currency labels are EUR. The shared app spending helpers supply
 all payment amounts/timing; foreign salary costs use the existing currency cache.
 A missing external salary or failed conversion blocks download with an error.
-
-## Native Google Sheets importer prototype
-
-The exporter converts the completed XLSX intermediate into explicit, versioned
-planning JSON: format scan-google-sheets-planning, schemaVersion 1. This contains
-only the three planning sheets, calculated values/formulas, cell styles, row and
-column sizes, groups, merges, panes and dropdown choices. It is not a workspace
-backup and does not change the baseline workspace import/export contract.
-
-`projectPlanningGoogle.ts` prepares this payload. `public/google-sheets-importer/`
-contains Code.gs, Import.html, appsscript.json, setup instructions and a ZIP.
-The script validates the complete file and refuses non-empty destinations. It
-uses only the active spreadsheet and never evaluates uploaded JavaScript or
-external-data formulas. Its Google Sheets advanced-service scope is broader than
-current-document access; the code restricts all operations to the active ID.
-
-Google's documented Tables API supports native chips through DROPDOWN column
-types. Grey chip columns match the screenshots: FTE C/D/G/J plus project H/I;
-Expenses B/C/F/I/L plus project G/H. Other validation lists use ordinary arrows.
-Per-option chip colours are not exposed by that API and may need setting in
-Data > Data validation. Tables also introduce header controls. Those differences
-and the need for live review are disclosed in setup and the import dialog.
-
-Preparation checks: TypeScript and Apps Script syntax checks pass. No automated
-tests, Google authorization, deployment or live import have been performed.
-The importer is a local installable prototype, not a published company add-on.
