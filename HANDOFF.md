@@ -2,6 +2,31 @@
 
 Updated: 2026-10-25 (Europe/Prague).
 
+## October 25: single-project Resource Planning and Expenses export
+
+The new project Excel button exports the FTE Resource Planning sheet using the
+user's exact bundled template, plus editable Site hourly rates. Expenses now
+includes individual purchases and external salaries grouped by tool/site/delay,
+combining external engineering and management. Deferred cash payments extend
+the Expenses calendar beyond SOP without moving the project end. Downloads and
+workbook titles use ProjectName_P1-DD-MM-YYYY-HH-mm (or P2), dated in Europe/Prague.
+Read PROJECT_PLANNING_EXPORT.md for the complete user-agreed column mapping,
+grouping/allocation rules, template provenance and implementation details.
+External members are excluded from Resource Planning, management remains per tool/site, and partially
+allocated demand splits into site rows and unallocated remainder rows.
+
+New runtime dependency: fflate, lazy loaded to patch OOXML without dropping
+outline/grouping metadata. New files: projectResourcePlanning.ts,
+projectPlanningXlsx.ts, projectExpensesPlanning.ts, ProjectPlanningExportButton.tsx and the source template
+public/templates/project-planning.xlsx. Export is read-only and JSON schema 1
+is unchanged. TypeScript and Pages build pass. Automated tests, native Excel/
+Google Sheets validation and screenshot updates were not requested/run. Keep
+the export TODO until the user requests backlog cleanup. The user requested that
+the Google Sheets importer prototype be preserved in a separate commit and then
+reverted, restoring this XLSX download. Its setup was considered too complicated
+for the added value. Recover that isolated commit if the importer is revisited;
+XLSX cannot carry native Google Sheets dropdown chips. No push was requested.
+
 ## October 25: Project classification
 
 Projects now select P1 (Customer) or P2 (Platform) at creation and inline editing.

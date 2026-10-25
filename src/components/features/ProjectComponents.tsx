@@ -12,6 +12,7 @@ import { useHorizontalSelectionAutoScroll } from "../../hooks/useHorizontalSelec
 import type { SubcategoryManagerModalProps, AddProjectModalProps, AddProjectDraft, ProjectBasketProps } from './componentTypes';
 import { PencilIcon, CalendarGanttIcon, TrashIcon, RotateCcwIcon, EyeIcon, EyeOffIcon, SlidersIcon, GripHorizontalIcon, Minimize2Icon, Maximize2Icon, ToolIcon, CopyIcon } from '../ui/icons';
 import { DuplicateProjectModal } from "./DuplicateProjectModal";
+import { ProjectPlanningExportButton } from "./ProjectPlanningExportButton";
 import { ProjectReusabilityModal } from "./ProjectReusabilityModal";
 import { MilestoneMonthInput } from "../ui/MilestoneMonthInput";
 import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
@@ -1232,6 +1233,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                     <span>{totalUnusedCount} unused</span>
                   </button>
                 )}
+                <ProjectPlanningExportButton options={{ project, cards, members: teamMembers, configuration: { fteCosts, fteRates, toolFteRates, management: mgmtSettings, reusabilityFactors, stabilityFactors } }} />
                 <button
                   type="button"
                   onClick={() => setShowTimelineModal(true)}
