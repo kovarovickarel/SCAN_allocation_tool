@@ -100,3 +100,11 @@ atomic application. Missing required records/definitions are reviewed dependenci
 Skip preserves current records; absence never implies deletion. Shared settings
 and incoming project dates/milestones are applied only when selected. Original
 full-import compatibility and frozen historical documents remain unchanged.
+
+### Project classification (October 25)
+
+Schema 1 adds optional `projectClass` (`P1` Customer or `P2` Platform). Missing
+fields import as P1; new projects and exports explicitly include the choice.
+Explicit invalid values and P2 with RFQ are rejected before import changes state.
+Classification is informational and does not change calculations. Selective
+project settings imports include it; duplication and Undo/Redo retain it.

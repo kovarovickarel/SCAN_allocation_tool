@@ -64,7 +64,11 @@ export function preparePlanningState(state: PlanningState): { state: PlanningSta
     Object.entries(tools).some(([tool, types]) => Object.entries(types).some(([name, value]) => value !== config.toolFteRates[tool][name])) ||
     Object.entries(rates).some(([name, value]) => value !== config.fteRates[name]);
   const configuration = changed ? { ...config, suppliers, toolFteRates: tools, fteRates: rates } : config;
-  const projects = new Map(state.projects.map(project => [project.id, project]));
+  const normalizedProjects = state.projects.map(project => project.projectClass === undefined
+    ? { ...project, projectClass: "P1" as const }
+    : project.projectClass === "P2" && project.isRFQ ? { ...project, isRFQ: false } : project);
+  const projectClassesChanged = normalizedProjects.some((project, index) => project !== state.projects[index]);
+  const projects = new Map(normalizedProjects.map(project => [project.id, project]));
   const invalid: InvalidSchedule[] = [];
   const workpackages = state.workpackages.map(card => {
     const project = projects.get(card.projectId);
@@ -76,7 +80,7 @@ export function preparePlanningState(state: PlanningState): { state: PlanningSta
       memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
       customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {} };
   });
-  return { state: configuration !== config || invalid.length ? { ...state, configuration,
+  return { state: configuration !== config || invalid.length || projectClassesChanged ? { ...state, configuration, projects: projectClassesChanged ? normalizedProjects : state.projects,
     workpackages: invalid.length ? workpackages : state.workpackages } : state, invalid };
 }
 

@@ -1,6 +1,36 @@
 # Development handoff
 
-Updated: 2026-10-19 (Europe/Prague).
+Updated: 2026-10-25 (Europe/Prague).
+
+## October 25: Project classification
+
+Projects now select P1 (Customer) or P2 (Platform) at creation and inline editing.
+The classification is informational; calculations, scheduling and allocation are
+unchanged. P2 clears/disables RFQ. P1/P2 badges appear after the product type in
+project cards, project staffing/spending headers and Summary's Project column.
+The combined team timeline measures available label space and hides P1 when it
+would crowd RFQ; the classification returns when space allows.
+
+Schema remains 1. Missing historical `projectClass` fields import as P1; explicit
+invalid values and P2 + RFQ fail before state changes. New exports include the
+classification. Selective project-settings imports, duplication and Undo/Redo
+retain it. Frozen historical exports remain unchanged.
+
+`tests/project-classification.spec.ts` adds 12 regressions for round trips, frozen
+compatibility, invalid imports, P2/RFQ restrictions, history, selective settings,
+creation/editing, Summary placement and responsive RFQ priority. The existing
+baseline test expects only the documented P1 default; its fixture is untouched.
+TypeScript and the new 12 cases pass. The first full run passed all functional
+tests (476 passes; nine expected screenshot-reference failures). Thirteen current
+references were reviewed/updated for badges and the creation selector; the ten
+visual tests passed. Final validation on October 25: all 485 application tests
+passed with zero failures, skips or flaky results; TypeScript, the Pages
+production build and both Pages checks passed. The validated feature, tests,
+reviewed references and documentation are grouped into one release commit.
+
+The localhost server on 5173 runs as a hidden background Vite process; tests use
+5174. Start the server outside the restricted sandbox if it becomes unresponsive.
+Keep unrelated `debug.log` untracked. No push confirms hosted Pages completion.
 
 ## October 19: Undo / Redo release
 

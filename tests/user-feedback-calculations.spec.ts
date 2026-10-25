@@ -37,6 +37,7 @@ test("frozen baseline imports and re-exports preserve saved source data", () => 
   for (const project of expected.data.projects) {
     project.milestones.REQF = Math.max(1, Math.min(Math.floor(project.duration / 4), project.milestones.FFV - (project.milestones.FFV === project.milestones.EFV ? 1 : 0)));
     project.autoStartFte ??= true;
+    project.projectClass ??= "P1";
   }
   expect(imported).toEqual(expected);
   const exported = createWorkspaceFile(imported.data);

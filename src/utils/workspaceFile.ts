@@ -35,7 +35,7 @@ export type WorkspaceFile = { format: "scan-allocation-tool"; schemaVersion: num
 // Derived totals and editor flags are recalculated, never restored from a file.
 export function createWorkspaceFile(data: WorkspaceData, now = new Date()): WorkspaceFile {
   return JSON.parse(JSON.stringify({ format: "scan-allocation-tool", schemaVersion: WORKSPACE_FILE_VERSION,
-    exportedAt: now.toISOString(), data: { ...data, configuration: { ...data.configuration, nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }, workpackages: data.workpackages.map(card =>
+    exportedAt: now.toISOString(), data: { ...data, projects: data.projects.map(project => ({ ...project, projectClass: project.projectClass ?? "P1" })), configuration: { ...data.configuration, nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }, workpackages: data.workpackages.map(card =>
       exportWorkpackage(card)) } }));
 }
 function exportWorkpackage(card: WorkpackageCard) {
@@ -211,6 +211,9 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     const legacyCoincidence = project.legacyReqfCoincidence === true && milestones.REQF === 1 && milestones.FFV === 1 && milestones.EFV === 1;
     if (!legacyCoincidence && (counts[milestones.REQF] || 0) >= 2) fail("Project milestones", "more than two milestones in one month.");
     for (const key of ["isRFQ", "autoStartFte"]) if (project[key] !== undefined) boolean(project[key], key);
+    if (project.projectClass === undefined) project.projectClass = "P1";
+    choice(project.projectClass, ["P1", "P2"], "Project classification (projectClass)");
+    if (project.projectClass === "P2" && project.isRFQ) fail("Project classification", "P2 (Platform) projects cannot be RFQ.");
     // Missing in baseline exports meant enabled; preserve that saved behavior.
     project.autoStartFte ??= true;
     for (const key of ["hiddenTools", "hiddenSubcategories", "subSet", "toolSet"]) if (project[key] !== undefined) strings(project[key], key);

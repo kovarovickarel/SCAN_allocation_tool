@@ -6,6 +6,7 @@ import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, C
 import { normalizeMilestones, calculateProjectEffort, getManagementMonthlyFTE, getFTEGradientStyle, computeWorkpackageLifecycleTimeline, getReusabilityFactor, getMaintenanceReusabilityFactor, getSupportReusabilityFactor } from "../../utils/helpers";
 import { workpackageStartMonth, workpackageFinishTarget, workpackageRepositionLimits, repositionWorkpackage } from "../../utils/workpackageFinishTargets";
 import { ReusabilityLabel } from "../ui/ReusabilityLabel";
+import { ProjectClassBadge } from "../ui/ProjectClassBadge";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { useProjectTimelineRangeEditing } from "../../hooks/useProjectTimelineRangeEditing";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
@@ -549,6 +550,7 @@ export function ProjectTimelineModal({
                     {localProject.type}
                   </span>
                 )}
+                <ProjectClassBadge value={localProject.projectClass} />
                 {localProject.isRFQ && <ProjectRFQBadge />}
                 <span className={`text-xs ${isRetro ? "text-slate-200" : "text-slate-400"} font-mono`}>
                   ({totalProjectWorkpackages} workpackage{totalProjectWorkpackages === 1 ? "" : "s"})

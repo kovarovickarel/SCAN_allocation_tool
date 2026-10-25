@@ -188,6 +188,8 @@ export interface AllocationProject {
   id: string;
   name: string;
   type: string;
+  /** Missing in historical workspaces means P1 (Customer). Informational only. */
+  projectClass?: "P1" | "P2";
   isRFQ?: boolean;
   /** New projects default off; legacy imports without the field restore their old enabled preference. */
   autoStartFte?: boolean;

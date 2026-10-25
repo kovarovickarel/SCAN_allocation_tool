@@ -7,6 +7,7 @@ import { ThemeContext, DEFAULT_STABILITY_FACTORS, DEFAULT_REUSABILITY_FACTORS, T
 import { normalizeMilestones, calculateProjectEffort, getManagementMonthlyFTE, computeWorkpackageLifecycleTimeline, calculateWorkpackageCoverage, calculateManagementCoverage, calculateWorkpackageAllocationCost, formatMemberMonthlyAllocationCost, getMemberAllocationGradientStyle, getCrossTeamMemberIds, resolveMonthlyMemberAllocations, allocateTeamByProjectPriority, getSupportReusabilityFactor } from "../../utils/helpers";
 import { DEFAULT_FTE_COSTS } from "../../constants";
 import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
+import { ResponsiveProjectClassBadge } from "../ui/ResponsiveProjectClassBadge";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MemberInitialsBadge } from "../ui/MemberInitialsBadge";
@@ -1345,7 +1346,7 @@ export function TeamTimelineModal({
                       className="grid grid-cols-[300px_1fr] items-center cursor-pointer select-none bg-slate-800 text-blue-100 hover:bg-slate-750 border-t border-slate-200"
                     >
                       <div className="p-2.5 border-r border-slate-700 flex items-center justify-between">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                           <button type="button" className="p-0.5 text-current">
                             {isCollapsed ? <ChevronRightIcon size={13} /> : <ChevronDownIcon size={13} />}
                           </button>
@@ -1359,6 +1360,7 @@ export function TeamTimelineModal({
                               {project.type}
                             </span>
                           )}
+                          <ResponsiveProjectClassBadge value={project.projectClass} isRFQ={project.isRFQ} />
                           {project.isRFQ && <ProjectRFQBadge />}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">

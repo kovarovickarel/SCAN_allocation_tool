@@ -5,6 +5,7 @@ import type { SupplierRecord, WorkpackageAllocationCost, AllocationProject } fro
 import { calculateSummaryDashboard, type SummaryDashboardOptions, type ProjectStatusFilter } from "../../utils/summaryDashboard";
 import { costInEUR } from "../../utils/nonFteWorkpackages";
 import { useEuroCostConversion } from "../../hooks/useEuroCostConversion";
+import { ProjectClassBadge } from "../ui/ProjectClassBadge";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ProjectSpendingModal } from "./ProjectSpendingModal";
 import { UnusedExternalCapacityModal } from "./UnusedExternalCapacityModal";
@@ -97,7 +98,7 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
         <div className="overflow-x-auto"><table className="w-full text-xs text-left whitespace-nowrap">
           <thead className="text-[10px] uppercase text-slate-500 border-b border-slate-300"><tr>{["Project", "Status", "Period", "FTE / yr", "Staffed", "External", "Labour", "Non-FTE", "Total price", ""].map((label, index) => <th key={index} className="py-2 pr-4 font-semibold">{label}</th>)}</tr></thead>
           <tbody>{tableRows.map(row => <tr key={row.project.id} className={`border-b border-slate-100 last:border-0 transition-opacity ${filter === "selected" && selectedProjectIds !== null && !selectedProjectIds.includes(row.project.id) ? "opacity-40" : ""}`}>
-            <th scope="row" className="py-3 pr-4">{filter === "selected" && <input type="checkbox" className="accent-blue-600 mr-3 align-middle cursor-pointer" aria-label={`Include project ${row.project.name}`} checked={selectedProjectIds === null || selectedProjectIds.includes(row.project.id)} onChange={() => toggleProject(row.project.id)} />}<span className="font-bold mr-2">{row.project.name}</span><span className={`text-[9px] rounded px-1.5 py-0.5 ${PROJECT_TYPE_COLORS[row.project.type]?.bg || "bg-slate-200"}`}>{row.project.type}</span></th>
+            <th scope="row" className="py-3 pr-4">{filter === "selected" && <input type="checkbox" className="accent-blue-600 mr-3 align-middle cursor-pointer" aria-label={`Include project ${row.project.name}`} checked={selectedProjectIds === null || selectedProjectIds.includes(row.project.id)} onChange={() => toggleProject(row.project.id)} />}<span className="font-bold mr-2">{row.project.name}</span><span className={`text-[9px] rounded px-1.5 py-0.5 ${PROJECT_TYPE_COLORS[row.project.type]?.bg || "bg-slate-200"}`}>{row.project.type}</span><span className="ml-2"><ProjectClassBadge value={row.project.projectClass} /></span></th>
             <td className="pr-4">{row.project.isRFQ ? <ProjectRFQBadge /> : <span className="text-[10px] font-semibold rounded px-2 py-1 bg-blue-100 text-blue-800 border border-blue-300">Nominated</span>}</td>
             <td className="pr-4 text-slate-600">{month(row.project.startDate)} – {month(row.project.startDate, row.project.duration - 1)} · {row.project.duration} mo</td>
             <td className="pr-4 font-mono">{number(row.effort.totalFTE)}</td><td className="pr-4 font-mono" style={{ color: isBasic ? "black" : coverageColor(row.coverage) }}>{percent(row.coverage)}</td><td className="pr-4 font-mono">{percent(row.externalisation)}</td>

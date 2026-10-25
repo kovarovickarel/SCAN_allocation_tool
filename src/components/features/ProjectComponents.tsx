@@ -16,6 +16,7 @@ import { ProjectReusabilityModal } from "./ProjectReusabilityModal";
 import { MilestoneMonthInput } from "../ui/MilestoneMonthInput";
 import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
 import { ProjectTimelineModal } from './ProjectTimelineModal';
+import { ProjectClassBadge } from "../ui/ProjectClassBadge";
 import { ProjectRFQBadge } from '../ui/ProjectRFQBadge';
 import { ProjectCostSummary } from '../ui/ProjectCostSummary';
 import { ProjectSpendingModal } from './ProjectSpendingModal';
@@ -189,6 +190,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
   const [draft, setDraft] = useState<AddProjectDraft>({
     name: "",
     type: "Lidar",
+    projectClass: "P1",
     isRFQ: false,
     duration: 12,
     stability: "Ideal",
@@ -233,7 +235,8 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
       name: draft.name.trim(),
       autoStartFte: false,
       type: draft.type,
-      isRFQ: draft.isRFQ,
+      projectClass: draft.projectClass,
+      isRFQ: draft.projectClass === "P1" && draft.isRFQ,
       startDate: draft.startDate || "2026-01",
       duration: d,
       stability: draft.stability,
@@ -325,10 +328,20 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
               })}
             </div>
           </div>
-          <label className={`inline-flex self-start items-center gap-2 cursor-pointer text-xs font-semibold ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
+          <label className="flex items-center gap-2 text-xs text-gray-700">
+              Project classification
+              <select aria-label="Project classification" className="text-xs border border-gray-300 rounded px-2 py-1 text-gray-700 bg-white" value={draft.projectClass}
+                onChange={(e) => setDraft((d) => ({ ...d, projectClass: e.target.value as "P1" | "P2", isRFQ: e.target.value === "P2" ? false : d.isRFQ }))}>
+                <option value="P1">P1 (Customer)</option>
+                <option value="P2">P2 (Platform)</option>
+              </select>
+            </label>
+            <label className={`inline-flex self-start items-center gap-2 cursor-pointer text-xs font-semibold ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
             <input
               type="checkbox"
               checked={draft.isRFQ}
+              disabled={draft.projectClass === "P2"}
+              title={draft.projectClass === "P2" ? "RFQ is available only for P1 (Customer) projects" : undefined}
               onChange={(e) => setDraft((d) => ({ ...d, isRFQ: e.target.checked }))}
               className="w-4 h-4 accent-blue-600 cursor-pointer"
             />
@@ -540,6 +553,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   const [headerDraft, setHeaderDraft] = useState({
     name: project.name,
     type: project.type || "Lidar",
+    projectClass: project.projectClass ?? "P1",
     isRFQ: project.isRFQ ?? false,
     startDate: project.startDate || "2026-01",
     duration: project.duration,
@@ -820,7 +834,8 @@ export const ProjectBasket = memo(function ProjectBasket({
     onUpdateProject(project.id, {
       name: headerDraft.name.trim() || project.name,
       type: headerDraft.type || project.type,
-      isRFQ: headerDraft.isRFQ,
+      projectClass: headerDraft.projectClass,
+      isRFQ: headerDraft.projectClass === "P1" && headerDraft.isRFQ,
       startDate: headerDraft.startDate || project.startDate || "2026-01",
       duration: d,
       stability: headerDraft.stability,
@@ -977,10 +992,20 @@ export const ProjectBasket = memo(function ProjectBasket({
               </div>
             </div>
 
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              Project classification
+              <select aria-label="Project classification" className="text-xs bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white" value={headerDraft.projectClass}
+                onChange={(e) => setHeaderDraft((d) => ({ ...d, projectClass: e.target.value as "P1" | "P2", isRFQ: e.target.value === "P2" ? false : d.isRFQ }))}>
+                <option value="P1">P1 (Customer)</option>
+                <option value="P2">P2 (Platform)</option>
+              </select>
+            </label>
             <label className="inline-flex self-start items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
               <input
                 type="checkbox"
                 checked={headerDraft.isRFQ}
+                disabled={headerDraft.projectClass === "P2"}
+                title={headerDraft.projectClass === "P2" ? "RFQ is available only for P1 (Customer) projects" : undefined}
                 onChange={(e) => setHeaderDraft((d) => ({ ...d, isRFQ: e.target.checked }))}
                 className="w-4 h-4 accent-blue-600 cursor-pointer"
               />
@@ -1053,6 +1078,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                     {project.type}
                   </span>
                 )}
+                <ProjectClassBadge value={project.projectClass} />
                 {project.isRFQ && <ProjectRFQBadge />}
               </div>
 
@@ -1120,6 +1146,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                     setHeaderDraft({
                       name: project.name,
                       type: project.type || "Lidar",
+                      projectClass: project.projectClass ?? "P1",
                       isRFQ: project.isRFQ ?? false,
                       startDate: project.startDate || "2026-01",
                       duration: project.duration,

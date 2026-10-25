@@ -173,6 +173,7 @@ export interface AddProjectModalProps {
 export interface AddProjectDraft {
   name: string;
   type: string;
+  projectClass: "P1" | "P2";
   isRFQ: boolean;
   duration: NumericInput;
   stability: string;

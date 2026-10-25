@@ -13,6 +13,7 @@ import { useEuroCostConversion } from "../../hooks/useEuroCostConversion";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { CalendarGanttIcon, ChevronDownIcon, ChevronRightIcon, LockIcon, UnlockIcon, ManagementIcon, RotateCcwIcon, ToolIcon } from "../ui/icons";
 import { PersonIcon } from "../ui/PersonIcon";
+import { ProjectClassBadge } from "../ui/ProjectClassBadge";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ProjectSpendingCharts } from "../ui/ProjectSpendingCharts";
 import { SpendingCellAmount } from "../ui/SpendingCellAmount";
@@ -299,6 +300,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
             <div className="flex items-center gap-2 flex-wrap">
               <h2 id="project-spending-title" className="text-base font-black tracking-tight">{project.name} Project{activeToolView !== "all" ? ` ${activeToolView}` : ""} Spending</h2>
               {project.type && <span className={`text-[9px] uppercase font-black px-2 py-0.5 rounded border shadow-2xs ${isRetro ? "bg-[#ffff80] text-black border-black font-mono shadow-[1px_1px_0px_#000]" : PROJECT_TYPE_COLORS[project.type]?.bg || "bg-slate-700"}`}>{project.type}</span>}
+              <ProjectClassBadge value={project.projectClass} />
               {project.isRFQ && <ProjectRFQBadge />}
             </div>
             <p className={`text-xs mt-0.5 ${isRetro ? "text-slate-200" : "text-slate-400"}`}>Timeline: <strong className="text-white">{monthLabels[0]}</strong> → <strong className="text-white">{monthLabels[monthLabels.length - 1]}</strong> ({paymentDuration} Mo){paymentDuration > project.duration && <span className="block mt-1">Project ends {monthLabels[project.duration - 1]} · includes deferred salary payments after project end</span>}</p>

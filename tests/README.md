@@ -6,6 +6,7 @@ a separate development server on port 5174 and leaves the interactive app on
 
 | Area | Suites and important behavior |
 | --- | --- |
+| Project classification | `project-classification`: P1/P2 creation/editing, P2 RFQ restriction, missing-field historical defaults, strict import validation, selective settings import, Undo/Redo, summary badge placement and responsive RFQ priority in team timelines. |
 | Undo / Redo | `workspace-history`: atomic multi-slice operations, stable redo IDs, no-op/failed saves, detail typing/list grouping, schedule cleanup, 50-step and estimated byte limits, shared snapshots, schema-1 compatibility, 2x2 toolbar, imports/merges, duplication/deletion, configuration, allocation saves, shortcuts, draft protection, view exclusion and session reset. |
 | Basic types | `basic-types`: phase ordering and project limits, ordinary Other defaults, per-activity rates, draft creation, rename/removal protection, non-FTE icon selection, independent activity tracks and saved overrides |
 | Scheduling | `project-fte-start`, `workpackage-finish-targets`, `workpackage-reposition`: automatic/manual starts, basic-mode rules, inclusive milestone limits for all FTE tools, Other maintenance, shifting overrides and support, allocation reconciliation, saving and every discard route |
