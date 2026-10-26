@@ -1,6 +1,93 @@
 # Development handoff
 
-Updated: 2026-10-25 (Europe/Prague).
+Updated: 2026-10-26 (Europe/Prague).
+
+## October 26: publication batch
+
+The user requested context-based commits, a complete test run, and a push to
+origin/master only if all checks pass. The remote was fetched and had no new
+commits beyond the local base. Existing local history preserves XLSX export
+(6101540), the isolated Google importer prototype (0b9cbc0), and its revert
+(0e0a26d). The active download is XLSX; the importer remains recoverable in history.
+
+New contextual commits:
+- a87a85a: responsive project cost breakdowns and theme regressions.
+- ef1a17b: portfolio exports, matching per-project colours, filenames and workbook
+  formatting (wrapped headers, grey calendar slots, grouped Expenses, retained
+  mandatory-input note and J17 top border).
+- 6f11e10: Defaults configuration left of Help; Export all left of Add Project.
+- 3c406cb: current in-app Help & Guide workflows.
+- 008bfd8: 57 export checks, production export coverage and current UI references.
+
+This handoff is a separate documentation commit. Final validation on the committed
+toolbar layout passed: all 545 app tests (including current screenshots), TypeScript,
+the production build and all three Pages checks. The validated nine-commit batch
+is authorized for origin/master publication. Keep unrelated debug.log untracked.
+Workspace JSON remains schema 1; historical compatibility fixtures are unchanged.
+The TODO backlog is unchanged; the user has not requested removing export items.
+
+## October 26: expanded export regression suite
+
+`pnpm test:export` runs 57 passing checks in four suites. The original layout
+suite now includes exact capacity boundaries (4/5, 8/9 and 11/12/13 projects),
+long calendars, colours, grey cells and the partially retained blue note.
+New calculation checks use independently specified expected hours/payments for
+multi-site partial staffing, removed/legacy members, hidden demand, internal vs
+external effort, monthly management, supplier/site/payment-delay groups, purchase
+splits/overrides, missing/zero salaries, label mappings and Prague timestamps.
+Workbook checks inspect downloaded OOXML, dropdowns, formulas and cached totals,
+missing/zero rates, EUR conversion failures, grouped timeplans, borders, colours
+and formula-safe user text. UI checks cover individual and portfolio downloads,
+retry and timeout recovery, duplicate-click prevention, Basic-mode export and
+the updated guide. Currency tests use mocked responses; no live API is required.
+Fixtures are new and separate from frozen JSON compatibility documents.
+Final validation: all 545 application tests passed (including all current visual
+comparisons), all 57 focused export cases passed, TypeScript passed, and the Pages
+production build plus all three Pages checks passed. The new Pages check downloads
+the XLSX under the repository prefix and verifies its three sheets. Salary tests
+now target the visible full-value tooltip rather than hidden text measurement;
+three new theme cases verify compact k amounts fit and restore on widening.
+Sixteen current screenshot references were updated for the existing Export controls
+and Help tabs. Historical screenshot and frozen JSON fixtures remain untouched.
+The suite/documentation updates are grouped in the publication batch above.
+
+## October 26: Help & Guide refresh
+
+The in-app guide now has Projects & Workpackages and Export Planning to Excel
+sections. It covers portfolio/single XLSX exports, current naming, matching
+colours, staffing/expense grouping, editable site rates, grouped timelines and
+Google Sheets dropdown limitations. Workspace instructions now describe selective
+import, confirmed project-name matching, optional incoming project settings,
+dependencies, review and retained current records. P1/P2, duplication, details,
+global reusability, lane resizing, phase MH editing and responsive costs are
+covered. Automatic-start defaults, category-filtered tool costs, monthly
+management thresholds, permanent Other supplier and Travel instructions were
+corrected. Undo/Redo, allocation draft and spending guidance remain in place.
+TypeScript, the production build and both Pages checks passed for this refresh.
+Help/documentation changes are isolated from the export and responsive-cost
+implementation commits listed above.
+
+## October 26: all-project XLSX export
+
+Export all sits beside Add Project, with matching button dimensions and an orange
+background. Extended mode includes the same export icon; Basic mode uses text.
+It exports the full portfolio regardless of visible filters, named
+SCAN_Projects-DD_MM_YYYY_HH-mm.xlsx (Europe/Prague). Single-project export remains.
+portfolioPlanning.ts aligns each project's resource/expense rows to the earliest
+project start and assigns distinct matching timeline/project-cell colours.
+Deferred cash payments extend Expenses beyond the final project end.
+
+The template has 12 Resource timeline slots and 8 Expenses slots. More projects
+insert rows before totals and move formulas, dropdown ranges, merges and frozen
+panes. Overlapping project rows trim only the top of the blue G:I mandatory-input
+block; its remaining area and note are preserved below. J17 keeps its top border. Inactive
+project timeline months stay grey. No workspace schema or history changes.
+Initial export checks covered 18-project insertion, source-data immutability,
+single-project naming and deferred external salary payments. The expanded suite
+and final full validation are recorded above. Native Excel/Google Sheets visual
+review has not been run.
+These changes and the preceding responsive cost-breakdown update are saved in
+separate contextual commits listed above.
 
 ## October 25: single-project Resource Planning and Expenses export
 
@@ -9,7 +96,7 @@ user's exact bundled template, plus editable Site hourly rates. Expenses now
 includes individual purchases and external salaries grouped by tool/site/delay,
 combining external engineering and management. Deferred cash payments extend
 the Expenses calendar beyond SOP without moving the project end. Downloads and
-workbook titles use ProjectName_P1-DD-MM-YYYY-HH-mm (or P2), dated in Europe/Prague.
+workbook titles use ProjectName_P1-DD_MM_YYYY_HH-mm (or P2), dated in Europe/Prague.
 Read PROJECT_PLANNING_EXPORT.md for the complete user-agreed column mapping,
 grouping/allocation rules, template provenance and implementation details.
 External members are excluded from Resource Planning, management remains per tool/site, and partially
