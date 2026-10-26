@@ -57,12 +57,12 @@ export function ProjectCostSummary({ cost, onOpen }: { cost: WorkpackageAllocati
       <button
         type="button"
         onClick={onOpen}
-        className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-purple-800 bg-purple-900/30 px-1 py-0.5 text-sm font-bold text-purple-800 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800"
+        className="group inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded border border-purple-800 bg-purple-900/30 px-1 py-0.5 text-sm font-bold text-purple-800 cursor-pointer transition-[transform,background-color,border-color,box-shadow] duration-200 ease-out hover:-translate-y-px hover:scale-[1.03] hover:border-purple-500 hover:bg-purple-800/50 hover:shadow-[0_2px_8px_rgba(168,85,247,0.2)] active:translate-y-0 active:scale-100 motion-reduce:transform-none motion-reduce:transition-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-purple-800"
         title={tooltip}
         aria-label={`Project cost: ${amount}`}
       >
         {amount.startsWith("€ ") ? (
-          <><span className="text-yellow-400">€</span><span className="text-yellow-400">{amount.slice(2)}</span></>
+          <><span className="text-yellow-400 transition-colors duration-200 group-hover:text-yellow-300 motion-reduce:transition-none">€</span><span className="text-yellow-400 transition-colors duration-200 group-hover:text-yellow-300 motion-reduce:transition-none">{amount.slice(2)}</span></>
         ) : amount}
       </button>
       {!isBasicMode && (
