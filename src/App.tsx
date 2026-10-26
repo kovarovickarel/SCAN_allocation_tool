@@ -809,6 +809,18 @@ export default function App() {
           <div className="flex items-center gap-2.5 shrink-0">
             <button
               type="button"
+              onClick={() => setShowConfigModal(true)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all shadow-xs cursor-pointer group ${
+                isRetro
+                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white"
+                  : "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 rounded-lg"
+              }`}
+            >
+              <SettingsIcon size={12} className={isRetro ? "text-black" : "text-blue-400 group-hover:rotate-45 transition-transform duration-200"} />
+              <span>Default&apos;s Configuration</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setShowHelpModal(true)}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all shadow-xs cursor-pointer group ${
                 isRetro
@@ -952,18 +964,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setShowConfigModal(true)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all shadow-xs cursor-pointer group ${
-                isRetro
-                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white"
-                  : "bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 rounded-lg"
-              }`}
-            >
-              <SettingsIcon size={12} className={isRetro ? "text-black" : "text-blue-400 group-hover:rotate-45 transition-transform duration-200"} />
-              <span>Default&apos;s Configuration</span>
-            </button>
+            <ProjectPlanningExportButton options={{ projects, cards: functions, members: teamMembers, configuration: config }} />
             <button
               type="button"
               onClick={() => setShowAddProject(true)}
@@ -975,7 +976,6 @@ export default function App() {
             >
               <span className="flex items-center"><PlusIcon size={13} />{!isBasicMode && <ProjectIcon size={16} className="shrink-0" />}</span> Add Project
             </button>
-            <ProjectPlanningExportButton options={{ projects, cards: functions, members: teamMembers, configuration: config }} />
           </div>
         </header>
 
