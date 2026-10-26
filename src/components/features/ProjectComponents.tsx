@@ -1173,7 +1173,7 @@ export const ProjectBasket = memo(function ProjectBasket({
             </div>
 
             <div className="flex items-end justify-between gap-2">
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className={`text-[11px] ${isRetro ? "text-white font-mono" : "text-slate-300"} flex items-center gap-2 flex-wrap`}>
                   {!isBasicMode && (
                     <>

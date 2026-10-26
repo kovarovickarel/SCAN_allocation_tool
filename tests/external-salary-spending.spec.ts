@@ -36,16 +36,36 @@ test("salary conversion uses its own exchange rate and never plots untranslated 
   await page.route("**/__external-spending*", route => route.fulfill({ contentType: "text/html", body: harnessHtml("/tests/fixtures/project-spending-harness.tsx") }));
   await page.goto("/__external-spending?external=1&salaryCurrency=GBP");
   await expect(page.getByRole("button", { name: "Project cost: € 76,800", exact: true })).toBeVisible();
-  await expect(page.getByText("(FTE: 55,200 + Non-FTE: 21,600)", { exact: true })).toBeVisible();
+  await expect(page.getByTitle("(FTE: 55,200 + Non-FTE: 21,600)", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Project cost: € 76,800", exact: true }).click();
   await expect(page.getByRole("region", { name: "External paid capacity" })).toHaveCount(0);
   await page.route("**/v2/rate/USD/EUR", route => route.abort());
   await page.goto("/__external-spending?external=1&salaryCurrency=USD");
-  await expect(page.getByText("(FTE: 55,200 + Non-FTE: N/A)", { exact: true })).toBeVisible();
+  await expect(page.getByTitle("(FTE: 55,200 + Non-FTE: N/A)", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Project cost: N/A", exact: true }).click();
   await page.getByRole("button", { name: "Graph View", exact: true }).click();
   await expect(page.getByRole("dialog").locator("svg[role='img']")).toHaveCount(0);
   await expect(page.getByRole("dialog").getByText(/EUR conversion is unavailable/).first()).toBeVisible();
+});
+
+for (const theme of ["vibrant", "basic", "retro"]) test(`cost breakdown abbreviates only when necessary and restores full amounts (${theme})`, async ({ page }) => {
+  await page.route("**/__responsive-cost*", route => route.fulfill({ contentType: "text/html", body: harnessHtml("/tests/fixtures/project-spending-harness.tsx") }));
+  await page.goto(`/__responsive-cost?external=1&theme=${theme}`);
+  const breakdown = page.getByTitle("(FTE: 55,200 + Non-FTE: 18,000)", { exact: true });
+  const visibleText = () => breakdown.evaluate(element => Array.from(element.childNodes)
+    .filter(node => node.nodeType === Node.TEXT_NODE).map(node => node.textContent).join("").trim());
+  await expect(breakdown).toBeVisible();
+  await page.locator("#root").evaluate(element => { element.style.width = "270px"; });
+
+  await expect.poll(visibleText).toBe("(FTE: 55.2k + Non-FTE: 18k)");
+  const fits = await breakdown.evaluate(element => {
+    const text = Array.from(element.childNodes).find(node => node.nodeType === Node.TEXT_NODE && node.textContent?.trim())!;
+    const range = document.createRange(); range.selectNodeContents(text);
+    return range.getBoundingClientRect().width <= element.getBoundingClientRect().width + 1;
+  });
+  expect(fits).toBe(true);
+  await page.locator("#root").evaluate(element => { element.style.width = "1000px"; });
+  await expect.poll(visibleText).toBe("(FTE: 55,200 + Non-FTE: 18,000)");
 });
 
 test("production allocations activate salary on Save and release it on Clear", async ({ page }) => {
@@ -150,7 +170,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`project costs exclude u
   page.on("pageerror", error => errors.push(error.message));
   await page.route("**/__external-spending*", route => route.fulfill({ contentType: "text/html", body: harnessHtml("/tests/fixtures/project-spending-harness.tsx") }));
   await page.goto(`/__external-spending?external=1&theme=${theme}`);
-  await expect(page.getByText("(FTE: 55,200 + Non-FTE: 18,000)", { exact: true })).toBeVisible();
+  await expect(page.getByTitle("(FTE: 55,200 + Non-FTE: 18,000)", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Project cost: € 73,200", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("region", { name: "External paid capacity" })).toHaveCount(0);
