@@ -2,7 +2,7 @@
 
 ## Current scope
 
-Resource Planning is implemented for one selected project. The project's Excel
+Resource Planning supports one selected project or the complete portfolio. The project's Excel
 button is immediately left of View timeline, with an orange Export label in both modes. It exports the complete project regardless
 of the selected tool view or FTE/non-FTE card filter. Export is read-only and does
 not create Undo/Redo history or change workspace JSON.
@@ -12,8 +12,31 @@ payments. The download is an XLSX workbook with Resource Planning, Expenses Proj
 Spec and editable Site hourly rates. Excel dropdowns remain ordinary dropdowns;
 XLSX cannot preserve Google Sheets' native chip display.
 
-Downloads and workbook titles use ProjectName_P1-DD-MM-YYYY-HH-mm (or P2), with the
+Downloads and workbook titles use ProjectName_P1-DD_MM_YYYY_HH-mm (or P2), with the
 export date/time in Europe/Prague and the .xlsx extension on the download.
+
+The orange Export all button beside Add Project downloads
+SCAN_Projects-DD_MM_YYYY_HH-mm.xlsx. It includes all projects independently of view
+filters, with a common calendar beginning in the earliest project start month.
+Resource Planning ends at the latest project end; Expenses extends through the
+last deferred payment. Projects keep separate data groups and timeline rows, and
+each project's colour matches its project/charged-project cells in both sheets.
+The first three portfolio projects use the supplied light purple E6CFF2, peach
+FFC8AA and light blue BFE1F6, with black text. Later projects use distinct colours.
+Individual exports use the same full-workspace project position and palette,
+regardless of project class or active tool view. Colour is presentation-only.
+Months outside that project's lifecycle remain grey on its timeline.
+
+Timeline rows begin at row 3. The original template accommodates 12 projects in
+Resource Planning (rows 3–14) and 8 in Expenses (rows 3–10). Additional projects
+insert rows before totals, shifting headers, formulas, validation ranges, merged
+areas and frozen panes together. When projects overlap the blue mandatory-input block in Resource Planning G:I,
+only those rows are cleared. The remaining blue area and its merged note stay
+below the project labels. J17 (or its shifted row) has a complete top border.
+The original single-project export, naming and shared hourly-rate sheet remain.
+Column headers wrap and their row height expands to fit the complete text in both
+reports, including when portfolio timeline rows shift the headers down. Column
+grouping, hidden columns and the initial collapsed state remain unchanged.
 
 ## Template preservation
 

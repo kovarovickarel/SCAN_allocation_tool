@@ -1233,7 +1233,7 @@ export const ProjectBasket = memo(function ProjectBasket({
                     <span>{totalUnusedCount} unused</span>
                   </button>
                 )}
-                <ProjectPlanningExportButton options={{ project, cards, members: teamMembers, configuration: { fteCosts, fteRates, toolFteRates, management: mgmtSettings, reusabilityFactors, stabilityFactors } }} />
+                <ProjectPlanningExportButton options={{ project, projectIndex: index, cards, members: teamMembers, configuration: { fteCosts, fteRates, toolFteRates, management: mgmtSettings, reusabilityFactors, stabilityFactors } }} />
                 <button
                   type="button"
                   onClick={() => setShowTimelineModal(true)}

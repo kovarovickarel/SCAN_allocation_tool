@@ -7,6 +7,7 @@ import { nominalWorkpackageManHoursBreakdown } from "./utils/manHours";
 import { supportingPhaseRates } from "./utils/supportingPhases";
 import { workpackageRateKey } from "./utils/workpackageTypes";
 import { WorkspaceFileControls } from "./components/features/WorkspaceFileControls";
+import { ProjectPlanningExportButton } from "./components/features/ProjectPlanningExportButton";
 import type { WorkspaceData, WorkspaceView } from "./utils/workspaceFile";
 import { workpackageFinishViolation } from "./utils/workpackageFinishTargets";
 import { SummaryDashboard } from "./components/features/SummaryDashboard";
@@ -974,6 +975,7 @@ export default function App() {
             >
               <span className="flex items-center"><PlusIcon size={13} />{!isBasicMode && <ProjectIcon size={16} className="shrink-0" />}</span> Add Project
             </button>
+            <ProjectPlanningExportButton options={{ projects, cards: functions, members: teamMembers, configuration: config }} />
           </div>
         </header>
 

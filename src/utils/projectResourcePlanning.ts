@@ -7,6 +7,8 @@ import { calculateMemberMonthlyAllocationCost } from "./allocationCosts";
 
 export interface ResourcePlanningOptions {
   project: AllocationProject;
+  /** Presentation order in the full workspace, for matching portfolio colours. */
+  projectIndex?: number;
   cards: readonly WorkpackageCard[];
   members: readonly TeamMemberRecord[];
   configuration: Pick<WorkspaceConfiguration, "fteCosts" | "fteRates" | "toolFteRates" | "management"> & {
@@ -107,5 +109,5 @@ export function projectPlanningExportName(project: AllocationProject, now = new 
     hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
   const datePart = (type: Intl.DateTimeFormatPartTypes) => parts.find(part => part.type === type)!.value;
   const name = project.name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_").replace(/[. ]+$/, "").slice(0, 120) || "Project";
-  return `${name}_${project.projectClass ?? "P1"}-${datePart("day")}-${datePart("month")}-${datePart("year")}-${datePart("hour")}-${datePart("minute")}`;
+  return `${name}_${project.projectClass ?? "P1"}-${datePart("day")}_${datePart("month")}_${datePart("year")}_${datePart("hour")}-${datePart("minute")}`;
 }

@@ -1,8 +1,8 @@
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { FOOTPRINTS, FOOTPRINT_MAP } from "../constants";
 import { fetchLatestExchangeRate } from "./currencyRates";
-import { buildResourcePlanning, projectPlanningExportName, resourceLocation, type ResourcePlanningOptions } from "./projectResourcePlanning";
-import { buildExpensesPlanning } from "./projectExpensesPlanning";
+import { resourceLocation } from "./projectResourcePlanning";
+import { buildPlanningExport, type PlanningExportOptions } from "./portfolioPlanning";
 
 // Patch the original OOXML package instead of rebuilding the template through a
 // lossy spreadsheet serializer. Outlines, panes, comments and historical styles survive.
@@ -84,6 +84,25 @@ class Sheet {
   removeRowsFrom(first: number) {
     for (const [index, row] of this.rows) if (index >= first) { row.remove(); this.rows.delete(index); }
   }
+  insertRows(first: number, count: number) {
+    if (!count) return;
+    const shift = (reference: string) => reference.replace(/(\$?[A-Z]+\$?)(\d+)/g,
+      (_, col, row) => `${col}${Number(row) >= first ? Number(row) + count : row}`);
+    for (const element of Array.from(this.document.getElementsByTagName("*"))) {
+      if (element.localName === "row") {
+        const row = Number(element.getAttribute("r"));
+        if (row >= first) element.setAttribute("r", String(row + count));
+      } else if (element.localName === "c") element.setAttribute("r", shift(element.getAttribute("r")!));
+      for (const attribute of ["ref", "sqref", "topLeftCell", "activeCell"]) {
+        if (element.hasAttribute(attribute)) element.setAttribute(attribute, shift(element.getAttribute(attribute)!));
+      }
+      if (element.localName === "pane" && Number(element.getAttribute("ySplit")) >= first - 1) {
+        element.setAttribute("ySplit", String(Number(element.getAttribute("ySplit")) + count));
+      }
+    }
+    this.rows.clear();
+    elements(this.data, "row").forEach(row => this.rows.set(Number(row.getAttribute("r")), row));
+  }
   finish(lastColumn: number, lastRow: number) {
     const dimension = elements(this.document, "dimension")[0];
     if (dimension) dimension.setAttribute("ref", `A1:${column(lastColumn)}${lastRow}`);
@@ -138,10 +157,11 @@ class Styles {
   }
 }
 
-export async function createProjectPlanningXlsx(options: ResourcePlanningOptions, template: Uint8Array, signal: AbortSignal, exportedAt = new Date()) {
-  const model = buildResourcePlanning(options);
-  const expensePlan = await buildExpensesPlanning(options, signal);
-  const exportName = projectPlanningExportName(options.project, exportedAt);
+export async function createProjectPlanningXlsx(options: PlanningExportOptions, template: Uint8Array, signal: AbortSignal, exportedAt = new Date()) {
+  const planning = await buildPlanningExport(options, signal, exportedAt);
+  const { resource: model, expenses: expensePlan, projects, exportName } = planning;
+  const resourceShift = Math.max(0, projects.length - 12), expenseShift = Math.max(0, projects.length - 8);
+  const resourceStart = 19 + resourceShift, expenseStart = 14 + expenseShift;
   const { fteCosts } = options.configuration;
   const needsConversion = fteCosts.currency !== "EUR" && Object.values(fteCosts.hourlyRates).some(rate => typeof rate === "number" && rate > 0);
   const exchange = needsConversion ? await fetchLatestExchangeRate(fteCosts.currency, "EUR", signal) : null;
@@ -156,45 +176,119 @@ export async function createProjectPlanningXlsx(options: ResourcePlanningOptions
   });
   const archive = unzipSync(template);
   const styles = new Styles(archive["xl/styles.xml"]);
+  const sharedStrings = archive["xl/sharedStrings.xml"] ? elements(readXml(archive["xl/sharedStrings.xml"]), "si")
+    .map(entry => elements(entry, "t").map(text => text.textContent ?? "").join("")) : [];
+  function fitHeader(target: Sheet, rowNumber: number, timelineStart: number) {
+    const row = target.row(rowNumber);
+    const context = document.createElement("canvas").getContext("2d");
+    let height = Number(row.getAttribute("ht")) || 15.75;
+    for (const cell of Array.from(row.children)) {
+      const index = colIndex(cell.getAttribute("r")!);
+      const originalStyle = cell.getAttribute("s") ?? "0";
+      const xf = styles.xfs.children[Number(originalStyle)];
+      const font = elements(styles.document, "fonts")[0].children[Number(xf.getAttribute("fontId"))];
+      const size = Number(elements(font, "sz")[0]?.getAttribute("val")) || 11;
+      const name = elements(font, "name")[0]?.getAttribute("val") || "Arial";
+      if (context) context.font = `${elements(font, "b").length ? "bold " : ""}${size}pt "${name}"`;
+      const widthDefinition = elements(target.document, "col").find(col => Number(col.getAttribute("min")) <= index && Number(col.getAttribute("max")) >= index);
+      // Measure hidden/grouped columns at their normal width, without opening them.
+      const width = Math.max(12, Number(widthDefinition?.getAttribute("width") ?? 8.43) * 7 - 5);
+      const raw = elements(cell, "v")[0]?.textContent ?? "";
+      const text = index >= timelineStart ? "12/2026" : cell.getAttribute("t") === "s"
+        ? sharedStrings[Number(raw)] ?? "" : elements(cell, "t").map(node => node.textContent ?? "").join("");
+      let lines = 0;
+      for (const paragraph of text.split("\n")) {
+        let line = ""; lines++;
+        for (const character of paragraph) {
+          const candidate = line + character;
+          const measured = context ? context.measureText(candidate).width : candidate.length * size * 0.7;
+          if (line && measured > width) { lines++; line = character; } else line = candidate;
+        }
+      }
+      // Allow extra space for word wrapping (which can break before a whole word).
+      height = Math.max(height, (lines + (lines > 1 ? 1 : 0)) * size * 1.35 + 8);
+      cell.setAttribute("s", String(styles.variant(originalStyle, { wrap: true })));
+    }
+    row.setAttribute("ht", String(Math.ceil(height)));
+    row.setAttribute("customHeight", "1");
+  }
   const sheet = new Sheet(archive["xl/worksheets/sheet1.xml"]);
   const rowStyles = Array.from(sheet.row(19).children).filter(cell => colIndex(cell.getAttribute("r")!) <= 19)
     .map(cell => [column(colIndex(cell.getAttribute("r")!)), cell.getAttribute("s")!] as const);
-  const lastRow = Math.max(19, 18 + model.rows.length), lastColumn = 19 + model.calendar.length;
-  sheet.removeRowsFrom(19); sheet.removeColumnsAfter(lastColumn);
-  // Keep the template's historic coloured J column, merges, outline controls and empty A.
-  for (const address of ["I3", "N3"]) sheet.set(address, model.projectLabel);
-  const projectColour = model.projectClass === "P2" ? "7030A0" : "0000FF";
-  const milestoneStyle = styles.variant(18, { fill: projectColour, wrap: true, fontColour: "FFFFFF" });
-  const projectNameStyle = styles.variant(53, { fill: projectColour, fontColour: "FFFFFF" });
-  for (const address of ["I3", "N3"]) sheet.cell(address, styles.variant(13, { fill: projectColour, fontColour: "FFFFFF" }));
-  for (const col of ["O", "P", "Q", "R", "S"]) {
-    const cell = sheet.cell(`${col}3`);
-    sheet.cell(`${col}3`, styles.variant(cell.getAttribute("s") ?? 15, { fill: projectColour }));
+  sheet.insertRows(15, resourceShift);
+  const lastRow = Math.max(resourceStart, resourceStart - 1 + model.rows.length), lastColumn = 19 + model.calendar.length;
+  sheet.removeRowsFrom(resourceStart); sheet.removeColumnsAfter(lastColumn);
+  const projectStyles = projects.map(project => {
+    const rgb = [0, 2, 4].map(offset => parseInt(project.colour.slice(offset, offset + 2), 16));
+    const fontColour = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 160 ? "000000" : "FFFFFF";
+    return {
+      milestone: styles.variant(18, { fill: project.colour, wrap: true, fontColour }),
+      name: styles.variant(53, { fill: project.colour, fontColour }),
+      label: styles.variant(13, { fill: project.colour, fontColour }),
+      blank: styles.variant(15, { fill: project.colour }),
+    };
+  });
+  // Only trim blue rows occupied by project labels; retain the note below them.
+  if (projects.length > 4) {
+    for (const merge of elements(sheet.document, "mergeCell")) if (merge.getAttribute("ref")?.startsWith("G14:")) merge.remove();
+    const merges = elements(sheet.document, "mergeCells")[0];
+    const lastProjectRow = projects.length + 2;
+    const noteStart = Math.max(14, lastProjectRow + 1), noteEnd = 16 + resourceShift;
+    for (let row = 7; row <= lastProjectRow; row++) for (const col of ["G", "H", "I"]) sheet.set(`${col}${row}`, null, 0);
+    for (let row = lastProjectRow + 1; row <= noteEnd; row++) for (const col of ["G", "H", "I"]) sheet.set(`${col}${row}`, null, 22);
+    sheet.set(`G${noteStart}`, "NEW\nFILL THIS MANDATORY", 27);
+    merges.append(node(sheet.document, "mergeCell", { ref: `G${noteStart}:I${noteEnd}` }));
+    merges.setAttribute("count", String(merges.children.length));
+  }
+  sheet.cell(`J${17 + resourceShift}`, styles.variant(35, { border: 2 }));
+  function timeline(target: Sheet, firstColumn: number, calendar: typeof model.calendar) {
+    // New months have no template cells, including in unused project slots.
+    const lastTimelineRow = target === sheet ? 14 + resourceShift : 10 + expenseShift;
+    for (let row = 3; row <= lastTimelineRow; row++) {
+      calendar.forEach((_, month) => target.set(`${column(firstColumn + month)}${row}`, null, 17));
+    }
+    projects.forEach((project, index) => {
+      const row = 3 + index, colour = projectStyles[index];
+      target.row(row).setAttribute("ht", target.row(2).getAttribute("ht") ?? "15.75");
+      target.row(row).setAttribute("customHeight", "1");
+      if (target === sheet) {
+        target.set(`I${row}`, project.label, colour.label);
+        target.set(`N${row}`, project.label, colour.label);
+        for (const col of ["O", "P", "Q", "R", "S"]) target.set(`${col}${row}`, null, colour.blank);
+      } else {
+        target.set(`O${row}`, project.label, colour.label);
+        target.set(`P${row}`, null, colour.blank);
+      }
+      calendar.forEach((_, month) => {
+        const period = project.calendar[month - project.offset];
+        target.set(`${column(firstColumn + month)}${row}`, period?.events.length ? period.events.join("\n") : null,
+          period ? colour.milestone : 17);
+      });
+    });
   }
   const years = [...new Set(expensePlan.calendar.map(month => month.year))];
-  const colours = ["E6B8AF", "00FFFF", "B7E1CD", "FFFFFF99", "D9D2E9", "C9DAF8", "F9CB9C", "D9EAD3", "F4CCCC", "CFE2F3", "EAD1DC", "D0E0E3", "FFF2CC", "B6D7A8", "D5A6BD", "A2C4C9"];
+  const colours = ["E6B8AF", "00FFFF", "B7E1CD", "FFFF99", "D9D2E9", "C9DAF8", "F9CB9C", "D9EAD3", "F4CCCC", "CFE2F3", "EAD1DC", "D0E0E3", "FFF2CC", "B6D7A8", "D5A6BD", "A2C4C9"];
   const numeric = styles.variant(61, { format: "0.###" });
   const totalFte = styles.variant(30, { format: "0.###" });
   const headers = years.map((_, index) => styles.variant(44, { fill: colours[index % colours.length], format: "mm/yyyy" }));
   for (let month = 0; month < model.calendar.length; month++) {
     const col = column(20 + month), period = model.calendar[month];
-    for (let index = 1; index <= 16; index++) sheet.set(`${col}${index}`, null);
+    for (let index = 1; index <= 16 + resourceShift; index++) sheet.set(`${col}${index}`, null);
     sheet.set(`${col}1`, period.month, 3); sheet.set(`${col}2`, period.year, 9);
-    sheet.set(`${col}3`, period.events.length ? period.events.join("\n") : null, milestoneStyle);
-    sheet.set(`${col}17`, "FTE", 34); sheet.set(`${col}18`, period.date, headers[years.indexOf(period.year)]);
-    formula(sheet.cell(`${col}15`, totalFte), `SUM(${col}19:${col}${lastRow})`, model.rows.reduce((sum, row) => sum + row.months[month], 0));
+    sheet.set(`${col}${17 + resourceShift}`, "FTE", 34); sheet.set(`${col}${18 + resourceShift}`, period.date, headers[years.indexOf(period.year)]);
+    formula(sheet.cell(`${col}${15 + resourceShift}`, totalFte), `SUM(${col}${resourceStart}:${col}${lastRow})`, model.rows.reduce((sum, row) => sum + row.months[month], 0));
   }
-  sheet.row(3).setAttribute("ht", sheet.row(2).getAttribute("ht") ?? "15.75");
-  sheet.row(3).setAttribute("customHeight", "1");
+  timeline(sheet, 20, model.calendar);
   const rateLast = sites.length + 4;
   model.rows.forEach((row, index) => {
-    const number = 19 + index;
+    const number = resourceStart + index;
+    const project = projects[row.projectIndex];
     rowStyles.forEach(([col, style]) => sheet.set(`${col}${number}`, null, style));
     const fields: Record<string, string | number | null> = { B: row.status, C: row.keyword, D: "1 Base", E: "SystemValidation", F: "6 SystemValidation", G: "SysVal",
-      H: model.projectLabel, I: model.projectLabel, J: model.projectClass, K: "2-SYS2xx", L: row.activity, M: row.location,
+      H: project.label, I: project.label, J: project.projectClass, K: "2-SYS2xx", L: row.activity, M: row.location,
       N: row.management ? "SYV-Lead" : "SYV-General", O: "Internal", P: row.costClass, Q: row.hours, R: "no" };
     Object.entries(fields).forEach(([col, input]) => sheet.set(`${col}${number}`, input));
-    for (const col of ["H", "I"]) sheet.cell(`${col}${number}`, projectNameStyle);
+    for (const col of ["H", "I"]) sheet.cell(`${col}${number}`, projectStyles[row.projectIndex].name);
     sheet.cell(`B${number}`, row.status === "OK" ? 48 : row.status === "no FTE planned" ? 65 : 74);
     for (let month = 0; month < row.months.length; month++) sheet.set(`${column(month + 20)}${number}`, row.months[month] > 1e-9 ? row.months[month] : null, numeric);
     if (row.site) {
@@ -206,8 +300,8 @@ export async function createProjectPlanningXlsx(options: ResourcePlanningOptions
   const totalHours = model.rows.reduce((sum, row) => sum + row.hours, 0);
   const priced = model.rows.filter(row => row.site);
   const missingRates = priced.some(row => eurRates[sites.indexOf(row.site!)] === null);
-  formula(sheet.cell("Q16"), `SUM(Q19:Q${lastRow})`, totalHours);
-  formula(sheet.cell("S16"), `IF(COUNT(S19:S${lastRow})<COUNTIF(B19:B${lastRow},"OK"),"",SUM(S19:S${lastRow}))`,
+  formula(sheet.cell(`Q${16 + resourceShift}`), `SUM(Q${resourceStart}:Q${lastRow})`, totalHours);
+  formula(sheet.cell(`S${16 + resourceShift}`), `IF(COUNT(S${resourceStart}:S${lastRow})<COUNTIF(B${resourceStart}:B${lastRow},"OK"),"",SUM(S${resourceStart}:S${lastRow}))`,
     missingRates ? null : priced.reduce((sum, row) => sum + row.hours * eurRates[sites.indexOf(row.site!)]!, 0));
   // Replace the template's broken source-list references with self-contained dropdowns.
   const validations = elements(sheet.document, "dataValidations")[0]; validations.replaceChildren();
@@ -218,59 +312,62 @@ export async function createProjectPlanningXlsx(options: ResourcePlanningOptions
     validation.append(f); validations.append(validation);
   }
   const keywordOptions = [...new Set(["KPI", "Trace checker", "SIL", "PIL", "HIL", "RCC", "Pipeline", "System test", "System integration test", "Visualization", "Vehicle tooling", "Operations", "Other", "Simulations", "Range & Accuracy", ...model.rows.map(row => row.keyword), ...expensePlan.rows.map(row => row.keyword)])];
-  list(`C19:C${lastRow}`, "ExportToolKeywords");
-  list(`D19:D${lastRow}`, ["1 Base"]); list(`G19:G${lastRow}`, ["SysVal"]);
-  list(`H19:I${lastRow}`, "ExportProjectName"); list(`J19:J${lastRow}`, ["P1", "P2"]);
-  list(`K19:K${lastRow}`, ["1-SYS1xx", "2-SYS2xx", "3-SYS3xx", "4-SYS4xx", "5-SYS5xx"]);
-  list(`M19:M${lastRow}`, "ExportSites"); list(`N19:N${lastRow}`, ["SYV-General", "SYV-Lead"]);
-  list(`O19:O${lastRow}`, ["Internal", "External"]); list(`P19:P${lastRow}`, ["HCC", "LCC"]); list(`R19:R${lastRow}`, ["yes", "no"]);
+  list(`C${resourceStart}:C${lastRow}`, "ExportToolKeywords");
+  list(`D${resourceStart}:D${lastRow}`, ["1 Base"]); list(`G${resourceStart}:G${lastRow}`, ["SysVal"]);
+  list(`H${resourceStart}:I${lastRow}`, "ExportProjectName"); list(`J${resourceStart}:J${lastRow}`, ["P1", "P2"]);
+  list(`K${resourceStart}:K${lastRow}`, ["1-SYS1xx", "2-SYS2xx", "3-SYS3xx", "4-SYS4xx", "5-SYS5xx"]);
+  list(`M${resourceStart}:M${lastRow}`, "ExportSites"); list(`N${resourceStart}:N${lastRow}`, ["SYV-General", "SYV-Lead"]);
+  list(`O${resourceStart}:O${lastRow}`, ["Internal", "External"]); list(`P${resourceStart}:P${lastRow}`, ["HCC", "LCC"]); list(`R${resourceStart}:R${lastRow}`, ["yes", "no"]);
   validations.setAttribute("count", String(validations.children.length));
+  fitHeader(sheet, 18 + resourceShift, 20);
   archive["xl/worksheets/sheet1.xml"] = sheet.finish(lastColumn, lastRow);
 
   // Preserve Expenses outlines/panes, replacing only its example data and calendar.
   const expenses = new Sheet(archive["xl/worksheets/sheet2.xml"]);
   const expenseRowStyles = Array.from(expenses.row(14).children).filter(cell => colIndex(cell.getAttribute("r")!) <= 16)
     .map(cell => [column(colIndex(cell.getAttribute("r")!)), cell.getAttribute("s")!] as const);
-  const expenseLastRow = Math.max(14, 13 + expensePlan.rows.length), expenseLastColumn = 16 + expensePlan.calendar.length;
-  expenses.removeRowsFrom(14);
+  expenses.insertRows(11, expenseShift);
+  // Keep the timeplan visible initially, with one outline control to collapse it.
+  for (let row = 1; row <= 11 + expenseShift; row++) expenses.row(row).setAttribute("outlineLevel", "1");
+  elements(expenses.document, "sheetFormatPr")[0].setAttribute("outlineLevelRow", "1");
+  elements(expenses.document, "outlinePr")[0].setAttribute("summaryBelow", "1");
+  elements(expenses.document, "sheetView")[0].setAttribute("showOutlineSymbols", "1");
+  const expenseLastRow = Math.max(expenseStart, expenseStart - 1 + expensePlan.rows.length), expenseLastColumn = 16 + expensePlan.calendar.length;
+  expenses.removeRowsFrom(expenseStart);
   for (const cell of elements(expenses.data, "c")) {
     const row = Number(cell.getAttribute("r")!.replace(/\D/g, ""));
-    if (row <= 11 && colIndex(cell.getAttribute("r")!) >= 17) value(cell, null);
+    if (row <= 11 + expenseShift && colIndex(cell.getAttribute("r")!) >= 17) value(cell, null);
   }
   expenses.removeColumnsAfter(expenseLastColumn);
-  expenses.set("O3", model.projectLabel, styles.variant(13, { fill: projectColour, fontColour: "FFFFFF" }));
-  expenses.cell("P3", styles.variant(15, { fill: projectColour }));
   const expenseMoney = styles.variant(108, { format: "#,##0.00" });
   const expenseTotal = styles.variant(107, { format: "#,##0.00" });
   const expenseSum = styles.variant(28, { format: "#,##0.00", fontColour: "000000", fill: "FFFFFF" });
   const expenseCurrency = styles.variant(92, { border: 2 });
   const expenseActivity = styles.variant(106, { border: 2 });
-  expenses.cell("O13", styles.variant(95, { border: 2 }));
+  expenses.cell(`O${13 + expenseShift}`, styles.variant(95, { border: 2 }));
   for (let index = 0; index < expensePlan.calendar.length; index++) {
     const col = column(17 + index), period = expensePlan.calendar[index];
     expenses.set(`${col}1`, period.month, 3); expenses.set(`${col}2`, period.year, 9);
-    const events = model.calendar[index]?.events ?? [];
-    expenses.set(`${col}3`, events.length ? events.join("\n") : null, index < options.project.duration ? milestoneStyle : 17);
-    expenses.set(`${col}12`, "EUR", expenseCurrency); expenses.set(`${col}13`, period.date, headers[years.indexOf(period.year)]);
-    formula(expenses.cell(`${col}11`, expenseSum), `SUM(${col}14:${col}${expenseLastRow})`, expensePlan.rows.reduce((sum, row) => sum + row.months[index], 0));
+    expenses.set(`${col}${12 + expenseShift}`, "EUR", expenseCurrency); expenses.set(`${col}${13 + expenseShift}`, period.date, headers[years.indexOf(period.year)]);
+    formula(expenses.cell(`${col}${11 + expenseShift}`, expenseSum), `SUM(${col}${expenseStart}:${col}${expenseLastRow})`, expensePlan.rows.reduce((sum, row) => sum + row.months[index], 0));
   }
-  expenses.row(3).setAttribute("ht", expenses.row(2).getAttribute("ht") ?? "15.75");
-  expenses.row(3).setAttribute("customHeight", "1");
-  expenses.set("O12", "EUR");
+  timeline(expenses, 17, expensePlan.calendar);
+  expenses.set(`O${12 + expenseShift}`, "EUR");
   expensePlan.rows.forEach((row, index) => {
-    const number = 14 + index, total = row.months.reduce((sum, amount) => sum + amount, 0);
+    const project = projects[row.projectIndex];
+    const number = expenseStart + index, total = row.months.reduce((sum, amount) => sum + amount, 0);
     expenseRowStyles.forEach(([col, style]) => expenses.set(`${col}${number}`, null, style));
     const fields: Record<string, string | number> = { A: total > 0 ? "OK" : "no Expenses planned", B: row.keyword, C: "1 Base", D: "SystemValidation", E: "6 SystemValidation", F: "SysVal",
-      G: model.projectLabel, H: model.projectLabel, I: model.projectClass, J: "2-SYS2xx", K: row.location, L: row.expenseType,
+      G: project.label, H: project.label, I: project.projectClass, J: "2-SYS2xx", K: row.location, L: row.expenseType,
       M: row.outsourced, N: row.deferred, O: row.activity };
     Object.entries(fields).forEach(([col, input]) => expenses.set(`${col}${number}`, input));
     expenses.cell(`O${number}`, expenseActivity);
     expenses.cell(`A${number}`, total > 0 ? 48 : 115);
-    for (const col of ["G", "H"]) expenses.cell(`${col}${number}`, projectNameStyle);
+    for (const col of ["G", "H"]) expenses.cell(`${col}${number}`, projectStyles[row.projectIndex].name);
     row.months.forEach((amount, month) => expenses.set(`${column(17 + month)}${number}`, amount > 0 ? amount : null, expenseMoney));
     formula(expenses.cell(`P${number}`, expenseTotal), `SUM(Q${number}:${column(expenseLastColumn)}${number})`, total);
   });
-  formula(expenses.cell("P11"), `SUM(P14:P${expenseLastRow})`, expensePlan.rows.reduce((sum, row) => sum + row.months.reduce((a, b) => a + b, 0), 0));
+  formula(expenses.cell(`P${11 + expenseShift}`), `SUM(P${expenseStart}:P${expenseLastRow})`, expensePlan.rows.reduce((sum, row) => sum + row.months.reduce((a, b) => a + b, 0), 0));
   const expenseTypes = [...new Set(["License", "Workstation", "Hardware", "Contracted Workpackage", "Travel", ...expensePlan.rows.map(row => row.expenseType)])];
   const delays = ["NO", ...Array.from({ length: 120 }, (_, index) => `YES_${index + 1} months`)];
   const expenseValidations = elements(expenses.document, "dataValidations")[0]; expenseValidations.replaceChildren();
@@ -279,12 +376,13 @@ export async function createProjectPlanningXlsx(options: ResourcePlanningOptions
     const f = node(expenses.document, "formula1"); f.textContent = typeof choices === "string" ? choices : `"${choices.join(",")}"`;
     validation.append(f); expenseValidations.append(validation);
   }
-  expenseList(`B14:B${expenseLastRow}`, "ExportToolKeywords"); expenseList(`C14:C${expenseLastRow}`, ["1 Base"]);
-  expenseList(`F14:F${expenseLastRow}`, ["SysVal"]); expenseList(`G14:H${expenseLastRow}`, "ExportProjectName");
-  expenseList(`I14:I${expenseLastRow}`, ["P1", "P2"]); expenseList(`J14:J${expenseLastRow}`, ["1-SYS1xx", "2-SYS2xx", "3-SYS3xx", "4-SYS4xx", "5-SYS5xx"]);
-  expenseList(`K14:K${expenseLastRow}`, "ExportSites"); expenseList(`L14:L${expenseLastRow}`, "ExportExpenseTypes");
-  expenseList(`M14:M${expenseLastRow}`, ["yes", "no"]); expenseList(`N14:N${expenseLastRow}`, "ExportPaymentDelays"); expenseList("O12", ["EUR"]);
+  expenseList(`B${expenseStart}:B${expenseLastRow}`, "ExportToolKeywords"); expenseList(`C${expenseStart}:C${expenseLastRow}`, ["1 Base"]);
+  expenseList(`F${expenseStart}:F${expenseLastRow}`, ["SysVal"]); expenseList(`G${expenseStart}:H${expenseLastRow}`, "ExportProjectName");
+  expenseList(`I${expenseStart}:I${expenseLastRow}`, ["P1", "P2"]); expenseList(`J${expenseStart}:J${expenseLastRow}`, ["1-SYS1xx", "2-SYS2xx", "3-SYS3xx", "4-SYS4xx", "5-SYS5xx"]);
+  expenseList(`K${expenseStart}:K${expenseLastRow}`, "ExportSites"); expenseList(`L${expenseStart}:L${expenseLastRow}`, "ExportExpenseTypes");
+  expenseList(`M${expenseStart}:M${expenseLastRow}`, ["yes", "no"]); expenseList(`N${expenseStart}:N${expenseLastRow}`, "ExportPaymentDelays"); expenseList(`O${12 + expenseShift}`, ["EUR"]);
   expenseValidations.setAttribute("count", String(expenseValidations.children.length));
+  fitHeader(expenses, 13 + expenseShift, 17);
   archive["xl/worksheets/sheet2.xml"] = expenses.finish(expenseLastColumn, expenseLastRow);
 
   const rateDocument = document.implementation.createDocument(NS, "worksheet");
@@ -308,12 +406,12 @@ export async function createProjectPlanningXlsx(options: ResourcePlanningOptions
     rates.set(`C${number}`, eurRates[index], rateStyle); rates.set(`D${number}`, site, 53);
     rates.set(`E${number}`, fteCosts.hourlyRates[site] ?? null, rateStyle);
   });
-  rates.set("F5", model.projectLabel, 53);
+  projects.forEach((project, index) => rates.set(`F${5 + index}`, project.label, projectStyles[index].name));
   for (const [col, title, values] of [["G", "Tool keywords", keywordOptions], ["H", "Expense types", expenseTypes], ["I", "Payment delays", delays]] as const) {
     rates.set(`${col}4`, title, heading); values.forEach((entry, index) => rates.set(`${col}${5 + index}`, entry, 53));
   }
   rates.set(`A${rateLast + 3}`, "Edit EUR / hour to update Resource Planning costs. An empty rate is unpriced.", 23);
-  archive["xl/worksheets/siteHourlyRates.xml"] = rates.finish(9, Math.max(rateLast + 3, 4 + delays.length, 4 + keywordOptions.length, 4 + expenseTypes.length));
+  archive["xl/worksheets/siteHourlyRates.xml"] = rates.finish(9, Math.max(rateLast + 3, 4 + delays.length, 4 + keywordOptions.length, 4 + expenseTypes.length, 4 + projects.length));
 
   const workbook = readXml(archive["xl/workbook.xml"]), relations = readXml(archive["xl/_rels/workbook.xml.rels"]), contentTypes = readXml(archive["[Content_Types].xml"]);
   const sheets = elements(workbook, "sheets")[0];
@@ -328,7 +426,7 @@ export async function createProjectPlanningXlsx(options: ResourcePlanningOptions
   contentTypes.documentElement.append(override);
   let names = elements(workbook, "definedNames")[0];
   if (!names) { names = node(workbook, "definedNames"); workbook.documentElement.insertBefore(names, elements(workbook, "calcPr")[0] ?? null); }
-  for (const [name, reference] of [["ExportProjectName", "'Site hourly rates'!$F$5"], ["ExportSites", `'Site hourly rates'!$A$5:$A$${rateLast}`],
+  for (const [name, reference] of [["ExportProjectName", `'Site hourly rates'!$F$5:$F$${4 + projects.length}`], ["ExportSites", `'Site hourly rates'!$A$5:$A$${rateLast}`],
     ["ExportToolKeywords", `'Site hourly rates'!$G$5:$G$${4 + keywordOptions.length}`], ["ExportExpenseTypes", `'Site hourly rates'!$H$5:$H$${4 + expenseTypes.length}`],
     ["ExportPaymentDelays", `'Site hourly rates'!$I$5:$I$${4 + delays.length}`]]) {
     const definition = node(workbook, "definedName", { name }); definition.textContent = reference; names.append(definition);
