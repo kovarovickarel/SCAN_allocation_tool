@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { parseWorkspaceFile, serializeWorkspace } from "../../src/utils/workspaceFile";
+import { unzipSync, strFromU8 } from "fflate";
 
 test("built app loads scripts, styles and logo under the repository path and supports dashboard navigation", async ({ page }) => {
   const errors: string[] = [];
@@ -46,4 +47,25 @@ test("built app exports and imports a JSON workspace at the Pages path", async (
   await page.getByRole("dialog").getByRole("button", { name: "Import & Replace", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Pages transfer regression", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "GM", exact: true })).toHaveCount(0);
+});
+
+test("built app downloads all-project XLSX with prefix-safe template and lazy-loaded assets", async ({ page }) => {
+  const templates: string[] = [], failures: string[] = [];
+  page.on("response", response => {
+    if (response.url().includes("templates/project-planning.xlsx")) templates.push(response.url());
+    if (response.url().startsWith("http://127.0.0.1:4174/") && response.status() >= 400) failures.push(response.url());
+  });
+  await page.goto("./");
+  const downloading = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export all", exact: true }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toMatch(/^SCAN_Projects-\d{2}_\d{2}_\d{4}_\d{2}-\d{2}\.xlsx$/);
+  const chunks: Buffer[] = [];
+  for await (const chunk of (await download.createReadStream())!) chunks.push(Buffer.from(chunk));
+  const archive = unzipSync(Buffer.concat(chunks));
+  expect(strFromU8(archive["xl/workbook.xml"])).toContain('name="Site hourly rates"');
+  expect(archive["xl/worksheets/sheet1.xml"]).toBeDefined();
+  expect(archive["xl/worksheets/sheet2.xml"]).toBeDefined();
+  expect(templates).toEqual(["http://127.0.0.1:4174/SCAN_allocation_tool/templates/project-planning.xlsx"]);
+  expect(failures).toEqual([]);
 });
