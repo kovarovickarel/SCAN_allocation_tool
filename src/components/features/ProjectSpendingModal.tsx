@@ -216,8 +216,8 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
       if (tone === "total" || tone === "cumulative" || tone === "tool") return <div key={index} title={cellTitle}
         className={`p-1.5 text-center flex flex-col items-center justify-center leading-tight font-mono font-bold min-w-0 ${tone === "total" || tone === "cumulative" ? "text-[11px]" : "text-[10px]"} ${
           tone === "cumulative" ? "text-pink-500" : tone === "total" ? "text-yellow-500" : isRetro ? "text-black" : "text-current"}`}>
-        <span className="max-w-full truncate">{amount(cost, false, true)}</span>
-        {(tone === "total" || tone === "cumulative" || tone === "tool") && <span className={`text-[8px] font-normal ${tone === "cumulative" ? "text-pink-500" : tone === "total" ? "text-yellow-500" : "text-current"}`}>EUR</span>}
+        <span className={`max-w-full truncate ${tone === "cumulative" ? "relative top-0.5" : ""}`}>{amount(cost, false, true)}</span>
+        {(tone === "total" || tone === "cumulative" || tone === "tool") && <span className={`text-[8px] font-normal ${tone === "cumulative" ? "relative top-0.5 text-pink-500" : tone === "total" ? "text-yellow-500" : "text-current"}`}>EUR</span>}
       </div>;
       return <div key={index} className={`h-full flex items-center justify-center p-0.5 ${index < costs.length - 1 ? "pr-1" : ""}`}>
         {cost.allocatedHours === 0 && !(cost.purchaseCostEUR > 0) && !isPaymentMonth ? <span title={cellTitle} className={`relative text-[10px] font-mono ${altered ? `w-full h-8 flex items-center justify-center rounded ${alterationClass}` : ""} ${isRetro ? "text-black/40" : "text-slate-300"}`}>·{alterationStar}</span> : <div
@@ -415,8 +415,8 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
           {showReleases && <SystemReleasesTrack project={project} totalMonths={paymentDuration} labels={monthLabels} sticky />}
           <div className={`grid border-b-2 font-bold text-xs ${isRetro ? "bg-[#ffffec] border-black font-mono" : "bg-pink-50 border-pink-200"}`} style={gridStyle}>
             <div className={`p-2.5 pl-4 border-r flex items-center justify-between gap-2 text-pink-500 ${isRetro ? "border-black" : "border-pink-200"}`}>
-              <span className="text-[11px] font-black uppercase tracking-wider">Cumulative Spending</span>
-              <span className="inline-flex items-center gap-1 shrink-0">
+              <span className="relative top-0.5 text-[11px] font-black uppercase tracking-wider">Cumulative Spending</span>
+              <span className="relative top-0.5 inline-flex items-center gap-1 shrink-0">
                 <span className="text-[10px] font-mono font-bold">Total</span>
                 {totalBadge(total, false, true)}
               </span>
