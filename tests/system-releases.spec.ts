@@ -418,6 +418,35 @@ test("when no higher release number is free, keep the original without a warning
   await expect(timeline.getByRole("button", { name: "Save & Close", exact: true })).toBeDisabled();
 });
 
+for (const theme of ["vibrant", "basic", "retro"] as const) test(`spending shows the same collapsible release track without editing (${theme})`, async ({ page }) => {
+  const data = workspace(); data.view.theme = theme; data.projects[0].systemReleases = custom();
+  data.workpackages = historyWorkspace().workpackages.filter(card => card.kind === "non-fte");
+  await load(page, data);
+  await page.getByRole("button", { name: /^Project cost:/ }).click();
+  const spending = page.getByRole("dialog");
+  const toggle = spending.getByRole("button", { name: "Toggle system releases for Release project", exact: true });
+  const track = spending.getByLabel("System releases timeline for Release project", { exact: true });
+  const monthly = spending.getByText("Monthly Spending", { exact: true }).locator("../..");
+  await expect(track).toHaveCount(0);
+  expect(await monthly.evaluate(element => getComputedStyle(element).top)).toBe("81px");
+  await toggle.click(); await expect(track).toBeVisible();
+  expect(await monthly.evaluate(element => getComputedStyle(element).top)).toBe("117px");
+  const release = track.getByRole("button", { name: "R100", exact: true });
+  await expect(release).toHaveAttribute("title", /Month 3 /);
+  await expect(release).toBeDisabled(); await expect(release).toHaveAttribute("draggable", "false");
+  expect(await release.evaluate(element => getComputedStyle(element).animationName)).toBe("none");
+  await spending.getByRole("button", { name: "Non-FTE Adjust: Disabled", exact: true }).click();
+  await expect(release).toBeDisabled();
+  await expect(track.locator("input")).toHaveCount(0);
+  await expect(track.getByRole("button", { name: /Add release|Remove release|Edit/ })).toHaveCount(0);
+  await spending.getByRole("button", { name: "Graph View", exact: true }).click(); await expect(track).toHaveCount(0);
+  await spending.getByRole("button", { name: "Timeline View", exact: true }).click(); await expect(track).toBeVisible();
+  await toggle.press("Enter"); await expect(track).toHaveCount(0);
+  await toggle.press("Space"); await expect(track).toBeVisible();
+  await spending.getByRole("button", { name: "Close project spending", exact: true }).click();
+  expect((await exported(page)).projects[0].systemReleases).toEqual(custom());
+});
+
 for (const include of [true, false]) test(`new projects can opt into default releases or start empty (${include})`, async ({ page }) => {
   await load(page); await page.getByRole("button", { name: "Add Project", exact: true }).click();
   const add = page.getByRole("dialog");

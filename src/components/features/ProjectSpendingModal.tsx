@@ -1,3 +1,5 @@
+import { SystemReleasesTrack } from "./SystemReleasesTrack";
+import { releaseTrackHeight } from "../../utils/systemReleases";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
 import { ResponsiveSubtoolTag } from "../ui/ResponsiveSubtoolTag";
 import { workpackageRateKey, workpackageTypeColor, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
@@ -38,6 +40,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const { isRetro, isBasic } = useContext(ThemeContext);
   const { project, members, activeToolView = "all" } = options;
   const [manualAdjust, setManualAdjust] = useState(false);
+  const [showReleases, setShowReleases] = useState(false);
   const [paymentDrafts, setPaymentDrafts] = useState<PurchasePaymentDrafts>({});
   const [paymentInputs, setPaymentInputs] = useState<Record<string, Record<number, string>>>({});
   const [editingPayment, setEditingPayment] = useState<{ id: string; month: number } | null>(null);
@@ -390,9 +393,12 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
               </div>)}
             </div>
           </div>
-          <div className={`grid border-b font-bold text-xs sticky top-[45px] z-18 shadow-xs ${isRetro ? "border-black bg-[#ffffec] text-black font-mono" : "border-amber-300/40 bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 text-white"}`} style={gridStyle}>
+          <div role="button" tabIndex={0} aria-label={`Toggle system releases for ${project.name}`} aria-expanded={showReleases}
+            onClick={() => setShowReleases(value => !value)} onKeyDown={event => {
+              if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setShowReleases(value => !value); }
+            }} className={`grid cursor-pointer border-b font-bold text-xs sticky top-[45px] z-18 shadow-xs ${isRetro ? "border-black bg-[#ffffec] text-black font-mono" : "border-amber-300/40 bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 text-white"}`} style={gridStyle}>
             <div className={`p-2 pl-4 border-r flex items-center justify-between ${isRetro ? "border-black bg-[#ffffdc] text-black font-mono font-black" : "border-slate-700/80 bg-slate-900"}`}>
-              <span className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${isRetro ? "text-black font-mono" : "text-amber-300"}`}><span>🏁</span> PROJECT MILESTONES</span>
+              <span className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${isRetro ? "text-black font-mono" : "text-amber-300"}`}>{showReleases ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}<span className="inline-flex w-3.5 shrink-0 items-center justify-center">🏁</span> PROJECT MILESTONES</span>
             </div>
             <div className={`grid ${isRetro ? "divide-x divide-black" : "divide-x divide-slate-700/60"}`} style={monthGridStyle}>
               {monthLabels.map((label, month) => {
@@ -406,6 +412,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
               })}
             </div>
           </div>
+          {showReleases && <SystemReleasesTrack project={project} totalMonths={paymentDuration} labels={monthLabels} sticky />}
           <div className={`grid border-b-2 font-bold text-xs ${isRetro ? "bg-[#ffffec] border-black font-mono" : "bg-pink-50 border-pink-200"}`} style={gridStyle}>
             <div className={`p-2.5 pl-4 border-r flex items-center justify-between gap-2 text-pink-500 ${isRetro ? "border-black" : "border-pink-200"}`}>
               <span className="text-[11px] font-black uppercase tracking-wider">Cumulative Spending</span>
@@ -416,7 +423,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
             </div>
             {moneyCells(spending.cumulativeCosts, "cumulative")}
           </div>
-          <div className={`grid border-b-2 font-bold text-xs sticky top-[81px] z-[15] shadow-sm ${isRetro ? "border-black bg-[#ffffc0] text-black font-mono" : "border-indigo-900 bg-slate-950 text-white"}`} style={gridStyle}>
+          <div className={`grid border-b-2 font-bold text-xs sticky z-[15] shadow-sm ${isRetro ? "border-black bg-[#ffffc0] text-black font-mono" : "border-indigo-900 bg-slate-950 text-white"}`} style={{ ...gridStyle, top: 81 + (showReleases ? releaseTrackHeight(project) : 0) }}>
             <div className={`p-2.5 pl-4 border-r flex items-center justify-between gap-2 ${isRetro ? "border-black bg-[#ffffb0] text-black" : "border-slate-800 bg-slate-950"}`}>
               <span className="text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 text-yellow-500">
                 Monthly Spending

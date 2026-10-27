@@ -134,4 +134,5 @@ the release plan with incoming project settings; keeping current settings keeps
 the current plan. Milestone edits never move custom releases. Project shortening
 is blocked if it would exclude a custom release; move/remove that release first.
 Automatic plans regenerate from milestones. Releases appear only in project/team
-staffing timelines; XLSX reports remain unchanged.
+staffing timelines and read-only in the project spending timeline; XLSX reports
+remain unchanged.
