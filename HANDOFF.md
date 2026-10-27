@@ -1,6 +1,109 @@
 # Development handoff
 
-Updated: 2026-10-26 (Europe/Prague).
+Updated: 2026-10-27 (Europe/Prague).
+
+## Start here on the laptop (October 27)
+
+This is the current resume point. Dated sections below are historical context;
+older statements about pending changes or test counts do not supersede this section.
+
+- Repository: https://github.com/kovarovickarel/SCAN_allocation_tool.git, branch
+  `master`. This desktop checkout is C:/Users/kovar/Desktop/SCAN_Allocation_tool;
+  use the laptop's own checkout path. Latest confirmed pushed revision: `cb960c8`.
+  Local master and the recorded origin/master agree at that revision.
+- The October 26 release was pushed through `551714f`: 545 application tests,
+  TypeScript, the production build and all three Pages checks passed. This includes
+  57 export checks, the final toolbar ordering and refreshed current screenshots.
+- The later `cb960c8` commit adds project cost-button hover feedback: a subtle
+  lift/scale, brighter purple border/background, a soft shadow and lighter yellow
+  text, with reduced-motion support. It was separately committed and pushed.
+  TypeScript passed for this styling change; the complete suite was not rerun
+  after it. The 545-test result applies to the preceding release.
+- Documentation transfer: TODO.md removes Export to Excel and the completed
+  swimlane-width item, as requested. Help for timelines and the other backlog
+  items remain. This handoff and the TODO cleanup are saved together in a
+  documentation-only commit for laptop transfer. Fetch before synchronizing.
+  Unrelated debug.log remains untracked and must not be included in a commit.
+- No implementation task is currently in progress. Choose the next task from the
+  user, not automatically from TODO. JSON compatibility remains mandatory: read
+  JSON_COMPATIBILITY.md before domain/export/import changes and preserve frozen
+  baseline fixtures. Workspace schema remains 1.
+
+### Current export and UI behaviour
+
+- XLSX is the active project planning export. The Google Sheets importer prototype
+  is preserved in `0b9cbc0` and reverted by `0e0a26d`; it is not an installed add-on.
+  `/google-sheets-importer/` is no longer a supported app page. Open the app root
+  http://127.0.0.1:5173/ on the laptop instead of restoring an old importer tab.
+- Export all is orange and left of Add Project. Defaults configuration is left
+  of Help & Guide. A project's orange Export remains left of View timeline.
+- Names: SCAN_Projects-DD_MM_YYYY_HH-mm.xlsx for all projects;
+  ProjectName_P1-DD_MM_YYYY_HH-mm.xlsx (or P2) for an individual project.
+  Times use Europe/Prague. Export ignores tool/category display filters.
+- Reports include Resource Planning, Expenses Proj Spec and editable Site hourly
+  rates. Shared calendars start at the earliest project; expense calendars extend
+  through deferred salaries. Engineering groups by tool/subtool/site; management
+  stays at family/site level. External staffing belongs in Expenses, not FTE rows.
+- Individual exports match the project's colour position in Export all. The first
+  three colours are E6CFF2, FFC8AA and BFE1F6 with black text. Additional colours
+  use contrasting text. Project labels and timeline fills match in both reports.
+- Templates retain grouped columns. Header rows wrap/expand; Expenses timeplan
+  rows 1–11 are grouped, extending when extra projects insert rows. Unused timeline
+  slots and months outside each project are grey, including extended calendars.
+  The blue G:I mandatory-input block loses only rows occupied by project labels;
+  its remaining note is preserved. J17 (or its shifted row) has a top border.
+- See PROJECT_PLANNING_EXPORT.md for the full agreed mapping. Core files are
+  projectResourcePlanning.ts, projectExpensesPlanning.ts, portfolioPlanning.ts,
+  projectPlanningXlsx.ts and ProjectPlanningExportButton.tsx. Keep the exact
+  public/templates/project-planning.xlsx asset and prefix-safe URLs.
+- Help & Guide now documents exports, selective import, P1/P2, duplication,
+  optional details, global reusability, resizing, phase MH and current scheduling.
+  Responsive FTE/Non-FTE cost breakdowns use k/M when needed and restore full
+  values on widening; the full amounts remain in their tooltip.
+
+### Preserve the user's live planning before changing PCs
+
+Export the browser workspace JSON separately before closing/reloading or changing
+PCs. Git and XLSX reports do not contain a restorable live workspace. Planning is
+session state; importing the JSON on the laptop restores it. Do not reload the
+desktop session merely to inspect code. There is no server autosave or private
+per-user persistence yet. Width presentation choices and Undo/Redo history are
+not transferred in the workspace file.
+
+### Portable setup
+
+Use the new PC's checkout path, Node.js 20.19+ or 22.12+, and pnpm 10:
+
+For an existing checkout, inspect local changes first, then synchronize without
+creating an accidental merge commit:
+
+```sh
+git fetch origin
+git pull --ff-only origin master
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+For a new checkout, clone `https://github.com/kovarovickarel/SCAN_allocation_tool.git`
+and run the install/dev commands from its root. If fast-forward pull is blocked,
+inspect the local commits/edits before proceeding; do not reset them automatically.
+
+Windows can also use `start-app.bat`. Install dependencies locally; do not copy
+this PC's `node_modules` or assume bundled runtime paths are portable. The app is
+at `http://127.0.0.1:5173/`. For later verification, install Chromium with
+`pnpm exec playwright install chromium`, then use `pnpm typecheck`,
+`pnpm test:export` (57 focused export checks), `pnpm test:e2e --workers=4`,
+and `pnpm test:pages`. Development tests use 5174;
+Pages tests use 4174 and the `/SCAN_allocation_tool/` prefix. Run test batches
+sequentially to avoid shared test-server/output-directory conflicts.
+
+This PC needed per-command Git ownership allowance
+`git -c safe.directory=C:/Users/kovar/Desktop/SCAN_Allocation_tool ...`.
+Its commit environment had no configured identity; commit `90494ef` used the
+existing repository author `kovarovickarel <kovarovickarel@gmail.com>` through
+per-command options. Inspect local Git setup on the new PC rather than copying
+global settings or using older laptop workarounds below.
+
 
 ## October 26: publication batch
 
@@ -24,7 +127,8 @@ toolbar layout passed: all 545 app tests (including current screenshots), TypeSc
 the production build and all three Pages checks. The validated nine-commit batch
 is authorized for origin/master publication. Keep unrelated debug.log untracked.
 Workspace JSON remains schema 1; historical compatibility fixtures are unchanged.
-The TODO backlog is unchanged; the user has not requested removing export items.
+This was the backlog state at publication; the October 27 resume section above
+records the later requested TODO cleanup.
 
 ## October 26: expanded export regression suite
 
@@ -208,75 +312,6 @@ Undo/Redo backlog. Previous pushed release history below remains historical.
 
 Historical handoff (2026-10-13, Europe/Prague). Read this together with `AGENTS.md`, `tests/README.md`, and
 `TODO.md` before continuing development.
-
-## Start here on the other PC
-
-This section is the current handoff. Sections below it retain earlier session
-history; older statements about unpublished commits or tests not run must be
-read against the current Git and verification summary here.
-
-- Current checkout: `C:/Users/kovar/Desktop/SCAN_Allocation_tool`, branch `master`.
-  Remote: `https://github.com/kovarovickarel/SCAN_allocation_tool.git`.
-- Latest pushed application/TODO revision: `27c5124` on `origin/master`, following
-  compact-layout fix `007da70`. Both were pushed after the validated release ending
-  at `6b33840`. This handoff update is a further documentation-only commit.
-- The October 13 release builds on selective import `90494ef` and groups changes
-  into seven feature commits plus regression tests, TODO cleanup and release docs.
-  All ten release commits were pushed. The two later commits are detailed below.
-  Inspect Git status and fetch before synchronizing; do not overwrite local edits.
-- The last full validation applies to `6b33840`: 445 app tests, TypeScript, Pages
-  production build and both production checks passed. Tests were **not rerun** for
-  compact-layout fix `007da70` or TODO cleanup `27c5124`. A push alone does not
-  confirm that the GitHub Pages deployment has finished.
-- The new component files are tracked: `ProjectReusabilityModal.tsx`,
-  `ResponsiveSubtoolTag.tsx`, `PhaseManHoursLabel.tsx`, and
-  `PhaseManHoursInput.tsx`. The regression fixture and suite are
-  `tests/fixtures/recent-release-harness.tsx` and `tests/recent-release.spec.ts`.
-  `debug.log` is unrelated and remains untracked.
-- `TODO.md` now removes the seven additional entries requested by the user:
-  category header costs/MH, bulk reusability, Other supplier, contractor defaults,
-  selective import/export, subtool spending tags and phase hours. Removing a TODO
-  is not proof that all its original scope was implemented: selective export and
-  moving contractor defaults are not delivered by this batch. Do not re-add or
-  implement them without a new request. Remaining feedback items are releases
-  every six weeks and the activity/project average questions.
-- Export the live browser workspace JSON before changing PCs, closing/reloading
-  the app or transferring source. Planning is session state; Git does not contain
-  the user's current projects, configuration, members or allocations. Import the
-  saved JSON on the new PC. Do not reload the current 5173 session to check code.
-
-### Portable setup
-
-Use the new PC's checkout path, Node.js 20.19+ or 22.12+, and pnpm 10:
-
-For an existing checkout, inspect local changes first, then synchronize without
-creating an accidental merge commit:
-
-```sh
-git fetch origin
-git pull --ff-only origin master
-pnpm install --frozen-lockfile
-pnpm dev
-```
-
-For a new checkout, clone `https://github.com/kovarovickarel/SCAN_allocation_tool.git`
-and run the install/dev commands from its root. If fast-forward pull is blocked,
-inspect the local commits/edits before proceeding; do not reset them automatically.
-
-Windows can also use `start-app.bat`. Install dependencies locally; do not copy
-this PC's `node_modules` or assume bundled runtime paths are portable. The app is
-at `http://127.0.0.1:5173/`. For later verification, install Chromium with
-`pnpm exec playwright install chromium`, then use `pnpm typecheck`,
-`pnpm test:e2e --workers=4`, and `pnpm test:pages`. Development tests use 5174;
-Pages tests use 4174 and the `/SCAN_allocation_tool/` prefix. Run test batches
-sequentially to avoid shared test-server/output-directory conflicts.
-
-This PC needed per-command Git ownership allowance
-`git -c safe.directory=C:/Users/kovar/Desktop/SCAN_Allocation_tool ...`.
-Its commit environment had no configured identity; commit `90494ef` used the
-existing repository author `kovarovickarel <kovarovickarel@gmail.com>` through
-per-command options. Inspect local Git setup on the new PC rather than copying
-global settings or using older laptop workarounds below.
 
 ## Latest follow-up pushes (2026-10-13)
 
