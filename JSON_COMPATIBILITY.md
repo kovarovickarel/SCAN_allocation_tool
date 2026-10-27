@@ -108,3 +108,30 @@ fields import as P1; new projects and exports explicitly include the choice.
 Explicit invalid values and P2 with RFQ are rejected before import changes state.
 Classification is informational and does not change calculations. Selective
 project settings imports include it; duplication and Undo/Redo retain it.
+
+### Optional system releases (October 27)
+
+Schema 1 adds optional project `systemReleases`. Omission means automatic defaults:
+rounded 1.5-month intervals from project start through SSSR, assigned to the next
+inclusive milestone. Existing files keep this field omitted; generating a view
+does not alter their source data or saved dates. An explicit empty array means
+the project intentionally has no releases and must never regenerate defaults.
+The new-project checkbox uses these existing semantics: checked (default) omits
+the field; unchecked saves an explicit empty array. No additional saved flag or
+schema change is needed. Users can add releases later through the staffing timeline.
+
+Custom entries contain a project-local unique `id`, `milestone` (REQF/FFV/EFV/AFV/
+SSSR, retained as the naming/colour series), `sequence` (0–90, multiples of 10),
+and one-based integer `month`. Labels derive as R100–R590. The series does not
+constrain the month to a milestone deadline. Duplicate IDs, more than one release
+per month, invalid names, non-increasing chronological labels and months outside
+the project are rejected before import changes state. Inline text remains a
+separate timeline draft until Save & Close validates all edits atomically.
+No staffing or cost calculations depend on releases.
+
+Duplication and Undo/Redo retain custom/empty plans. Selective import transfers
+the release plan with incoming project settings; keeping current settings keeps
+the current plan. Milestone edits never move custom releases. Project shortening
+is blocked if it would exclude a custom release; move/remove that release first.
+Automatic plans regenerate from milestones. Releases appear only in project/team
+staffing timelines; XLSX reports remain unchanged.

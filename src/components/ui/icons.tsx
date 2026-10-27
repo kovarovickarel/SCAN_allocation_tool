@@ -13,6 +13,13 @@ export const InfinityIcon = memo(({ size = 14, className = "" }: SvgIconProps) =
   </svg>
 ));
 
+export const SystemReleaseIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M3 14l4-3 5 3 5-3 4 3-9 5-9-5Zm2 3v3l7 3 7-3v-3" />
+    <path d="M7 11V4M5 6l2-2 2 2M12 10V1M10 3l2-2 2 2M17 11V4M15 6l2-2 2 2" />
+  </svg>
+));
+
 export const ProjectIcon = memo(({ size = 16, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <path d="M3 7V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />

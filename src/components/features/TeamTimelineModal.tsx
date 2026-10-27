@@ -1,3 +1,6 @@
+import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
+import { validateReleaseDrafts, releasePlanForSave, type SystemReleaseDraft } from "../../utils/systemReleases";
+import { SystemReleasesTrack } from "./SystemReleasesTrack";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
 import { ResponsiveSubtoolTag } from "../ui/ResponsiveSubtoolTag";
 import { supportingPhaseRates } from "../../utils/supportingPhases";
@@ -51,6 +54,7 @@ export function TeamTimelineModal({
   onSaveMgmtAssignments: persistMgmtAssignments,
   onSaveMgmtMonthlyAssignments: persistMgmtMonthlyAssignments,
   onCommit,
+  onSaveSystemReleases: persistSystemReleases,
 }: TeamTimelineModalProps) {
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
@@ -60,6 +64,9 @@ export function TeamTimelineModal({
   const [projects, setLocalProjects] = useState<AllocationProject[]>(() => deepClone(sourceProjects));
   const [cards, setLocalCards] = useState<WorkpackageCard[]>(() => deepClone(sourceCards.filter(card => card.kind !== "non-fte")));
   const [isDirty, setIsDirty] = useState(false);
+  const [expandedReleases, setExpandedReleases] = useState<Record<string, boolean>>({});
+  const [releaseDrafts, setReleaseDrafts] = useState<Record<string, SystemReleaseDraft[]>>({});
+  const [releaseSaveError, setReleaseSaveError] = useState<string | null>(null);
   const [showAllocationSummary, setShowAllocationSummary] = useState(false);
   const [showAllocationPriorities, setShowAllocationPriorities] = useState(false);
   const [projectPriorities, setProjectPriorities] = useState<NumericMap>({});
@@ -106,6 +113,11 @@ export function TeamTimelineModal({
   }, []);
 
   const handleSave = useCallback(() => {
+    for (const project of projects) {
+      const drafts = releaseDrafts[project.id];
+      const error = drafts && validateReleaseDrafts(drafts, project);
+      if (error) { setReleaseSaveError(`${project.name}: ${error}`); return; }
+    }
     const commit = () => {
     for (const card of cards) {
       const original = sourceCards.find((item) => item.id === card.id);
@@ -120,6 +132,8 @@ export function TeamTimelineModal({
     }
     for (const project of projects) {
       const original = sourceProjects.find((item) => item.id === project.id);
+      const releases = releasePlanForSave(project, releaseDrafts[project.id]);
+      if (JSON.stringify(releases) !== JSON.stringify(original?.systemReleases)) persistSystemReleases?.(project.id, releases === undefined ? undefined : deepClone(releases));
       const assignments = project.mgmtMemberAssignments?.[toolName] || {};
       const monthly = project.mgmtMemberMonthlyAssignments?.[toolName] || {};
       const maintenancePreferences = project.mgmtMemberMaintenancePreferences?.[toolName] || {};
@@ -135,8 +149,8 @@ export function TeamTimelineModal({
     onClose();
     };
     if (onCommit) onCommit(commit); else commit();
-  }, [cards, projects, sourceCards, sourceProjects, toolName, persistAssignments, persistMonthlyAssignments,
-    persistMgmtAssignments, persistMgmtMonthlyAssignments, persistOtherWPs, showOtherWPs, excludedOtherWPIds, onClose, onCommit]);
+  }, [releaseDrafts, cards, projects, sourceCards, sourceProjects, toolName, persistAssignments, persistMonthlyAssignments,
+    persistMgmtAssignments, persistMgmtMonthlyAssignments, persistSystemReleases, persistOtherWPs, showOtherWPs, excludedOtherWPIds, onClose, onCommit]);
 
   const [collapsedProjects, setCollapsedProjects] = useState({});
   const [collapsedPersonalCapacity, setCollapsedPersonalCapacity] = useState(false);
@@ -147,7 +161,7 @@ export function TeamTimelineModal({
   const [expandedWPMembers, setExpandedWPMembers] = useState({});
   const [allMemberTracksExpanded, setAllMemberTracksExpanded] = useState(false);
   const [roleWarning, setRoleWarning] = useState(null);
-  useEscapeKey(onClose, !selectedWPForAssign && !selectedAdjustMember && !roleWarning && !showAllocationPriorities);
+  useEscapeKey(onClose, !selectedWPForAssign && !selectedAdjustMember && !roleWarning && !showAllocationPriorities && !releaseSaveError);
 
   // Direct In-Chart Selection & Editing state for team member cells
   const [isManualEditEnabled, setIsManualEditEnabled] = useState(true);
@@ -1388,6 +1402,9 @@ export function TeamTimelineModal({
                         </div>
                       </div>
                       <div
+                        role="button" tabIndex={0} aria-label={`Toggle system releases for ${project.name}`} aria-expanded={!!expandedReleases[project.id]}
+                        onClick={event => { event.stopPropagation(); setExpandedReleases(current => ({ ...current, [project.id]: !current[project.id] })); }}
+                        onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); event.stopPropagation(); setExpandedReleases(current => ({ ...current, [project.id]: !current[project.id] })); } }}
                         className="grid divide-x divide-slate-700/60 py-1 px-1.5 items-center"
                         style={{ gridTemplateColumns: `repeat(${totalMonths}, minmax(52px, 1fr))` }}
                       >
@@ -1500,6 +1517,12 @@ export function TeamTimelineModal({
                     </div>
 
                     {/* Workpackages & Management Overhead */}
+                    {expandedReleases[project.id] && <SystemReleasesTrack project={project} totalMonths={totalMonths} offset={pOffset}
+                      labels={monthLabels.map(month => month.label)} drafts={releaseDrafts[project.id]} onValidationError={setReleaseSaveError} manualEnabled={isManualEditEnabled && !isBasicMode}
+                      onChange={drafts => {
+                        setReleaseDrafts(current => ({ ...current, [project.id]: drafts })); setIsDirty(true); setReleaseSaveError(null);
+                      }} />}
+
                     {!isCollapsed && (
                       <div className="flex flex-col bg-slate-50/70 border-t border-slate-200">
                         {/* Management Support Track */}
@@ -2577,6 +2600,7 @@ export function TeamTimelineModal({
             >
               {isDirty ? "Discard & Close" : "Close"}
             </button>
+            {releaseSaveError && <ReleaseValidationPrompt message={releaseSaveError} onClose={() => setReleaseSaveError(null)} />}
             <button
               type="button"
               onClick={handleSave}

@@ -192,7 +192,8 @@ export interface ProjectTimelineModalProps {
   onSaveTimeline: (
     projectId: string,
     customMgmtMonthlyFTE: Record<string, NumericMap>,
-    updatedCards: WorkpackageCard[]
+    updatedCards: WorkpackageCard[],
+    systemReleases?: AllocationProject["systemReleases"]
   ) => void;
   onClose: () => void;
   activeToolView?: string;
@@ -231,6 +232,7 @@ export interface AdjustMemberAllocationModalProps {
 }
 
 export interface TeamTimelineModalProps {
+  onSaveSystemReleases?: (projectId: string, releases: AllocationProject["systemReleases"]) => void;
   onCommit?: (save: () => void) => void;
   suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;

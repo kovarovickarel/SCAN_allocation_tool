@@ -6,3 +6,10 @@
 html {
   overflow-y: scroll;
 }
+
+/* Keep the closed hand over every drop target during a release drag. */
+html.scan-release-dragging,
+html.scan-release-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}

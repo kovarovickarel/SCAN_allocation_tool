@@ -6,6 +6,7 @@ import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFA
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings, SupplierRecord } from "../types";
 import { workpackageFinishViolation } from "./workpackageFinishTargets";
 import { getDefaultMilestones } from "./helpers";
+import { validateSystemReleases } from "./systemReleases";
 import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
 
 // Schema 1 is the user-tested compatibility baseline (6b4b08e, 2026-10-12).
@@ -210,6 +211,10 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     if (milestones.REQF > milestones.FFV) fail("Milestone REQF", "must be on or before FFV.");
     const legacyCoincidence = project.legacyReqfCoincidence === true && milestones.REQF === 1 && milestones.FFV === 1 && milestones.EFV === 1;
     if (!legacyCoincidence && (counts[milestones.REQF] || 0) >= 2) fail("Project milestones", "more than two milestones in one month.");
+    if (project.systemReleases !== undefined) {
+      const releaseError = validateSystemReleases(project.systemReleases, project);
+      if (releaseError) fail("System releases", releaseError);
+    }
     for (const key of ["isRFQ", "autoStartFte"]) if (project[key] !== undefined) boolean(project[key], key);
     if (project.projectClass === undefined) project.projectClass = "P1";
     choice(project.projectClass, ["P1", "P2"], "Project classification (projectClass)");

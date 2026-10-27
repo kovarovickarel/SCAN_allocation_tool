@@ -182,7 +182,12 @@ export interface WorkpackageCard {
   _allocationCost?: WorkpackageAllocationCost;
 }
 
+export type SystemReleaseMilestone = "REQF" | "FFV" | "EFV" | "AFV" | "SSSR";
+export interface SystemRelease { id: string; milestone: SystemReleaseMilestone; sequence: number; month: number; }
+
 export interface AllocationProject {
+  /** Omitted: rounded 1.5-month defaults. Empty array: intentionally no releases. */
+  systemReleases?: SystemRelease[];
   /** Preserve old first-month FFV/EFV coincidence when adding REQF during import. */
   legacyReqfCoincidence?: boolean;
   id: string;

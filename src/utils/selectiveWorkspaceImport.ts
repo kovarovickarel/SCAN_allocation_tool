@@ -99,7 +99,7 @@ export function previewSelectiveImport(current: WorkspaceData, incoming: Workspa
         if (appliedProjectSettings.has(existing.id)) errors.push(`Several incoming projects update settings for ${existing.name}; choose only one settings source.`);
         appliedProjectSettings.add(existing.id);
         // Preserve other teams' allocations and visibility; settings only change the schedule/metadata.
-        for (const key of ["name", "type", "projectClass", "isRFQ", "startDate", "duration", "stability", "milestones", "legacyReqfCoincidence", "autoStartFte"] as const) {
+        for (const key of ["name", "type", "projectClass", "isRFQ", "startDate", "duration", "stability", "milestones", "legacyReqfCoincidence", "autoStartFte", "systemReleases"] as const) {
           if (project[key] === undefined) delete (existing as any)[key]; else (existing as any)[key] = copy(project[key]);
         }
         changes.push(`Update settings for ${project.name} (all teams in this project)`);

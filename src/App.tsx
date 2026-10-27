@@ -435,10 +435,11 @@ export default function App() {
     toolFteRates: config.toolFteRates, reusabilityFactors: config.reusabilityFactors, stabilityFactors: config.stabilityFactors }),
     [projects, functionsWithFTE, teamMembers, config]);
 
-  const handleSaveTimelineEdits = useWorkspaceAction(history, "Save project timeline", (projectId, customMgmtMonthlyFTE, updatedCards) => {
+  const handleSaveTimelineEdits = useWorkspaceAction(history, "Save project timeline", (projectId, customMgmtMonthlyFTE, updatedCards, systemReleases) => {
     const project = projects.find((p) => p.id === projectId);
     if (!project) return;
-    if (samePlanningValue(project.customMgmtMonthlyFTE ?? {}, customMgmtMonthlyFTE ?? {}) &&
+    if (samePlanningValue(project.systemReleases, systemReleases) &&
+      samePlanningValue(project.customMgmtMonthlyFTE ?? {}, customMgmtMonthlyFTE ?? {}) &&
       updatedCards.every(updated => {
         const original = functions.find(card => card.id === updated.id && card.projectId === projectId);
         if (!original || original.kind === "non-fte") return true;
@@ -461,7 +462,7 @@ export default function App() {
     const reconciled = reconcileProjectTimelineAllocations(project, { ...project, customMgmtMonthlyFTE },
       functions, editedCards, teamMembers, config);
     setProjects((prev) =>
-      prev.map((p) => (p.id === projectId ? { ...p, customMgmtMonthlyFTE,
+      prev.map((p) => (p.id === projectId ? { ...p, customMgmtMonthlyFTE, systemReleases,
         mgmtMemberMonthlyAssignments: reconciled.project.mgmtMemberMonthlyAssignments } : p))
     );
     setFunctions((prev) =>
@@ -642,10 +643,19 @@ export default function App() {
     setProjects((prev) => [...prev, { ...newProject, autoStartFte: newProject.autoStartFte ?? false, hiddenSubcategories: [], hiddenTools: [], customMgmtMonthlyFTE: {} }]);
   }, []);
 
+  const handleSaveSystemReleases = useWorkspaceAction(history, "Save system releases", (projectId: string, systemReleases: AllocationProject["systemReleases"]) => {
+    setProjects(current => current.map(project => project.id === projectId && !samePlanningValue(project.systemReleases, systemReleases)
+      ? { ...project, systemReleases } : project));
+  }, []);
+
   const handleUpdateProject = useWorkspaceAction(history, "Edit project", (projectId, updates) => {
     const current = projects.find(project => project.id === projectId);
     if (current) {
       const next = { ...current, ...updates };
+      if (next.systemReleases?.some(release => release.month > next.duration)) {
+        setAssignmentWarning({ isProjectEdit: true, cardName: "System releases", projectName: current.name, reason: "Move or remove system releases beyond the proposed project end before shortening the project." });
+        return;
+      }
       const invalid = functions.find(card => card.projectId === projectId && card.kind === "non-fte" &&
         purchaseScheduleExceedsProject(card, next));
       if (invalid) {
@@ -1296,6 +1306,7 @@ export default function App() {
             initialShowOtherWPs={teamOtherWPScopes[activeToolView]?.included ?? false}
             initialExcludedOtherWPIds={teamOtherWPScopes[activeToolView]?.excludedCardIds ?? []}
             onCommit={save => history.run("Save team timeline", save)}
+            onSaveSystemReleases={handleSaveSystemReleases}
             onSaveOtherWPs={(shown, excludedCardIds) => setTeamOtherWPScopes(prev =>
               !prev[activeToolView] && !shown && !excludedCardIds.length ? prev : {
                 ...prev, [activeToolView]: { included: shown, excludedCardIds },

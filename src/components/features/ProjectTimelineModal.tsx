@@ -1,3 +1,6 @@
+import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
+import { SystemReleasesTrack } from "./SystemReleasesTrack";
+import { validateReleaseDrafts, releasePlanForSave, type SystemReleaseDraft, releaseTrackHeight } from "../../utils/systemReleases";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
 import { supportingPhaseRates, supportingActivityRate, getSupportingPhases } from "../../utils/supportingPhases";
 import { workpackageRateKey, workpackageTypeColor, workpackageTypeBadgeStyle } from "../../utils/workpackageTypes";
@@ -26,7 +29,10 @@ export function ProjectTimelineModal({
   activeToolView = "all",
 }: ProjectTimelineModalProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
-  useEscapeKey(onClose);
+  const [showReleases, setShowReleases] = useState(false);
+  const [releaseDrafts, setReleaseDrafts] = useState<SystemReleaseDraft[] | undefined>();
+  const [releaseSaveError, setReleaseSaveError] = useState<string | null>(null);
+  useEscapeKey(onClose, !releaseSaveError);
 
   // Staged local copies of project and cards so that edits do not alter the parent state until saved
   const [localProject, setLocalProject] = useState(() => deepClone(project));
@@ -123,7 +129,9 @@ export function ProjectTimelineModal({
   }, []);
 
   const handleSave = () => {
-    onSaveTimeline?.(localProject.id, localProject.customMgmtMonthlyFTE || {}, localCards);
+    const error = releaseDrafts && validateReleaseDrafts(releaseDrafts, localProject);
+    if (error) { setReleaseSaveError(error); return; }
+    onSaveTimeline?.(localProject.id, localProject.customMgmtMonthlyFTE || {}, localCards, releasePlanForSave(localProject, releaseDrafts));
     setIsDirty(false);
     onClose();
   };
@@ -737,7 +745,9 @@ export function ProjectTimelineModal({
             </div>
 
             {/* Project Milestones Timeline Track */}
-            <div className={`grid grid-cols-[300px_1fr] border-b ${
+            <div role="button" tabIndex={0} aria-label={`Toggle system releases for ${localProject.name}`} aria-expanded={showReleases}
+              onClick={() => setShowReleases(value => !value)} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setShowReleases(value => !value); } }}
+              className={`grid grid-cols-[300px_1fr] border-b cursor-pointer ${
               isRetro
                 ? "border-black bg-[#ffffec] text-black font-mono"
                 : "border-amber-300/40 bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 text-white"
@@ -748,7 +758,7 @@ export function ProjectTimelineModal({
                 <span className={`text-[11px] font-black uppercase tracking-wider ${
                   isRetro ? "text-black font-mono" : "text-amber-300"
                 } flex items-center gap-1.5`}>
-                  <span>🏁</span> PROJECT MILESTONES
+                  {showReleases ? <ChevronDownIcon size={12} /> : <ChevronRightIcon size={12} />}<span className="inline-flex w-3.5 shrink-0 items-center justify-center">🏁</span> PROJECT MILESTONES
                 </span>
               </div>
               <div
@@ -789,12 +799,17 @@ export function ProjectTimelineModal({
               </div>
             </div>
 
+            {showReleases && <SystemReleasesTrack project={localProject} totalMonths={duration} labels={monthLabels.map(month => month.label)}
+              drafts={releaseDrafts} onValidationError={setReleaseSaveError} manualEnabled={isManualEditEnabled && !isBasicMode} sticky onChange={drafts => {
+                setReleaseDrafts(drafts); setIsDirty(true); setReleaseSaveError(null);
+              }} />}
+
             {/* Total Monthly Staffing Track */}
             <div className={`grid grid-cols-[300px_1fr] border-b-2 ${
               isRetro
                 ? "border-black bg-[#ffffc0] text-black font-mono"
                 : "border-indigo-900 bg-slate-950 text-white"
-            } font-bold text-xs sticky top-[81px] z-15 shadow-sm`}>
+            } font-bold text-xs sticky z-15 shadow-sm`} style={{ top: 81 + (showReleases ? releaseTrackHeight(localProject) : 0) }}>
               <div className={`p-2.5 pl-4 border-r ${
                 isRetro ? "border-black bg-[#ffffb0] text-black font-mono font-black" : "border-slate-800 bg-slate-950"
               } flex items-center justify-between`}>
@@ -1741,6 +1756,7 @@ export function ProjectTimelineModal({
             >
               {isDirty ? "Discard & Close" : "Close"}
             </button>
+            {releaseSaveError && <ReleaseValidationPrompt message={releaseSaveError} onClose={() => setReleaseSaveError(null)} />}
             <button
               type="button"
               onClick={handleSave}

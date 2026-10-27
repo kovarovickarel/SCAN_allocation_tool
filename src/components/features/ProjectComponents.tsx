@@ -187,6 +187,7 @@ export function SubcategoryManagerModal({ project, onClose, onToggleSubcategory,
 }
 
 export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STABILITY_FACTORS }: AddProjectModalProps) {
+  const [includeDefaultSystemReleases, setIncludeDefaultSystemReleases] = useState(true);
   const { isRetro } = React.useContext(ThemeContext);
   const [draft, setDraft] = useState<AddProjectDraft>({
     name: "",
@@ -235,6 +236,7 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
       id: genId(),
       name: draft.name.trim(),
       autoStartFte: false,
+      ...(!includeDefaultSystemReleases ? { systemReleases: [] } : {}),
       type: draft.type,
       projectClass: draft.projectClass,
       isRFQ: draft.projectClass === "P1" && draft.isRFQ,
@@ -470,6 +472,11 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
             }`}>
               Order is strictly preserved: <strong>REQF &le; FFV &le; EFV &le; AFV &le; SSSR</strong> (max 2 milestones per month).
             </p>
+            <label className={`mt-3 flex items-center gap-2 text-[10px] font-medium cursor-pointer ${isRetro ? "text-black font-mono" : "text-slate-700"}`}>
+              <input type="checkbox" checked={includeDefaultSystemReleases} onChange={event => setIncludeDefaultSystemReleases(event.target.checked)}
+                className="accent-blue-600 cursor-pointer" />
+              <span>Include default system releases (6 weeks cadence)</span>
+            </label>
           </div>
         </div>
         <div className={`flex gap-2 pt-2 ${isRetro ? "border-t-2 border-black" : "border-t"}`}>
@@ -825,6 +832,10 @@ export const ProjectBasket = memo(function ProjectBasket({
     finalMilestones.SSSR = Math.max(finalMilestones.SSSR, finalMilestones.AFV, finalMilestones.EFV + 1);
 
     const revisedProject = { ...project, duration: d, milestones: finalMilestones };
+    if (project.systemReleases?.some(release => release.month > d)) {
+      setMilestoneError("Move or remove system releases beyond the proposed project end before shortening the project.");
+      return;
+    }
     const blockedPurchase = projectCards.find(card => card.kind === "non-fte" &&
       purchaseScheduleExceedsProject(card, revisedProject));
     if (blockedPurchase) {
