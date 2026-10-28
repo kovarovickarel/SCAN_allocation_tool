@@ -13,3 +13,15 @@ html.scan-release-dragging * {
   cursor: grabbing !important;
   user-select: none !important;
 }
+
+/* Pulse the warning glow without moving or fading the release label. */
+@keyframes missing-release-glow {
+  0%, 100% { box-shadow: 0 0 3px 1px rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 9px 3px rgba(239, 68, 68, 0.8); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .system-release-missing {
+    animation: missing-release-glow 1.8s ease-in-out infinite;
+  }
+}

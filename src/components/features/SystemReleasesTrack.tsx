@@ -2,18 +2,20 @@ import { SystemReleaseIcon } from "../ui/icons";
 import { useContext, useEffect, useRef, useState } from "react";
 import { ThemeContext, MILESTONE_MAP, genId } from "../../constants";
 import type { AllocationProject } from "../../types";
-import { releaseDraftsForProject, releaseCode, RELEASE_MILESTONES, type SystemReleaseDraft } from "../../utils/systemReleases";
+import { normalizeSystemReleaseNumber, releaseDraftsForProject, releaseCode, RELEASE_MILESTONES, type SystemReleaseDraft } from "../../utils/systemReleases";
 
 export function SystemReleasesTrack({ project, totalMonths, offset = 0, labels, drafts, manualEnabled = false, onChange = () => {}, onValidationError = () => {}, sticky = false }: {
   project: AllocationProject; totalMonths: number; offset?: number; labels: string[];
   drafts?: SystemReleaseDraft[]; manualEnabled?: boolean; onChange?: (drafts: SystemReleaseDraft[]) => void; onValidationError?: (message: string) => void; sticky?: boolean;
 }) {
   const { isRetro } = useContext(ThemeContext);
-  const releases = drafts ?? releaseDraftsForProject(project);
+  const [pendingRelease, setPendingRelease] = useState<SystemReleaseDraft | null>(null);
+  const confirmedReleases = drafts ?? releaseDraftsForProject(project);
+  const releases = pendingRelease ? [...confirmedReleases, pendingRelease] : confirmedReleases;
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingNumber, setEditingNumber] = useState("");
   const cancelNumberEdit = useRef(false);
-  const roundedReleaseNumber = (value: string) => Math.min(590, Math.max(100, Math.ceil(Number(value) / 10) * 10));
+  const roundedReleaseNumber = (value: string) => normalizeSystemReleaseNumber(value) ?? 100;
   const availableReleaseNumber = (value: string, id: string) => {
     const used = new Set(releases.filter(item => item.id !== id).map(item => releaseCode(item.label)));
     for (let number = roundedReleaseNumber(value); number <= 590; number += 10) {
@@ -73,7 +75,7 @@ export function SystemReleasesTrack({ project, totalMonths, offset = 0, labels, 
     const unused = codes.filter(code => !releases.some(r => releaseCode(r.label) === code));
     const code = unused.find(code => code > before && code < after) ?? unused[0];
     if (code === undefined) { onValidationError("All 50 release numbers are already in use. Remove a release before adding another."); return; }
-    const id = genId(); onChange([...releases, { id, month, label: `R${code}` }]); beginEdit(id, `R${code}`);
+    const id = genId(); setPendingRelease({ id, month, label: `R${code}` }); beginEdit(id, `R${code}`);
   };
   return <div ref={track} onClickCapture={event => {
     // The source cell becomes an Add button after a move; suppress the drag's follow-up click there too.
@@ -105,9 +107,9 @@ export function SystemReleasesTrack({ project, totalMonths, offset = 0, labels, 
                     const number = availableReleaseNumber(editingNumber, release.id);
                     // Never wrap downwards or create a duplicate if all higher numbers are used.
                     const label = number === undefined ? release.label : `R${number}`;
-                    if (label !== release.label) onChange(releases.map(item => item.id === release.id ? { ...item, label } : item));
+                    if (pendingRelease?.id === release.id || label !== release.label) onChange(releases.map(item => item.id === release.id ? { ...item, label } : item));
                   }
-                  cancelNumberEdit.current = false; setEditingId(null);
+                  cancelNumberEdit.current = false; setPendingRelease(null); setEditingId(null);
                 }}
                 onKeyDown={event => {
                   event.stopPropagation();

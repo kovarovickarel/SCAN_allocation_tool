@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { ThemeContext, MILESTONE_MAP } from "../../constants";
-
-import { isSystemReleaseNumber, normalizeSystemReleaseNumber, RELEASE_MILESTONES } from "../../utils/systemReleases";
+import type { AllocationProject } from "../../types";
+import { projectSystemReleases, releaseCode, releaseLabel, isSystemReleaseNumber, normalizeSystemReleaseNumber, RELEASE_MILESTONES } from "../../utils/systemReleases";
 
 export function SystemReleaseField({ value, onChange, compact = false, required = false, inputClassName }: {
   value?: number | null; onChange: (value: number | undefined) => void; compact?: boolean; required?: boolean; inputClassName?: string;
@@ -30,8 +30,10 @@ export function SystemReleaseField({ value, onChange, compact = false, required 
     </span>
   </label>;
 }
-export function SystemReleaseBadge({ value }: { value?: number | null }) {
+export function SystemReleaseBadge({ value, project }: { value?: number | null; project?: AllocationProject }) {
   if (!isSystemReleaseNumber(value)) return null;
   const series = RELEASE_MILESTONES[Math.floor(value / 100) - 1];
-  return <span title={`System release R${value}`} className={`inline-flex items-center justify-center shrink-0 whitespace-nowrap rounded-full border px-1.5 h-3.5 text-[9px] leading-none font-black ${MILESTONE_MAP[series].badge}`}>R{value}</span>;
+  const missing = project && !projectSystemReleases(project).some(release => releaseCode(releaseLabel(release)) === value);
+  const title = missing ? `${project.name} project does not contain R${value} release!` : `System release R${value}`;
+  return <span title={title} className={`inline-flex items-center justify-center shrink-0 whitespace-nowrap rounded-full border px-1.5 h-3.5 text-[9px] leading-none font-black ${MILESTONE_MAP[series].badge} ${missing ? "system-release-missing !border-red-500 ring-1 ring-red-400 shadow-[0_0_8px_2px_rgba(239,68,68,0.65)]" : ""}`}>R{value}</span>;
 }

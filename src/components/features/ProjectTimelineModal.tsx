@@ -1,3 +1,5 @@
+import { SystemReleaseBadge } from "../ui/SystemReleaseField";
+import { releasesFromDrafts } from "../../utils/systemReleases";
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
 import { SystemReleasesTrack } from "./SystemReleasesTrack";
 import { validateReleaseDrafts, releasePlanForSave, type SystemReleaseDraft, releaseTrackHeight } from "../../utils/systemReleases";
@@ -1208,6 +1210,7 @@ export function ProjectTimelineModal({
                                         {workpackageTypeLabel(card)}
                                       </span>
                                     )}
+                                    <SystemReleaseBadge value={card.systemRelease} project={releaseDrafts === undefined ? localProject : { ...localProject, systemReleases: releasesFromDrafts(releaseDrafts) }} />
                                     {card.tool === "Other" && !card.complexity && (() => {
                                       const rawEffort = parseFloat(card.otherEffort) || 0.3;
                                       const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);

@@ -228,7 +228,7 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
       </div>
       {!isCompact && card.supplierName && <span title={`Supplier: ${card.supplierName}`} className={`text-[9px] px-1.5 py-0.2 font-semibold shrink-0 max-w-[40%] truncate bg-red-300 ${isOtherSupplier(card.supplierName) ? "text-white" : "text-red-950"} border border-red-300 ${isRetro ? "rounded-none font-mono shadow-[1px_1px_0px_#000]" : "rounded shadow-2xs"}`}>{card.supplierName}</span>}
     </div>}
-    {!isCompact && card.systemRelease != null && <div className="flex items-center mt-1"><SystemReleaseBadge value={card.systemRelease} /></div>}
+    {!isCompact && card.systemRelease != null && <div className="flex items-center mt-1"><SystemReleaseBadge value={card.systemRelease} project={card.projectId === project?.id ? project : undefined} /></div>}
     {!isCompact && card.projectId && <div className="flex items-center justify-between gap-2 mt-1 min-w-0">
       <button type="button" draggable={false} onClick={event => {
         event.stopPropagation();

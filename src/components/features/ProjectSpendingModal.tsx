@@ -1,3 +1,4 @@
+import { SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { SystemReleasesTrack } from "./SystemReleasesTrack";
 import { releaseTrackHeight } from "../../utils/systemReleases";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
@@ -264,6 +265,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
           <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0 pl-5">
             {card?.subcategory && <ResponsiveSubtoolTag name={card.subcategory} />}
             {card?.kind !== "non-fte" && card?.complexity && card.tool !== "Other" && <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border" style={workpackageTypeBadgeStyle(card, options.toolFteRates)}>{workpackageTypeLabel(card)}</span>}
+            {card && <SystemReleaseBadge value={card.systemRelease} project={project} />}
             {altered && <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-900 border border-red-300">*Manually adjusted</span>}
             <span className="ml-auto">{totalBadge(track.totalCost, track.isManagement, false, true)}</span>
           </div>

@@ -725,7 +725,7 @@ export const FunctionCard = memo(function FunctionCard({
             {workpackageTypeLabel(card)}
           </span>
         )}
-        <SystemReleaseBadge value={card.systemRelease} />
+        <SystemReleaseBadge value={card.systemRelease} project={card.projectId === project?.id ? project : undefined} />
         {card.tool === "Other" && !card.complexity && (() => {
           const rawEffort = parseFloat(card.otherEffort) || 0.3;
           const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
