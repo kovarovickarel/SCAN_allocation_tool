@@ -1,3 +1,4 @@
+import { planningWorkpackage } from "./planningWorkpackage";
 import { FOOTPRINTS, FOOTPRINT_MAP, TOOLS } from "../constants";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FactorMap } from "../types";
 import type { WorkspaceConfiguration } from "./workspaceFile";
@@ -21,6 +22,7 @@ export interface ResourcePlanningRow {
   keyword: string;
   activity: string;
   management: boolean;
+  workpackage: string;
   site: string | null;
   location: string;
   costClass: string;
@@ -45,16 +47,17 @@ export function buildResourcePlanning(options: ResourcePlanningOptions) {
   const result = new Map<string, ResourcePlanningRow>();
   const demandByCategory = new Map<string, number>();
   const positive = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
-  function row(tool: string, subcategory: string, management: boolean, site: string | null) {
-    const key = JSON.stringify([tool, subcategory, management, site]);
-    if (!result.has(key)) result.set(key, { tool, subcategory, management, site, ...resourceToolLabels(tool, subcategory),
+  function row(tool: string, subcategory: string, management: boolean, site: string | null, workpackage: string) {
+    const key = JSON.stringify([tool, subcategory, management, site, workpackage]);
+    if (!result.has(key)) result.set(key, { tool, subcategory, management, site, workpackage, ...resourceToolLabels(tool, subcategory),
       location: site ? resourceLocation(site) : "", costClass: site ? ["BIE", "TRO"].includes(site) ? "HCC" : "LCC" : "",
       status: site ? "OK" : "no Allocation done", hours: 0, months: Array(project.duration).fill(0) });
     return result.get(key)!;
   }
   function accumulate(card: WorkpackageCard, demand: number[], management: boolean) {
     const subcategory = management ? "" : card.subcategory || "";
-    const category = JSON.stringify([card.tool, subcategory, management]);
+    const workpackage = planningWorkpackage(card);
+    const category = JSON.stringify([card.tool, subcategory, management, workpackage]);
     demandByCategory.set(category, (demandByCategory.get(category) ?? 0) + demand.reduce((a, b) => a + b, 0));
     const allocations = resolveMonthlyMemberAllocations(card, project.duration, demand, members);
     const remaining = [...demand];
@@ -65,14 +68,14 @@ export function buildResourcePlanning(options: ResourcePlanningOptions) {
         const fte = demand[month] > 0 ? positive(Number(months[month])) : 0;
         remaining[month] = Math.max(0, remaining[month] - fte);
         if (!fte || member.isExternal) continue;
-        const target = row(card.tool, subcategory, management, member.footprint || "PRA");
+        const target = row(card.tool, subcategory, management, member.footprint || "PRA", workpackage);
         target.months[month] += fte;
         target.hours += calculateMemberMonthlyAllocationCost(fte, member, config.fteCosts).hours;
       }
     }
     remaining.forEach((fte, month) => {
       if (fte <= 1e-9) return;
-      const target = row(card.tool, subcategory, management, null);
+      const target = row(card.tool, subcategory, management, null, workpackage);
       target.months[month] += fte;
       // Reuse the app's hours calculation, rather than deriving hours in Excel.
       target.hours += calculateMemberMonthlyAllocationCost(fte, undefined, config.fteCosts).hours;
@@ -85,13 +88,14 @@ export function buildResourcePlanning(options: ResourcePlanningOptions) {
     memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] ?? {} }, getManagementMonthlyFTE(overhead, project), true);
   for (const [key, demand] of demandByCategory) {
     if (demand > 1e-9) continue; // Fully externally staffed categories are omitted, not reported as unallocated.
-    const [tool, subcategory, management] = JSON.parse(key);
-    row(tool, subcategory, management, null).status = "no FTE planned";
+    const [tool, subcategory, management, workpackage] = JSON.parse(key);
+    row(tool, subcategory, management, null, workpackage).status = "no FTE planned";
   }
   const toolOrder = TOOLS.map(tool => tool.name);
   const siteOrder = FOOTPRINTS.map(site => site.code);
   const rows = [...result.values()].sort((a, b) => toolOrder.indexOf(a.tool) - toolOrder.indexOf(b.tool)
     || Number(a.management) - Number(b.management) || a.subcategory.localeCompare(b.subcategory)
+    || a.workpackage.localeCompare(b.workpackage)
     || (a.site === null ? 999 : siteOrder.indexOf(a.site)) - (b.site === null ? 999 : siteOrder.indexOf(b.site)));
   const [year, month] = project.startDate.split("-").map(Number);
   const milestones = normalizeMilestones(project.milestones, project.duration, null, project.legacyReqfCoincidence);

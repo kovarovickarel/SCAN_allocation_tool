@@ -285,7 +285,7 @@ export async function createProjectPlanningXlsx(options: PlanningExportOptions, 
     const project = projects[row.projectIndex];
     rowStyles.forEach(([col, style]) => sheet.set(`${col}${number}`, null, style));
     const fields: Record<string, string | number | null> = { B: row.status, C: row.keyword, D: "1 Base", E: "SystemValidation", F: "6 SystemValidation", G: "SysVal",
-      H: project.label, I: project.label, J: project.projectClass, K: "2-SYS2xx", L: row.activity, M: row.location,
+      H: project.label, I: project.label, J: project.projectClass, K: row.workpackage, L: row.activity, M: row.location,
       N: row.management ? "SYV-Lead" : "SYV-General", O: "Internal", P: row.costClass, Q: row.hours, R: "no" };
     Object.entries(fields).forEach(([col, input]) => sheet.set(`${col}${number}`, input));
     for (const col of ["H", "I"]) sheet.cell(`${col}${number}`, projectStyles[row.projectIndex].name);
@@ -358,7 +358,7 @@ export async function createProjectPlanningXlsx(options: PlanningExportOptions, 
     const number = expenseStart + index, total = row.months.reduce((sum, amount) => sum + amount, 0);
     expenseRowStyles.forEach(([col, style]) => expenses.set(`${col}${number}`, null, style));
     const fields: Record<string, string | number> = { A: total > 0 ? "OK" : "no Expenses planned", B: row.keyword, C: "1 Base", D: "SystemValidation", E: "6 SystemValidation", F: "SysVal",
-      G: project.label, H: project.label, I: project.projectClass, J: "2-SYS2xx", K: row.location, L: row.expenseType,
+      G: project.label, H: project.label, I: project.projectClass, J: row.workpackage, K: row.location, L: row.expenseType,
       M: row.outsourced, N: row.deferred, O: row.activity };
     Object.entries(fields).forEach(([col, input]) => expenses.set(`${col}${number}`, input));
     expenses.cell(`O${number}`, expenseActivity);

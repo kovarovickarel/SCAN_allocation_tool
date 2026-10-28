@@ -19,7 +19,7 @@ test("resource workbook contains the agreed columns, EUR formulas and independen
   const cells = result.sheets[0].cells;
   const values = Object.fromEntries("BCDEFGHIJKLMNOPQR".split("").map(col => [col, cells[`${col}19`].value]));
   expect(values).toEqual({ B: "OK", C: "Trace checker", D: "1 Base", E: "SystemValidation", F: "6 SystemValidation", G: "SysVal",
-    H: "P1 Export project", I: "P1 Export project", J: "P1", K: "2-SYS2xx", L: "Data factory TC", M: "LIDAR_Bietigheim",
+    H: "P1 Export project", I: "P1 Export project", J: "P1", K: "1-SYS1xx", L: "Data factory TC", M: "LIDAR_Bietigheim",
     N: "SYV-General", O: "Internal", P: "HCC", Q: 320, R: "no" });
   expect(cells.S19.value).toBe(25600); expect(cells.Q16.value).toBe(320); expect(cells.S16.value).toBe(25600);
   expect(cells.S19.formula).toContain("Q19*INDEX('Site hourly rates'!$C$5:$C$10,MATCH(M19");
@@ -120,4 +120,26 @@ test("foreign external salary is converted in cash months while the internal she
   expect(result.sheets[1].cells.P14.value).toBe(1000); expect(result.sheets[1].cells.P11.value).toBe(1000);
   expect(result.sheets[1].cells.Q14.value).toBeNull(); expect(result.sheets[1].cells.W14.value).toBe(500); expect(result.sheets[1].cells.X14.value).toBe(500);
   expect(result.sheets[1].cells.V3.value).toContain("SOP"); expect(result.sheets[1].cells.W3.fill).toBe("FFADB9CA");
+});
+
+for (const [release, expected] of [[120, "1-SYS1xx"], [290, "2-SYS2xx"], [310, "3-SYS3xx"], [450, "4-SYS4xx"], [590, "5-SYS5xx"]] as const) test(`both workbook tabs export the assigned release series ${release}`, async ({ page }) => {
+  const options = planningWorkspace();
+  options.cards[0].systemRelease = release;
+  options.cards = [...options.cards, exportPurchase({ systemRelease: release, purchaseMilestone: "REQF" })];
+  const result = await workbook(page, options, ["K19", "J14"]);
+  expect(result.sheets[0].cells.K19.value).toBe(expected);
+  expect(result.sheets[1].cells.J14.value).toBe(expected);
+  expect(result.unchanged).toBe(true);
+});
+test("both workbook tabs fall back to their milestone or SYS1xx", async ({ page }) => {
+  const options = planningWorkspace();
+  options.cards[0].finishMilestone = "SSSR";
+  options.cards = [...options.cards, exportPurchase({ purchaseMilestone: "AFV" })];
+  let result = await workbook(page, options, ["K19", "J14"]);
+  expect(result.sheets[0].cells.K19.value).toBe("5-SYS5xx");
+  expect(result.sheets[1].cells.J14.value).toBe("4-SYS4xx");
+  options.cards[0].finishMilestone = null; options.cards[1].purchaseMilestone = null;
+  result = await workbook(page, options, ["K19", "J14"]);
+  expect(result.sheets[0].cells.K19.value).toBe("1-SYS1xx");
+  expect(result.sheets[1].cells.J14.value).toBe("1-SYS1xx");
 });

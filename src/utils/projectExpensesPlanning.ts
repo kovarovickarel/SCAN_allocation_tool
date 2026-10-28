@@ -1,3 +1,4 @@
+import { planningWorkpackage } from "./planningWorkpackage";
 import { TOOLS } from "../constants";
 import type { WorkpackageAllocationCost } from "../types";
 import { calculateProjectEffort } from "./helpers";
@@ -9,6 +10,7 @@ import { resourceLocation, resourceToolLabels, type ResourcePlanningOptions } fr
 
 export interface ExpensePlanningRow {
   tool: string;
+  workpackage: string;
   keyword: string;
   location: string;
   expenseType: string;
@@ -47,7 +49,7 @@ export async function buildExpensesPlanning(options: ResourcePlanningOptions, si
     if (track.isNonFte) {
       const card = projectCards.find(card => card.id === track.id)!;
       const purchaseType = card.purchaseType || "Other";
-      rows.push({ tool: card.tool, keyword: resourceToolLabels(card.tool, purchaseSubcategory(card) || "").keyword,
+      rows.push({ tool: card.tool, workpackage: planningWorkpackage(card), keyword: resourceToolLabels(card.tool, purchaseSubcategory(card) || "").keyword,
         location: "", expenseType: purchaseType.toLowerCase() === "contracted workpackage" ? "Contracted Workpackage" : purchaseType,
         outsourced: purchaseType.toLowerCase() === "contracted workpackage" ? "yes" : "no", deferred: "NO", activity: card.name,
         months: Array.from({ length: duration }, (_, index) => euros(track.monthlyCosts[index])) });
@@ -61,10 +63,11 @@ export async function buildExpensesPlanning(options: ResourcePlanningOptions, si
         throw new Error(`Enter a monthly salary for ${member.firstName} ${member.lastName} before exporting their expenses.`);
       }
       const site = member.footprint || "PRA", delay = externalPaymentDelay(member);
-      const key = JSON.stringify([tool.tool, site, delay]);
+      const workpackage = planningWorkpackage(projectCards.find(card => card.id === track.id));
+      const key = JSON.stringify([tool.tool, site, delay, workpackage]);
       if (!external.has(key)) {
         const family = resourceToolLabels(tool.tool, "");
-        external.set(key, { tool: tool.tool, keyword: family.keyword, location: resourceLocation(site), expenseType: "Contracted Workpackage",
+        external.set(key, { tool: tool.tool, workpackage, keyword: family.keyword, location: resourceLocation(site), expenseType: "Contracted Workpackage",
           outsourced: "yes", deferred: delay ? `YES_${delay} months` : "NO", activity: `${family.activity} — External resources`, months: Array(duration).fill(0) });
       }
       const row = external.get(key)!;
@@ -74,7 +77,8 @@ export async function buildExpensesPlanning(options: ResourcePlanningOptions, si
   rows.push(...external.values());
   const toolOrder = TOOLS.map(tool => tool.name);
   rows.sort((a, b) => toolOrder.indexOf(a.tool) - toolOrder.indexOf(b.tool) || a.keyword.localeCompare(b.keyword)
-    || a.location.localeCompare(b.location) || a.deferred.localeCompare(b.deferred) || a.activity.localeCompare(b.activity));
+    || a.location.localeCompare(b.location) || a.deferred.localeCompare(b.deferred)
+    || a.workpackage.localeCompare(b.workpackage) || a.activity.localeCompare(b.activity));
   const [year, month] = project.startDate.split("-").map(Number);
   const calendar = Array.from({ length: duration }, (_, index) => {
     const date = new Date(Date.UTC(year, month - 1 + index, 1));
