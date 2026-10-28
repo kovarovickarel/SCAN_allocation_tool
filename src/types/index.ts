@@ -152,6 +152,8 @@ export interface WorkpackageCard {
   projectId?: string | null;
   /** Deadline for standard FTE pre-maintenance phases; Other retains otherFinishMilestone. */
   finishMilestone?: string | null;
+  /** Optional release label only; never constrains project assignment or scheduling. */
+  systemRelease?: number | null;
   /** Project-relative first active month for standard FTE workpackages. */
   startMonth?: NumericInput | null;
   otherEffort?: NumericInput;

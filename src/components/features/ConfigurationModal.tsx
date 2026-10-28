@@ -135,6 +135,7 @@ export function ConfigurationModal({
     beginTypeEdit(false);
     setPendingType({ name: "", rates: { ...deepClone(DEFAULT_FTE_RATES["Point Cloud"]),
         color: TOOL_BASIC_TYPE_COLORS[selectedTool],
+        systemReleaseMandatory: selectedTool === "SYS.4" || selectedTool === "SYS.5",
         devFunctionsSupport: 0, weeklyMeetings: 0, supportingPhases: [],
         phases: [{ id: genId(), name: "Requirements", kind: "main", notMilestoneBound: false, rate: 0.1, duration: 1, scaleByReusability: true, untilProjectEnd: false }],
       } });
@@ -495,6 +496,16 @@ export function ConfigurationModal({
                 </div>
                 {typeNotice && <p role="alert" className="text-xs text-red-600">{typeNotice}</p>}
               </div>}
+              {isEditingType && <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                <input type="checkbox" checked={activeToolRates?.systemReleaseMandatory === true} onChange={event => {
+                  const systemReleaseMandatory = event.target.checked;
+                  if (pendingType) setPendingType(current => current ? { ...current, rates: { ...current.rates, systemReleaseMandatory } } : null);
+                  else setDraft(current => ({ ...current, toolFteRates: { ...current.toolFteRates,
+                    [selectedTool]: { ...current.toolFteRates[selectedTool], [selectedComplexity]: { ...current.toolFteRates[selectedTool][selectedComplexity], systemReleaseMandatory } },
+                  } }));
+                }} className="accent-blue-600 cursor-pointer" />
+                System release mandatory
+              </label>}
               {!isEditingType ? (
                 selectedComplexity && draft.toolFteRates[selectedTool]?.[selectedComplexity] ? <WorkpackageTypeSummary tool={selectedTool} name={selectedTool !== "KPI" && selectedComplexity === "Point Cloud" ? "Standard" : selectedComplexity} rates={activeToolRates} onEdit={() => beginTypeEdit()} onRemove={removeBasicType} canRemove={!isSelectedTypeUsed} /> : <p className="text-xs text-slate-500">No basic types defined. Add a basic type to get started.</p>
               ) : activeToolRates?.phases ? (

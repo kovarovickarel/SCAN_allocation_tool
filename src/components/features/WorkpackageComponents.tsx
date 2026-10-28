@@ -1,3 +1,7 @@
+import { workpackageRequiresSystemRelease } from "../../utils/workpackageTypes";
+import { isSystemReleaseNumber } from "../../utils/systemReleases";
+import { MilestoneTargetSelect } from "../ui/MilestoneTargetSelect";
+import { SystemReleaseField, SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { CompactWorkpackageGrid } from "../ui/CompactWorkpackageGrid";
 import { WorkpackageDuplicateButton } from "../ui/WorkpackageDuplicateButton";
 import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
@@ -7,7 +11,7 @@ import { purchaseSubcategory } from "../../utils/nonFteWorkpackages";
 import { NonFteWorkpackageCard } from "./NonFteWorkpackageCard";
 import React, { useCallback, useEffect, useMemo, useState, memo } from "react";
 import { useWorkpackageCardLayout } from "../../hooks/useWorkpackageCardLayout";
-import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONES_DEF, MILESTONE_MAP, round2 } from "../../constants";
+import { ThemeContext, DEFAULT_REUSABILITY_FACTORS, COMPLEXITY_COLORS, TOOLS, TOOL_MAP, TOOL_ABBREVIATIONS, TOOL_CARD_THEMES, MILESTONE_MAP, round2 } from "../../constants";
 import type { EditCardContentProps, FunctionCardProps, ManagementOverheadsProps, ToolRowProps, UnassignedPoolProps } from './componentTypes';
 import { PencilIcon, TrashIcon, PlusIcon, EyeIcon, EyeOffIcon, Minimize2Icon, Maximize2Icon, ManagementIcon, ToolIcon, StaffingIcon, ReceiptIcon, SettingsIcon } from '../ui/icons';
 import { WorkpackageCoverageBadge } from "../ui/WorkpackageCoverageBadge";
@@ -38,11 +42,14 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
     otherStartMonth: card.otherStartMonth ?? 1,
     otherFinishMilestone: card.otherFinishMilestone ?? null,
     finishMilestone: card.finishMilestone ?? null,
+    systemRelease: card.systemRelease ?? undefined,
     otherHasMaintenance: card.otherHasMaintenance ?? false,
     otherMaintenanceEffort: card.otherMaintenanceEffort ?? 0.05,
   });
 
   const selectedTool = TOOL_MAP[draft.tool] || TOOLS[0];
+  const releaseRequired = workpackageRequiresSystemRelease(draft, toolFteRates);
+  const isMissingRelease = releaseRequired && !isSystemReleaseNumber(draft.systemRelease);
   const basicTypes = workpackageTypeNames(draft.tool, toolFteRates);
   const showBasicType = basicTypes.length > 0 && !(draft.tool === "Other" && !draft.complexity);
   const isOther = draft.tool === "Other" && !draft.complexity;
@@ -116,7 +123,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
 
   const commit = (e) => {
     e.stopPropagation();
-    if (isNameEmpty || isInvalidReusability) return;
+    if (isNameEmpty || isInvalidReusability || isMissingRelease) return;
     if (isOther && (isDurationTooLong || isInvalidStart)) return;
     const finalStartMonth = hasProject && isOther
       ? isSpanningError
@@ -172,12 +179,11 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
       </select>
       {!isOther && (
         <div>
+          <div className="grid grid-cols-2 gap-2 items-start"><div>
           <label className="text-[9px] text-gray-600 font-bold block mb-0.5">Finish Target / Boundary</label>
-          <select aria-label="Finish Target / Boundary" className="text-xs bg-white border border-gray-300 rounded px-1.5 py-1 w-full font-medium shadow-2xs" value={draft.finishMilestone || ""} onChange={e => setDraft(d => ({ ...d, finishMilestone: e.target.value || null }))}>
-            <option value="">Project End ({projectDuration || "End"} Mo)</option>
-            {MILESTONES_DEF.map(m => <option key={m.key} value={m.key}>{m.label} ({projectMilestones?.[m.key] ? `Month ${projectMilestones[m.key]}` : m.name})</option>)}
-          </select>
-          <p className="text-[9px] text-slate-500 mt-0.5">Milestone-bound main phases must finish by this target. All main phases must finish by project end.</p>
+          <MilestoneTargetSelect label="Finish Target / Boundary" className="text-xs bg-white border border-gray-300 rounded px-1.5 py-1 w-full font-medium shadow-2xs" value={draft.finishMilestone} onChange={finishMilestone => setDraft(d => ({ ...d, finishMilestone }))} projectDuration={projectDuration} projectMilestones={projectMilestones} />
+          </div><SystemReleaseField compact required={releaseRequired} value={draft.systemRelease} onChange={systemRelease => setDraft(d => ({ ...d, systemRelease }))} inputClassName="w-full text-xs bg-white border border-gray-300 rounded px-1.5 py-1 font-medium shadow-2xs" /></div>
+          <p className="text-[9px] text-slate-500 mt-0.5">Milestone-bound main phases must finish by this target. All remaining phases must finish by project end.</p>
         </div>
       )}
       {selectedTool?.subcategories && (
@@ -260,21 +266,10 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
               />
             </div>
           </div>
-          <div>
+          <div className="grid grid-cols-2 gap-2 items-start"><div>
             <label className="text-[9px] text-gray-600 font-bold block mb-0.5">Finish Target / Boundary</label>
-            <select
-              className="text-xs bg-white border border-gray-300 rounded px-1.5 py-1 w-full font-medium shadow-2xs"
-              value={draft.otherFinishMilestone || ""}
-              onChange={(e) => handleMilestoneChange(e.target.value || null)}
-            >
-              <option value="">Project End ({projectDuration || "End"} Mo)</option>
-              {MILESTONES_DEF.map((m) => (
-                <option key={m.key} value={m.key}>
-                  {m.label} ({projectMilestones?.[m.key] ? `Month ${projectMilestones[m.key]}` : m.name})
-                </option>
-              ))}
-            </select>
-          </div>
+            <MilestoneTargetSelect label="Finish Target / Boundary" className="text-xs bg-white border border-gray-300 rounded px-1.5 py-1 w-full font-medium shadow-2xs" value={draft.otherFinishMilestone} onChange={handleMilestoneChange} projectDuration={projectDuration} projectMilestones={projectMilestones} />
+          </div><SystemReleaseField compact required={releaseRequired} value={draft.systemRelease} onChange={systemRelease => setDraft(d => ({ ...d, systemRelease }))} inputClassName="w-full text-xs bg-white border border-gray-300 rounded px-1.5 py-1 font-medium shadow-2xs" /></div>
           {hasProject && (
             <div>
               <div className="flex items-center justify-between mb-0.5">
@@ -363,7 +358,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
         <button
           type="button"
           onClick={commit}
-          disabled={isNameEmpty || isInvalidReusability || (isOther && (isDurationTooLong || isInvalidStart))}
+          disabled={isNameEmpty || isInvalidReusability || isMissingRelease || (isOther && (isDurationTooLong || isInvalidStart))}
           className="flex-1 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold py-1 rounded transition-colors cursor-pointer shadow-xs"
         >
           Save
@@ -382,6 +377,7 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
 
 export const FunctionCard = memo(function FunctionCard({
   card,
+  project,
   reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   fteRates,
   toolFteRates,
@@ -729,6 +725,7 @@ export const FunctionCard = memo(function FunctionCard({
             {workpackageTypeLabel(card)}
           </span>
         )}
+        <SystemReleaseBadge value={card.systemRelease} />
         {card.tool === "Other" && !card.complexity && (() => {
           const rawEffort = parseFloat(card.otherEffort) || 0.3;
           const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
@@ -1208,6 +1205,7 @@ export const ToolRow = memo(function ToolRow({
                     <FunctionCard
                       key={c.id}
                       card={c}
+                      project={project}
                       reusabilityFactors={reusabilityFactors}
                       fteRates={fteRates}
                       toolFteRates={toolFteRates}

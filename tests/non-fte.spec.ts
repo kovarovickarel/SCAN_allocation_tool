@@ -147,15 +147,15 @@ test("purchase creation validates positive prices, required suppliers and select
   await page.getByRole("button", { name: "Create purchase" }).click();
   const dialog = page.getByRole("dialog");
   const save = dialog.getByRole("button", { name: "Add Workpackage", exact: true });
-  await dialog.getByRole("textbox", { name: "Workpackage Name *", exact: true }).fill("License test");
+  await dialog.getByRole("textbox", { name: "Workpackage Name", exact: true }).fill("License test");
   await dialog.getByRole("combobox", { name: "Tool Domain", exact: true }).selectOption("Reprocessing");
   await dialog.getByRole("combobox", { name: "Subtool", exact: true }).selectOption("PIL");
   const price = dialog.getByTitle("Base price (EUR)", { exact: true });
   for (const invalid of ["0", "-1", "0.004"]) { await price.fill(invalid); await expect(save).toBeDisabled(); }
   await price.fill("1000,25");
   await expect(save).toBeEnabled();
-  await expect(dialog.getByRole("combobox", { name: "Supplier *", exact: true }).locator("option:checked")).toHaveText("Other");
-  await dialog.getByRole("combobox", { name: "Supplier *", exact: true }).selectOption({ label: "Luxoft" });
+  await expect(dialog.getByRole("combobox", { name: "Supplier", exact: true }).locator("option:checked")).toHaveText("Other");
+  await dialog.getByRole("combobox", { name: "Supplier", exact: true }).selectOption({ label: "Luxoft" });
   await save.click();
   expect(await saved(page)).toMatchObject({ kind: "non-fte", tool: "Reprocessing", subcategory: "PIL", purchasePriceEUR: 1000.25, supplierName: "Luxoft" });
 });
@@ -166,7 +166,7 @@ test("used suppliers cannot be removed from workpackage configuration and unused
   await page.getByRole("button", { name: "Non-FTE", exact: true }).click();
   await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   const create = page.getByRole("dialog");
-  await create.getByRole("textbox", { name: "Workpackage Name *", exact: true }).fill("Supplier protection");
+  await create.getByRole("textbox", { name: "Workpackage Name", exact: true }).fill("Supplier protection");
   await create.getByRole("textbox", { name: "Base price (EUR)", exact: true }).fill("100");
   await create.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   await page.getByRole("button", { name: "Workpackages configuration", exact: true }).click();
@@ -195,7 +195,7 @@ test("the app assigns and unassigns purchases without changing staffing and filt
   await page.getByRole("button", { name: "Non-FTE", exact: true }).click();
   await page.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   const create = page.getByRole("dialog");
-  await create.getByRole("textbox", { name: "Workpackage Name *", exact: true }).fill("Purchase integration");
+  await create.getByRole("textbox", { name: "Workpackage Name", exact: true }).fill("Purchase integration");
   await create.getByTitle("Base price (EUR)", { exact: true }).fill("100");
   await create.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   const card = page.locator("article").filter({ hasText: "Purchase integration" });

@@ -398,7 +398,7 @@ export const DEFAULT_TOOL_FTE_RATES = Object.freeze(
     ...deepClone(DEFAULT_FTE_RATES["Point Cloud"]), color: TOOL_BASIC_TYPE_COLORS.Other,
     phases: [{ id: "main", name: "Main", kind: "main", rate: 0.3, duration: 6, scaleByReusability: true, notMilestoneBound: false, untilProjectEnd: false }],
     supportingPhases: [],
-  } } : { "Point Cloud": { ...deepClone(DEFAULT_FTE_RATES["Point Cloud"]), color: TOOL_BASIC_TYPE_COLORS[t.name] } }]))
+  } } : { "Point Cloud": { ...deepClone(DEFAULT_FTE_RATES["Point Cloud"]), color: TOOL_BASIC_TYPE_COLORS[t.name], systemReleaseMandatory: t.name === "SYS.4" || t.name === "SYS.5" } }]))
 );
 
 export const DEFAULT_MGMT_SETTINGS = Object.freeze({

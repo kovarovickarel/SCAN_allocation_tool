@@ -74,3 +74,14 @@ export function validateSystemReleases(value: unknown, project: AllocationProjec
   }
   return validateReleaseDrafts(value.map(release => ({ id: release.id, month: release.month, label: releaseLabel(release) })), project);
 }
+
+/** Optional workpackage/timeline release numbers use the same three-digit rounding. */
+export function normalizeSystemReleaseNumber(value: string | number | null | undefined): number | undefined {
+  if (value == null || String(value).trim() === "") return undefined;
+  const text = String(value).trim();
+  if (!/^\d{1,3}$/.test(text)) return undefined;
+  return Math.min(590, Math.max(100, Math.ceil(Number(text) / 10) * 10));
+}
+export function isSystemReleaseNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 590 && value % 10 === 0;
+}

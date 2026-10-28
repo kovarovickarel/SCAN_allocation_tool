@@ -1,6 +1,6 @@
 import type { WorkspaceData } from "./workspaceFile";
 import { ensureOtherSupplier } from "./nonFteWorkpackages";
-import { normalizeToolBasicTypes } from "./workpackageTypes";
+import { ensureMandatoryWorkpackageReleases, normalizeToolBasicTypes } from "./workpackageTypes";
 import { workpackageFinishViolation } from "./workpackageFinishTargets";
 
 export type PlanningState = Omit<WorkspaceData, "view">;
@@ -70,7 +70,8 @@ export function preparePlanningState(state: PlanningState): { state: PlanningSta
   const projectClassesChanged = normalizedProjects.some((project, index) => project !== state.projects[index]);
   const projects = new Map(normalizedProjects.map(project => [project.id, project]));
   const invalid: InvalidSchedule[] = [];
-  const workpackages = state.workpackages.map(card => {
+  const releaseCards = ensureMandatoryWorkpackageReleases(state.workpackages, configuration.toolFteRates);
+  const workpackages = releaseCards.map(card => {
     const project = projects.get(card.projectId);
     if (!project || card.kind === "non-fte") return card;
     const reason = workpackageFinishViolation(card, project, configuration.fteRates, configuration.toolFteRates);
@@ -80,8 +81,8 @@ export function preparePlanningState(state: PlanningState): { state: PlanningSta
       memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
       customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {} };
   });
-  return { state: configuration !== config || invalid.length || projectClassesChanged ? { ...state, configuration, projects: projectClassesChanged ? normalizedProjects : state.projects,
-    workpackages: invalid.length ? workpackages : state.workpackages } : state, invalid };
+  return { state: configuration !== config || invalid.length || releaseCards !== state.workpackages || projectClassesChanged ? { ...state, configuration, projects: projectClassesChanged ? normalizedProjects : state.projects,
+    workpackages: invalid.length || releaseCards !== state.workpackages ? workpackages : state.workpackages } : state, invalid };
 }
 
 /** Synchronous transactions collect all domain setters before normalization and

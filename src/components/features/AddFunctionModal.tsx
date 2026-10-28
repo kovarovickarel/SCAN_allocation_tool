@@ -1,3 +1,6 @@
+import { workpackageRequiresSystemRelease } from "../../utils/workpackageTypes";
+import { isSystemReleaseNumber } from "../../utils/systemReleases";
+import { SystemReleaseField } from "../ui/SystemReleaseField";
 import { WorkpackageDetailsForm } from "./WorkpackageDetails";
 import type { WorkpackageDetails } from "../../types";
 import { workpackageTypeNames, workpackageRateKey } from "../../utils/workpackageTypes";
@@ -39,6 +42,8 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
   const selectedTool = TOOL_MAP[draft.tool];
   const basicTypes = workpackageTypeNames(draft.tool, toolFteRates);
   const maintenanceAvailable = hasWorkpackageMaintenance(draft, fteRates, toolFteRates);
+  const releaseRequired = workpackageRequiresSystemRelease(draft, toolFteRates);
+  const isMissingRelease = releaseRequired && !isSystemReleaseNumber(draft.systemRelease);
   const isInvalidReusability = draft.reusability === "Other" && parseReusabilityFactor(draft.customReusabilityFactor) === null;
 
   const handleToolChange = (t) => {
@@ -52,7 +57,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
   };
 
   const handleAdd = () => {
-    if (!draft.name.trim() || isInvalidReusability) return;
+    if (!draft.name.trim() || isInvalidReusability || isMissingRelease) return;
     onAdd({
       id: genId(),
       ...(Object.keys(details).length ? { details } : {}),
@@ -67,6 +72,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
       otherStartMonth: null,
       otherFinishMilestone: draft.otherFinishMilestone || null,
       finishMilestone: draft.finishMilestone || null,
+      ...(draft.systemRelease != null ? { systemRelease: draft.systemRelease } : {}),
       otherHasMaintenance: Boolean(draft.otherHasMaintenance),
       otherMaintenanceEffort: Math.max(0, parseFloat(draft.otherMaintenanceEffort) || 0),
     });
@@ -107,7 +113,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
         <div className="flex flex-col gap-3">
           <div>
             <label className={`text-xs font-semibold block mb-1 ${isRetro ? "text-black font-mono font-bold" : "text-gray-700"}`}>
-              Workpackage Name *
+              Workpackage Name
             </label>
             <input
               autoFocus
@@ -165,6 +171,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
 
           {(draft.tool !== "Other" || draft.complexity) && (
             <div>
+              <div className="grid grid-cols-2 gap-2 items-start"><div>
               <label className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
                 Finish Target (Milestone)
               </label>
@@ -172,6 +179,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                 <option value="">Project End (Default)</option>
                 {MILESTONES_DEF.map(m => <option key={m.key} value={m.key}>{m.label} ({m.name})</option>)}
               </select>
+              </div><SystemReleaseField required={releaseRequired} value={draft.systemRelease} onChange={systemRelease => setDraft(d => ({ ...d, systemRelease }))} /></div>
               <p className="text-[10px] text-slate-500 mt-1">Milestone-bound main phases must finish by this target. All main phases must finish by project end; maintenance may end early.</p>
             </div>
           )}
@@ -219,7 +227,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                   />
                 </div>
               </div>
-              <div>
+              <div className="grid grid-cols-2 gap-2 items-start"><div>
                 <label className={`text-[11px] font-semibold block mb-1 ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
                   Finish Target (Milestone)
                 </label>
@@ -237,7 +245,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
                     <option key={m.key} value={m.key}>{m.label} ({m.name})</option>
                   ))}
                 </select>
-              </div>
+              </div><SystemReleaseField required={releaseRequired} value={draft.systemRelease} onChange={systemRelease => setDraft(d => ({ ...d, systemRelease }))} /></div>
               <div className={`pt-2 ${isRetro ? "border-t border-black/40" : "border-t border-slate-200"}`}>
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800">
                   <input
@@ -348,7 +356,7 @@ export function AddFunctionModal({ onClose, onAdd, otherDefaults = DEFAULT_OTHER
           <button
             type="button"
             onClick={handleAdd}
-            disabled={!draft.name.trim() || isInvalidReusability}
+            disabled={!draft.name.trim() || isInvalidReusability || isMissingRelease}
             className={
               isRetro
                 ? "flex-1 bg-[#000080] disabled:bg-[#808080] disabled:text-[#c0c0c0] text-white font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black text-xs py-2 cursor-pointer"

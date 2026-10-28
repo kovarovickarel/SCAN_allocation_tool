@@ -136,3 +136,28 @@ is blocked if it would exclude a custom release; move/remove that release first.
 Automatic plans regenerate from milestones. Releases appear only in project/team
 staffing timelines and read-only in the project spending timeline; XLSX reports
 remain unchanged.
+
+### Optional workpackage release labels (October 28)
+
+FTE and non-FTE workpackages may have optional `systemRelease`, a numeric code
+from 100 to 590 in steps of ten (displayed as R100–R590). Omitted/null means no
+release label. Legacy files do not acquire a label. UI entry rounds upward using
+the timeline number rules, but several workpackages may share the same code.
+The reference is informational: it does not require a matching project release,
+change schedules or deadlines, or affect calculations or assignment eligibility.
+Full/selective import, duplication and Undo/Redo preserve the source field.
+The schema remains 1; frozen compatibility fixtures are unchanged.
+
+### Mandatory releases on FTE basic types (October 28)
+
+Basic-type definitions may include optional boolean `systemReleaseMandatory`.
+Omission is false for all historical definitions, including SYS.4/SYS.5; imports
+must never infer the new default from a tool name. Fresh built-in SYS.4/SYS.5 and
+newly added types in those tool families default to true; other tools default off.
+Configuration saves, history normalization and import repair missing/null release
+labels to R100 only for FTE instances of an explicitly mandatory type. Existing
+numbers are retained, including when the requirement is disabled. Non-FTE and
+bespoke legacy Other workpackages are unaffected. Forms block completion when a
+mandatory type lacks a valid release. No matching project release is required.
+The flag, workpackage backfill and any type renaming form one history transaction.
+Source schema remains 1 and frozen compatibility fixtures remain unchanged.

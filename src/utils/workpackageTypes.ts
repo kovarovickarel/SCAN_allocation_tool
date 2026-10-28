@@ -127,3 +127,20 @@ export function normalizeToolBasicTypes(toolFteRates: any) {
     }))];
   }));
 }
+
+/** An omitted flag is optional, including on historical SYS.4/SYS.5 definitions. */
+export function workpackageRequiresSystemRelease(card: Pick<WorkpackageCard, "tool" | "complexity" | "kind">, toolFteRates = null): boolean {
+  if (card.kind === "non-fte" || (card.tool === "Other" && !card.complexity)) return false;
+  const definitions = toolFteRates ?? DEFAULT_TOOL_FTE_RATES;
+  return definitions?.[card.tool]?.[workpackageRateKey(card, definitions)]?.systemReleaseMandatory === true;
+}
+export function ensureMandatoryWorkpackageReleases(cards: WorkpackageCard[], toolFteRates): WorkpackageCard[] {
+  let changed = false;
+  const next = cards.map(card => {
+    if (card.systemRelease == null && workpackageRequiresSystemRelease(card, toolFteRates)) {
+      changed = true; return { ...card, systemRelease: 100 };
+    }
+    return card;
+  });
+  return changed ? next : cards;
+}

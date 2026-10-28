@@ -36,6 +36,7 @@ export interface EditCardContentProps extends ReusabilityRatesProps {
 }
 
 export interface FunctionCardProps extends ReusabilityRatesProps {
+  project?: AllocationProject;
   card: WorkpackageCard;
   reusabilityFactors?: FactorMap;
   teamMembers?: TeamMemberRecord[];
@@ -149,6 +150,7 @@ export interface AddFunctionModalProps extends ReusabilityRatesProps {
 }
 
 export interface AddFunctionDraft {
+  systemRelease?: number | null;
   finishMilestone?: string | null;
   name: string;
   tool: string;

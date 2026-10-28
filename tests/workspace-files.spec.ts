@@ -170,7 +170,7 @@ for (const kind of ["fte", "non-fte"] as const) test(`creation details stay in t
   await expect(dialog.getByPlaceholder("Add detailed description")).toHaveValue("");
   if (kind === "fte") await dialog.getByPlaceholder("e.g. Doppler Velocity Ground Truth").fill("Created with details");
   else {
-    await dialog.getByRole("textbox", { name: "Workpackage Name *", exact: true }).fill("Created with details");
+    await dialog.getByRole("textbox", { name: "Workpackage Name", exact: true }).fill("Created with details");
     await dialog.getByRole("textbox", { name: "Base price (EUR)", exact: true }).fill("100");
   }
   await dialog.getByPlaceholder("Add detailed description").fill("Description\nwith another line");

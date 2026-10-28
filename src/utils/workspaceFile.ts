@@ -1,12 +1,12 @@
 import { DEFAULT_NON_FTE_TYPES, validNonFteTypes } from "./nonFteBasicTypes";
 import { validSupportingPhases } from "./supportingPhases";
-import { validWorkpackagePhases, normalizeToolBasicTypes } from "./workpackageTypes";
+import { ensureMandatoryWorkpackageReleases, validWorkpackagePhases, normalizeToolBasicTypes } from "./workpackageTypes";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFAULT_MGMT_SETTINGS,
   DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, PROJECT_TYPES } from "../constants";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings, SupplierRecord } from "../types";
 import { workpackageFinishViolation } from "./workpackageFinishTargets";
 import { getDefaultMilestones } from "./helpers";
-import { validateSystemReleases } from "./systemReleases";
+import { isSystemReleaseNumber, validateSystemReleases } from "./systemReleases";
 import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
 
 // Schema 1 is the user-tested compatibility baseline (6b4b08e, 2026-10-12).
@@ -165,6 +165,7 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     for (const rates of Object.values(rateSet) as any[]) {
       object(rates, "Phase rates");
       if (rates.supportingPhases !== undefined && !validSupportingPhases(rates.supportingPhases)) fail("Supporting activities", "expected unique names and IDs, nonnegative rates, reusability and maintenance flags.");
+      if (rates.systemReleaseMandatory !== undefined) boolean(rates.systemReleaseMandatory, "System release mandatory");
       if (rates.builtinLifecycle !== undefined && typeof rates.builtinLifecycle !== "boolean") fail("Built-in lifecycle", "expected a boolean.");
       if (rates.color !== undefined && (typeof rates.color !== "string" || !/^#[0-9a-f]{6}$/i.test(rates.color))) fail("Basic type color", "expected a six-digit hex color.");
       if (rates.phases !== undefined && !validWorkpackagePhases(rates.phases)) fail("Basic type phases", "expected ordered main phases followed by maintenance phases, unique names, nonnegative rates, whole maximum durations, consecutive phases outside the milestone and only an optional final maintenance phase running to project end.");
@@ -252,6 +253,7 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     }
     if (card.kind !== undefined) choice(card.kind, ["fte", "non-fte"], "Workpackage kind");
     if (card.projectId != null && !projectIds.has(card.projectId)) fail("Workpackage project", "not found in the project list.");
+    if (card.systemRelease != null && !isSystemReleaseNumber(card.systemRelease)) fail("Workpackage system release", "must be a number from 100 to 590 in steps of 10.");
     for (const key of ["finishMilestone", "otherFinishMilestone", "purchaseMilestone"]) if (card[key] != null) choice(card[key], ["", "REQF", "FFV", "EFV", "AFV", "SSSR"], key);
     for (const key of ["reusabilityAppliesToMaintenance", "otherHasMaintenance"]) if (card[key] !== undefined) boolean(card[key], key);
     for (const key of ["otherEffort", "otherMaintenanceEffort", "customReusabilityFactor"]) if (card[key] != null) number(card[key], key, 0, false, true);
@@ -290,6 +292,7 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   if (view.selectedProjectIds !== null) strings(view.selectedProjectIds, "Selected projects");
   config.toolFteRates = normalizeToolBasicTypes(config.toolFteRates);
   config.fteRates = normalizeToolBasicTypes({ KPI: config.fteRates }).KPI;
+  data.workpackages = ensureMandatoryWorkpackageReleases(data.workpackages, config.toolFteRates);
   // Round-trip through the exporter strips untrusted computed/editor fields too.
   return createWorkspaceFile(data as WorkspaceData, new Date(file.exportedAt));
 }
