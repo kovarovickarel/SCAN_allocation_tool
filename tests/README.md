@@ -3,7 +3,8 @@
 Run `pnpm typecheck` and `pnpm test:e2e` for the current application.
 Use `pnpm test:export` for the focused export suite; it uses the same isolated
 5174 test server and mocks currency responses, so it needs no live rate service.
-Latest validation (2026-10-26): 545 app tests, 57 focused export checks, TypeScript,
+Latest validation (2026-10-28): 587 app tests (including 42 System Releases and
+57 export checks), TypeScript,
 the production build and three Pages checks pass. Pages coverage includes XLSX
 export with repository-prefixed template and lazy-loaded assets. The suite uses
 a separate development server on port 5174 and leaves the interactive app on
@@ -13,6 +14,7 @@ a separate development server on port 5174 and leaves the interactive app on
 | --- | --- |
 | Project planning export | `project-planning-export`, `planning-export-calculations`, `planning-export-workbook`, `planning-export-ui`: 57 checks covering exact allocation/cost results, internal/external separation, sites and management, purchase schedules/overrides, salary delays, EUR conversion and failures, missing/zero rates, actual XLSX fields/formulas/styles/groups, calendar expansion and blue-note boundaries, project colours/names, safe text cells, immutable source data, both download buttons, repeat clicks, retries, timeout recovery, Basic mode and updated guide navigation. |
 | Responsive project cost breakdown | `external-salary-spending`: full-value tooltips remain accurate, visible breakdowns switch to k amounts at narrow widths and restore full amounts when widened in Vibrant, Basic and Retro themes. |
+| System releases | `system-releases`: default-on creation checkbox, opt-out/manual additions, rounded cadence, naming/order/month bounds, explicit empty plans, old JSON compatibility, custom round trips, milestone independence, Undo/Redo, selective settings, inline Manual Adjust gating, dashed add/red remove, release dragging with occupied/outside/cross-project rejection and shifted team calendars, deferred Save validation with a draft-preserving warning prompt, focus/keyboard/outside-click checks and draft Save/Discard/Escape, project/team editing and duplication; read-only spending release tracks in all themes, sticky offsets, graph switching and unchanged source plans. |
 | Project classification | `project-classification`: P1/P2 creation/editing, P2 RFQ restriction, missing-field historical defaults, strict import validation, selective settings import, Undo/Redo, summary badge placement and responsive RFQ priority in team timelines. |
 | Undo / Redo | `workspace-history`: atomic multi-slice operations, stable redo IDs, no-op/failed saves, detail typing/list grouping, schedule cleanup, 50-step and estimated byte limits, shared snapshots, schema-1 compatibility, 2x2 toolbar, imports/merges, duplication/deletion, configuration, allocation saves, shortcuts, draft protection, view exclusion and session reset. |
 | Basic types | `basic-types`: phase ordering and project limits, ordinary Other defaults, per-activity rates, draft creation, rename/removal protection, non-FTE icon selection, independent activity tracks and saved overrides |

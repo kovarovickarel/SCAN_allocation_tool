@@ -675,6 +675,15 @@ export function HelpGuideModal({
                 </ul>
               </div>
 
+              <section className="p-4 bg-white border border-slate-200 rounded-xl">
+                <h3 className="font-bold text-slate-900 text-sm mb-2">System releases</h3>
+                <p className="mb-2">When adding a project, <strong>Include default system releases (6 weeks cadence)</strong> is checked by default below the milestone settings. Uncheck it to start without releases; you can still add them later in the project staffing timeline.</p>
+                <p>In a project staffing timeline, click <strong>Project Milestones</strong> to show or hide its System releases row. In the Team Combined Timeline, click a project&apos;s milestone/month strip. Releases use lighter versions of their milestone colours and do not bounce. The project spending timeline has the same expandable row, always read-only, even with Non-FTE Adjust enabled. Releases do not change effort, allocations or costs.</p>
+                <p className="mt-2">Defaults occur every <strong>1.5 months, rounded to whole months</strong>: M2, M3, M5, M6 and so on, through SSSR. Each belongs to the next milestone at or after its month. REQF uses R100–R190, FFV R200–R290, EFV R300–R390, AFV R400–R490 and SSSR R500–R590, increasing by 10. Each series allows up to ten releases.</p>
+                <p className="mt-2">Enable <strong>Manual Adjust</strong>, then click a release tag to edit its three-digit number. Enter or clicking away rounds it up to the next multiple of ten, bounded to R100–R590 (for example, 121 becomes R130). If that number is already used, it advances to the next unused higher number. If none is available up to R590, the previous number is kept. Escape cancels the number edit. The tag colour previews the resulting series immediately. Click an empty dashed oval to add a release in that month, or its small red cross to remove it. Drag a release tag to an empty month in the same project to move it. Dropping on an occupied month or outside the project leaves it in place. Each month holds at most one release. Removing every release is valid for projects supplied by another project.</p>
+                <p className="mt-2">Custom releases can occur anywhere within the project, independently of milestone dates. Keep names in the R100–R590 series, increasing by tens and in chronological order. These rules are checked only at <strong>Save &amp; Close</strong>; a warning window explains any sequence error and keeps your draft open for correction. Dismiss it with OK, correct the releases, then save again. Discard &amp; Close cancels edits. Enter or Escape leaves the inline name field. Saved plans travel in workspace JSON and are retained by duplication and Undo/Redo; moving milestones does not move custom releases.</p>
+              </section>
+
               <div className={`p-4 shadow-2xs ${
                 isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
               }`}>

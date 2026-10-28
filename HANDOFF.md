@@ -1,16 +1,80 @@
 # Development handoff
 
-Updated: 2026-10-27 (Europe/Prague).
+Updated: 2026-10-28 (Europe/Prague).
 
-## Start here on the laptop (October 27)
+## October 28: System Releases batch
+
+Context commits:
+- `ccd473a` adds project/team release planning, persisted plans, validation,
+  three-digit number editing, pointer dragging, Undo/Redo and the new-project toggle.
+- `3c1beb3` adds the matching read-only release row to Project Spending.
+- `96d4639` moves cumulative spending values, heading and Total badge down 2px
+  without changing row heights or borders.
+- A documentation/current-screenshot-reference commit follows these app commits.
+
+New projects show Include default system releases (6 weeks cadence), checked by
+default, under milestones. The approved cadence is rounded 1.5 months (M2, M3,
+M5, M6, ...), not exact 42-day dates. Omitted systemReleases uses automatic defaults
+through SSSR; [] intentionally disables them. Unchecked creation saves [], while
+checked creation omits the field. Cancel resets the creation preference; milestone
+Reset Defaults does not change it. Users can add releases to an empty plan later.
+Defaults use the next inclusive milestone: REQF R1xx, FFV R2xx, EFV R3xx, AFV R4xx,
+SSSR R5xx, each 00–90 by tens. Custom dates are independent of milestone deadlines.
+
+Click a staffing milestone/month strip to expand the shared release row. Manual
+Adjust allows adding through dotted dashed ovals, removing by red cross, and
+editing only the three-digit number after a fixed R. Enter/blur rounds upwards by
+ten, skips numbers used by other releases, and caps at R590. With no free higher
+number, retain the original silently; empty input and Escape also preserve it.
+Series colours preview the final number. One release per month is allowed.
+
+Pointer dragging keeps a closed-hand cursor and a temporary tag ghost. Empty
+months in the same project accept drops. Occupied/outside/cross-project drops
+leave the original unchanged; occupied drops play a 240ms return animation from
+the exact drop/grab position, respecting reduced motion. No cell highlight is
+shown. Escape, cancellation, blur and unmount restore the cursor/remove the ghost.
+Suppress follow-up clicks so moving a tag cannot add one in the old source cell.
+
+Chronological numbering is checked only at Save & Close, before any release or
+allocation callback runs. Invalid sequences open ReleaseValidationPrompt and keep
+the entire draft. OK/Escape acknowledges it, outside clicks preserve it, and focus
+returns to Save & Close. Discard drops edits; unchanged drafts retain automatic
+source semantics and Redo. Project/team views share one project-level plan.
+Shortening a project past a custom release is blocked until it is moved/removed.
+Milestone edits do not move custom releases. Duplication, Undo/Redo, JSON round
+trips and selective project-settings import retain the plans. Schema stays 1;
+frozen historical fixtures remain unchanged. See JSON_COMPATIBILITY.md.
+
+Project Spending has the same collapsible release row, always read-only even
+with Non-FTE Adjust enabled. Expansion survives graph/timeline switching and
+sticky totals account for the release-row height. XLSX reports are unchanged.
+
+Key new files: src/utils/systemReleases.ts,
+src/components/features/SystemReleasesTrack.tsx,
+src/components/features/ReleaseValidationPrompt.tsx and tests/system-releases.spec.ts.
+The Help & Guide includes creation, editing, dragging, numbering and spending.
+The Releases TODO entry remains until the user requests removal. Untracked
+debug.log is unrelated and must not be committed.
+
+Validation completed on October 28:
+- TypeScript: pnpm typecheck passed.
+- Complete application suite: all 587 tests passed, including 42 System Releases
+  tests and all 57 planning-export checks, with all current screenshot comparisons.
+- Production: pnpm test:pages built successfully and all three Pages checks passed.
+- Two intended screenshot changes (project milestone toggle and new-project release
+  checkbox) were visually reviewed and refreshed. Historical screenshots and frozen
+  workspace compatibility fixtures remain unchanged.
+
+## Start here on the laptop (October 28)
 
 This is the current resume point. Dated sections below are historical context;
 older statements about pending changes or test counts do not supersede this section.
 
 - Repository: https://github.com/kovarovickarel/SCAN_allocation_tool.git, branch
   `master`. This desktop checkout is C:/Users/kovar/Desktop/SCAN_Allocation_tool;
-  use the laptop's own checkout path. Latest confirmed pushed revision: `cb960c8`.
-  Local master and the recorded origin/master agree at that revision.
+  use the laptop's own checkout path. The app batch above ends at `96d4639`; a
+  documentation/reference commit follows it. Fetch origin/master and inspect Git
+  state before resuming. The user authorized pushing this batch after validation.
 - The October 26 release was pushed through `551714f`: 545 application tests,
   TypeScript, the production build and all three Pages checks passed. This includes
   57 export checks, the final toolbar ordering and refreshed current screenshots.
@@ -24,8 +88,8 @@ older statements about pending changes or test counts do not supersede this sect
   items remain. This handoff and the TODO cleanup are saved together in a
   documentation-only commit for laptop transfer. Fetch before synchronizing.
   Unrelated debug.log remains untracked and must not be included in a commit.
-- No implementation task is currently in progress. Choose the next task from the
-  user, not automatically from TODO. JSON compatibility remains mandatory: read
+- The System Releases feature above is current work. Do not start other TODO
+  items automatically. JSON compatibility remains mandatory: read
   JSON_COMPATIBILITY.md before domain/export/import changes and preserve frozen
   baseline fixtures. Workspace schema remains 1.
 
