@@ -34,6 +34,8 @@ test("spending ignores inactive-month core, support, meeting and staffing overri
 });
 
 for (const mode of ["extended", "retro"]) test(`manual project start selection, cancellation, target correction and automatic reset (${mode})`, async ({ page }) => {
+  // Keep the pool and target project visible together during repeated native drags.
+  await page.setViewportSize({ width: 2000, height: 1000 });
   await page.goto("/");
   if (mode === "retro") {
     await page.getByRole("button", { name: "Theme: Vibrant" }).click();
@@ -49,14 +51,14 @@ for (const mode of ["extended", "retro"]) test(`manual project start selection, 
   await dialog.getByRole("button", { name: "Add Workpackage", exact: true }).click();
   const work = () => page.locator('[draggable="true"]').filter({ has: page.getByText("Manual schedule UI", { exact: true }) }).last();
   const pool = page.getByRole("heading", { name: "Workpackage Pool", exact: true }).locator("..").locator("..").locator("..");
-  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
+  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }), { sourcePosition: { x: 5, y: 5 } });
   dialog = page.getByRole("dialog");
   await expect(dialog.getByRole("heading", { name: "Schedule FTE Workpackage" })).toBeVisible();
   await expect(dialog.getByRole("button", { name: "Confirm & Place in Project" })).toBeDisabled();
   await expect(page.getByRole("heading", { name: "Cannot Assign Workpackage" })).toHaveCount(0);
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(pool.getByText("Manual schedule UI", { exact: true })).toBeVisible();
-  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
+  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }), { sourcePosition: { x: 5, y: 5 } });
   dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "End (M12)", exact: true }).click();
   await dialog.getByLabel("Workpackage Starting Month").fill("3");
@@ -66,15 +68,15 @@ for (const mode of ["extended", "retro"]) test(`manual project start selection, 
   // Same-project drops do not reopen scheduling, even after switching the toggle.
   await toggle.click();
   await toggle.click();
-  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
+  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }), { sourcePosition: { x: 5, y: 5 } });
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await work().dragTo(pool.getByRole("heading", { name: "Workpackage Pool", exact: true }));
+  await work().dragTo(pool.getByRole("heading", { name: "Workpackage Pool", exact: true }), { sourcePosition: { x: 5, y: 5 } });
   await toggle.click();
-  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
+  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }), { sourcePosition: { x: 5, y: 5 } });
   await expect(page.getByRole("heading", { name: "Schedule FTE Workpackage" })).toHaveCount(0);
   await expect(pool.getByText("Manual schedule UI", { exact: true })).toHaveCount(0);
   await toggle.click();
-  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }));
+  await work().dragTo(page.getByRole("heading", { name: "MBAG", exact: true }), { sourcePosition: { x: 5, y: 5 } });
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
