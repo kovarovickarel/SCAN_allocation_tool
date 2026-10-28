@@ -2,6 +2,82 @@
 
 Updated: 2026-10-28 (Europe/Prague).
 
+## October 28: workpackage releases and planning export follow-up
+
+Context commits:
+- `2dccccc`: workpackage release labels and mandatory FTE type rules.
+- `4ee3f1b`: pulsing missing-project-release warnings and timeline labels.
+- `a505ff6`: release/milestone-based SYS classification in XLSX exports.
+- `993b73a`: remaining release positioning, non-FTE and SYS manual-test TODOs.
+- `a7a487c`: stabilize the existing project-start native-drag test by keeping
+  source/target swimlanes visible and grabbing the card border.
+- Guide, verification results and reviewed current screenshot references follow.
+
+### Final verification
+
+All 680 application tests passed in the complete rerun, including current visual
+comparisons, 52 workpackage-release checks and 98 planning-export checks.
+TypeScript, the Pages production build and all three Pages tests passed.
+Only the current Add FTE Workpackage screenshot was refreshed after inspection
+for the new release input. Historical references and frozen JSON fixtures remain
+unchanged. The project-start drag regression also passed six repeated normal/Retro
+runs after its test-only stabilization. Build retains the existing bundle-size
+advisory. App and Pages batches ran sequentially on isolated ports.
+
+The six commits in this follow-up are ready for the user-authorized push to master.
+The unrelated local debug.log is excluded. A push does not itself confirm that
+the GitHub Pages deployment has completed.
+
+### Workpackage release labels and mandatory FTE types
+
+Optional numeric workpackage systemRelease is 100–590 by tens. The shared field
+beside Finish Target/Boundary or Payment Deadline accepts three digits and rounds
+upwards on Enter/blur. Blank clears the label; Escape cancels typing. Multiple WPs
+can reference the same release. Expanded FTE badges sit beside the basic type;
+non-FTE badges sit below the name. Compact cards keep their existing layout.
+Closed inline milestone selectors show abbreviations; dropdowns retain full names.
+Workpackage Name and non-FTE Supplier labels no longer have an asterisk.
+
+Workpackages configuration offers System release mandatory when adding/editing an
+FTE basic type. The optional boolean systemReleaseMandatory defaults on for fresh
+SYS.4/SYS.5 definitions and newly added types in those tools, off elsewhere.
+Omitted historical flags stay optional, including old SYS.4/SYS.5 definitions.
+Required instance fields read System release (Mandatory), without a disclaimer.
+Saving a newly mandatory type assigns R100 to its existing missing/null instances;
+chosen labels remain. Configuration/backfill share one Undo/Redo transaction.
+Cancel preserves source state; disabling the rule retains existing labels.
+Legacy bespoke Other and non-FTE are exempt. No matching project release is
+required. JSON stays schema 1; optional labels survive import, copies and history.
+Frozen historical fixtures remain unchanged.
+
+### Missing release warnings and timeline labels
+
+Assigned FTE/non-FTE badges glow red if their release is absent from the resolved
+project plan, including explicit empty plans. Tooltip: <project name> project does
+not contain R<number> release! Pool cards do not warn. Restoring the release or
+unassigning the WP clears the warning. A 1.8-second pulse changes only the glow;
+reduced-motion settings retain a static glow. Effort/cost/scheduling are unaffected.
+
+Project staffing and spending show the shared badge below the WP name beside the
+type. Combined team staffing deliberately omits WP release tags; its project-level
+System releases row remains. Staffing warnings follow confirmed timeline drafts:
+new additions and typed numbers count only after Enter/blur, never during typing.
+Escape cancels a pending addition. Whole-timeline Save/Discard semantics remain.
+
+### XLSX SYS classification
+
+Resource Planning K and Expenses Proj Spec J use assigned systemRelease first
+(R120 -> 1-SYS1xx, R590 -> 5-SYS5xx), then the FTE finish target (including legacy
+Other) or purchase deadline. REQF/FFV/EFV/AFV/SSSR map to SYS1xx through SYS5xx.
+Unbound defaults to 1-SYS1xx; project release presence is irrelevant.
+planningWorkpackage centralizes this export-only mapping.
+
+Internal allocated/unmet rows group additionally by SYS series. External salary
+rows split by series alongside tool/site/payment delay; engineering/management
+combine only within matching groups. Management has no target/release and defaults
+to SYS1xx. Purchases remain individual. Same-series releases merge. Single-project
+and portfolio exports share this behavior and retain their existing totals.
+
 ## October 28: System Releases batch
 
 Context commits:
