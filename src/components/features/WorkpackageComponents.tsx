@@ -618,8 +618,9 @@ export const FunctionCard = memo(function FunctionCard({
   const categoryDisplayName = isAssigned && card.subcategory
     ? `${card.subcategory}${isAltered ? "*" : ""}` : fullCategoryName;
   const abbreviatedTool = `${TOOL_ABBREVIATIONS[card.tool] || card.tool}${isAltered ? "*" : ""}`;
-  const abbreviatedCategoryName = isAssigned && card.subcategory ? categoryDisplayName
-    : card.subcategory ? `${abbreviatedTool} → ${card.subcategory}` : abbreviatedTool;
+  const abbreviatedSubcategory = ({ "Trace Checker": "TC", Pipeline: "PL" })[card.subcategory] ?? card.subcategory;
+  const abbreviatedCategoryName = isAssigned && card.subcategory ? `${abbreviatedSubcategory}${isAltered ? "*" : ""}`
+    : card.subcategory ? `${abbreviatedTool} → ${abbreviatedSubcategory}` : abbreviatedTool;
 
   return (
     <div
