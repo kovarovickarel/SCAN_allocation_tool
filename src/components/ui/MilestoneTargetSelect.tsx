@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { MILESTONES_DEF } from "../../constants";
 import { ChevronDownIcon } from "./icons";
 
@@ -19,4 +20,29 @@ export function MilestoneTargetSelect({ value, onChange, label, className, proje
     </span>
     <ChevronDownIcon size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-700" />
   </div>;
+}
+
+/** Measure the full heading independently of the currently visible text. */
+export function FinishTargetLabel() {
+  const labelRef = useRef<HTMLLabelElement>(null);
+  const fullRef = useRef<HTMLSpanElement>(null);
+  const [short, setShort] = useState(false);
+  useLayoutEffect(() => {
+    const label = labelRef.current, full = fullRef.current;
+    if (!label || !full) return;
+    let disposed = false;
+    const measure = () => {
+      if (!disposed) setShort(full.getBoundingClientRect().width > label.getBoundingClientRect().width);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(label); observer.observe(full);
+    void document.fonts.ready.then(measure);
+    document.fonts.addEventListener("loadingdone", measure);
+    return () => { disposed = true; observer.disconnect(); document.fonts.removeEventListener("loadingdone", measure); };
+  }, []);
+  return <label ref={labelRef} title="Finish Target / Boundary" className="relative text-[9px] text-gray-600 font-bold block mb-0.5 whitespace-nowrap">
+    <span>{short ? "Finish Target" : "Finish Target / Boundary"}</span>
+    <span ref={fullRef} aria-hidden="true" className="absolute invisible whitespace-nowrap pointer-events-none">Finish Target / Boundary</span>
+  </label>;
 }

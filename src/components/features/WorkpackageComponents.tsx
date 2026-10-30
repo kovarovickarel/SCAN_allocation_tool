@@ -1,6 +1,6 @@
 import { workpackageRequiresSystemRelease } from "../../utils/workpackageTypes";
 import { isSystemReleaseNumber } from "../../utils/systemReleases";
-import { MilestoneTargetSelect } from "../ui/MilestoneTargetSelect";
+import { FinishTargetLabel, MilestoneTargetSelect } from "../ui/MilestoneTargetSelect";
 import { SystemReleaseField, SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { CompactWorkpackageGrid } from "../ui/CompactWorkpackageGrid";
 import { WorkpackageDuplicateButton } from "../ui/WorkpackageDuplicateButton";
@@ -179,8 +179,8 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
       </select>
       {!isOther && (
         <div>
-          <div className="grid grid-cols-2 gap-2 items-start"><div>
-          <label className="text-[9px] text-gray-600 font-bold block mb-0.5">Finish Target / Boundary</label>
+          <div className="grid grid-cols-2 gap-2 items-start"><div className="min-w-0">
+          <FinishTargetLabel />
           <MilestoneTargetSelect label="Finish Target / Boundary" className="text-xs bg-white border border-gray-300 rounded px-1.5 py-1 w-full font-medium shadow-2xs" value={draft.finishMilestone} onChange={finishMilestone => setDraft(d => ({ ...d, finishMilestone }))} projectDuration={projectDuration} projectMilestones={projectMilestones} />
           </div><SystemReleaseField compact required={releaseRequired} value={draft.systemRelease} onChange={systemRelease => setDraft(d => ({ ...d, systemRelease }))} inputClassName="w-full text-xs bg-white border border-gray-300 rounded px-1.5 py-1 font-medium shadow-2xs" /></div>
           <p className="text-[9px] text-slate-500 mt-0.5">Milestone-bound main phases must finish by this target. All remaining phases must finish by project end.</p>
@@ -266,8 +266,8 @@ export function EditCardContent({ card, onEdit, projectDuration, projectMileston
               />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 items-start"><div>
-            <label className="text-[9px] text-gray-600 font-bold block mb-0.5">Finish Target / Boundary</label>
+          <div className="grid grid-cols-2 gap-2 items-start"><div className="min-w-0">
+            <FinishTargetLabel />
             <MilestoneTargetSelect label="Finish Target / Boundary" className="text-xs bg-white border border-gray-300 rounded px-1.5 py-1 w-full font-medium shadow-2xs" value={draft.otherFinishMilestone} onChange={handleMilestoneChange} projectDuration={projectDuration} projectMilestones={projectMilestones} />
           </div><SystemReleaseField compact required={releaseRequired} value={draft.systemRelease} onChange={systemRelease => setDraft(d => ({ ...d, systemRelease }))} inputClassName="w-full text-xs bg-white border border-gray-300 rounded px-1.5 py-1 font-medium shadow-2xs" /></div>
           {hasProject && (
