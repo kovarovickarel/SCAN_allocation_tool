@@ -1,3 +1,4 @@
+import { managementPlanningShares } from "./managementPlanningShares";
 import { planningWorkpackage } from "./planningWorkpackage";
 import { FOOTPRINTS, FOOTPRINT_MAP, TOOLS } from "../constants";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FactorMap } from "../types";
@@ -54,11 +55,13 @@ export function buildResourcePlanning(options: ResourcePlanningOptions) {
       status: site ? "OK" : "no Allocation done", hours: 0, months: Array(project.duration).fill(0) });
     return result.get(key)!;
   }
-  function accumulate(card: WorkpackageCard, demand: number[], management: boolean) {
+  function accumulate(card: WorkpackageCard, demand: number[], management: boolean,
+    shares = new Map([[planningWorkpackage(card), Array(project.duration).fill(1) as number[]]])) {
     const subcategory = management ? "" : card.subcategory || "";
-    const workpackage = planningWorkpackage(card);
-    const category = JSON.stringify([card.tool, subcategory, management, workpackage]);
-    demandByCategory.set(category, (demandByCategory.get(category) ?? 0) + demand.reduce((a, b) => a + b, 0));
+    for (const [workpackage, fractions] of shares) {
+      const category = JSON.stringify([card.tool, subcategory, management, workpackage]);
+      demandByCategory.set(category, (demandByCategory.get(category) ?? 0) + demand.reduce((sum, value, month) => sum + value * fractions[month], 0));
+    }
     const allocations = resolveMonthlyMemberAllocations(card, project.duration, demand, members);
     const remaining = [...demand];
     for (const [id, months] of Object.entries(allocations)) {
@@ -68,24 +71,33 @@ export function buildResourcePlanning(options: ResourcePlanningOptions) {
         const fte = demand[month] > 0 ? positive(Number(months[month])) : 0;
         remaining[month] = Math.max(0, remaining[month] - fte);
         if (!fte || member.isExternal) continue;
-        const target = row(card.tool, subcategory, management, member.footprint || "PRA", workpackage);
-        target.months[month] += fte;
-        target.hours += calculateMemberMonthlyAllocationCost(fte, member, config.fteCosts).hours;
+        for (const [workpackage, fractions] of shares) {
+          const share = fte * fractions[month];
+          if (!(share > 0)) continue;
+          const target = row(card.tool, subcategory, management, member.footprint || "PRA", workpackage);
+          target.months[month] += share;
+          target.hours += calculateMemberMonthlyAllocationCost(share, member, config.fteCosts).hours;
+        }
       }
     }
     remaining.forEach((fte, month) => {
       if (fte <= 1e-9) return;
-      const target = row(card.tool, subcategory, management, null, workpackage);
-      target.months[month] += fte;
-      // Reuse the app's hours calculation, rather than deriving hours in Excel.
-      target.hours += calculateMemberMonthlyAllocationCost(fte, undefined, config.fteCosts).hours;
+      for (const [workpackage, fractions] of shares) {
+        const share = fte * fractions[month];
+        if (!(share > 0)) continue;
+        const target = row(card.tool, subcategory, management, null, workpackage);
+        target.months[month] += share;
+        // Reuse the app's hours calculation, rather than deriving hours in Excel.
+        target.hours += calculateMemberMonthlyAllocationCost(share, undefined, config.fteCosts).hours;
+      }
     });
   }
   for (const card of projectCards) accumulate(card, calculateWorkpackageMonthlyFTE(card, project, config), false);
+  const managementShares = managementPlanningShares(options);
   const effort = calculateProjectEffort(projectCards, config.management, project, config);
   for (const overhead of effort.overheads) accumulate({ id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support",
     tool: overhead.tool, _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] ?? {},
-    memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] ?? {} }, getManagementMonthlyFTE(overhead, project), true);
+    memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] ?? {} }, getManagementMonthlyFTE(overhead, project), true, managementShares.get(overhead.tool));
   for (const [key, demand] of demandByCategory) {
     if (demand > 1e-9) continue; // Fully externally staffed categories are omitted, not reported as unallocated.
     const [tool, subcategory, management, workpackage] = JSON.parse(key);

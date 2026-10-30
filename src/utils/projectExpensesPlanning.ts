@@ -1,3 +1,4 @@
+import { managementPlanningShares } from "./managementPlanningShares";
 import { planningWorkpackage } from "./planningWorkpackage";
 import { TOOLS } from "../constants";
 import type { WorkpackageAllocationCost } from "../types";
@@ -45,6 +46,7 @@ export async function buildExpensesPlanning(options: ResourcePlanningOptions, si
   const duration = spending.monthlyCosts.length;
   const rows: ExpensePlanningRow[] = [];
   const external = new Map<string, ExpensePlanningRow>();
+  const managementShares = managementPlanningShares(options);
   for (const tool of spending.tools) for (const track of tool.tracks) {
     if (track.isNonFte) {
       const card = projectCards.find(card => card.id === track.id)!;
@@ -63,15 +65,22 @@ export async function buildExpensesPlanning(options: ResourcePlanningOptions, si
         throw new Error(`Enter a monthly salary for ${member.firstName} ${member.lastName} before exporting their expenses.`);
       }
       const site = member.footprint || "PRA", delay = externalPaymentDelay(member);
-      const workpackage = planningWorkpackage(projectCards.find(card => card.id === track.id));
-      const key = JSON.stringify([tool.tool, site, delay, workpackage]);
-      if (!external.has(key)) {
-        const family = resourceToolLabels(tool.tool, "");
-        external.set(key, { tool: tool.tool, workpackage, keyword: family.keyword, location: resourceLocation(site), expenseType: "Contracted Workpackage",
-          outsourced: "yes", deferred: delay ? `YES_${delay} months` : "NO", activity: `${family.activity} — External resources`, months: Array(duration).fill(0) });
+      const shares = track.isManagement ? managementShares.get(tool.tool) : undefined;
+      const groups = shares ?? new Map([[planningWorkpackage(projectCards.find(card => card.id === track.id)), Array(duration).fill(1) as number[]]]);
+      for (const [workpackage, fractions] of groups) {
+        // Deferred salaries inherit the demand mix of the work month, not the payment month.
+        const fraction = (index: number) => shares ? fractions[index - delay] ?? 0 : 1;
+        if (shares && !person.monthlyCosts.some((cost, index) => fraction(index) > 0 &&
+          Object.values(cost.externalSalaryCharges ?? {}).some(charge => charge.allocatedFTE > 0))) continue;
+        const key = JSON.stringify([tool.tool, site, delay, workpackage]);
+        if (!external.has(key)) {
+          const family = resourceToolLabels(tool.tool, "");
+          external.set(key, { tool: tool.tool, workpackage, keyword: family.keyword, location: resourceLocation(site), expenseType: "Contracted Workpackage",
+            outsourced: "yes", deferred: delay ? `YES_${delay} months` : "NO", activity: `${family.activity} — External resources`, months: Array(duration).fill(0) });
+        }
+        const row = external.get(key)!;
+        person.monthlyCosts.forEach((cost, index) => { row.months[index] += euros(cost) * fraction(index); });
       }
-      const row = external.get(key)!;
-      person.monthlyCosts.forEach((cost, index) => { row.months[index] += euros(cost); });
     }
   }
   rows.push(...external.values());

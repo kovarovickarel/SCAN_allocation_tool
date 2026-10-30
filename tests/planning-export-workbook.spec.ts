@@ -143,3 +143,19 @@ test("both workbook tabs fall back to their milestone or SYS1xx", async ({ page 
   expect(result.sheets[0].cells.K19.value).toBe("1-SYS1xx");
   expect(result.sheets[1].cells.J14.value).toBe("1-SYS1xx");
 });
+
+test("both XLSX tabs assign management to its contributing SYS groups", async ({ page }) => {
+  const options = planningWorkspace();
+  options.configuration.toolFteRates["Data Factory"].ExportTest.phases![0].rate = 3;
+  options.cards = [120, 590].map((systemRelease, i) => ({ ...options.cards[0], id: `source${i}`, systemRelease }));
+  options.members = [exportMember("internal", "PRA", { role: "management" }), exportMember("external", "PRA", { role: "management", isExternal: true, monthlySalaryCost: 1000 })];
+  options.project.mgmtMemberMonthlyAssignments = { "Data Factory": { internal: { 0: 0.2, 1: 0.2 }, external: { 0: 0.2, 1: 0.2 } } };
+  const result = await workbook(page, options, ["K21", "K22", "K23", "K24", "N21", "Q21", "Q22", "J14", "J15", "P14", "P15"]);
+  const fte = result.sheets[0].cells, expenses = result.sheets[1].cells;
+  expect(fte.K21.value).toBe("1-SYS1xx"); expect(fte.K22.value).toBe("1-SYS1xx");
+  expect(fte.K23.value).toBe("5-SYS5xx"); expect(fte.K24.value).toBe("5-SYS5xx");
+  expect(fte.N21.value).toBe("SYV-Lead"); expect(fte.Q21.value).toBeCloseTo(32); expect(fte.Q22.value).toBeCloseTo(64);
+  expect(expenses.J14.value).toBe("1-SYS1xx"); expect(expenses.J15.value).toBe("5-SYS5xx");
+  expect(expenses.P14.value).toBeCloseTo(200); expect(expenses.P15.value).toBeCloseTo(200);
+  expect(result.unchanged).toBe(true);
+});
