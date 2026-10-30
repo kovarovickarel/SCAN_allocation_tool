@@ -252,3 +252,24 @@ test("receipt expansion animates height and honors reduced motion", async ({ pag
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 });
+
+for (const theme of ["vibrant", "basic", "retro"]) test(`purchase type falls back to its icon and restores its text on widening (${theme})`, async ({ page }) => {
+  await openHarness(page, theme);
+  await page.getByRole("button", { name: "Schedule purchase", exact: true }).click();
+  await month(page, 1).click();
+  await page.getByRole("button", { name: "SSSR M5", exact: true }).click();
+  await page.getByRole("button", { name: "Confirm & Place in Project", exact: true }).click();
+  const receipt = page.getByTestId("receipt");
+  const type = receipt.getByTitle("Contracted workpackage", { exact: true });
+  await receipt.evaluate(element => { element.style.width = "700px"; });
+  await expect(type.getByText("Contracted WP", { exact: true }).filter({ visible: true })).toBeVisible();
+  await receipt.evaluate(element => { element.style.width = "210px"; });
+  await expect(type.locator(":scope > span:not([aria-hidden])")).toHaveCount(0);
+  await expect(type.locator("svg")).toBeVisible();
+  // The payment target and all action buttons keep their own space.
+  const milestone = receipt.locator('[title^="Payment Target:"]');
+  const iconBox = await type.boundingBox(), milestoneBox = await milestone.boundingBox();
+  expect(iconBox!.x + iconBox!.width).toBeLessThanOrEqual(milestoneBox!.x);
+  await receipt.evaluate(element => { element.style.width = "700px"; });
+  await expect(type.getByText("Contracted WP", { exact: true }).filter({ visible: true })).toBeVisible();
+});

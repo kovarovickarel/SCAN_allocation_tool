@@ -46,35 +46,41 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
   const fullCategoryRef = useRef<HTMLSpanElement>(null);
   const typeRef = useRef<HTMLSpanElement>(null);
   const fullTypeRef = useRef<HTMLSpanElement>(null);
+  const shortTypeRef = useRef<HTMLSpanElement>(null);
+  const [hidePurchaseTypeText, setHidePurchaseTypeText] = useState(false);
   const [useShortPurchaseType, setUseShortPurchaseType] = useState(false);
   useLayoutEffect(() => {
-    if (isCompact || card._editing || card.purchaseType !== "Contracted workpackage") return;
+    if (isCompact || card._editing || !card.purchaseType) return;
     const type = typeRef.current;
     const fullType = fullTypeRef.current;
-    if (!type || !fullType) return;
+    const shortType = shortTypeRef.current;
+    if (!type || !fullType || !shortType) return;
     let disposed = false;
     const measure = () => {
       if (disposed) return;
-      const icon = type.querySelector("svg");
-      const iconWidth = icon?.getBoundingClientRect().width ?? 0;
-      const gap = icon ? parseFloat(getComputedStyle(type).columnGap) || 0 : 0;
+      const iconWidth = isBasicMode ? 0 : 16;
+      const gap = isBasicMode ? 0 : parseFloat(getComputedStyle(type).columnGap) || 0;
       const left = type.parentElement!;
       const siblingsWidth = Array.from(left.children).filter(child => child !== type)
         .reduce((width, child) => width + child.getBoundingClientRect().width, 0);
       const availableWidth = left.clientWidth - siblingsWidth
         - Math.max(0, left.children.length - 1) * (parseFloat(getComputedStyle(left).columnGap) || 0);
-      setUseShortPurchaseType(fullType.getBoundingClientRect().width + iconWidth + gap > availableWidth + 0.5);
+      setUseShortPurchaseType(fullType.getBoundingClientRect().width + iconWidth + gap > availableWidth);
+      setHidePurchaseTypeText(shortType.getBoundingClientRect().width + iconWidth + gap > availableWidth);
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(type);
     observer.observe(fullType);
+    observer.observe(shortType);
+    if (headerRef.current) observer.observe(headerRef.current);
+    if (headerRef.current?.lastElementChild) observer.observe(headerRef.current.lastElementChild);
     observer.observe(type.parentElement!);
     if (categoryRef.current) observer.observe(categoryRef.current);
     void document.fonts.ready.then(measure);
     document.fonts.addEventListener("loadingdone", measure);
     return () => { disposed = true; observer.disconnect(); document.fonts.removeEventListener("loadingdone", measure); };
-  }, [isCompact, card._editing, card.purchaseType, isBasicMode, isRetro]);
+  }, [isCompact, card._editing, card.purchaseType, isBasicMode, isRetro, card.purchaseMilestone]);
   const [useToolAbbreviation, setUseToolAbbreviation] = useState(false);
   useLayoutEffect(() => {
     if (isCompact || card._editing || expandedCategoryName === abbreviatedCategoryName) {
@@ -96,9 +102,10 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
         + 6 + (parseFloat(style.columnGap) || 0);
       const otherWidth = Array.from(left.children).filter(child => child !== category).reduce((sum, child) => {
         if (child === typeRef.current) {
-          const children = Array.from(child.children).filter(item => item !== fullTypeRef.current);
-          return sum + children.reduce((width, item) => width + (item.tagName === "SPAN" && fullTypeRef.current ? fullTypeRef.current.scrollWidth : item.scrollWidth), 0)
-            + Math.max(0, children.length - 1) * (parseFloat(getComputedStyle(child).columnGap) || 0);
+          // Use the intrinsic full label even while only its icon is visible,
+          // keeping category abbreviation independent of the type fallback.
+          return sum + (fullTypeRef.current?.getBoundingClientRect().width ?? 0)
+            + (isBasicMode ? 0 : 16 + (parseFloat(getComputedStyle(child).columnGap) || 0));
         }
         return sum + child.getBoundingClientRect().width;
       }, 0);
@@ -202,9 +209,12 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
         {!isCompact && <span ref={fullCategoryRef} aria-hidden="true" className="absolute invisible whitespace-nowrap pointer-events-none">{expandedCategoryName}</span>}
       </span>
         {card.purchaseType && <span ref={typeRef} className={`relative inline-flex items-center gap-1 text-[11px] font-semibold text-slate-700 ${isCompact ? hideCompactPurchaseType ? "hidden" : "shrink-0" : "min-w-0"}`} title={card.purchaseType} aria-label={isCompact ? card.purchaseType : undefined}>
-          {(isCompact || !isBasicMode) && <NonFteTypeIcon purchaseType={card.purchaseType} size={16} className={`shrink-0 ${tool.text}`} />}
-          {!isCompact && <span className="truncate">{card.purchaseType === "Contracted workpackage" ? useShortPurchaseType ? "Contr. WP" : "Contracted WP" : card.purchaseType}</span>}
-          {!isCompact && card.purchaseType === "Contracted workpackage" && <span ref={fullTypeRef} aria-hidden="true" className="absolute invisible whitespace-nowrap pointer-events-none">Contracted WP</span>}
+          {(isCompact || !isBasicMode || hidePurchaseTypeText) && <NonFteTypeIcon purchaseType={card.purchaseType} size={16} className={`shrink-0 ${tool.text}`} />}
+          {!isCompact && !hidePurchaseTypeText && <span className="whitespace-nowrap shrink-0">{card.purchaseType === "Contracted workpackage" ? useShortPurchaseType ? "Contr. WP" : "Contracted WP" : card.purchaseType}</span>}
+          {!isCompact && <>
+            <span ref={fullTypeRef} aria-hidden="true" className="absolute invisible whitespace-nowrap pointer-events-none">{card.purchaseType === "Contracted workpackage" ? "Contracted WP" : card.purchaseType}</span>
+            <span ref={shortTypeRef} aria-hidden="true" className="absolute invisible whitespace-nowrap pointer-events-none">{card.purchaseType === "Contracted workpackage" ? "Contr. WP" : card.purchaseType}</span>
+          </>}
         </span>}
         {finishMsDef && <span
           className={`inline-flex items-center shrink-0 ${isCompact ? "" : `gap-1 text-[9px] font-black ${isRetro ? "text-black font-mono" : isBasic ? "text-black" : finishMsDef.textColor}`}`}
