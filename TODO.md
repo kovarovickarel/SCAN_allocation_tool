@@ -1,7 +1,6 @@
 # TODO
 
 - [ ] Resolve release system tag positioning - next to wp name?
-- [ ] Test the SYSxx implementation
 
 - [ ] Resolve non-FTE system releases - remove?
 

@@ -1,6 +1,102 @@
 # Development handoff
 
-Updated: 2026-10-28 (Europe/Prague).
+Updated: 2026-10-30 (Europe/Prague).
+
+## October 30: current working state and other-PC handover
+
+This follow-up builds on the October 28 release `219fb13`. Context commits:
+- `030cc14`: non-FTE purchase-type label fallback to icon-only.
+- `ddf4206`: single-row scheduling milestone legends and reviewed references.
+- `7a160bb`: responsive Finish Target heading in inline editors.
+- `e84d0cd`: subtool abbreviations before wrapping.
+- `f9b0f58`: XLSX-only management attribution to contributing SYS groups.
+- A final documentation/TODO commit records this verification and handover.
+
+The user authorized committing this batch and pushing to master after all checks
+pass. Pull master on the destination PC before continuing. The unrelated local
+untracked debug.log remains excluded. A push does not confirm Pages deployment.
+
+The interactive Vite server was restarted at http://127.0.0.1:5173/ and responded
+with HTTP 200. Recheck/start it on the destination PC rather than assuming the
+process transfers. Use the saved setup instructions below. Do not reload a user's
+open planning workspace casually: planning state is in memory. App tests use 5174;
+Pages checks use 4174. Keep app/Pages batches sequential.
+
+### Responsive UI refinements
+
+- NonFteWorkpackageCard measures full and abbreviated purchase-type labels.
+  Contracted WP becomes Contr. WP, then icon-only when the abbreviation cannot fit.
+  Other purchase types also fall back to their icon when their label cannot fit.
+  Hover retains the full type. Labels return on widening. Intrinsic hidden
+  measurements keep category abbreviation independent and avoid resize oscillation.
+  Compact receipt rules remain unchanged.
+- Scheduling milestone legends in both AssignOtherWPModal (standard FTE and legacy
+  Other) and AssignNonFteModal use five equal grid columns. Labels are 9px, month
+  annotations 7px, with compact gaps/padding and smaller diamonds. The initial
+  font-only adjustment still wrapped the user's 18-month example; the final grid
+  was verified with REQF M4, FFV M9, EFV M12, AFV M14 and SSSR M15, before and
+  after selecting a milestone, in both dialogs and all three themes.
+- FinishTargetLabel, exported from MilestoneTargetSelect.tsx, measures the full
+  Finish Target / Boundary heading and shows Finish Target when it would wrap.
+  Full wording returns on widening and stays in the tooltip/accessibility label.
+  Both standard FTE and legacy Other inline editors use it. Grid children retain
+  min-w-0 so hidden measurements do not force a wider field.
+- Assigned FTE subtool tags now actually supply abbreviated alternatives to
+  ResponsiveToolTagLabel: Trace Checker -> TC and Pipeline -> PL. Previously the
+  assigned-card full and abbreviated strings were identical, causing wrapping.
+  Pool labels also use abbreviated subtool names when space is tight. Full names,
+  alteration markers and tooltips are retained; widening restores the full name.
+
+### Final verification
+
+All 710 application tests passed in the full current-suite run. TypeScript, the
+Pages production build and all three Pages tests also passed. App and Pages
+batches ran sequentially. The build retains its existing bundle-size advisory.
+
+Focused coverage also passed after the final versions of each change:
+- TypeScript (`pnpm typecheck`).
+- 29 scheduling/non-FTE checks, including six new exact-month single-row checks.
+- 13 finish-target heading/layout and finish-target behavior checks.
+- 12 subtool/card-layout checks, including restoration in all three themes.
+- All 107 planning-export checks, including nine new management attribution and
+  workbook checks. See the next section for the export-only behavior.
+
+Only current non-FTE schedule-split screenshots for Vibrant, Basic and Retro were
+refreshed/reviewed for the smaller single-row legends. Historical references and
+frozen compatibility fixtures remain untouched. The earlier 680-app-test result
+below describes the October 28 release; the current validated count is 710.
+The six context commits are ready for the user-authorized push to master.
+
+New test files: finish-target-label.spec.ts, scheduling-milestone-layout.spec.ts,
+subtool-card-label.spec.ts and planning-export-management.spec.ts. Existing
+non-fte.spec.ts and planning-export-workbook.spec.ts were extended. Production
+managementPlanningShares.ts is new. Guide/test coverage documentation was updated
+for management export.
+
+TODO.md removes Test the SYSxx implementation at the user's request. Preserve the
+remaining release-positioning, non-FTE-release and team-timeline items. The older
+Add releases every six weeks entry is still listed despite implementation; it was
+pointed out to the user but has not been authorized for removal.
+
+Changes are grouped in the six contexts listed above. Frozen JSON fixtures and
+historical screenshot references were preserved; workspace JSON remains schema 1.
+
+## October 30: export management overhead by contributing SYS groups
+
+Management support remains tool-level and visually unchanged in the app. XLSX-only
+managementPlanningShares resolves each active FTE WP's export SYS code, combines
+demand by tool and SYS group, and calculates proportional shares separately for
+every work month. Resource Planning resolves the original management allocations
+once, then splits each internal site's allocated hours/FTE and remaining unmet
+demand using those shares. Management keeps SYV-Lead and main tool family labels.
+
+Expenses uses the same weights for external management, indexed by work month
+(payment month minus that member's delay). Existing tool/site/delay/SYS merging
+with external engineering remains. No threshold, app allocation, pricing, currency,
+source-state or JSON changes. Tests compare app totals, legacy scalar assignments,
+monthly mix changes, inactive/hidden groups, multiple internal sites, unmet demand,
+external delay and actual XLSX fields. All 107 export checks and TypeScript pass.
+This behavior is isolated in commit `f9b0f58`.
 
 ## October 28: workpackage releases and planning export follow-up
 
@@ -11,7 +107,7 @@ Context commits:
 - `993b73a`: remaining release positioning, non-FTE and SYS manual-test TODOs.
 - `a7a487c`: stabilize the existing project-start native-drag test by keeping
   source/target swimlanes visible and grabbing the card border.
-- Guide, verification results and reviewed current screenshot references follow.
+- `219fb13`: guide, verification results and reviewed current form reference.
 
 ### Final verification
 
@@ -24,7 +120,7 @@ unchanged. The project-start drag regression also passed six repeated normal/Ret
 runs after its test-only stabilization. Build retains the existing bundle-size
 advisory. App and Pages batches ran sequentially on isolated ports.
 
-The six commits in this follow-up are ready for the user-authorized push to master.
+The six commits in this follow-up were pushed to master through `219fb13`.
 The unrelated local debug.log is excluded. A push does not itself confirm that
 the GitHub Pages deployment has completed.
 
@@ -74,8 +170,8 @@ planningWorkpackage centralizes this export-only mapping.
 
 Internal allocated/unmet rows group additionally by SYS series. External salary
 rows split by series alongside tool/site/payment delay; engineering/management
-combine only within matching groups. Management has no target/release and defaults
-to SYS1xx. Purchases remain individual. Same-series releases merge. Single-project
+combine only within matching groups. Management now inherits its contributing workpackages
+proportionally per month (see October 30 export section). Purchases remain individual. Same-series releases merge. Single-project
 and portfolio exports share this behavior and retain their existing totals.
 
 ## October 28: System Releases batch
