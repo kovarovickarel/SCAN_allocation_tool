@@ -1907,11 +1907,11 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
               </span>
             </div>
 
-            <div className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] justify-center ${isRetro ? "text-black font-mono" : "text-slate-700"}`}>
+            <div className={`grid grid-cols-5 items-center gap-1 text-[9px] ${isRetro ? "text-black font-mono" : "text-slate-700"}`}>
               {MILESTONES_DEF.map((m) => (
                 <span
                   key={m.key}
-                  className={`flex items-center gap-1 cursor-help px-1.5 py-0.5 ${
+                  className={`flex items-center justify-center gap-0.5 min-w-0 whitespace-nowrap cursor-help px-0.5 py-0.5 ${
                     selectedMilestone === m.key
                       ? isRetro
                         ? "bg-[#ffff80] text-black border border-black font-bold"
@@ -1920,9 +1920,9 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
                   }`}
                   title={`${m.label}: ${m.name} (Month ${milestones[m.key]})`}
                 >
-                  <span className={`w-2 h-2 rotate-45 ${m.dot} border border-slate-300 inline-block shadow-2xs`} />
+                  <span className={`w-1.5 h-1.5 shrink-0 rotate-45 ${m.dot} border border-slate-300 inline-block shadow-2xs`} />
                   <span className="font-bold">{m.label}</span>
-                  <span className="text-[9px] text-slate-400 font-mono">(M{milestones[m.key]})</span>
+                  <span className="text-[7px] text-slate-400 font-mono">(M{milestones[m.key]})</span>
                 </span>
               ))}
             </div>

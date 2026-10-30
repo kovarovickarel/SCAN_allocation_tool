@@ -158,9 +158,9 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-slate-200" />Inactive</span>
             <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-slate-100 opacity-30 border border-slate-400" />After deadline</span>
           </div>
-          <div className="flex flex-wrap justify-center items-center gap-x-3 gap-y-1 text-[10px] text-slate-700">
-            {MILESTONES_DEF.map(milestone => <span key={milestone.key} className={`flex items-center gap-1 px-1.5 py-0.5 ${selectedMilestone === milestone.key ? "bg-blue-100/70 border border-blue-300 font-bold rounded" : ""}`} title={`${milestone.label}: ${milestone.name}`}>
-              <span className={`w-2 h-2 rotate-45 ${milestone.dot} border border-slate-300 shadow-2xs`} /><span className="font-bold">{milestone.label}</span><span className="text-[9px] text-slate-400 font-mono">(M{milestones[milestone.key]})</span>
+          <div className="grid grid-cols-5 items-center gap-1 text-[9px] text-slate-700">
+            {MILESTONES_DEF.map(milestone => <span key={milestone.key} className={`flex items-center justify-center gap-0.5 min-w-0 whitespace-nowrap px-0.5 py-0.5 ${selectedMilestone === milestone.key ? "bg-blue-100/70 border border-blue-300 font-bold rounded" : ""}`} title={`${milestone.label}: ${milestone.name}`}>
+              <span className={`w-1.5 h-1.5 shrink-0 rotate-45 ${milestone.dot} border border-slate-300 shadow-2xs`} /><span className="font-bold">{milestone.label}</span><span className="text-[7px] text-slate-400 font-mono">(M{milestones[milestone.key]})</span>
             </span>)}
           </div>
         </div>
