@@ -347,3 +347,9 @@ export const PuzzlePieceIcon = memo(({ size = 14, className = "" }: SvgIconProps
     <path d="M19 13h-2a2 2 0 1 1 0-4h2V5h-6V3a2 2 0 1 0-4 0v2H5v6H3a2 2 0 1 0 0 4h2v4h6v2a2 2 0 1 0 4 0v-2h4v-6Z" />
   </svg>
 ));
+
+export const BeachUmbrellaIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <path d="M3 11a9 9 0 0 1 18 0H3ZM8 11c0-5 2-9 4-9s4 4 4 9M12 11v10M3 21h18M12 2V1" />
+  </svg>
+));

@@ -127,6 +127,7 @@ export interface TeamMembersPoolProps {
   onDeleteMember: (memberId: string) => void;
   isCompact?: boolean;
   onToggleCompact: () => void;
+  onOpenAvailability?: () => void;
   onOpenTimeline: () => void;
 }
 

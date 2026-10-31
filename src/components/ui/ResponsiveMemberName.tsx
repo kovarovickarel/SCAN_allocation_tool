@@ -1,13 +1,17 @@
 import { useLayoutEffect, useRef, useState } from "react";
 
-export function ResponsiveMemberName({ firstName, lastName, className }: {
+export function ResponsiveMemberName({ firstName, lastName, className, initialsWithPeriods = false }: {
   firstName: string;
   lastName: string;
   className?: string;
+  initialsWithPeriods?: boolean;
 }) {
   const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
   const abbreviatedName = `${Array.from(firstName.trim())[0] || ""}. ${lastName.trim()}`.trim();
-  const initials = `${Array.from(firstName.trim())[0] || ""}${Array.from(lastName.trim())[0] || ""}`.toUpperCase();
+  const firstInitial = Array.from(firstName.trim())[0] || "";
+  const lastInitial = Array.from(lastName.trim())[0] || "";
+  const initials = initialsWithPeriods ? [firstInitial, lastInitial].filter(Boolean).map(initial => `${initial}.`).join(" ")
+    : `${firstInitial}${lastInitial}`.toUpperCase();
   const containerRef = useRef<HTMLSpanElement>(null);
   const fullRef = useRef<HTMLSpanElement>(null);
   const abbreviatedRef = useRef<HTMLSpanElement>(null);

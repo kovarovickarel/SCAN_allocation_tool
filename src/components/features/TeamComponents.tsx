@@ -10,7 +10,7 @@ import { ResponsiveMemberName } from "../ui/ResponsiveMemberName";
 import { ResponsiveTeamName } from "../ui/ResponsiveTeamName";
 import type { TeamMemberRole } from "../../types";
 import type { TeamMembersPoolProps, AddTeamMemberModalProps } from './componentTypes';
-import { PencilIcon, CalendarGanttIcon, TrashIcon, PlusIcon, Minimize2Icon, Maximize2Icon, ToolIcon, StaffingIcon } from '../ui/icons';
+import { BeachUmbrellaIcon, PencilIcon, CalendarGanttIcon, TrashIcon, PlusIcon, Minimize2Icon, Maximize2Icon, ToolIcon, StaffingIcon } from '../ui/icons';
 
 export const TeamMembersPool = memo(function TeamMembersPool({
   toolName,
@@ -23,6 +23,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
   isCompact = false,
   onToggleCompact,
   onOpenTimeline,
+  onOpenAvailability,
 }: TeamMembersPoolProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
@@ -91,6 +92,10 @@ export const TeamMembersPool = memo(function TeamMembersPool({
             <ResponsiveTeamName toolName={toolName} className={`font-bold text-sm tracking-tight ${isRetro ? "font-mono font-black" : ""}`} />
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            <button type="button" onClick={onOpenAvailability} title="Member availability calendar" aria-label={`Open ${toolName} member availability`}
+              className={`p-1.5 rounded-md border cursor-pointer transition-colors ${isRetro ? "bg-[#c0c0c0] text-black border-black" : isBasic ? "text-blue-300 bg-slate-800 border-slate-700 hover:bg-slate-700" : "bg-white/70 border-current hover:bg-white"}`}>
+              <BeachUmbrellaIcon size={14} />
+            </button>
             <button
               type="button"
               onClick={onOpenTimeline}
@@ -418,6 +423,7 @@ export function AddTeamMemberModal({ toolName, defaultCurrency = "EUR", supplier
     if (!isFormValid) return;
     const finalFte = round2(clamp(parsedFte, 0.01, 1.0));
     onSave({
+      ...(initialMember?.absences ? { absences: initialMember.absences } : {}),
       id: initialMember ? initialMember.id : genId(),
       firstName: firstName.trim(),
       lastName: lastName.trim(),

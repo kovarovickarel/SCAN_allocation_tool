@@ -1,3 +1,6 @@
+import { MemberAvailabilityModal } from "./components/features/MemberAvailabilityModal";
+import { absoluteMonth, applyMemberAbsenceEdits, membersWithHolidays } from "./utils/memberAvailability";
+import { reconcileAvailability } from "./utils/availabilityAllocations";
 import { useWorkspaceHistory, useWorkspaceAction } from "./hooks/useWorkspaceHistory";
 import { samePlanningValue, type PlanningState } from "./utils/workspaceHistory";
 import { ResizableSwimlane } from "./components/ui/ResizableSwimlane";
@@ -181,8 +184,21 @@ export default function App() {
     isBasicMode,
     restoreViewPreferences,
   } = useAppViewState();
-  const { history, functions, projects, teamMembers, config, teamOtherWPScopes,
+  const { history, functions, projects, teamMembers: sourceMembers, config, teamOtherWPScopes,
     setFunctions, setProjects, setTeamMembers, setConfig, setTeamOtherWPScopes } = useWorkspaceHistory(createInitialPlanningState);
+
+  const teamMembers = useMemo(() => membersWithHolidays(sourceMembers, config.sitePublicHolidays), [sourceMembers, config.sitePublicHolidays]);
+  const [showAvailability, setShowAvailability] = useState(false);
+  const handleSaveAvailability = useWorkspaceAction(history, "Save member availability", (absences, sitePublicHolidays) => {
+    const current = history.present;
+    if (Object.entries(absences).every(([id, dates]) => JSON.stringify(dates) === JSON.stringify(current.teamMembers.find(member => member.id === id)?.absences ?? {})) &&
+      JSON.stringify(sitePublicHolidays) === JSON.stringify(current.configuration.sitePublicHolidays ?? {})) { setShowAvailability(false); return; }
+    const next = reconcileAvailability({ ...current,
+      teamMembers: applyMemberAbsenceEdits(current.teamMembers, absences),
+      configuration: { ...current.configuration, sitePublicHolidays } });
+    setTeamMembers(next.teamMembers); setConfig(next.configuration); setFunctions(next.workpackages); setProjects(next.projects);
+    setShowAvailability(false);
+  }, []);
 
   const [showAddMember, setShowAddMember] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMemberRecord | null>(null);
@@ -264,7 +280,7 @@ export default function App() {
       for (const rename of renames) if (rename.tool === card.tool && rename.from === name) name = rename.to;
       return name === workpackageRateKey(card, config.toolFteRates) ? card : { ...card, complexity: name };
     }));
-    setConfig(current => ({ ...newConfig, nonFteTypes: newConfig.nonFteTypes ?? current.nonFteTypes ?? DEFAULT_NON_FTE_TYPES, suppliers: retainUsedSuppliers(
+    setConfig(current => ({ ...newConfig, sitePublicHolidays: newConfig.sitePublicHolidays ?? current.sitePublicHolidays, nonFteTypes: newConfig.nonFteTypes ?? current.nonFteTypes ?? DEFAULT_NON_FTE_TYPES, suppliers: retainUsedSuppliers(
       newConfig.suppliers ?? DEFAULT_SUPPLIERS, current.suppliers, usedSupplierIds) }));
   }, [usedSupplierIds, config.toolFteRates]);
 
@@ -783,11 +799,11 @@ export default function App() {
   }, []);
 
   const getWorkspace = useCallback((): WorkspaceData => ({
-    projects, workpackages: functions, teamMembers, configuration: config, teamOtherWPScopes,
+    projects, workpackages: functions, teamMembers: sourceMembers, configuration: config, teamOtherWPScopes,
     view: { theme: theme as WorkspaceView["theme"], mode: appMode as WorkspaceView["mode"], activeToolView,
       teamCompact: isTeamBucketCompact, poolCompact: isWorkpackagePoolCompact, workpackageKind,
       summaryOpen: showSummaryDashboard, summaryFilter, selectedProjectIds: selectedSummaryProjectIds },
-  }), [projects, functions, teamMembers, config, teamOtherWPScopes, theme, appMode, activeToolView,
+  }), [projects, functions, sourceMembers, config, teamOtherWPScopes, theme, appMode, activeToolView,
     isTeamBucketCompact, isWorkpackagePoolCompact, workpackageKind, showSummaryDashboard, summaryFilter, selectedSummaryProjectIds]);
 
   const importWorkspace = useWorkspaceAction(history, "Import workspace", (data: WorkspaceData) => {
@@ -797,7 +813,7 @@ export default function App() {
     restoreViewPreferences(data.view); setWorkpackageKind(data.view.workpackageKind);
     setShowSummaryDashboard(data.view.summaryOpen); setSummaryFilter(data.view.summaryFilter);
     setSelectedSummaryProjectIds(data.view.selectedProjectIds);
-    setShowAddMember(false); setEditingMember(null); setShowAddFunction(false); setShowAddProject(false);
+    setShowAvailability(false); setShowAddMember(false); setEditingMember(null); setShowAddFunction(false); setShowAddProject(false);
     setShowConfigModal(false); setShowWorkpackagesConfigModal(false); setShowHelpModal(false); setPendingPurchase(null); setPendingOtherAssignment(null);
     setManualRescheduleQueue([]); setAssignmentWarning(null); setDraggedCard(null);
     setDraggedProjectIndex(null); setTargetProjectIndex(null);
@@ -806,6 +822,9 @@ export default function App() {
 
   return (
     <NonFteTypesContext.Provider value={config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES}><ThemeContext.Provider value={{ theme, isBasic, isRetro, setTheme, mode: appMode, isBasicMode }}>
+      {showAvailability && <MemberAvailabilityModal toolName={activeToolView} members={sourceMembers.filter(member => member.tool === activeToolView)} allMembers={sourceMembers}
+        holidays={config.sitePublicHolidays ?? {}} initialYear={projects.length ? Math.floor(Math.min(...projects.map(project => absoluteMonth(project.startDate))) / 12) : new Date().getFullYear()}
+        onClose={() => setShowAvailability(false)} onSave={handleSaveAvailability} />}
       <div className={`min-h-screen ${isRetro ? "bg-[#008080] font-sans" : "bg-slate-950"} flex flex-col text-slate-800 select-none`}>
         <header className={`${isRetro ? "bg-[#c0c0c0] border-b-2 border-black shadow-[0_2px_0px_#fff]" : "bg-slate-900 border-b border-slate-800 shadow-lg"} px-4 md:px-5 py-3 flex items-center gap-5 shrink-0`}>
           <div className="w-[278px] min-[1400px]:w-80 shrink-0 flex items-center gap-3 min-w-0">
@@ -1062,6 +1081,7 @@ export default function App() {
                   isCompact={isTeamBucketCompact}
                   onToggleCompact={handleToggleTeamBucketCompact}
                   onOpenTimeline={() => setShowTeamTimeline(true)}
+                  onOpenAvailability={() => setShowAvailability(true)}
                   onAddClick={() => {
                     setEditingMember(null);
                     setShowAddMember(true);
