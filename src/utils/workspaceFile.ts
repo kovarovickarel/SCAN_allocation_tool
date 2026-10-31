@@ -1,3 +1,4 @@
+import { validCalendarDate } from "./memberAvailability";
 import { DEFAULT_NON_FTE_TYPES, validNonFteTypes } from "./nonFteBasicTypes";
 import { validSupportingPhases } from "./supportingPhases";
 import { ensureMandatoryWorkpackageReleases, validWorkpackagePhases, normalizeToolBasicTypes } from "./workpackageTypes";
@@ -15,6 +16,7 @@ import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
 export const WORKSPACE_FILE_VERSION = 1;
 export const MAX_WORKSPACE_FILE_BYTES = 20 * 1024 * 1024;
 export type WorkspaceConfiguration = {
+  sitePublicHolidays?: Record<string, string[]>;
   nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
   suppliers: SupplierRecord[]; fteRates: typeof DEFAULT_FTE_RATES; toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
   fteCosts: FteCostSettings; otherDefaults: typeof DEFAULT_OTHER_SETTINGS; management: typeof DEFAULT_MGMT_SETTINGS;
@@ -36,7 +38,7 @@ export type WorkspaceFile = { format: "scan-allocation-tool"; schemaVersion: num
 // Derived totals and editor flags are recalculated, never restored from a file.
 export function createWorkspaceFile(data: WorkspaceData, now = new Date()): WorkspaceFile {
   return JSON.parse(JSON.stringify({ format: "scan-allocation-tool", schemaVersion: WORKSPACE_FILE_VERSION,
-    exportedAt: now.toISOString(), data: { ...data, projects: data.projects.map(project => ({ ...project, projectClass: project.projectClass ?? "P1" })), configuration: { ...data.configuration, nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }, workpackages: data.workpackages.map(card =>
+    exportedAt: now.toISOString(), data: { ...data, teamMembers: data.teamMembers.map(member => Object.fromEntries(Object.entries(member).filter(([key]) => !key.startsWith("_")))), projects: data.projects.map(project => ({ ...project, projectClass: project.projectClass ?? "P1" })), configuration: { ...data.configuration, nonFteTypes: data.configuration.nonFteTypes ?? DEFAULT_NON_FTE_TYPES }, workpackages: data.workpackages.map(card =>
       exportWorkpackage(card)) } }));
 }
 function exportWorkpackage(card: WorkpackageCard) {
@@ -149,6 +151,12 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   const config = object(data.configuration, "Configuration");
   if (config.nonFteTypes !== undefined && !validNonFteTypes(config.nonFteTypes)) fail("Non-FTE basic types", "expected unique names and supported icons.");
   config.nonFteTypes ??= DEFAULT_NON_FTE_TYPES;
+  if (config.sitePublicHolidays !== undefined) {
+    for (const [site, dates] of Object.entries(object(config.sitePublicHolidays, "Site public holidays"))) {
+      if (!Array.isArray(dates) || dates.some(date => typeof date !== "string" || !validCalendarDate(date)) || new Set(dates).size !== dates.length)
+        fail(`Site public holidays.${site}`, "expected unique valid dates in YYYY-MM-DD format.");
+    }
+  }
   const suppliers = entities(config.suppliers, "Suppliers");
   suppliers.forEach(s => text(s.name, "Supplier name"));
   const supplierIds = new Set(suppliers.map(s => s.id));
@@ -229,6 +237,11 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   }));
   const projectIds = new Set(projects.map(p => p.id));
   entities(data.teamMembers, "Team members").forEach((member, index) => validateRecord(member, `data.teamMembers[${index}] (team member ${index + 1})`, () => {
+    if (member.absences !== undefined) for (const [date, reason] of Object.entries(object(member.absences, "Member absences"))) {
+      if (!validCalendarDate(date)) fail(`Member absences.${date}`, "expected a valid date in YYYY-MM-DD format.");
+      choice(reason, ["vacation", "sick"], `Member absences.${date}`);
+    }
+    delete member._siteHolidays;
     text(member.firstName, "Member first name"); text(member.lastName, "Member last name");
     choice(member.tool, tools, "Member tool"); choice(member.role, ["engineering", "management", "both"], "Member role");
     number(member.fte, "Member FTE", 0, false, true); text(member.footprint, "Member location");

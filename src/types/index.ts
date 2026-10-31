@@ -230,6 +230,9 @@ export interface TeamMemberRecord {
   monthlySalaryCurrency?: string;
   deferredPayment?: boolean;
   paymentDelayMonths?: number;
+  absences?: Record<string, "vacation" | "sick">;
+  /** Derived site dates, never exported or saved on a member. */
+  _siteHolidays?: readonly string[];
 }
 
 export interface ToolDefinition {

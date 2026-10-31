@@ -1,3 +1,4 @@
+import { absoluteMonth } from "./memberAvailability";
 import { WORKING_HOURS_PER_MONTH, round2 } from "../constants";
 import type { WorkpackageCard, TeamMemberRecord, NumericInput, FteCostSettings, WorkpackageAllocationCost } from "../types";
 import { resolveMonthlyMemberAllocations } from "./memberAllocations";
@@ -69,7 +70,7 @@ export function calculateWorkpackageAllocationCost(
       if (!Number.isFinite(fte) || fte <= 0) continue;
       const { hours, totalCost, location } = calculateMemberMonthlyAllocationCost(fte, member, settings);
       result.allocatedHours += hours;
-      const charge = member && externalSalaryCharge(member, fte, settings.currency);
+      const charge = member && externalSalaryCharge(member, fte, settings.currency, absoluteMonth(startDate, month));
       if (charge) {
         const [year, start] = startDate.split("-").map(Number);
         (result.externalSalaryCharges ??= {})[`${memberId}:${year * 12 + start - 1 + month}`] = charge;

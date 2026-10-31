@@ -1,3 +1,4 @@
+import { absoluteMonth } from "./memberAvailability";
 import { purchaseMonthlyCosts as scheduledPurchaseCosts, purchaseCostSummary, purchaseSubcategory } from "./nonFteWorkpackages";
 import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS } from "../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
@@ -40,7 +41,7 @@ function buildTrack(card: WorkpackageCard, requiredEffort: number[], project: Al
       const value = Number(months[month]);
       const fte = effort > 0 && Number.isFinite(value) && value > 0 ? value : 0;
       const priced = calculateMemberMonthlyAllocationCost(fte, member, settings);
-      const charge = member && externalSalaryCharge(member, fte, settings.currency);
+      const charge = member && externalSalaryCharge(member, fte, settings.currency, absoluteMonth(project.startDate, month));
       return { currency: settings.currency, totalCost: priced.totalCost ?? 0, allocatedHours: priced.hours,
         ...(charge ? { externalSalaryCharges: { [salaryMonthKey(id, project.startDate, month)]: charge } } : {}),
         unpricedHours: priced.totalCost === null ? priced.hours : 0,

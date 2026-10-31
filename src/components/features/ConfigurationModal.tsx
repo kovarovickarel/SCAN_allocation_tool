@@ -31,6 +31,7 @@ import { convertHourlyRateInputs, fetchLatestExchangeRate } from "../../utils/cu
 import { retainUsedSuppliers, ensureOtherSupplier, isOtherSupplier } from "../../utils/nonFteWorkpackages";
 
 type ConfigurationModalConfig = {
+  sitePublicHolidays?: Record<string, string[]>;
   nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
   suppliers?: SupplierRecord[];
   fteRates: typeof DEFAULT_FTE_RATES;
@@ -306,6 +307,7 @@ export function ConfigurationModal({
     setConversionNotice(null);
     setConversionError(null);
     setDraft({
+      sitePublicHolidays: deepClone(config.sitePublicHolidays ?? {}),
       nonFteTypes: deepClone(config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES),
       suppliers: ensureOtherSupplier(config.suppliers ?? DEFAULT_SUPPLIERS),
       fteRates: deepClone(DEFAULT_FTE_RATES),

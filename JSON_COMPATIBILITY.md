@@ -1,5 +1,22 @@
 # Workspace JSON compatibility
 
+## Member availability (October 31)
+
+Schema 1 adds optional member `absences` (YYYY-MM-DD keys with `vacation` or
+`sick` values) and configuration `sitePublicHolidays` (site codes mapped to
+unique YYYY-MM-DD dates). Omission means no leave/holidays, preserving all older
+workspaces. Invalid dates/reasons are rejected before any import mutation.
+Derived `_siteHolidays` is never exported or retained from imported member data.
+Full transfer retains all years. Selective import carries individual absences
+with member records; site holidays require the explicit Shared settings choice.
+Calendar edits propagate changed dates across same-person cross-team records
+using the app's existing name identity. Imported historical calendars are retained;
+sharing an edit does not overwrite unrelated dates on sibling records.
+Availability edits and proportional allocation reductions are one history action.
+Existing historical imports are not automatically rebalanced. Frozen fixtures
+remain unchanged. External paid salary/capacity now exclude working days marked
+absent; allocated effort retains its original salary-per-FTE rate.
+
 ## Allocation release matching (October 31)
 
 New FTE/non-FTE allocations, moves to another project and explicit rescheduling

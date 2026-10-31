@@ -1,3 +1,4 @@
+import { memberMonthAvailability } from "../../utils/memberAvailability";
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
 import { validateReleaseDrafts, releasePlanForSave, releasesFromDrafts, type SystemReleaseDraft } from "../../utils/systemReleases";
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
@@ -562,9 +563,9 @@ export function TeamTimelineModal({
   const handleAutoAllocate = useCallback((priorities: NumericMap) => {
     const result = allocateTeamByProjectPriority(autoAllocationProjects.map(({ row, targets }) => ({
       id: row.project.id, monthOffset: row.pOffset, duration: row.pDur, targets,
-    })), members, totalMonths, priorities, fteCosts);
+    })), members, totalMonths, priorities, fteCosts, minStartAbs);
     applyAutoAllocation(result);
-  }, [autoAllocationProjects, members, totalMonths, applyAutoAllocation, fteCosts]);
+  }, [autoAllocationProjects, members, totalMonths, applyAutoAllocation, fteCosts, minStartAbs]);
 
   const handleAutoAllocateProject = useCallback((projectId: string) => {
     const project = projects.find((item) => item.id === projectId);
@@ -574,7 +575,7 @@ export function TeamTimelineModal({
   const getMemberMaxAllowedInMonth = useCallback(
     (memberId, gIdx, type, excludeId) => {
       const memberObj = members.find((m) => m.id === memberId);
-      const memberCap = Math.max(0, parseFloat(memberObj?.fte) || 0);
+      const memberCap = memberMonthAvailability(memberObj, minStartAbs + gIdx).capacity;
 
       let otherUsageInMonth = 0;
 
@@ -631,9 +632,9 @@ export function TeamTimelineModal({
         }
       }
 
-      return Math.max(0, round2(memberCap - otherUsageInMonth));
+      return Math.max(0, Math.floor((memberCap - otherUsageInMonth + 1e-9) * 100) / 100);
     },
-    [members, projectRows, toolName]
+    [members, projectRows, toolName, minStartAbs]
   );
 
   const assignmentMonths = useMemo((): WorkpackageAllocationMonth[] => {
@@ -1030,8 +1031,8 @@ export function TeamTimelineModal({
       }
 
       // Workpackage and management allocations share one monthly personal capacity.
-      monthlyAllocations.forEach((allocation) => {
-        allocation.total = Math.min(cap, allocation.total);
+      monthlyAllocations.forEach((allocation, index) => {
+        allocation.total = Math.min(cap, allocation.total) + memberMonthAvailability(member, minStartAbs + index).unavailable;
       });
       const totalSum = monthlyAllocations.reduce((s, m) => s + m.total, 0);
       const avgFTE = totalMonths > 0 ? round2(totalSum / totalMonths) : 0;
@@ -1040,7 +1041,7 @@ export function TeamTimelineModal({
 
       return { member, cap, avgFTE, hasAnyOverallocation, overallUtilization, monthlyAllocations };
     });
-  }, [members, totalMonths, projectRows, toolName]);
+  }, [members, totalMonths, projectRows, toolName, minStartAbs]);
 
   const teamCapacityTotal = useMemo(() => members.reduce((s, m) => s + (parseFloat(m.fte) || 0), 0), [members]);
 
@@ -2534,6 +2535,7 @@ export function TeamTimelineModal({
                           style={{ gridTemplateColumns: `repeat(${totalMonths}, minmax(52px, 1fr))` }}
                         >
                           {monthlyAllocations.map((alloc, gIdx) => {
+                            const availability = memberMonthAvailability(member, minStartAbs + gIdx);
                             const val = alloc.total;
                             const isOver = val > cap + 0.001;
                             const ratio = cap > 0 ? val / cap : 0;
@@ -2547,7 +2549,7 @@ export function TeamTimelineModal({
                                   className={`w-full h-8 ${isRetro ? "rounded-none font-mono" : "rounded-md"} border flex flex-col items-center justify-center select-none shadow-2xs transition-transform hover:scale-105 hover:z-20 cursor-help ${
                                     isOver ? "ring-2 ring-rose-500 shadow-md font-black" : ""
                                   }`}
-                                  title={`${member.firstName} ${member.lastName} (${member.footprint || "PRA"})\nMonth ${gIdx + 1} (${monthLabels[gIdx]?.label}): ${val.toFixed(2)} / ${cap.toFixed(2)} FTE (${pct}%)${isOver ? ` ⚠ OVERALLOCATED!` : ""}`}
+                                  title={`${member.firstName} ${member.lastName} (${member.footprint || "PRA"})\nMonth ${gIdx + 1} (${monthLabels[gIdx]?.label}): ${val.toFixed(2)} / ${cap.toFixed(2)} FTE occupied (${pct}%)\nLeave / public holidays: ${availability.unavailable.toFixed(2)} FTE; available capacity: ${availability.capacity.toFixed(2)} FTE (${availability.absentDays}/${availability.workingDays} working days unavailable)${isOver ? ` ⚠ OVERALLOCATED!` : ""}`}
                                 >
                                   <span className="text-[11px] font-mono leading-none font-black">
                                     {val > 0 ? `${pct}%` : "-"}

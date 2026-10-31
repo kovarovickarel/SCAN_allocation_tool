@@ -29,16 +29,17 @@ export function resolveMonthlyMemberAllocations(
   }));
 }
 
+export const crossTeamMemberKey = (member: TeamMemberRecord) =>
+  `${member.firstName?.trim().toLowerCase()}_${member.lastName?.trim().toLowerCase()}`;
+
 export function getCrossTeamMemberIds(members: readonly TeamMemberRecord[]): Set<string> {
   const memberTeams = new Map<string, Set<string>>();
-  const memberKey = (member: TeamMemberRecord) =>
-    `${member.firstName?.trim().toLowerCase()}_${member.lastName?.trim().toLowerCase()}`;
   for (const member of members) {
-    const key = memberKey(member);
+    const key = crossTeamMemberKey(member);
     if (!memberTeams.has(key)) memberTeams.set(key, new Set());
     memberTeams.get(key).add(member.tool);
   }
-  return new Set(members.filter((member) => memberTeams.get(memberKey(member)).size > 1)
+  return new Set(members.filter((member) => memberTeams.get(crossTeamMemberKey(member)).size > 1)
     .map((member) => member.id));
 }
 

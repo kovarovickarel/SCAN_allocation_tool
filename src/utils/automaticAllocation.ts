@@ -1,3 +1,4 @@
+import { memberMonthAvailability } from "./memberAvailability";
 import { DEFAULT_FTE_COSTS } from "../constants";
 import type { AutomaticAllocationTarget, AutomaticAllocationProject, TeamMemberRecord, NumericMap, MonthlyNumericMap, FteCostSettings } from "../types";
 
@@ -262,7 +263,8 @@ export function allocateTeamByProjectPriority(
   members: readonly TeamMemberRecord[],
   totalMonths: number,
   priorities: NumericMap,
-  fteCosts: FteCostSettings = DEFAULT_FTE_COSTS
+  fteCosts: FteCostSettings = DEFAULT_FTE_COSTS,
+  startAbsoluteMonth?: number
 ) {
   const selected = projects.filter((project) => Number.isInteger(priorities[project.id]) && priorities[project.id] > 0);
   const selectedIds = new Set(selected.map((project) => project.id));
@@ -275,7 +277,7 @@ export function allocateTeamByProjectPriority(
         if (relativeMonth < 0 || relativeMonth >= project.duration) continue;
         for (const target of project.targets) reserved += Math.max(0, Number(target.assignments[member.id]?.[relativeMonth]) || 0);
       }
-      return [member.id, Math.max(0, (Number(member.fte) || 0) - reserved)];
+      return [member.id, Math.max(0, (startAbsoluteMonth === undefined ? Number(member.fte) || 0 : memberMonthAvailability(member, startAbsoluteMonth + month).capacity) - reserved)];
     })));
   const allocations = new Map<string, MonthlyNumericMap>();
   // All selected projects share one calendar-aligned graph so later groups can

@@ -1,3 +1,4 @@
+import { absoluteMonth, memberMonthAvailability, membersWithHolidays } from "./memberAvailability";
 import type { AllocationProject, WorkpackageCard, TeamMemberRecord } from "../types";
 import { createWorkspaceFile, parseWorkspaceFile, type WorkspaceData } from "./workspaceFile";
 import { calculateProjectEffort, calculateWorkpackageMonthlyFTE, calcCardFTE, getManagementMonthlyFTE } from "./helpers";
@@ -77,7 +78,7 @@ export function previewSelectiveImport(current: WorkspaceData, incoming: Workspa
   const freshId = (id: string, used: Set<string>) => { let next = id, n = 1; while (used.has(next)) next = `import-${id}-${n++}`; used.add(next); return next; };
   const put = <T extends { id: string }>(list: T[], value: T) => { const index = list.findIndex(item => item.id === value.id); if (index < 0) list.push(value); else list[index] = value; };
   for (const key of plan.shared) {
-    if (!["fteCosts", "management", "otherDefaults", "reusabilityFactors", "stabilityFactors"].includes(key)) continue;
+    if (!["fteCosts", "management", "otherDefaults", "reusabilityFactors", "stabilityFactors", "sitePublicHolidays"].includes(key)) continue;
     Object.assign(result.configuration, { [key]: ["reusabilityFactors", "stabilityFactors"].includes(key)
       ? { ...(result.configuration as any)[key], ...(incoming.configuration as any)[key] } : copy((incoming.configuration as any)[key]) });
     changes.push(`Update shared ${key === "fteCosts" ? "FTE costs" : key} (affects all teams)`);
@@ -280,13 +281,13 @@ function allocationConflicts(data: WorkspaceData) {
   const memberLedger = new Map<string, { amount: number; name: string; capacity: number; month: string }>();
   const add = (id: string, project: AllocationProject, month: number, amount: number, management: boolean) => {
     if (amount <= 0) return;
-    const member = data.teamMembers.find(value => value.id === id);
+    const member = membersWithHolidays(data.teamMembers, config.sitePublicHolidays).find(value => value.id === id);
     if (!member) { issues.set(`missing:${id}`, { excess: amount + (issues.get(`missing:${id}`)?.excess ?? 0), message: `Allocation refers to missing team member ${id}.` }); return; }
     if ((management && member.role === "engineering") || (!management && member.role === "management")) issues.set(`role:${id}:${management}`, { excess: amount + (issues.get(`role:${id}:${management}`)?.excess ?? 0), message: `${memberName(member)} is not eligible for ${management ? "management" : "engineering"} allocations.` });
     const [year, start] = project.startDate.split("-").map(Number), date = new Date(year, start - 1 + month, 1);
     const calendar = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
     const memberKey = `${id}:${calendar}`;
-    const individual = memberLedger.get(memberKey) ?? { amount: 0, name: memberName(member), capacity: Number(member.fte) || 0, month: calendar };
+    const individual = memberLedger.get(memberKey) ?? { amount: 0, name: memberName(member), capacity: memberMonthAvailability(member, absoluteMonth(project.startDate, month)).capacity, month: calendar };
     individual.amount += amount; memberLedger.set(memberKey, individual);
   };
   for (const project of data.projects) {
