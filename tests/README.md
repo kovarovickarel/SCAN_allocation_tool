@@ -3,23 +3,28 @@
 Run `pnpm typecheck` and `pnpm test:e2e` for the current application.
 Use `pnpm test:export` for the focused export suite; it uses the same isolated
 5174 test server and mocks currency responses, so it needs no live rate service.
-Latest validation (2026-10-30): 710 app tests (including 42 System Releases,
-52 workpackage-release checks and 107 export checks), TypeScript,
-the production build and three Pages checks pass. Pages coverage includes XLSX
-export with repository-prefixed template and lazy-loaded assets. The suite uses
+Latest validation (2026-10-31): all 726 app tests passed, including current visual
+comparisons, with no failures, skips or flaky results. TypeScript, the production
+Pages build and all four Pages checks passed. This adds 16 app cases and one
+production case to the October 30 suite. Pages coverage includes XLSX export,
+repository-prefixed assets, release labels and shared timeline visibility. The suite uses
 a separate development server on port 5174 and leaves the interactive app on
 5173 alone. Run `pnpm exec playwright install chromium` once to install its browser.
 
 | Area | Suites and important behavior |
 | --- | --- |
+| October 31 release-card layout | `release-card-layout`: upright four-character rails in expanded/collapsed FTE and non-FTE cards, centred side gaps, no reserved space on unlabelled cards, details at full width without stretching the rail, all themes and both modes. |
+| Active management display | `management-inactive-months`: empty, non-editable inactive months in project/team staffing; sequential active-month numbering across gaps; engineering average restricted to months meeting the threshold, including a below-threshold month and unequal active demand; active segment borders in every theme. |
+| Allocation release editing and matching | `scheduling-milestone-layout` and `workpackage-system-release`: FTE/Other scheduling release field left of the start month; full-width non-FTE release field; saved/cancelled drafts, numeric rounding, mandatory rules, matched/unmatched manual and automatic allocation, separate stacked schedule/release messages, field-specific highlighting, font parity and atomic Undo. Historical imported mismatches remain supported. |
+| Shared release-row visibility | `system-releases`: staffing/spending default open, share one locally persisted choice per project, retain it across reopen/reload, and leave other projects independent. Sticky spending totals follow the visible row. |
 | Responsive card and scheduling labels | `finish-target-label`, `subtool-card-label`, `scheduling-milestone-layout` and `non-fte`: icon-only purchase types, conditional Finish Target headings, TC/PL abbreviations, restoration on widening and five milestone tags on one row with two-digit months in both scheduling dialogs/all themes. |
 | Management export attribution | `planning-export-management` plus workbook checks: monthly demand proportions by SYS, active/hidden categories, multiple internal sites, unmet demand, legacy scalar allocations, unchanged app hours/costs/source, deferred external management by work month and both XLSX tabs. |
 | Planning export release codes | `planning-export-release` and workbook checks: release priority over milestone, all five series, legacy Other and purchase targets, unbound defaults, same-series grouping, split internal/unmet/external rows, unchanged source/totals and actual cells in both XLSX tabs. |
 | Project planning export | `project-planning-export`, `planning-export-calculations`, `planning-export-release`, `planning-export-workbook`, `planning-export-ui`, `planning-export-management`: 107 checks covering exact allocation/cost results, internal/external separation, sites and management, purchase schedules/overrides, salary delays, EUR conversion and failures, missing/zero rates, actual XLSX fields/formulas/styles/groups, calendar expansion and blue-note boundaries, project colours/names, safe text cells, immutable source data, both download buttons, repeat clicks, retries, timeout recovery, Basic mode and updated guide navigation. |
 | Responsive project cost breakdown | `external-salary-spending`: full-value tooltips remain accurate, visible breakdowns switch to k amounts at narrow widths and restore full amounts when widened in Vibrant, Basic and Retro themes. |
 | Mandatory workpackage releases | `mandatory-system-release`: tool-specific defaults, historical optional behavior, flag validation, R100 backfill only on matching FTE instances, required create/edit fields, new-type defaults, configuration cancellation and atomic Undo/Redo. |
-| Missing project release warning | `workpackage-release-warning`: FTE/non-FTE automatic, matching and missing project plans; no pool warning; exact tooltip, pulsing glow and reduced-motion fallback; release removal, discard, restoration and Undo/Redo; project staffing and spending tag placement, live release-draft warnings, and no workpackage release tags in combined team staffing. |
-| Workpackage release labels | `workpackage-system-release`: optional numeric labels, rounding and clearing, FTE/non-FTE/legacy Other creation/editing, oval badges, cancellation, Undo, JSON validation/round trips, copying, selective import, unchanged costs and unrestricted assignment to projects without releases. |
+| Missing project release warning | `workpackage-release-warning`: FTE/non-FTE automatic, matching and missing project plans; no pool warning; exact tooltip, pulsing glow and reduced-motion fallback; release removal, discard, restoration and Undo/Redo; vertical project staffing/spending labels, live release-draft warnings, and horizontal team tags beneath coverage with name-aligned type/member badges. |
+| Workpackage release labels | `workpackage-system-release`: optional numeric labels, rounding and clearing, FTE/non-FTE/legacy Other creation/editing, cancellation, Undo, JSON validation/round trips, copying, selective import, unchanged costs and matching-release requirements for new allocations. |
 | System releases | `system-releases`: default-on creation checkbox, opt-out/manual additions, rounded cadence, naming/order/month bounds, explicit empty plans, old JSON compatibility, custom round trips, milestone independence, Undo/Redo, selective settings, inline Manual Adjust gating, dashed add/red remove, release dragging with occupied/outside/cross-project rejection and shifted team calendars, deferred Save validation with a draft-preserving warning prompt, focus/keyboard/outside-click checks and draft Save/Discard/Escape, project/team editing and duplication; read-only spending release tracks in all themes, sticky offsets, graph switching and unchanged source plans. |
 | Project classification | `project-classification`: P1/P2 creation/editing, P2 RFQ restriction, missing-field historical defaults, strict import validation, selective settings import, Undo/Redo, summary badge placement and responsive RFQ priority in team timelines. |
 | Undo / Redo | `workspace-history`: atomic multi-slice operations, stable redo IDs, no-op/failed saves, detail typing/list grouping, schedule cleanup, 50-step and estimated byte limits, shared snapshots, schema-1 compatibility, 2x2 toolbar, imports/merges, duplication/deletion, configuration, allocation saves, shortcuts, draft protection, view exclusion and session reset. |
@@ -46,7 +51,7 @@ planning data survives a reload. Deterministic routed component fixtures in
 
 `pnpm test:pages` builds the production app and runs `pages/deployment.spec.ts`
 against Vite preview on port 4174 under `/SCAN_allocation_tool/`. It verifies
-bundled scripts/styles, the logo, dashboard/filter/guide navigation, and JSON
+bundled scripts/styles, the logo, dashboard/filter/guide navigation, release labels and shared per-project row visibility, and JSON
 export/import. These tests are separate from the development suite; they do not
 use development-only fixtures. The deployment workflow runs them before uploading
 the site, so a failed production check stops publication.
@@ -64,6 +69,15 @@ verifies that migrations preserve saved source data, including the legacy
 first-month milestone exception and omitted automatic-start flag.
 
 ## Screenshot policy
+
+October 31: seven current references were visually reviewed and refreshed: the
+three themed non-FTE scheduling dialogs, the three themed compact dashboards with
+release rails, and the project staffing timeline with its default-open release row.
+An unintended margin collapse in the release-card wrapper was fixed to preserve
+unlabelled card spacing; unrelated dashboard/form/card references were retained.
+Use Playwright's installed Chromium headless shell for reproducible comparison:
+launching full Chrome in headless mode produced small unrelated SVG differences.
+No screenshot tolerances, historical references or frozen JSON fixtures changed.
 
 `current-ui-snapshots/` contains reviewed current references. Inspect failures and
 update only snapshots affected by an accepted UI change; do not regenerate all

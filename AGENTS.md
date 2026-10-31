@@ -4,6 +4,18 @@ Read this file before changing the application. It describes the current product
 
 ## Start here: current handoff
 
+Project staffing and spending release rows default open. Their expansion choices
+persist locally per project ID, shared between staffing and spending via `useProjectReleaseVisibility`, outside
+workspace JSON and Undo/Redo. Closing a timeline or discarding planning edits does
+not reset these presentation preferences. Planning data itself is not autosaved.
+
+October 31 allocation rule: a release-labelled WP can only be newly allocated or
+explicitly rescheduled to a project containing that release. Use the shared
+`releaseAssignmentError` check for manual FTE/Other, non-FTE and automatic-start
+allocation paths. Dialog release edits save atomically with schedules. Do not
+apply this restriction to historical JSON imports or retroactively unassign
+existing plans; preserve schema-1 compatibility and missing-release warnings.
+
 **JSON compatibility requirement:** Read `JSON_COMPATIBILITY.md` before changing
 export/import, domain fields, validation, defaults or calculations that affect
 saved workspaces. The user-tested `6b4b08e` release (2026-10-12, JSON schema 1) is

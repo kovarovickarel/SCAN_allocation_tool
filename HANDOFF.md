@@ -1,6 +1,59 @@
 # Development handoff
 
-Updated: 2026-10-30 (Europe/Prague).
+Updated: 2026-10-31 (Europe/Prague).
+
+## October 31: laptop release UI and test-suite refresh
+
+The laptop Git checkout pulled master through `062e1cf`. This session's source,
+test and documentation changes are grouped into local commits; no push was requested.
+The active checkout is `work/publish-repository` in the laptop Codex workspace,
+not the older Desktop ZIP copy. Localhost on 5173 serves this checkout.
+
+Current changes:
+- Release badges use upright stacked characters in a left rail on expanded FTE
+  and non-FTE cards, from the name row through Efforts/Total cost only. Details
+  keep their full width. Compact rails span both rows; unlabelled cards reserve
+  no rail space. Rails have equal horizontal side gaps.
+- Project staffing/spending show vertical release badges and omit Standard type
+  labels. Team staffing shows horizontal release badges beneath coverage, with
+  type/member tags aligned with the workpackage name.
+- Allocation previews show small, milestone-coloured release tags below months.
+  Legends align text baselines/sizes; Total and MO stay on one line.
+- FTE/Other allocation edits System release left of Starting Month; non-FTE has
+  a full-width field below Payment Target. Confirm saves the release and schedule
+  in one history action, Cancel discards them, and mandatory rules remain.
+- A selected release must exist in the target project for manual FTE/Other,
+  non-FTE and automatic-start allocation. Separate schedule/release messages stack
+  and mark their own fields. Existing imported mismatches remain supported;
+  `JSON_COMPATIBILITY.md` documents allocation-only validation.
+- Release rows default open and share one locally persisted preference per
+  project between staffing and spending. They stay outside JSON and Undo/Redo.
+- Inactive project management months are dots; active cells count only active
+  months. The ENG FTE badge averages demand only in threshold-eligible months.
+
+Final verification: all 726 application tests passed in one complete rerun
+(7.4 minutes), with zero failures, skips or flaky results. TypeScript, the Pages
+production build and all four production tests also passed. Seven current
+screenshots were reviewed/refreshed; historical screenshots and frozen JSON
+fixtures are unchanged. Visual checks caught and fixed an unintended 4px spacing
+regression on unlabelled cards. Use Chromium's installed headless shell rather
+than full Chrome headless to avoid tiny SVG rendering differences. See
+`tests/README.md` for the updated coverage map. App tests used isolated port 5174;
+Pages tests ran afterwards on 4174. The existing bundle-size advisory remains.
+
+Context commits:
+- `a2f57e5`: card/timeline release-badge layouts, responsive rail tests and compact references.
+- `64f6e04`: release-aware allocation forms, matching validation, schedule previews and tests.
+- `c0a6a72`: active management cells, numbering, threshold-based ENG average and tests.
+- `86baff7`: shared per-project release-row preference, persistence and production checks.
+- A final documentation commit updates Help, agent/test guidance and this handoff,
+  and removes the three user-requested release-positioning/decision items from TODO.
+
+The validated source and tests are unchanged by this commit grouping. The user
+has not requested publication of these commits in this session.
+
+The older dated sections below are historical; this section supersedes their
+test counts, release placement and unrestricted-allocation descriptions.
 
 ## October 30: current working state and other-PC handover
 
