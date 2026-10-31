@@ -6,6 +6,7 @@ import { DEFAULT_NON_FTE_TYPES, NonFteTypesContext } from "./utils/nonFteBasicTy
 import { nominalWorkpackageManHoursBreakdown } from "./utils/manHours";
 import { supportingPhaseRates } from "./utils/supportingPhases";
 import { workpackageRateKey } from "./utils/workpackageTypes";
+import { releaseAssignmentError } from "./utils/systemReleases";
 import { WorkspaceFileControls } from "./components/features/WorkspaceFileControls";
 import { ProjectPlanningExportButton } from "./components/features/ProjectPlanningExportButton";
 import type { WorkspaceData, WorkspaceView } from "./utils/workspaceFile";
@@ -498,6 +499,11 @@ export default function App() {
         return;
       }
       if (targetCard && targetProj) {
+        const releaseError = releaseAssignmentError(targetProj, targetCard.systemRelease);
+        if (releaseError) {
+          setAssignmentWarning({ cardName: targetCard.name, projectName: targetProj.name, reason: releaseError });
+          return;
+        }
         const reason = workpackageFinishViolation({ ...targetCard, projectId: null, startMonth: 1 }, targetProj, config.fteRates, config.toolFteRates);
         if (reason) {
           setAssignmentWarning({ cardName: targetCard.name, projectName: targetProj.name, reason });
@@ -537,11 +543,12 @@ export default function App() {
     );
   }, [functions, projects, config.fteRates, config.toolFteRates, isBasicMode]);
 
-  const handleConfirmOtherAssignment = useWorkspaceAction(history, "Schedule workpackage", (startMonth, finishMilestone) => {
+  const handleConfirmOtherAssignment = useWorkspaceAction(history, "Schedule workpackage", (startMonth, finishMilestone, systemRelease) => {
     if (!pendingOtherAssignment) return;
     const { card } = pendingOtherAssignment;
     const project = projects.find(item => item.id === pendingOtherAssignment.project.id);
     if (!project || !Number.isInteger(startMonth) || startMonth < 1) return;
+    if (releaseAssignmentError(project, systemRelease)) return;
     const schedule = card.tool === "Other" && !card.complexity
       ? { otherStartMonth: startMonth, otherFinishMilestone: finishMilestone || null }
       : { startMonth, finishMilestone: finishMilestone || null };
@@ -553,6 +560,7 @@ export default function App() {
               ...f,
               projectId: project.id,
               ...schedule,
+              systemRelease,
             }
           : f
       )
@@ -1209,8 +1217,9 @@ export default function App() {
           }} />}
         {pendingPurchase && <AssignNonFteModal card={pendingPurchase.card} project={pendingPurchase.project}
           factors={config.reusabilityFactors} onClose={() => setPendingPurchase(null)}
-          onConfirm={(months, milestone, mode, shares) => history.run("Schedule purchase", () => {
+          onConfirm={(months, milestone, mode, shares, systemRelease) => history.run("Schedule purchase", () => {
             const { card, project } = pendingPurchase;
+            if (releaseAssignmentError(project, systemRelease)) return;
             const valid = validPurchaseMonths({ ...card, purchaseMilestone: milestone, purchaseMonths: months, purchasePaymentOverrides: undefined }, project);
             if (valid.length === 0 || valid.length !== months.length || (mode === "split" && !hasValidPurchasePaymentShares(valid, shares))) return;
             const scheduled = { ...card, projectId: project.id, purchaseMilestone: milestone, purchaseMonths: valid,
@@ -1218,7 +1227,7 @@ export default function App() {
             const overrides = card.purchasePaymentOverrides ? Object.fromEntries(purchaseMonthlyCosts({ ...scheduled,
               purchasePriceEUR: purchaseCost(card, config.reusabilityFactors), reusability: "Other", customReusabilityFactor: 1 }, project, config.reusabilityFactors)
               .map((value, index) => [index + 1, value])) : undefined;
-            setFunctions(current => current.map(item => item.id === card.id ? { ...(pendingPurchase.edited ? card : item), projectId: project.id, subcategory: purchaseSubcategory(card), purchaseMilestone: milestone, purchaseMonths: valid,
+            setFunctions(current => current.map(item => item.id === card.id ? { ...(pendingPurchase.edited ? card : item), projectId: project.id, subcategory: purchaseSubcategory(card), purchaseMilestone: milestone, purchaseMonths: valid, systemRelease,
               purchasePaymentMode: mode, purchasePaymentShares: mode === "split" ? shares : undefined, purchasePaymentOverrides: overrides } : item));
             setPendingPurchase(null);
           })} />}

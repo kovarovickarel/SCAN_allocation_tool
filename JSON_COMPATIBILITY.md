@@ -1,5 +1,18 @@
 # Workspace JSON compatibility
 
+## Allocation release matching (October 31)
+
+New FTE/non-FTE allocations, moves to another project and explicit rescheduling
+require a selected workpackage release to exist in the destination project's
+resolved release plan (including automatically generated releases). Unlabelled
+workpackages retain their existing rules; explicitly mandatory types still need
+a release. Allocation dialogs stage release edits with the schedule, and Cancel
+discards them. Automatic-start drops enforce the same matching requirement.
+This is allocation-time validation only: schema-1 imports and existing saved
+plans with missing project releases remain supported and retain their warning
+badges. No schema change, source migration or frozen-fixture change is needed.
+This rule supersedes historical statements below about unrestricted assignment.
+
 ## Session Undo / Redo (October 19)
 
 History contains committed planning source data only, using the existing domain

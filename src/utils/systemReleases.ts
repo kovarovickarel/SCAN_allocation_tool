@@ -85,3 +85,9 @@ export function normalizeSystemReleaseNumber(value: string | number | null | und
 export function isSystemReleaseNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isInteger(value) && value >= 100 && value <= 590 && value % 10 === 0;
 }
+
+/** Allocation-only rule: historical workspaces and existing schedules remain valid. */
+export function releaseAssignmentError(project: AllocationProject, value?: number | null): string | null {
+  if (!isSystemReleaseNumber(value) || projectSystemReleases(project).some(release => releaseCode(releaseLabel(release)) === value)) return null;
+  return `Project "${project.name}" does not contain R${value}. Choose a release included in this project, or cancel and add R${value} to the project's system releases before allocating this workpackage.`;
+}

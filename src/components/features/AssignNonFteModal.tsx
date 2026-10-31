@@ -1,4 +1,6 @@
 import { ThemeContext, MILESTONES_DEF } from "../../constants";
+import { SystemReleaseField } from "../ui/SystemReleaseField";
+import { releaseAssignmentError } from "../../utils/systemReleases";
 import { useContext, useMemo, useRef, useState } from "react";
 import type { AllocationProject, FactorMap, NumericMap, PurchasePaymentMode, WorkpackageCard } from "../../types";
 import { parsePurchasePaymentAmount, purchaseCost, purchaseDeadline, purchaseMonthlyCosts, validPurchaseMonths } from "../../utils/nonFteWorkpackages";
@@ -9,12 +11,13 @@ import { ToolIcon } from "../ui/icons";
 
 export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }: {
   card: WorkpackageCard; project: AllocationProject; factors: FactorMap;
-  onConfirm: (months: number[], milestone: string | null, mode: PurchasePaymentMode, shares?: NumericMap) => void; onClose: () => void;
+  onConfirm: (months: number[], milestone: string | null, mode: PurchasePaymentMode, shares?: NumericMap, systemRelease?: number) => void; onClose: () => void;
 }) {
   const { isRetro } = useContext(ThemeContext);
   useEscapeKey(onClose);
   const [months, setMonths] = useState<number[]>(() => card.projectId === project.id ? validPurchaseMonths(card, project).filter(month => month <= purchaseDeadline(card, project)) : []);
   const [selectedMilestone, setSelectedMilestone] = useState(card.purchaseMilestone || "");
+  const [systemRelease, setSystemRelease] = useState(card.systemRelease ?? undefined);
   const [splitPayments, setSplitPayments] = useState(card.projectId === project.id && (card.purchasePaymentMode === "split" || Boolean(card.purchasePaymentOverrides)));
   const [paymentInputs, setPaymentInputs] = useState<Record<number, string>>(() => {
     if (card.projectId !== project.id || (card.purchasePaymentMode !== "split" && !card.purchasePaymentOverrides)) return {};
@@ -32,7 +35,8 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
   const allocatedCents = months.reduce((sum, month) => sum + (parsePurchasePaymentAmount(paymentInputs[month] ?? "") ?? 0), 0);
   const remainingCents = totalCents - allocatedCents;
   const validSplit = months.every(month => (parsePurchasePaymentAmount(paymentInputs[month] ?? "") ?? 0) > 0) && remainingCents === 0;
-  const canConfirm = months.length > 0 && (mode !== "split" || validSplit);
+  const releaseError = releaseAssignmentError(project, systemRelease);
+  const canConfirm = months.length > 0 && (mode !== "split" || validSplit) && !releaseError;
   const monthlyCosts = mode === "split" ? Array.from({ length: project.duration }, (_, index) => months.includes(index + 1)
     ? (parsePurchasePaymentAmount(paymentInputs[index + 1] ?? "") ?? 0) / 100 : 0) : purchaseMonthlyCosts(scheduledCard, project, factors);
   const { startAutoScroll, stopAutoScroll } = useHorizontalSelectionAutoScroll();
@@ -116,9 +120,14 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
         </div>
       </div>
 
+      <SystemReleaseField value={systemRelease} onChange={setSystemRelease}
+        prefixClassName={`text-xs font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-400 font-sans"}`}
+        labelClassName={`text-xs font-bold block mb-1 ${isRetro ? "text-black font-mono" : "text-slate-800"}`}
+        inputClassName={`w-full text-xs font-mono font-bold px-3 py-2 ${isRetro ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black" : "border border-slate-300 rounded-lg shadow-xs bg-white text-slate-800 focus-within:ring-2 focus-within:ring-blue-500"}`} />
+
       <div className={`p-3 select-none ${isRetro ? "bg-[#c0c0c0] border-2 border-t-black border-l-black border-b-white border-r-white text-black font-mono" : "border border-slate-200 rounded-xl bg-slate-50"}`}>
         <div className={`text-[10px] font-bold uppercase tracking-wider mb-2 flex items-center justify-between gap-2 ${isRetro ? "text-black" : "text-slate-500"}`}>
-          <span className="flex flex-col gap-1"><span>Project Schedule Preview</span><span className={`font-normal lowercase ${isRetro ? "text-slate-700" : "text-slate-400"}`}>(click or drag across months to select payments)</span></span><span className="font-mono">Total: {project.duration} Mo</span>
+          <span className="flex flex-col gap-1"><span>Project Schedule Preview</span><span className={`font-normal lowercase ${isRetro ? "text-slate-700" : "text-slate-400"}`}>(click or drag across months to select payments)</span></span><span className="font-mono whitespace-nowrap shrink-0">Total: {project.duration} Mo</span>
         </div>
         <div className={`p-2 shadow-2xs overflow-x-auto ${isRetro ? "bg-white border-2 border-black" : "rounded-lg border border-slate-300 bg-white"}`}>
           <div style={{ minWidth: `${Math.max(100, project.duration * 28)}px` }}>
@@ -150,6 +159,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
                 <span className="text-[6.5px] opacity-75 leading-none font-medium pointer-events-none">M{value}</span><span className="text-[7.5px] font-bold leading-none mt-0.5 tracking-tighter whitespace-nowrap pointer-events-none">{label}</span>
               </button>)}
             </div>
+            <ScheduleReleasePreview project={project} />
           </div>
         </div>
         <div className={`flex flex-col gap-1.5 mt-2.5 pt-2 ${isRetro ? "border-t-2 border-black" : "border-t border-slate-200"}`}>
@@ -160,7 +170,7 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
           </div>
           <div className="grid grid-cols-5 items-center gap-1 text-[9px] text-slate-700">
             {MILESTONES_DEF.map(milestone => <span key={milestone.key} className={`flex items-center justify-center gap-0.5 min-w-0 whitespace-nowrap px-0.5 py-0.5 ${selectedMilestone === milestone.key ? "bg-blue-100/70 border border-blue-300 font-bold rounded" : ""}`} title={`${milestone.label}: ${milestone.name}`}>
-              <span className={`w-1.5 h-1.5 shrink-0 rotate-45 ${milestone.dot} border border-slate-300 shadow-2xs`} /><span className="font-bold">{milestone.label}</span><span className="text-[7px] text-slate-400 font-mono">(M{milestones[milestone.key]})</span>
+              <span className={`w-1.5 h-1.5 shrink-0 rotate-45 ${milestone.dot} border border-slate-300 shadow-2xs`} /><span className="inline-flex items-baseline gap-0.5 leading-none"><span className="font-bold">{milestone.label}</span><span className="text-slate-400 font-mono">(M{milestones[milestone.key]})</span></span>
             </span>)}
           </div>
         </div>
@@ -189,15 +199,17 @@ export function AssignNonFteModal({ card, project, factors, onConfirm, onClose }
         {!validSplit && <p className="text-[10px] text-slate-500">Assign the full price, with a positive payment for each selected month.</p>}
       </section>}
       <p className="text-[11px] text-slate-500">{months.length === 0 ? "Select at least one payment month." : mode === "at-once" ? "The full price is paid in the selected month." : mode === "even" ? "The cost is split evenly across the selected months." : "Enter each month's portion of the total price."}</p>
+      {releaseError && <p role="alert" className="text-xs text-red-800 bg-red-50 border border-red-300 rounded-lg p-2.5">{releaseError}</p>}
       <footer className={`flex gap-2 pt-2 mt-1 ${isRetro ? "border-t-2 border-black" : "border-t"}`}>
         <button type="button" onClick={onClose} className={isRetro ? "flex-1 bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black text-xs py-2 cursor-pointer" : "flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs py-2 rounded-lg font-bold transition-colors cursor-pointer"}>Cancel</button>
         <button type="button" disabled={!canConfirm} onClick={() => {
           if (!canConfirm) return;
           const valid = validPurchaseMonths(scheduledCard, project);
           const shares = mode === "split" ? Object.fromEntries(valid.map(month => [month, parsePurchasePaymentAmount(paymentInputs[month])! / totalCents])) : undefined;
-          if (valid.length > 0) onConfirm(valid, selectedMilestone || null, mode, shares);
+          if (valid.length > 0) onConfirm(valid, selectedMilestone || null, mode, shares, systemRelease);
         }} className={isRetro ? "flex-1 bg-[#000080] disabled:bg-[#808080] disabled:text-[#c0c0c0] text-white font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black text-xs py-2 cursor-pointer" : "flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs py-2 rounded-lg font-bold transition-colors cursor-pointer shadow-xs"}>{card.projectId === project.id ? "Save Payment Months" : "Confirm & Place in Project"}</button>
       </footer>
     </div>
   </div>;
 }
+import { ScheduleReleasePreview } from "../ui/ScheduleReleasePreview";

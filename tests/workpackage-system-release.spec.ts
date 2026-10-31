@@ -97,9 +97,10 @@ test("legacy Other workpackages can edit a release beside their finish boundary"
   await expect(card.getByText("R360", { exact: true })).toBeVisible();
   expect((await exported(page)).workpackages.find(card => card.id === "fte")!.systemRelease).toBe(360);
 });
-for (const kind of ["fte", "non-fte"] as const) test(`release-labelled work can be assigned to projects with no releases (${kind})`, async ({ page }) => {
+for (const kind of ["fte", "non-fte"] as const) for (const matching of [false, true]) test(`release-labelled allocation requires a matching project release (${kind}, matching=${matching})`, async ({ page }) => {
   const data = historyWorkspace(); data.projects[0].systemReleases = []; data.projects[0].autoStartFte = true;
   data.view.workpackageKind = kind;
+  if (matching) data.projects[0].systemReleases = [{ id: "matching", milestone: "SSSR", sequence: 90, month: 2 }];
   const card = kind === "fte" ? { ...data.workpackages[2], tool: "KPI", complexity: "Perception" } : data.workpackages[1];
   card.projectId = null; card.systemRelease = 590; card.name = "Release without project match";
   data.workpackages = [card];
@@ -108,8 +109,17 @@ for (const kind of ["fte", "non-fte"] as const) test(`release-labelled work can 
   await work.dragTo(page.getByRole("heading", { name: "History project", exact: true }));
   if (kind === "non-fte") {
     await page.getByRole("button", { name: /^M1 ·/ }).click();
-    await page.getByRole("button", { name: "Confirm & Place in Project", exact: true }).click();
+    const confirm = page.getByRole("button", { name: "Confirm & Place in Project", exact: true });
+    if (matching) await confirm.click();
+    else {
+      await expect(confirm).toBeDisabled();
+      await expect(page.getByRole("alert")).toContainText("does not contain R590");
+      await page.getByRole("button", { name: "Cancel", exact: true }).click();
+    }
+  } else if (!matching) {
+    await expect(page.getByText(/does not contain R590\./)).toBeVisible();
+    await page.getByRole("button", { name: "Understood", exact: true }).click();
   }
   const saved = (await exported(page)).workpackages[0];
-  expect(saved.projectId).toBe("p"); expect(saved.systemRelease).toBe(590);
+  expect(saved.projectId).toBe(matching ? "p" : null); expect(saved.systemRelease).toBe(590);
 });

@@ -1,4 +1,7 @@
-import { workpackageRateKey, isMaintenancePhase } from "../../utils/workpackageTypes";
+import { workpackageRateKey, isMaintenancePhase, workpackageRequiresSystemRelease } from "../../utils/workpackageTypes";
+import { SystemReleaseField } from "../ui/SystemReleaseField";
+import { isSystemReleaseNumber, releaseAssignmentError } from "../../utils/systemReleases";
+import { ScheduleReleasePreview } from "../ui/ScheduleReleasePreview";
 import { workpackageDevelopmentMonths, workpackageMainMonths, workpackageFinishTarget } from "../../utils/workpackageFinishTargets";
 import { DEFAULT_FTE_RATES } from "../../constants";
 import { applySalaryTotals } from "../../utils/externalSalaries";
@@ -1468,6 +1471,10 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
   const finalEffort = round2(rawEffort * reusabilityMult);
 
   const [selectedMilestone, setSelectedMilestone] = useState(workpackageFinishTarget(card) || "");
+  const [systemRelease, setSystemRelease] = useState(card.systemRelease ?? undefined);
+  const releaseRequired = workpackageRequiresSystemRelease(card, toolFteRates);
+  const isMissingRelease = releaseRequired && !isSystemReleaseNumber(systemRelease);
+  const releaseError = releaseAssignmentError(project, systemRelease);
 
   const milestones = useMemo(
     () => normalizeMilestones(project.milestones, projectDuration, null, project.legacyReqfCoincidence),
@@ -1726,7 +1733,12 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
           </div>
         </div>
 
-        <div>
+        <div className="grid grid-cols-2 gap-3 items-end">
+        <SystemReleaseField value={systemRelease} onChange={setSystemRelease} required={releaseRequired} invalid={Boolean(releaseError) || isMissingRelease}
+          prefixClassName={`text-xs font-bold ${isRetro ? "text-black font-mono font-black" : "text-slate-400 font-sans"}`}
+          labelClassName={`text-xs font-bold block mb-1 ${isRetro ? "text-black font-mono" : "text-slate-800"}`}
+          inputClassName={`w-full text-xs font-mono font-bold px-3 py-2 ${isRetro ? releaseError || isMissingRelease ? "border-2 border-red-600 bg-red-50 text-red-900" : "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black" : releaseError || isMissingRelease ? "border border-red-400 bg-red-50 text-red-900 rounded-lg shadow-xs focus-within:ring-2 focus-within:ring-red-500" : "border border-slate-300 rounded-lg shadow-xs bg-white text-slate-800 focus-within:ring-2 focus-within:ring-blue-500"}`} />
+        <div className="min-w-0">
           <label className={`text-xs font-bold block mb-1 ${isRetro ? "text-black font-mono" : "text-slate-800"}`}>
             Workpackage Starting Month
           </label>
@@ -1743,8 +1755,8 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
               value={startMonthInput}
               onChange={handleInputChange}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && !isDurationTooLong && !isNaN(startMonth) && startMonth >= 1) {
-                  onConfirm(startMonth, selectedMilestone || null);
+                if (e.key === "Enter" && !isDurationTooLong && !isNaN(startMonth) && startMonth >= 1 && !isMissingRelease && !releaseError) {
+                  onConfirm(startMonth, selectedMilestone || null, systemRelease);
                 }
                 if (e.key === "Escape") onCancel();
               }}
@@ -1762,6 +1774,8 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
           </div>
         </div>
 
+        </div>
+
         <div className={`p-3 select-none ${
           isRetro
             ? "bg-[#c0c0c0] border-2 border-t-black border-l-black border-b-white border-r-white text-black font-mono"
@@ -1774,7 +1788,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
               <span>Project Schedule Preview</span>
               <span className={`font-normal lowercase ${isRetro ? "text-slate-700" : "text-slate-400"}`}>(click or drag across months to assign)</span>
             </span>
-            <span className="font-mono">Total: {projectDuration} Mo</span>
+            <span className="font-mono whitespace-nowrap shrink-0">Total: {projectDuration} Mo</span>
           </div>
 
           <div className={`p-2 shadow-2xs overflow-x-auto ${
@@ -1889,6 +1903,7 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
                   );
                 })}
               </div>
+              <ScheduleReleasePreview project={project} />
             </div>
           </div>
 
@@ -1921,8 +1936,10 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
                   title={`${m.label}: ${m.name} (Month ${milestones[m.key]})`}
                 >
                   <span className={`w-1.5 h-1.5 shrink-0 rotate-45 ${m.dot} border border-slate-300 inline-block shadow-2xs`} />
-                  <span className="font-bold">{m.label}</span>
-                  <span className="text-[7px] text-slate-400 font-mono">(M{milestones[m.key]})</span>
+                  <span className="inline-flex items-baseline gap-0.5 leading-none">
+                    <span className="font-bold">{m.label}</span>
+                    <span className="text-slate-400 font-mono">(M{milestones[m.key]})</span>
+                  </span>
                 </span>
               ))}
             </div>
@@ -1944,6 +1961,13 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
           </div>
         )}
 
+        {(releaseError || isMissingRelease) && <div role="alert" className={`p-2.5 text-xs flex items-start gap-2 shadow-xs ${isRetro
+          ? "bg-red-200 border-2 border-red-700 text-black font-mono font-bold"
+          : "border-l-4 bg-red-50 border-red-500 text-red-800 rounded-r-lg"}`}>
+          <span aria-hidden="true" className="font-bold shrink-0 text-sm leading-none mt-0.5 text-red-500">✕</span>
+          <div className="leading-snug">{releaseError || "A system release is required for this workpackage. Choose a release included in this project."}</div>
+        </div>}
+
         <div className={`flex gap-2 pt-2 mt-1 ${isRetro ? "border-t-2 border-black" : "border-t"}`}>
           <button
             type="button"
@@ -1958,8 +1982,8 @@ export function AssignOtherWPModal({ card, project, onConfirm, onCancel, reusabi
           </button>
           <button
             type="button"
-            disabled={isDurationTooLong || isNaN(startMonth) || startMonth < 1}
-            onClick={() => onConfirm(startMonth, selectedMilestone || null)}
+            disabled={isDurationTooLong || isNaN(startMonth) || startMonth < 1 || isMissingRelease || Boolean(releaseError)}
+            onClick={() => onConfirm(startMonth, selectedMilestone || null, systemRelease)}
             className={
               isRetro
                 ? "flex-1 bg-[#000080] disabled:bg-[#808080] disabled:text-[#c0c0c0] text-white font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black text-xs py-2 cursor-pointer"
