@@ -1,4 +1,5 @@
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
+import { useProjectReleaseVisibility } from "../../hooks/useProjectReleaseVisibility";
 import { SystemReleasesTrack } from "./SystemReleasesTrack";
 import { releaseTrackHeight } from "../../utils/systemReleases";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
@@ -41,7 +42,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const { isRetro, isBasic } = useContext(ThemeContext);
   const { project, members, activeToolView = "all" } = options;
   const [manualAdjust, setManualAdjust] = useState(false);
-  const [showReleases, setShowReleases] = useState(false);
+  const [showReleases, setShowReleases] = useProjectReleaseVisibility(project.id);
   const [paymentDrafts, setPaymentDrafts] = useState<PurchasePaymentDrafts>({});
   const [paymentInputs, setPaymentInputs] = useState<Record<string, Record<number, string>>>({});
   const [editingPayment, setEditingPayment] = useState<{ id: string; month: number } | null>(null);

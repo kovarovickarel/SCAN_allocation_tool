@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 import { parseWorkspaceFile, serializeWorkspace } from "../../src/utils/workspaceFile";
 import { unzipSync, strFromU8 } from "fflate";
+import { historyWorkspace } from "../fixtures/historyWorkspace";
 
 test("built app loads scripts, styles and logo under the repository path and supports dashboard navigation", async ({ page }) => {
   const errors: string[] = [];
@@ -68,4 +69,24 @@ test("built app downloads all-project XLSX with prefix-safe template and lazy-lo
   expect(archive["xl/worksheets/sheet2.xml"]).toBeDefined();
   expect(templates).toEqual(["http://127.0.0.1:4174/SCAN_allocation_tool/templates/project-planning.xlsx"]);
   expect(failures).toEqual([]);
+});
+
+test("built release labels and shared timeline visibility work under the Pages prefix", async ({ page }) => {
+  const data = historyWorkspace();
+  data.projects[0].systemReleases = [{ id: "release", milestone: "REQF", sequence: 0, month: 2 }];
+  data.workpackages = [{ id: "release-wp", name: "Built release work", tool: "KPI", complexity: "Perception", projectId: "p", reusability: "New", systemRelease: 100 }];
+  await page.goto("./");
+  await page.getByLabel("Workspace file", { exact: true }).setInputFiles({ name: "release-plan.json", mimeType: "application/json", buffer: Buffer.from(serializeWorkspace(data)) });
+  await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
+  const card = page.locator('[draggable="true"]').filter({ has: page.getByText("Built release work", { exact: true }) }).last();
+  await expect(card.getByTitle("System release R100", { exact: true }).locator(":scope > span")).toHaveText(["R", "1", "0", "0"]);
+  await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).click();
+  let toggle = page.getByRole("button", { name: "Toggle system releases for History project", exact: true });
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await toggle.click(); await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: /^Project cost:/ }).click();
+  toggle = page.getByRole("button", { name: "Toggle system releases for History project", exact: true });
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click();
+  await expect(page.getByLabel("System releases timeline for History project", { exact: true })).toBeVisible();
 });

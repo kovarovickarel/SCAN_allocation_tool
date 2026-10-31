@@ -1,4 +1,5 @@
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
+import { useProjectReleaseVisibility } from "../../hooks/useProjectReleaseVisibility";
 import { releasesFromDrafts } from "../../utils/systemReleases";
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
 import { SystemReleasesTrack } from "./SystemReleasesTrack";
@@ -31,7 +32,7 @@ export function ProjectTimelineModal({
   activeToolView = "all",
 }: ProjectTimelineModalProps) {
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
-  const [showReleases, setShowReleases] = useState(false);
+  const [showReleases, setShowReleases] = useProjectReleaseVisibility(project.id);
   const [releaseDrafts, setReleaseDrafts] = useState<SystemReleaseDraft[] | undefined>();
   const [releaseSaveError, setReleaseSaveError] = useState<string | null>(null);
   useEscapeKey(onClose, !releaseSaveError);
@@ -427,13 +428,13 @@ export function ProjectTimelineModal({
         const baseMgmtCount = toolOverhead.count;
         const defaultMgmtFTE = round2(toolOverhead.defaultMonthlyFTE.reduce((sum, value) => sum + value, 0) / duration);
         const managementMonths = getManagementMonthlyFTE(toolOverhead, localProject);
-        let hasAnyMgmtOverride = false;
         const managementDemandMonths = toolOverhead.engineeringMonthlyFTE.filter((_, month) => toolOverhead.defaultMonthlyFTE[month] > 0);
         const managementEngineeringAverage = managementDemandMonths.length > 0
           ? managementDemandMonths.reduce((sum, value) => sum + value, 0) / managementDemandMonths.length
           : 0;
         const activeManagementCount = managementMonths.filter(value => value > 0).length;
         let activeManagementIndex = 0;
+        let hasAnyMgmtOverride = false;
         const monthEffort = [];
 
         for (let m = 0; m < duration; m++) {
@@ -441,8 +442,8 @@ export function ProjectTimelineModal({
           const isOverridden = Math.abs(managementMonths[m] - monthDefault) > 0.001;
           if (isOverridden) hasAnyMgmtOverride = true;
           const effMgmtFTE = managementMonths[m];
-
           if (effMgmtFTE > 0) activeManagementIndex++;
+
           monthEffort.push({
             phaseName: "Management Support",
             shortPhase: "Mgmt",
@@ -974,12 +975,12 @@ export function ProjectTimelineModal({
                                 style={{ gridTemplateColumns: `repeat(${duration}, minmax(52px, 1fr))` }}
                               >
                                 {mgmtRow.monthEffort.map((mData, mIdx) => {
-                                  const isStart = mData.isPhaseStart;
                                   if (mData.defaultFTE <= 0 && mData.totalFTE <= 0) return (
                                     <div key={mIdx} className="h-full flex items-center justify-center p-0.5 text-center">
                                       <span className={`${isRetro ? "text-black/40 font-mono" : "text-slate-300 font-mono"} text-[10px] select-none`}>·</span>
                                     </div>
                                   );
+                                  const isStart = mData.isPhaseStart;
                                   const isEnd = mData.isPhaseEnd;
                                   const roundedClasses = isRetro ? "rounded-none" : `${isStart ? "rounded-l-md" : "rounded-l-none"} ${isEnd ? "rounded-r-md" : "rounded-r-none"}`;
                                   const paddingRight = isEnd && mIdx < duration - 1 ? "pr-1" : "pr-0";

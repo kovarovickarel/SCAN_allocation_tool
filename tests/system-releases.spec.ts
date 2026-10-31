@@ -100,7 +100,7 @@ async function load(page: Page, data = workspace()) {
 async function openProject(page: Page) {
   await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).first().click();
   const timeline = page.getByRole("dialog");
-  await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).click();
+  if (await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).click();
   return timeline;
 }
 async function exported(page: Page): Promise<WorkspaceData> {
@@ -164,7 +164,7 @@ test("team release edits save at project level and discard leaves source unchang
   await page.getByTitle("KPI Team View", { exact: true }).click();
   await page.getByRole("button", { name: "Open KPI Combined Team Timeline", exact: true }).click();
   const timeline = page.getByRole("dialog");
-  await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).click();
+  if (await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).click();
   await timeline.getByRole("button", { name: "R110", exact: true }).click();
   const input = timeline.getByLabel("Release in month 3 for Release project", { exact: true });
   await input.fill("590"); await input.press("Enter");
@@ -230,7 +230,7 @@ for (const view of ["project", "team"] as const) test(`release dragging moves on
     await page.getByTitle("KPI Team View", { exact: true }).click();
     await page.getByRole("button", { name: "Open KPI Combined Team Timeline", exact: true }).click();
     timeline = page.getByRole("dialog");
-    await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).click();
+    if (await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).click();
   }
   await enableManual(timeline);
   const track = timeline.getByLabel("System releases timeline for Release project", { exact: true });
@@ -243,7 +243,7 @@ for (const view of ["project", "team"] as const) test(`release dragging moves on
   if (view === "team") {
     await release.dragTo(track.locator('[data-release-month="0"]'));
     await expect(release).toHaveAttribute("title", /Month 2 /);
-    await timeline.getByRole("button", { name: "Toggle system releases for Earlier project", exact: true }).click();
+    if (await timeline.getByRole("button", { name: "Toggle system releases for Earlier project", exact: true }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Earlier project", exact: true }).click();
     await release.dragTo(timeline.getByRole("button", { name: "Add release in month 1 for Earlier project", exact: true }));
     await expect(release).toHaveAttribute("title", /Month 2 /);
     await expect(timeline.getByLabel("System releases timeline for Earlier project", { exact: true }).getByRole("button", { name: "R100", exact: true })).toHaveCount(0);
@@ -386,7 +386,7 @@ for (const view of ["project", "team"] as const) test(`occupied release numbers 
     await page.getByTitle("KPI Team View", { exact: true }).click();
     await page.getByRole("button", { name: "Open KPI Combined Team Timeline", exact: true }).click();
     timeline = page.getByRole("dialog");
-    await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).click();
+    if (await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Release project" }).click();
   }
   await enableManual(timeline);
   const release = timeline.getByRole("button", { name: "R110", exact: true });
@@ -427,7 +427,9 @@ for (const theme of ["vibrant", "basic", "retro"] as const) test(`spending shows
   const toggle = spending.getByRole("button", { name: "Toggle system releases for Release project", exact: true });
   const track = spending.getByLabel("System releases timeline for Release project", { exact: true });
   const monthly = spending.getByText("Monthly Spending", { exact: true }).locator("../..");
-  await expect(track).toHaveCount(0);
+  await expect(track).toBeVisible();
+  expect(await monthly.evaluate(element => getComputedStyle(element).top)).toBe("117px");
+  await toggle.click(); await expect(track).toHaveCount(0);
   expect(await monthly.evaluate(element => getComputedStyle(element).top)).toBe("81px");
   await toggle.click(); await expect(track).toBeVisible();
   expect(await monthly.evaluate(element => getComputedStyle(element).top)).toBe("117px");
@@ -462,7 +464,7 @@ for (const include of [true, false]) test(`new projects can opt into default rel
   else expect(project.systemReleases).toEqual([]);
   await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).last().click();
   const timeline = page.getByRole("dialog");
-  await timeline.getByRole("button", { name: "Toggle system releases for Release choice", exact: true }).click();
+  if (await timeline.getByRole("button", { name: "Toggle system releases for Release choice", exact: true }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Release choice", exact: true }).click();
   const track = timeline.getByLabel("System releases timeline for Release choice", { exact: true });
   await expect(track.getByRole("button", { name: /^R[1-5][0-9]0$/ })).toHaveCount(include ? defaultSystemReleases(project).length : 0);
   if (!include) {
@@ -482,4 +484,35 @@ test("cancelling new-project release preferences resets the checkbox for the nex
   await add.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("button", { name: "Add Project", exact: true }).click();
   await expect(add.getByRole("checkbox", { name: "Include default system releases (6 weeks cadence)", exact: true })).toBeChecked();
+});
+
+test("release visibility is shared between staffing and spending per project across reopen and reload", async ({ page }) => {
+  const data = workspace();
+  data.projects.push({ ...structuredClone(data.projects[0]), id: "second-project", name: "Second project" });
+  await load(page, data);
+  const open = async (view: "staffing" | "spending", index: number) => {
+    if (view === "staffing") await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).nth(index).click();
+    else await page.getByRole("button", { name: /^Project cost:/ }).nth(index).click();
+    return page.getByRole("dialog").getByRole("button", { name: `Toggle system releases for ${index === 0 ? "Release project" : "Second project"}`, exact: true });
+  };
+  for (const view of ["staffing", "spending"] as const) {
+    const toggle = await open(view, 0);
+    await expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("Escape");
+  }
+  let toggle = await open("staffing", 0);
+  await toggle.click(); await page.keyboard.press("Escape");
+  toggle = await open("spending", 0);
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await toggle.click(); await page.keyboard.press("Escape");
+  toggle = await open("staffing", 0);
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+  await toggle.click(); await page.keyboard.press("Escape");
+  await page.reload();
+  await load(page, data);
+  for (const view of ["staffing", "spending"] as const) for (const index of [0, 1]) {
+    const toggle = await open(view, index);
+    await expect(toggle).toHaveAttribute("aria-expanded", index === 0 ? "false" : "true");
+    await page.keyboard.press("Escape");
+  }
 });
