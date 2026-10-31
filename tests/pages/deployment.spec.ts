@@ -3,6 +3,19 @@ import { parseWorkspaceFile, serializeWorkspace } from "../../src/utils/workspac
 import { unzipSync, strFromU8 } from "fflate";
 import { historyWorkspace } from "../fixtures/historyWorkspace";
 
+test("built member availability calendar saves leave under the Pages prefix", async ({ page }) => {
+  const data = historyWorkspace(); data.view.activeToolView = "Other";
+  await page.goto("./");
+  await page.getByLabel("Workspace file", { exact: true }).setInputFiles({ name: "availability.json", mimeType: "application/json", buffer: Buffer.from(serializeWorkspace(data)) });
+  await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
+  await page.getByRole("button", { name: "Open Other member availability", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Other member availability" });
+  await dialog.getByRole("button", { name: "History Member, 2026-02-02: Available", exact: true }).press("Space");
+  await dialog.getByRole("button", { name: "Save & Close", exact: true }).click();
+  await page.getByRole("button", { name: "Open Other member availability", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "History Member, 2026-02-02: Vacation", exact: true })).toBeVisible();
+});
+
 test("built app loads scripts, styles and logo under the repository path and supports dashboard navigation", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));

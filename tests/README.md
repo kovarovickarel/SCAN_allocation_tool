@@ -1,5 +1,18 @@
 # Test coverage
 
+Member availability update (2026-11-01): all 25 checks in
+`member-availability.spec.ts` passed, including calendar interaction in all three
+themes, out-of-row dragging, header holiday scope, toggling/overwritten leave,
+site collapse, fixed labels/clipping, cross-team markers/name shortening,
+annual totals/colour boundaries, month arrows/leap years, capacity reconciliation,
+external salaries, schema-1 compatibility and Undo/Redo. TypeScript and the Pages
+build passed. Earlier affected allocation, salary, workspace/selective import,
+deferred-payment and visual batches passed (263 distinct app checks overall).
+All five production checks passed earlier in this session, including calendar
+saving under the Pages prefix. Only two current UI references changed for the
+umbrella button. The complete 726-test result below is the previous baseline;
+the expanded application suite has not been rerun in full.
+
 Run `pnpm typecheck` and `pnpm test:e2e` for the current application.
 Use `pnpm test:export` for the focused export suite; it uses the same isolated
 5174 test server and mocks currency responses, so it needs no live rate service.
@@ -13,6 +26,7 @@ a separate development server on port 5174 and leaves the interactive app on
 
 | Area | Suites and important behavior |
 | --- | --- |
+| Member availability | `member-availability.spec.ts`; leave/holidays, site working weeks, monthly capacity, proportional allocation reductions, unpaid external capacity, JSON/history and calendar interaction. |
 | October 31 release-card layout | `release-card-layout`: upright four-character rails in expanded/collapsed FTE and non-FTE cards, centred side gaps, no reserved space on unlabelled cards, details at full width without stretching the rail, all themes and both modes. |
 | Active management display | `management-inactive-months`: empty, non-editable inactive months in project/team staffing; sequential active-month numbering across gaps; engineering average restricted to months meeting the threshold, including a below-threshold month and unequal active demand; active segment borders in every theme. |
 | Allocation release editing and matching | `scheduling-milestone-layout` and `workpackage-system-release`: FTE/Other scheduling release field left of the start month; full-width non-FTE release field; saved/cancelled drafts, numeric rounding, mandatory rules, matched/unmatched manual and automatic allocation, separate stacked schedule/release messages, field-specific highlighting, font parity and atomic Undo. Historical imported mismatches remain supported. |
