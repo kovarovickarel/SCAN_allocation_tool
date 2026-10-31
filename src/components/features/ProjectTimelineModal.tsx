@@ -1124,7 +1124,10 @@ export function ProjectTimelineModal({
                                   isNegated ? "opacity-60 bg-slate-50/50" : isRetro ? "bg-white" : "bg-white/60"
                                 }`}
                               >
-                                <div className={`p-2 pl-7 border-r ${isRetro ? "border-black" : tool.border} flex flex-col justify-center h-full min-w-0`}>
+                                <div className={`relative p-2 pl-7 border-r ${isRetro ? "border-black" : tool.border} flex flex-col justify-center h-full min-w-0`}>
+                                  <div className="absolute left-2 top-1 bottom-1 flex">
+                                    <SystemReleaseBadge vertical compact value={card.systemRelease} project={releaseDrafts === undefined ? localProject : { ...localProject, systemReleases: releasesFromDrafts(releaseDrafts) }} />
+                                  </div>
                                   <div className="flex items-center justify-between gap-1 min-w-0">
                                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                       <span style={isNegated ? undefined : { backgroundColor: typeColor }} className={`w-1.5 h-1.5 rounded-full ${isNegated ? "bg-gray-400" : complexityDef?.dot || "bg-blue-500"} shrink-0`} />
@@ -1203,14 +1206,13 @@ export function ProjectTimelineModal({
                                         {card.subcategory}
                                       </span>
                                     )}
-                                    {card.complexity && (card.tool === "KPI" || toolFteRates?.[card.tool]?.[card.complexity]?.phases) && (
+                                    {card.complexity && workpackageTypeLabel(card) !== "Standard" && (card.tool === "KPI" || toolFteRates?.[card.tool]?.[card.complexity]?.phases) && (
                                       <span style={workpackageTypeBadgeStyle(card, toolFteRates)} className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
                                         isRetro ? "bg-white text-black border border-black font-mono" : complexityDef?.badge ?? `${tool.accent} ${tool.text}`
                                       }`}>
                                         {workpackageTypeLabel(card)}
                                       </span>
                                     )}
-                                    <SystemReleaseBadge value={card.systemRelease} project={releaseDrafts === undefined ? localProject : { ...localProject, systemReleases: releasesFromDrafts(releaseDrafts) }} />
                                     {card.tool === "Other" && !card.complexity && (() => {
                                       const rawEffort = parseFloat(card.otherEffort) || 0.3;
                                       const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);

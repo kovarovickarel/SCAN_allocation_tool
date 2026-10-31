@@ -30,10 +30,12 @@ export function SystemReleaseField({ value, onChange, compact = false, required 
     </span>
   </label>;
 }
-export function SystemReleaseBadge({ value, project }: { value?: number | null; project?: AllocationProject }) {
+export function SystemReleaseBadge({ value, project, vertical = false, compact = false }: { value?: number | null; project?: AllocationProject; vertical?: boolean; compact?: boolean }) {
   if (!isSystemReleaseNumber(value)) return null;
   const series = RELEASE_MILESTONES[Math.floor(value / 100) - 1];
   const missing = project && !projectSystemReleases(project).some(release => releaseCode(releaseLabel(release)) === value);
   const title = missing ? `${project.name} project does not contain R${value} release!` : `System release R${value}`;
-  return <span title={title} className={`inline-flex items-center justify-center shrink-0 whitespace-nowrap rounded-full border px-1.5 h-3.5 text-[9px] leading-none font-black ${MILESTONE_MAP[series].badge} ${missing ? "system-release-missing !border-red-500 ring-1 ring-red-400 shadow-[0_0_8px_2px_rgba(239,68,68,0.65)]" : ""}`}>R{value}</span>;
+  return <span title={title} aria-label={vertical ? `System release R${value}` : undefined} className={`inline-flex items-center justify-center shrink-0 whitespace-nowrap rounded-full border ${vertical ? `flex-col w-3.5 h-full py-0.5 ${compact ? "min-h-[36px] text-[8px]" : "min-h-[46px] text-[10px]"}` : compact ? "w-7 h-3.5 text-[8px]" : "px-1.5 h-3.5 text-[9px]"} leading-none font-black ${MILESTONE_MAP[series].badge} ${missing ? "system-release-missing !border-red-500 ring-1 ring-red-400 shadow-[0_0_8px_2px_rgba(239,68,68,0.65)]" : ""}`}>
+    {vertical ? `R${value}`.split("").map((character, index) => <span key={index} aria-hidden="true" className="block">{character}</span>) : <>R{value}</>}
+  </span>;
 }

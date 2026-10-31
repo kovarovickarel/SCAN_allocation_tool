@@ -1,4 +1,5 @@
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
+import { isSystemReleaseNumber } from "../../utils/systemReleases";
 import { WorkpackageDuplicateButton } from "../ui/WorkpackageDuplicateButton";
 import { WorkpackageDetailsButton, WorkpackageDetailsPanel } from "./WorkpackageDetails";
 import { useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
@@ -201,7 +202,10 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
     window.__scan_dragged_card_id = card.id;
     onDragStart?.(card);
   }} onDragEnd={event => { dragPreviewRef.current?.remove(); dragPreviewRef.current = null; onDragEnd?.(event); }} className={`group w-full min-w-0 shrink-0 bg-white border border-b-2 border-b-amber-300 p-2 rounded shadow-2xs cursor-grab transition-all duration-150 ${hoverHighlightClasses} ${isRetro ? "rounded-none border-black font-mono" : toolCardTheme.border} ${tool.text} ${card._isNegated ? "opacity-50" : ""}`}
-    style={{ borderTopWidth: 5, borderBottomStyle: "dashed" }}>
+    style={{ borderTopWidth: 5, borderBottomStyle: "dashed", position: "relative", ...(isCompact && isSystemReleaseNumber(card.systemRelease) ? { paddingLeft: 26, minHeight: 48 } : {}) }}>
+    {isCompact && isSystemReleaseNumber(card.systemRelease) && <div className="absolute left-1.5 top-1 bottom-1 flex">
+      <SystemReleaseBadge vertical compact value={card.systemRelease} project={card.projectId === project?.id ? project : undefined} />
+    </div>}
     <div ref={headerRef} className="flex items-center justify-between gap-1 mb-1.5 pb-1 border-b border-black/10 min-w-0">
       <div className={`flex items-center min-w-0 flex-1 ${isCompact ? "gap-1.5" : "gap-2"}`}>
       <span ref={categoryRef} title={`${fullCategoryName} · Non-FTE purchase${card._isAltered ? " (Timeline monthly payments manually altered)" : ""} · Cost: € ${price}. Green: ≤ €50k; yellow: ≤ €200k; red: > €200k.`} className={`relative font-black uppercase rounded shadow-xs flex items-center min-w-0 ${useToolAbbreviation || (card.projectId && subcategory) ? "shrink-0" : ""} text-red-300 ${isCompact ? "text-[8.5px] tracking-tight px-1 py-0.2 gap-0.5" : "text-[9px] tracking-wider px-1.5 py-0.5 gap-1 max-w-full"} ${isRetro ? "bg-[#000080] border border-black shadow-[1px_1px_0px_#000] font-mono" : isBasic ? "bg-slate-800 border border-slate-700" : "bg-slate-900"}`}>
@@ -231,6 +235,10 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
         <button type="button" draggable={false} onClick={() => onDelete?.(card.id)} aria-label={`Delete ${card.name}`} className="p-0.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded opacity-40 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer"><TrashIcon size={11} /></button>
       </div>
     </div>
+    <div className={`relative min-w-0 ${!isCompact && isSystemReleaseNumber(card.systemRelease) ? "pl-5" : ""}`}>
+    {!isCompact && isSystemReleaseNumber(card.systemRelease) && <div className="absolute -left-px top-0 bottom-0 flex">
+      <SystemReleaseBadge vertical value={card.systemRelease} project={card.projectId === project?.id ? project : undefined} />
+    </div>}
     {!isCompact && <div className="flex items-start justify-between gap-2 min-w-0">
       <div className="flex items-center gap-1 flex-wrap min-w-0 flex-1">
         <h3 className={`min-w-0 max-w-full break-words text-[11px] font-bold text-slate-900 ${card._isNegated ? "line-through" : ""}`}>{card.name}</h3>
@@ -238,7 +246,6 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
       </div>
       {!isCompact && card.supplierName && <span title={`Supplier: ${card.supplierName}`} className={`text-[9px] px-1.5 py-0.2 font-semibold shrink-0 max-w-[40%] truncate bg-red-300 ${isOtherSupplier(card.supplierName) ? "text-white" : "text-red-950"} border border-red-300 ${isRetro ? "rounded-none font-mono shadow-[1px_1px_0px_#000]" : "rounded shadow-2xs"}`}>{card.supplierName}</span>}
     </div>}
-    {!isCompact && card.systemRelease != null && <div className="flex items-center mt-1"><SystemReleaseBadge value={card.systemRelease} project={card.projectId === project?.id ? project : undefined} /></div>}
     {!isCompact && card.projectId && <div className="flex items-center justify-between gap-2 mt-1 min-w-0">
       <button type="button" draggable={false} onClick={event => {
         event.stopPropagation();
@@ -276,6 +283,9 @@ export function NonFteWorkpackageCard({ card, project, suppliers = DEFAULT_SUPPL
         : <span className={`text-[9px] font-bold ${isRetro ? "text-black font-mono" : "text-gray-600"} uppercase shrink-0`}>TOTAL COST:</span>}
       <WorkpackageCostLabel cost={purchaseCostSummary(card._isNegated ? 0 : total, "EUR")} compact={isCompact} title={`${card._isAltered ? "Manually adjusted purchase cost" : "Purchase cost after reusability"}: ${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} EUR`} />
     </div>
-    {!isCompact && !isBasicMode && <WorkpackageDetailsPanel card={card} onEdit={onEdit} expanded={detailsExpanded} onTextInteraction={setDetailsEditing} teamMembers={teamMembers} />}
+    </div>
+    {!isCompact && !isBasicMode && <div>
+      <WorkpackageDetailsPanel card={card} onEdit={onEdit} expanded={detailsExpanded} onTextInteraction={setDetailsEditing} teamMembers={teamMembers} />
+    </div>}
   </article>;
 }

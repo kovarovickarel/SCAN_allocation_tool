@@ -1,5 +1,6 @@
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
-import { validateReleaseDrafts, releasePlanForSave, type SystemReleaseDraft } from "../../utils/systemReleases";
+import { validateReleaseDrafts, releasePlanForSave, releasesFromDrafts, type SystemReleaseDraft } from "../../utils/systemReleases";
+import { SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { SystemReleasesTrack } from "./SystemReleasesTrack";
 import { workpackageTypeLabel } from "../../utils/workpackageTypes";
 import { ResponsiveSubtoolTag } from "../ui/ResponsiveSubtoolTag";
@@ -1617,7 +1618,7 @@ export function TeamTimelineModal({
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center gap-0.5 mt-1 flex-wrap min-w-0">
+                                  <div className="flex items-center gap-0.5 mt-1 flex-wrap min-w-0 pl-[41px]">
                                     {assignedList.map(({ member, fte }) => (
                                       <MemberInitialsBadge
                                         key={member?.id}
@@ -2038,7 +2039,10 @@ export function TeamTimelineModal({
                                     )}
                                   </div>
 
-                                  <div className="flex items-center gap-0.5 mt-1 flex-wrap min-w-0">
+                                  <div className="relative flex items-center gap-0.5 mt-1 flex-wrap min-w-0 pl-[22px]">
+                                    <div className="absolute -left-6 top-0 flex w-10 justify-center [&>span]:w-full">
+                                      <SystemReleaseBadge compact value={card.systemRelease} project={releaseDrafts[project.id] === undefined ? project : { ...project, systemReleases: releasesFromDrafts(releaseDrafts[project.id]) }} />
+                                    </div>
                                     {card.subcategory && <ResponsiveSubtoolTag name={card.subcategory} className="mr-1" />}
                                     {card.complexity && (card.tool !== "Other" || card.complexity) && <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border mr-1" style={workpackageTypeBadgeStyle(card, toolFteRates)}>{workpackageTypeLabel(card)}</span>}
                                     {card.tool === "Other" && toolName !== "Other" && (

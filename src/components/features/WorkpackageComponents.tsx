@@ -537,12 +537,16 @@ export const FunctionCard = memo(function FunctionCard({
         className={`
           group relative ${cardBg} border-2 ${cardBorder} ${isRetro ? "rounded-none shadow-[2px_2px_0px_#000]" : "rounded-lg shadow-2xs"}
           p-1.5 cursor-grab active:cursor-grabbing select-none transition-all duration-200
+          ${isSystemReleaseNumber(card.systemRelease) ? "pl-6 min-h-[48px]" : ""}
           ${isCardDragging ? draggingHighlightClasses : `${hoverHighlightClasses} hover:shadow-md`} flex flex-col justify-between
           w-full min-w-0 overflow-hidden shrink-0 h-auto
           ${isNegated ? "opacity-60 grayscale-[40%]" : ""}
         `}
         title={`${card.name} (${card.tool}${card.subcategory ? ` → ${card.subcategory}` : ""})`}
       >
+        {isSystemReleaseNumber(card.systemRelease) && <div className="absolute left-[5px] top-1 bottom-1 flex">
+          <SystemReleaseBadge vertical compact value={card.systemRelease} project={card.projectId === project?.id ? project : undefined} />
+        </div>}
         <div ref={compactHeaderRef} className="flex items-center justify-between gap-1 mb-1 min-w-0">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <span
@@ -694,6 +698,10 @@ export const FunctionCard = memo(function FunctionCard({
         </div>
       </div>
 
+      <div className={`relative min-w-0 flex flex-col ${isSystemReleaseNumber(card.systemRelease) ? "pl-5" : ""}`}>
+      {isSystemReleaseNumber(card.systemRelease) && <div className="absolute -left-px top-0 bottom-0 flex">
+        <SystemReleaseBadge vertical value={card.systemRelease} project={card.projectId === project?.id ? project : undefined} />
+      </div>}
       <div className="flex items-start justify-between gap-1.5 mb-1.5 min-w-0">
         <div ref={nameRowRef} className="flex items-center flex-wrap gap-1.5 min-w-0 flex-1">
           <span ref={nameTextRef} className={`font-bold text-[11px] ${isRetro ? "text-black font-mono font-black" : "text-gray-900"} leading-tight break-words`} title={card.name}>
@@ -726,7 +734,6 @@ export const FunctionCard = memo(function FunctionCard({
             {workpackageTypeLabel(card)}
           </span>
         )}
-        <SystemReleaseBadge value={card.systemRelease} project={card.projectId === project?.id ? project : undefined} />
         {card.tool === "Other" && !card.complexity && (() => {
           const rawEffort = parseFloat(card.otherEffort) || 0.3;
           const reusabilityMult = getReusabilityFactor(card, reusabilityFactors);
@@ -810,7 +817,10 @@ export const FunctionCard = memo(function FunctionCard({
         </span>
         </div>
       </div>
-      {!isBasicMode && <WorkpackageDetailsPanel card={card} onEdit={onEdit} expanded={detailsExpanded} onTextInteraction={setDetailsEditing} teamMembers={teamMembers} />}
+      </div>
+      {!isBasicMode && <div>
+        <WorkpackageDetailsPanel card={card} onEdit={onEdit} expanded={detailsExpanded} onTextInteraction={setDetailsEditing} teamMembers={teamMembers} />
+      </div>}
     </div>
   );
 });

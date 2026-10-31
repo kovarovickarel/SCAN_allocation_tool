@@ -47,7 +47,7 @@ for (const kind of ["fte", "non-fte"] as const) test(`release removal/addition u
   const open = async () => {
     await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).click();
     const timeline = page.getByRole("dialog");
-    await timeline.getByRole("button", { name: "Toggle system releases for Apollo", exact: true }).click();
+    if (await timeline.getByRole("button", { name: "Toggle system releases for Apollo", exact: true }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Apollo", exact: true }).click();
     await timeline.getByRole("button", { name: "Manual Adjust: Disabled", exact: true }).click();
     return timeline;
   };
@@ -91,7 +91,7 @@ test("missing release glow pulses and respects reduced motion", async ({ page })
   await expect(badge).toHaveCSS("box-shadow", /239,\s*68,\s*68/);
 });
 
-for (const view of ["project"] as const) test(`staffing release badge sits beside type and follows release drafts (${view})`, async ({ page }) => {
+for (const view of ["project"] as const) test(`staffing release badge spans the label rows and follows release drafts (${view})`, async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "no-preference" });
   const data = workspace("fte");
   data.workpackages[0] = { ...data.workpackages[0], tool: "KPI", complexity: "Perception", otherFinishMilestone: undefined };
@@ -106,13 +106,14 @@ for (const view of ["project"] as const) test(`staffing release badge sits besid
   const timeline = page.getByRole("dialog");
   const badge = timeline.getByTitle("System release R100", { exact: true });
   await expect(badge).toBeVisible();
-  const tags = badge.locator("..");
+  const tags = badge.locator("../..");
   await expect(tags.getByText("Perception", { exact: true })).toBeVisible();
   const typeBox = await tags.getByText("Perception", { exact: true }).boundingBox();
   const releaseBox = await badge.boundingBox();
-  expect(Math.abs(typeBox!.y - releaseBox!.y)).toBeLessThan(5);
-  expect(releaseBox!.x).toBeGreaterThan(typeBox!.x);
-  await timeline.getByRole("button", { name: "Toggle system releases for Apollo", exact: true }).click();
+  expect(releaseBox!.y).toBeLessThan(typeBox!.y);
+  expect(releaseBox!.x + releaseBox!.width).toBeLessThan(typeBox!.x);
+  await expect(badge.locator(":scope > span")).toHaveText(["R", "1", "0", "0"]);
+  if (await timeline.getByRole("button", { name: "Toggle system releases for Apollo", exact: true }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Apollo", exact: true }).click();
   const enableManual = timeline.getByRole("button", { name: "Manual Adjust: Disabled", exact: true });
   if (await enableManual.isVisible()) await enableManual.click();
   await timeline.getByRole("button", { name: "Remove release in month 2 for Apollo", exact: true }).click();
@@ -154,9 +155,29 @@ for (const kind of ["fte", "non-fte"] as const) for (const missing of [false, tr
   await expect(badge).toBeVisible();
   await expect(badge).toHaveCSS("animation-name", missing ? "missing-release-glow" : "none");
   if (missing) await expect(badge).toHaveClass(/system-release-missing/);
-  await expect(badge.locator("..")).toHaveClass(/mt-1/);
+  const nameBox = await timeline.getByText(data.workpackages[0].name, { exact: true }).boundingBox();
+  const releaseBox = await badge.boundingBox();
+  expect(releaseBox!.x + releaseBox!.width).toBeLessThan(nameBox!.x);
+  expect(releaseBox!.height).toBeGreaterThan(nameBox!.height);
+  await expect(badge.locator(":scope > span")).toHaveText(["R", "1", "0", "0"]);
 });
-test("combined team staffing omits workpackage release tags", async ({ page }) => {
+for (const view of ["staffing", "spending"] as const) test(`${view} hides Standard type while retaining non-standard type labels`, async ({ page }) => {
+  const data = workspace("fte");
+  data.workpackages = [
+    { id: "standard", name: "Standard work", tool: "Data Factory", subcategory: "Pipeline", complexity: "Point Cloud", projectId: "p", reusability: "New", systemRelease: 100 },
+    { id: "custom", name: "Perception work", tool: "KPI", complexity: "Perception", projectId: "p", reusability: "New", systemRelease: 200 },
+  ];
+  await load(page, data);
+  if (view === "staffing") await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).click();
+  else await page.getByRole("button", { name: /^Project cost:/ }).click();
+  const timeline = page.getByRole("dialog");
+  await expect(timeline.getByText("Standard work", { exact: true })).toBeVisible();
+  await expect(timeline.getByText("Standard", { exact: true })).toHaveCount(0);
+  await expect(timeline.getByText("Perception", { exact: true })).toBeVisible();
+  await expect(timeline.getByTitle("System release R100", { exact: true }).locator(":scope > span")).toHaveText(["R", "1", "0", "0"]);
+});
+
+test("combined team staffing places horizontal release tags beneath coverage percentages", async ({ page }) => {
   const data = workspace("fte");
   data.workpackages[0].tool = "KPI"; data.workpackages[0].complexity = "Perception";
   data.teamMembers[0].tool = "KPI"; data.projects[0].systemReleases = [];
@@ -165,6 +186,18 @@ test("combined team staffing omits workpackage release tags", async ({ page }) =
   await page.getByRole("button", { name: "Open KPI Combined Team Timeline", exact: true }).click();
   const timeline = page.getByRole("dialog");
   await expect(timeline.getByText("History engineering", { exact: true })).toBeVisible();
-  await expect(timeline.getByText("R100", { exact: true })).toHaveCount(0);
-  await expect(timeline.locator(".system-release-missing")).toHaveCount(0);
+  const release = timeline.getByTitle("Apollo project does not contain R100 release!", { exact: true });
+  await expect(release).toHaveText("R100");
+  await expect(release).toHaveCSS("width", "40px");
+  await expect(release).toHaveCSS("flex-direction", "row");
+  const label = release.locator("../../..");
+  const coverage = label.locator("span.text-right").first();
+  const coverageBox = await coverage.boundingBox();
+  const releaseBox = await release.boundingBox();
+  expect(releaseBox!.x).toBeCloseTo(coverageBox!.x + 4, 0);
+  expect(releaseBox!.y).toBeGreaterThan(coverageBox!.y);
+  const nameBox = (await label.getByText("History engineering", { exact: true }).boundingBox())!;
+  const typeBox = (await label.getByText("Perception", { exact: true }).boundingBox())!;
+  expect(typeBox.x).toBeCloseTo(nameBox.x, 0);
+  expect(releaseBox!.x + releaseBox!.width).toBeLessThan(typeBox.x);
 });

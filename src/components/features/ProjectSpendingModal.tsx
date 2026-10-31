@@ -240,7 +240,8 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     const altered = card?.kind === "non-fte" && track.monthlyCosts.some((cost, index) => Math.round((cost.purchaseCostEUR ?? 0) * 100) !== Math.round((defaultPayments.get(track.id)?.[index] ?? 0) * 100));
     return <div key={track.id}>
       <div className={`grid items-center min-h-[44px] border-b transition-colors ${isRetro ? "border-black bg-white" : track.isManagement ? "border-purple-100 bg-purple-50/60 hover:bg-purple-100/50" : "border-slate-100 bg-white/60 hover:bg-white/90"}`} style={gridStyle}>
-        <div className={`p-2 pl-7 border-r h-full min-w-0 flex flex-col justify-center ${isRetro ? "border-black" : track.isManagement ? "border-slate-200" : tool?.border || "border-slate-200"}`}>
+        <div className={`relative p-2 pl-7 border-r h-full min-w-0 flex flex-col justify-center ${isRetro ? "border-black" : track.isManagement ? "border-slate-200" : tool?.border || "border-slate-200"}`}>
+          {card && <div className="absolute left-2 top-1 bottom-1 flex"><SystemReleaseBadge vertical compact value={card.systemRelease} project={project} /></div>}
           <div className="flex items-center gap-1.5 min-w-0">
           {track.isManagement ? <ManagementIcon size={13} className={isRetro ? "text-black" : "text-purple-700"} /> : <span style={card?.kind !== "non-fte" && card ? { backgroundColor: workpackageTypeColor(card, options.toolFteRates) } : undefined} className={`w-1.5 h-1.5 rounded-full ${complexity?.dot || "bg-blue-500"} shrink-0`} />}
           <span className={`text-[11px] font-bold truncate leading-tight ${isRetro ? "text-black font-mono" : "text-slate-800"}`} title={altered ? `${track.name} (Monthly payments manually altered)` : track.name}>{track.name}{altered && <span className="text-red-600 font-black ml-1" title="Monthly payments manually altered">*</span>}</span>
@@ -262,10 +263,9 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
             {expanded ? "- Collapse" : "+ Expand"}
           </button>}
           </div>
-          <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0 pl-5">
+          <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0">
             {card?.subcategory && <ResponsiveSubtoolTag name={card.subcategory} />}
-            {card?.kind !== "non-fte" && card?.complexity && card.tool !== "Other" && <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border" style={workpackageTypeBadgeStyle(card, options.toolFteRates)}>{workpackageTypeLabel(card)}</span>}
-            {card && <SystemReleaseBadge value={card.systemRelease} project={project} />}
+            {card?.kind !== "non-fte" && card?.complexity && workpackageTypeLabel(card) !== "Standard" && card.tool !== "Other" && <span className="text-[9px] font-bold px-1.5 py-0.2 rounded border" style={workpackageTypeBadgeStyle(card, options.toolFteRates)}>{workpackageTypeLabel(card)}</span>}
             {altered && <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-100 text-red-900 border border-red-300">*Manually adjusted</span>}
             <span className="ml-auto">{totalBadge(track.totalCost, track.isManagement, false, true)}</span>
           </div>
