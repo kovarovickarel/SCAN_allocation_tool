@@ -428,6 +428,12 @@ export function ProjectTimelineModal({
         const defaultMgmtFTE = round2(toolOverhead.defaultMonthlyFTE.reduce((sum, value) => sum + value, 0) / duration);
         const managementMonths = getManagementMonthlyFTE(toolOverhead, localProject);
         let hasAnyMgmtOverride = false;
+        const managementDemandMonths = toolOverhead.engineeringMonthlyFTE.filter((_, month) => toolOverhead.defaultMonthlyFTE[month] > 0);
+        const managementEngineeringAverage = managementDemandMonths.length > 0
+          ? managementDemandMonths.reduce((sum, value) => sum + value, 0) / managementDemandMonths.length
+          : 0;
+        const activeManagementCount = managementMonths.filter(value => value > 0).length;
+        let activeManagementIndex = 0;
         const monthEffort = [];
 
         for (let m = 0; m < duration; m++) {
@@ -436,11 +442,12 @@ export function ProjectTimelineModal({
           if (isOverridden) hasAnyMgmtOverride = true;
           const effMgmtFTE = managementMonths[m];
 
+          if (effMgmtFTE > 0) activeManagementIndex++;
           monthEffort.push({
             phaseName: "Management Support",
             shortPhase: "Mgmt",
-            phaseSpan: duration,
-            phaseMonthIndex: m + 1,
+            phaseSpan: activeManagementCount,
+            phaseMonthIndex: activeManagementIndex,
             isPhaseStart: effMgmtFTE > 0 && !(managementMonths[m - 1] > 0),
             isPhaseEnd: effMgmtFTE > 0 && !(managementMonths[m + 1] > 0),
             totalFTE: effMgmtFTE,
@@ -453,7 +460,7 @@ export function ProjectTimelineModal({
         mgmtRow = {
           toolName: t.name,
           count: baseMgmtCount,
-          engFTE: totalEngFTE,
+          engFTE: managementEngineeringAverage,
           fte: mgmtFTE,
           defaultMgmtFTE,
           hasAnyMgmtOverride,
@@ -947,7 +954,7 @@ export function ProjectTimelineModal({
                                 <div className="flex items-center gap-1 mt-1 flex-wrap min-w-0">
                                   <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded ${
                                     isRetro ? "bg-white text-black border border-black font-mono shadow-[1px_1px_0px_#000]" : "bg-purple-100 text-purple-800 border border-purple-200"
-                                  }`}>
+                                  }`} title="Average engineering FTE across months meeting the management-support threshold">
                                     {mgmtRow.engFTE.toFixed(2)} ENG FTE
                                   </span>
                                   {mgmtRow.hasAnyMgmtOverride && (
@@ -968,6 +975,11 @@ export function ProjectTimelineModal({
                               >
                                 {mgmtRow.monthEffort.map((mData, mIdx) => {
                                   const isStart = mData.isPhaseStart;
+                                  if (mData.defaultFTE <= 0 && mData.totalFTE <= 0) return (
+                                    <div key={mIdx} className="h-full flex items-center justify-center p-0.5 text-center">
+                                      <span className={`${isRetro ? "text-black/40 font-mono" : "text-slate-300 font-mono"} text-[10px] select-none`}>·</span>
+                                    </div>
+                                  );
                                   const isEnd = mData.isPhaseEnd;
                                   const roundedClasses = isRetro ? "rounded-none" : `${isStart ? "rounded-l-md" : "rounded-l-none"} ${isEnd ? "rounded-r-md" : "rounded-r-none"}`;
                                   const paddingRight = isEnd && mIdx < duration - 1 ? "pr-1" : "pr-0";

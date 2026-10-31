@@ -289,11 +289,14 @@ export function TeamTimelineModal({
 
         if (toolOverhead && (toolOverhead.defaultMonthlyFTE.some(value => value > 0) || toolOverhead.isAltered)) {
           const managementMonths = getManagementMonthlyFTE(toolOverhead, p);
+          const activeManagementCount = managementMonths.filter(value => value > 0).length;
+          let activeManagementIndex = 0;
           const monthEffort = Array.from({ length: pDur }, (_, m) => {
             const effFTE = managementMonths[m];
+            if (effFTE > 0) activeManagementIndex++;
             return {
-              phaseName: "Management Support", shortPhase: "Mgmt", phaseSpan: pDur,
-              phaseMonthIndex: m + 1,
+              phaseName: "Management Support", shortPhase: "Mgmt", phaseSpan: activeManagementCount,
+              phaseMonthIndex: activeManagementIndex,
               isPhaseStart: effFTE > 0 && !(managementMonths[m - 1] > 0),
               isPhaseEnd: effFTE > 0 && !(managementMonths[m + 1] > 0), totalFTE: effFTE,
             };
