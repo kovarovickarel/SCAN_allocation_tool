@@ -86,5 +86,13 @@ test("Help guide exposes the current planning, selective import and Excel export
   await expect(dialog.getByText("Select what to import", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "FTE Calculation & Overheads", exact: true }).click();
   await expect(dialog.getByRole("heading", { name: "Phase effort in man-hours" })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Weekend Work Factors", exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Member Availability", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "Team and global availability", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Half-days and holiday work", exact: true })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "Save, cancel and transfer calendars", exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Team Staffing & Combined Timeline", exact: true }).click();
+  await expect(dialog.getByRole("button", { name: "Member Availability", exact: true })).toBeVisible();
+
   await page.keyboard.press("Escape"); await expect(dialog).toHaveCount(0);
 });

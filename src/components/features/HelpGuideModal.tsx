@@ -30,6 +30,7 @@ export function HelpGuideModal({
     { id: "projects", label: "Projects & Workpackages" },
     { id: "planningExport", label: "Export Planning to Excel" },
     { id: "team", label: "Team Staffing & Combined Timeline" },
+    { id: "availability", label: "Member Availability" },
     { id: "automatic", label: "Automatic Allocation" },
     { id: "purchases", label: "Non-FTE Purchases" },
     { id: "indicators", label: "Visual Cues & Project Reordering" },
@@ -67,7 +68,7 @@ export function HelpGuideModal({
                 SCAN Tooling Calculator Guide
               </h2>
               <p className={`text-xs mt-0.5 ${isRetro ? "text-slate-200 font-mono" : "text-slate-400"}`}>
-                Planning, staffing, purchases, spending, summary metrics, and saving your workspace
+                Planning, staffing, availability, purchases, spending, and saving your workspace
               </p>
             </div>
           </div>
@@ -743,12 +744,12 @@ export function HelpGuideModal({
               <div className={`p-4 shadow-2xs ${
                 isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
               }`}>
-                <h3 className="font-bold text-slate-900 text-sm mb-1.5">FTE costs by Location</h3>
+                <h3 className="font-bold text-slate-900 text-sm mb-1.5">FTE Costs by Location</h3>
                 <p className="text-slate-600 leading-relaxed mb-2">
                   Default hourly rates in EUR: Troy 115, Bietigheim 80, Prague 60, Tokyo 55, Chennai 20, and Cairo 40. Reset to Defaults restores these rates and the EUR currency.
                 </p>
                 <p className="text-slate-600 leading-relaxed">
-                  Open Defaults and select <strong>FTE costs</strong> to set an hourly rate for each resource location. Changing currency automatically converts entered rates using Frankfurter&apos;s latest published exchange rate, rounded to 2 decimals. The rate and its date appear after conversion. Conversion needs an internet connection; if it fails, the previous currency and values are kept. Blank rates are unconfigured; values must be 0 or more. <strong>Save Configuration</strong> keeps the rates for this session, while Cancel discards edits.
+                  Open Defaults and select <strong>FTE Costs</strong> to set an hourly rate for each resource location. Changing currency automatically converts entered rates using Frankfurter&apos;s latest published exchange rate, rounded to 2 decimals. The rate and its date appear after conversion. Conversion needs an internet connection; if it fails, the previous currency and values are kept. Blank rates are unconfigured; values must be 0 or more. <strong>Save Configuration</strong> keeps the rates for this session, while Cancel discards edits.
                 </p>
                 <p className="mt-2">Use the configuration icon beside the Workpackage Pool collapse button to open <strong>Workpackages configuration</strong>. Tool Phase Rates &amp; Durations and Other workpackage defaults are configured there. Save Configuration applies the changes; Cancel discards them. Reset to Defaults in this window resets only these workpackage settings.</p>
                 <p className="mt-2">For a standard tool, enter a unique name and click <strong>Add basic type</strong>. Add phases with monthly FTE rates and durations, use the arrows to set their order, and choose which phases scale with reusability. Mark consecutive phases at the end as Not milestone bound to let them follow development beyond the finish milestone. Separately, the final phase can run to project end. Ordering controls prevent a milestone-bound phase from following an unbound phase. Other now starts with a Standard basic type containing one Main phase and no maintenance or supporting activities. It uses the same basic-type editor. Supporting activities appear below the ordered phases. Set their monthly FTE rate, reusability scaling and whether they continue during maintenance; they do not need a duration. Save the basic type, then Save Configuration to make it available in workpackage creation and editing. Reset retains custom types.</p>
@@ -763,6 +764,51 @@ export function HelpGuideModal({
                 </p>
               </div>
 
+              <section className="p-4 bg-white border border-slate-200 rounded-xl">
+                <h3 className="font-bold text-slate-900 text-sm mb-2">Weekend Work Factors</h3>
+                <p className="text-slate-600 leading-relaxed">In Defaults configuration, select <strong>Weekend Work Factors</strong> beside <strong>FTE Costs</strong>. Set <strong>Weekend Work</strong> (default 1.5), <strong>Public Holiday Work</strong> (1.5), and <strong>Weekend &amp; Public Holiday Work</strong> (2). The combined factor is a separate value, not the product of the other two.</p>
+                <p className="text-slate-600 leading-relaxed mt-2">Enter non-negative numbers and use Save Configuration to apply them; Cancel discards edits and Reset to Defaults restores 1.5, 1.5 and 2. These settings support Undo/Redo and workspace JSON transfer; selective import applies them only when chosen in Shared settings. They currently store future pay multipliers and do not affect costs, allocations or capacity. Working on public holidays in the calendar currently restores availability without a pay premium.</p>
+              </section>
+            </div>
+          )}
+
+          {activeTab === "availability" && (
+            <div className="space-y-4 text-slate-600 leading-relaxed">
+              <section className="p-4 bg-white border border-slate-200 rounded-xl">
+                <h3 className="font-bold text-slate-900 text-sm mb-2">Team and global availability</h3>
+                <p>Open the umbrella button in a Team Members Pool for that team, or the top-bar umbrella icon left of <strong>Export all</strong> for <strong>Global Team Availability</strong>. Both use the same calendars and save to the same member records and site holidays.</p>
+                <p className="mt-2">Members are grouped by site; each site row can collapse or expand, with <strong>Expand</strong> and <strong>Collapse</strong> controls for all sites. The global calendar lists each cross-team person once and shows their team-icon tags beside their name; hover a tag for the full team name. Their silhouette uses the team with the highest FTE share, breaking ties alphabetically by team name. Global Capacity sums the team shares without changing the original member records. Long names abbreviate to fit; hover to read the full name.</p>
+              </section>
+              <section className="p-4 bg-white border border-slate-200 rounded-xl">
+                <h3 className="font-bold text-slate-900 text-sm mb-2">Mark leave and public holidays</h3>
+                <ul className="list-disc pl-5 space-y-2">
+                  <li>Select <strong>Vacation</strong> (red), <strong>Sick leave</strong> (blue), or <strong>Other leave</strong> (light orange), then click or drag across a member&apos;s day cells. Other leave covers individual statutory absences such as parental, maternity, wedding or funeral leave; it is outside the vacation budget.</li>
+                  <li>Start on a cell already containing the selected leave type and duration to clear leave during that gesture. Dragging in this clear mode also removes other individual leave types, while leaving public holidays and holiday-working exceptions untouched. Select <strong>Working day</strong> explicitly to clear individual leave or work on a public holiday.</li>
+                  <li>Site-row cells apply full-day <strong>Public holidays</strong> (light green). Clicking or dragging the day numbers in the header applies holidays to all sites present in that calendar, including collapsed sites. The header highlights only when every shown site has that holiday. Start on an existing holiday to remove holidays through the drag. The Other leave tool does not edit site or header holidays.</li>
+                  <li>Weekends are grey: Cairo works Sunday–Thursday; other sites Monday–Friday. Member leave is entered on working days. Public holidays may also be recorded on weekends, but weekends do not reduce monthly capacity. A holiday replaces existing individual leave; removing it does not bring that leave back.</li>
+                </ul>
+              </section>
+              <section className="p-4 bg-white border border-slate-200 rounded-xl">
+                <h3 className="font-bold text-slate-900 text-sm mb-2">Half-days and holiday work</h3>
+                <p><strong>Half-day</strong> is unchecked when the calendar opens. Enable it to mark half a day of Vacation, Sick leave or Other leave. The upper-left triangle is coloured and the lower-right remains white; half that day&apos;s capacity stays available.</p>
+                <p className="mt-2">With Half-day selected, <strong>Working day</strong> changes a full-day individual leave to half-day; applying it to an existing half-day leave clears it. Site and header public holidays always remain full-day.</p>
+                <p className="mt-2">Working day on a member&apos;s public holiday restores full-day capacity, or half-day capacity when Half-day is checked. Holiday work shows a dark-green <strong>W</strong>; half-day holiday work also has a white lower-right triangle. Applying the same working duration again restores the holiday; switching duration changes the override. Removing and re-adding a site holiday clears any previous W exception. Weekend work is not available yet.</p>
+              </section>
+              <section className="p-4 bg-white border border-slate-200 rounded-xl">
+                <h3 className="font-bold text-slate-900 text-sm mb-2">Calendar navigation and today</h3>
+                <p>Use the chevrons around the year number to change years. The calendar initially opens at the current month. A small amber arrow marks today above its day number when viewing the current year. Each team and the global view remember their own year and horizontal/vertical scroll position when saved or closed, so reopening can show a different month or year.</p>
+                <p className="mt-2">Month-header arrows move to the previous or next month. During a drag, the original row continues following the pointer&apos;s horizontal position even if the pointer moves above or below it. Auto-scroll starts only beyond the day grid&apos;s left boundary into the member labels, or beyond the calendar&apos;s right edge. Moving above or below alone does not scroll. Speed increases gradually with distance; releasing stops scrolling.</p>
+              </section>
+              <section className="p-4 bg-white border border-slate-200 rounded-xl">
+                <h3 className="font-bold text-slate-900 text-sm mb-2">Leave totals and monthly capacity</h3>
+                <p><strong>V:</strong> and <strong>S:</strong> count recorded vacation and sick days for the selected year, including half-days. They exclude weekends and public holidays; Other leave does not consume these totals. Vacation colours progress toward green at 30 days; above 30 the number becomes bold dark red on a reddish background. Sick totals use light blue through 10 days and dark blue above 10. These colours are indicators, not enforced leave limits.</p>
+                <p className="mt-2">Availability is reduced by the absent share of a site&apos;s working days. For example, 5 full days off in a 20-working-day month reduce a 1 FTE member to 0.75 FTE. Cross-team leave applies to all of the same person&apos;s team shares. Saving reduces engineering and management allocations proportionally across projects only where the total exceeds the reduced capacity; otherwise it reduces free capacity. Removing leave frees capacity without restoring previous allocations. Personal Staffing treats leave as occupied capacity.</p>
+                <p className="mt-2">External vacation, sickness, Other leave and public holidays reduce payable salary and paid capacity, including half-days; these absences are not unused paid external capacity. Working on a holiday restores the corresponding paid capacity. Internal leave is not charged to a project.</p>
+              </section>
+              <section className="p-4 bg-white border border-slate-200 rounded-xl">
+                <h3 className="font-bold text-slate-900 text-sm mb-2">Save, cancel and transfer calendars</h3>
+                <p><strong>Save &amp; Close</strong> applies leave, site holidays and any allocation reductions together. The team and global views reflect saved changes in both directions. Undo/Redo restores the complete change. Cancel, the close button and Escape discard calendar edits while retaining the view position. Workspace JSON includes all years of leave and site holidays; in a selective import, member leave travels with members and site holidays require Shared settings. The availability window&apos;s orange <strong>Export</strong> button is a placeholder; calendar XLSX export is not available yet.</p>
+              </section>
             </div>
           )}
 
@@ -782,8 +828,7 @@ export function HelpGuideModal({
                 <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                   <li>The left panel splits into the <strong>Workpackage Pool</strong> and the <strong>Team Members Pool</strong>.</li>
                   <li>Clicking <strong>View staffing</strong> with the calendar icon (<CalendarGanttIcon size={12} className="inline" />) opens the <strong>Team Combined Timeline</strong> spanning all projects.</li>
-                  <li>The umbrella button beside View staffing opens <strong>Member availability</strong>. Switch years and click or drag across day cells to mark Vacation, Sick leave or Other leave; choose Erase to remove marks. Leave changes, including removal, apply to the same cross-team member in all their teams. Public holidays are entered on the site row and apply to every member at that site across teams. Weekends are grey and have no effect: Cairo works Sunday–Thursday, other sites Monday–Friday.</li>
-                  <li>Save &amp; Close applies the calendar and reduces any overbooked monthly allocations proportionally across projects and activities. Leave also occupies capacity in Personal Staffing; its tooltip separates leave from available capacity. Cancelling leave frees capacity without restoring allocations. Other leave covers individual statutory absences outside the vacation budget and cannot be applied to sites. External vacation, sickness, other leave and public holidays reduce payable salary and paid capacity, and are excluded from unused external capacity. Calendar changes support Undo/Redo and JSON transfer; Cancel, the close button and Escape discard the draft.</li>
+                  <li>The umbrella button in the Team Members Pool opens that team&apos;s availability calendar. The umbrella icon left of <strong>Export all</strong> opens <strong>Global Team Availability</strong>. Both calendars share saved member leave and site holidays. See the <strong>Member Availability</strong> guide tab for day editing, half-days and capacity rules.</li>
                   <li>Toggle compact viewing on pools to maximize screen estate (2-column for workpackages, 4-column initial badges for team members).</li>
                   <li>Select <strong>RFQ (Request for Quotation)</strong> when creating or editing a project that has not yet been won or nominated by the client. RFQ is available only for P1 Customer projects. Its tag appears beside the project classification in project cards and timelines and does not change calculations or allocations.</li>
                 </ul>
@@ -811,7 +856,7 @@ export function HelpGuideModal({
               }`}>
                 <h3 className="font-bold text-slate-900 text-sm mb-1.5">Themes and saved work</h3>
                 <p className="text-slate-600 leading-relaxed mb-2">The <strong>Theme</strong> button cycles Vibrant, Basic and Retro appearance independently of <strong>Mode</strong>. Changing appearance does not change calculations or allocations. The Summary Dashboard, Project Spending and External Members &amp; Salaries guide tabs explain their dedicated views.</p>
-                <p className="text-slate-600 leading-relaxed">Save &amp; Close applies changes within the current app session. Planning data is not stored across page reloads: refreshing restores the initial projects, workpackages, members, and configuration. Only the compact-layout preferences are remembered across reloads. Use <strong>Export workspace</strong> to save your planning data and <strong>Import workspace</strong> to restore it.</p>
+                <p className="text-slate-600 leading-relaxed">Save &amp; Close applies changes within the current app session. Planning data is not stored across page reloads: refreshing restores the initial projects, workpackages, members, and configuration. Presentation preferences, including compact layouts, swimlane widths, release-row visibility and availability calendar positions, are remembered locally; they do not restore planning data. Use <strong>Export workspace</strong> to save your planning data and <strong>Import workspace</strong> to restore it.</p>
               </div>
             </div>
           )}
