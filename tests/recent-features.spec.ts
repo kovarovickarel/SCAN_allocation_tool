@@ -9,7 +9,7 @@ async function openApp(page: Page) {
 async function costConfiguration(page: Page) {
   await page.getByRole("button", { name: "Default's Configuration" }).click();
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "FTE costs", exact: true }).click();
+  await dialog.getByRole("button", { name: "FTE Costs", exact: true }).click();
   return dialog;
 }
 

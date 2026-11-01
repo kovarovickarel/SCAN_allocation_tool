@@ -78,7 +78,7 @@ export function previewSelectiveImport(current: WorkspaceData, incoming: Workspa
   const freshId = (id: string, used: Set<string>) => { let next = id, n = 1; while (used.has(next)) next = `import-${id}-${n++}`; used.add(next); return next; };
   const put = <T extends { id: string }>(list: T[], value: T) => { const index = list.findIndex(item => item.id === value.id); if (index < 0) list.push(value); else list[index] = value; };
   for (const key of plan.shared) {
-    if (!["fteCosts", "management", "otherDefaults", "reusabilityFactors", "stabilityFactors", "sitePublicHolidays"].includes(key)) continue;
+    if (!["fteCosts", "weekendWorkFactors", "management", "otherDefaults", "reusabilityFactors", "stabilityFactors", "sitePublicHolidays"].includes(key)) continue;
     Object.assign(result.configuration, { [key]: ["reusabilityFactors", "stabilityFactors"].includes(key)
       ? { ...(result.configuration as any)[key], ...(incoming.configuration as any)[key] } : copy((incoming.configuration as any)[key]) });
     changes.push(`Update shared ${key === "fteCosts" ? "FTE costs" : key} (affects all teams)`);

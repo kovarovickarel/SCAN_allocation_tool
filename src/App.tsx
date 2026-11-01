@@ -1,3 +1,4 @@
+import { DEFAULT_WEEKEND_WORK_FACTORS } from "./utils/weekendWork";
 import { MemberAvailabilityModal } from "./components/features/MemberAvailabilityModal";
 import { applyMemberAbsenceEdits, membersWithHolidays } from "./utils/memberAvailability";
 import { reconcileAvailability } from "./utils/availabilityAllocations";
@@ -156,6 +157,7 @@ function createInitialPlanningState(): PlanningState {
     suppliers: DEFAULT_SUPPLIERS.map(supplier => ({ ...supplier })),
     fteRates: deepClone(DEFAULT_FTE_RATES),
     fteCosts: deepClone(DEFAULT_FTE_COSTS),
+    weekendWorkFactors: { ...DEFAULT_WEEKEND_WORK_FACTORS },
     toolFteRates: deepClone(DEFAULT_TOOL_FTE_RATES),
     otherDefaults: { ...DEFAULT_OTHER_SETTINGS },
     management: DEFAULT_MGMT_SETTINGS,

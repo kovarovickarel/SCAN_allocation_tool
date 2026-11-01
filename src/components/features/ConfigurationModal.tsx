@@ -1,3 +1,4 @@
+import { DEFAULT_WEEKEND_WORK_FACTORS, WEEKEND_WORK_FACTOR_FIELDS, parseWeekendWorkFactor, type WeekendWorkFactors } from "../../utils/weekendWork";
 import { DEFAULT_NON_FTE_TYPES, NON_FTE_ICONS } from "../../utils/nonFteBasicTypes";
 import { NonFteTypeIcon } from "../ui/NonFteTypeIcon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -31,6 +32,7 @@ import { convertHourlyRateInputs, fetchLatestExchangeRate } from "../../utils/cu
 import { retainUsedSuppliers, ensureOtherSupplier, isOtherSupplier } from "../../utils/nonFteWorkpackages";
 
 type ConfigurationModalConfig = {
+  weekendWorkFactors?: WeekendWorkFactors;
   sitePublicHolidays?: Record<string, string[]>;
   nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
   suppliers?: SupplierRecord[];
@@ -78,6 +80,8 @@ export function ConfigurationModal({
   const [draft, setDraft] = useState(() => deepClone({ ...config, nonFteTypes: config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES, toolFteRates: normalizeToolBasicTypes(config.toolFteRates), suppliers: ensureOtherSupplier(config.suppliers ?? DEFAULT_SUPPLIERS), fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
   const [hourlyRateInputs, setHourlyRateInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(config.fteCosts?.hourlyRates?.[location.code] ?? "")])));
+  const [weekendInputs, setWeekendInputs] = useState(() => Object.fromEntries(WEEKEND_WORK_FACTOR_FIELDS.map(({ key }) => [key, String(config.weekendWorkFactors?.[key] ?? DEFAULT_WEEKEND_WORK_FACTORS[key])])));
+  const hasInvalidWeekendFactors = WEEKEND_WORK_FACTOR_FIELDS.some(({ key }) => parseWeekendWorkFactor(weekendInputs[key]) === undefined);
   const hasInvalidHourlyRates = FOOTPRINTS.some((location) => parseFteHourlyRate(hourlyRateInputs[location.code]) === undefined);
   const [isConvertingCurrency, setIsConvertingCurrency] = useState(false);
   const [conversionNotice, setConversionNotice] = useState<string | null>(null);
@@ -312,6 +316,7 @@ export function ConfigurationModal({
       suppliers: ensureOtherSupplier(config.suppliers ?? DEFAULT_SUPPLIERS),
       fteRates: deepClone(DEFAULT_FTE_RATES),
       fteCosts: deepClone(DEFAULT_FTE_COSTS),
+      weekendWorkFactors: { ...DEFAULT_WEEKEND_WORK_FACTORS },
       toolFteRates: deepClone(config.toolFteRates),
       otherDefaults: { ...config.otherDefaults },
       management: { ...DEFAULT_MGMT_SETTINGS },
@@ -319,6 +324,7 @@ export function ConfigurationModal({
       stabilityFactors: { ...DEFAULT_STABILITY_FACTORS },
     });
     setHourlyRateInputs(Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(DEFAULT_FTE_COSTS.hourlyRates[location.code] ?? "")])));
+    setWeekendInputs(Object.fromEntries(WEEKEND_WORK_FACTOR_FIELDS.map(({ key }) => [key, String(DEFAULT_WEEKEND_WORK_FACTORS[key])])));
   };
 
   const activeToolRates = pendingType?.rates ?? draft.toolFteRates?.[selectedTool]?.[selectedComplexity] ?? draft.fteRates[selectedComplexity];
@@ -369,7 +375,8 @@ export function ConfigurationModal({
           {[
             { key: "tools", label: "FTE Workpackage Basic Types Rates & Durations" },
             { key: "purchases", label: "non-FTE Workpackage Basic Types" },
-            { key: "costs", label: "FTE costs" },
+            { key: "costs", label: "FTE Costs" },
+            { key: "weekend", label: "Weekend Work Factors" },
             { key: "suppliers", label: "Non-FTE Suppliers" },
             { key: "management", label: "Management Support" },
             { key: "reusability", label: "Reusability Factors" },
@@ -846,6 +853,18 @@ export function ConfigurationModal({
             </form>
           </div>}
 
+          {activeTab === "weekend" && <div className="flex flex-col gap-4">
+            {WEEKEND_WORK_FACTOR_FIELDS.map(({ key, label, description }) => <div key={key} className={`flex justify-between items-center gap-4 p-3 ${isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "border border-slate-200 rounded-xl bg-slate-50/70"}`}>
+              <div>
+                <label htmlFor={`weekend-factor-${key}`} className="text-xs font-bold text-slate-800 block">{label}</label>
+                <span id={`weekend-description-${key}`} className={`text-[11px] ${isRetro ? "text-slate-700" : "text-gray-500"}`}>{description}</span>
+              </div>
+              <input id={`weekend-factor-${key}`} aria-describedby={`weekend-description-${key}`} type="text" inputMode="decimal" value={weekendInputs[key]} aria-invalid={parseWeekendWorkFactor(weekendInputs[key]) === undefined}
+                onChange={event => setWeekendInputs(current => ({ ...current, [key]: event.target.value.replace(",", ".") }))}
+                className={`w-28 shrink-0 text-xs px-2.5 py-1.5 font-mono font-bold text-right focus:outline-none ${isRetro ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black" : "border border-gray-300 rounded bg-white focus:ring-1 focus:ring-blue-500"}`} />
+            </div>)}
+            {hasInvalidWeekendFactors && <p role="alert" className="text-xs text-red-700">Enter a valid, non-negative number for each factor.</p>}
+          </div>}
           {activeTab === "costs" && (
             <div className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-4">
@@ -1018,13 +1037,16 @@ export function ConfigurationModal({
             <button
               type="button"
               onClick={() => {
-                if (isEditingType || isAddingPurchaseType || hasInvalidHourlyRates || hasInvalidPhases || currencyRequest.current) return;
-                onSave({ ...draft, suppliers: retainUsedSuppliers(draft.suppliers, config.suppliers ?? DEFAULT_SUPPLIERS, usedSupplierIds), fteCosts: { ...draft.fteCosts, hourlyRates: Object.fromEntries(FOOTPRINTS.map((location) =>
+                if (isEditingType || isAddingPurchaseType || hasInvalidHourlyRates || hasInvalidWeekendFactors || hasInvalidPhases || currencyRequest.current) return;
+                const factors = Object.fromEntries(WEEKEND_WORK_FACTOR_FIELDS.map(({ key }) => [key, parseWeekendWorkFactor(weekendInputs[key])!])) as WeekendWorkFactors;
+                // Omitted factors in older files already mean the defaults: preserve no-op saves and redo.
+                const weekendWorkFactors = config.weekendWorkFactors === undefined && WEEKEND_WORK_FACTOR_FIELDS.every(({ key }) => factors[key] === DEFAULT_WEEKEND_WORK_FACTORS[key]) ? undefined : factors;
+                onSave({ ...draft, weekendWorkFactors, suppliers: retainUsedSuppliers(draft.suppliers, config.suppliers ?? DEFAULT_SUPPLIERS, usedSupplierIds), fteCosts: { ...draft.fteCosts, hourlyRates: Object.fromEntries(FOOTPRINTS.map((location) =>
                   [location.code, parseFteHourlyRate(hourlyRateInputs[location.code]) ?? null])) } }, typeRenames);
                 onClose();
               }}
-              disabled={isEditingType || isAddingPurchaseType || hasInvalidHourlyRates || hasInvalidPhases || isConvertingCurrency}
-              title={isConvertingCurrency ? "Wait for currency conversion to finish." : hasInvalidHourlyRates ? "Correct the hourly rates in the FTE costs tab before saving." : undefined}
+              disabled={isEditingType || isAddingPurchaseType || hasInvalidHourlyRates || hasInvalidWeekendFactors || hasInvalidPhases || isConvertingCurrency}
+              title={hasInvalidWeekendFactors ? "Correct the factors in the Weekend work tab before saving." : isConvertingCurrency ? "Wait for currency conversion to finish." : hasInvalidHourlyRates ? "Correct the hourly rates in the FTE costs tab before saving." : undefined}
               className={`text-xs font-bold px-4 py-1.5 transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                 isRetro
                   ? "bg-[#000080] text-white border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black font-mono"

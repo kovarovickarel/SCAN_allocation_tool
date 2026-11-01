@@ -1,3 +1,4 @@
+import { WEEKEND_WORK_FACTOR_FIELDS, type WeekendWorkFactors } from "./weekendWork";
 import { validCalendarDate } from "./memberAvailability";
 import { DEFAULT_NON_FTE_TYPES, validNonFteTypes } from "./nonFteBasicTypes";
 import { validSupportingPhases } from "./supportingPhases";
@@ -16,6 +17,7 @@ import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
 export const WORKSPACE_FILE_VERSION = 1;
 export const MAX_WORKSPACE_FILE_BYTES = 20 * 1024 * 1024;
 export type WorkspaceConfiguration = {
+  weekendWorkFactors?: WeekendWorkFactors;
   sitePublicHolidays?: Record<string, string[]>;
   nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
   suppliers: SupplierRecord[]; fteRates: typeof DEFAULT_FTE_RATES; toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
@@ -188,6 +190,10 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   numericMap(config.stabilityFactors, "Stability factors");
   template(config.reusabilityFactors, DEFAULT_REUSABILITY_FACTORS, "Reusability factors");
   template(config.stabilityFactors, DEFAULT_STABILITY_FACTORS, "Stability factors");
+  if (config.weekendWorkFactors !== undefined) {
+    const factors = object(config.weekendWorkFactors, "Weekend work factors");
+    for (const field of WEEKEND_WORK_FACTOR_FIELDS) number(factors[field.key], `Weekend work factors.${field.key}`);
+  }
   object(config.fteCosts, "Cost settings");
   currency(config.fteCosts.currency, "Cost currency");
   for (const [location, rate] of Object.entries(object(config.fteCosts.hourlyRates, "Hourly rates"))) if (rate !== null) number(rate, `Hourly rate ${location}`);
