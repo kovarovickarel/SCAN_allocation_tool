@@ -1,5 +1,13 @@
 # Test coverage
 
+November 1 follow-up: the availability suite now has 29 cases. Other leave adds
+one calculation/compatibility check and three theme-specific UI/Save As/history
+checks, including individual-only scope, annual-budget exclusion and the final
+leave palette. All 26 non-download cases, TypeScript and the Pages build pass. Current
+sandbox browser downloads are cancelled; three existing download-dependent cases
+are blocked by that environment, rather than counted as passing. The historical
+25-case complete result below predates these additions.
+
 Member availability update (2026-11-01): all 25 checks in
 `member-availability.spec.ts` passed, including calendar interaction in all three
 themes, out-of-row dragging, header holiday scope, toggling/overwritten leave,

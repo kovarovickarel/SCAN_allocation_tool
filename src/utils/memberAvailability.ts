@@ -1,4 +1,4 @@
-import type { TeamMemberRecord } from "../types";
+import type { MemberAbsence, TeamMemberRecord } from "../types";
 import { crossTeamMemberKey } from "./memberAllocations";
 
 export function removeHolidayAbsences(members: readonly TeamMemberRecord[], drafts: Record<string, NonNullable<TeamMemberRecord["absences"]>>, datesBySite: Record<string, readonly string[]>) {
@@ -17,7 +17,7 @@ export function removeHolidayAbsences(members: readonly TeamMemberRecord[], draf
  * Apply a date delta, not a whole-calendar replacement, to retain unrelated
  * leave recorded in another team (including historical imported calendars). */
 export function applyMemberAbsenceEdits(members: readonly TeamMemberRecord[], drafts: Record<string, NonNullable<TeamMemberRecord["absences"]>>) {
-  const edits = new Map<string, Map<string, "vacation" | "sick" | undefined>>();
+  const edits = new Map<string, Map<string, MemberAbsence | undefined>>();
   for (const member of members) {
     const draft = drafts[member.id];
     if (!draft) continue;
@@ -65,7 +65,7 @@ export function memberYearAbsenceTotals(member: TeamMemberRecord, year: number) 
   const totals = { vacation: 0, sick: 0 };
   for (const [date, reason] of Object.entries(member.absences ?? {})) {
     if (!date.startsWith(`${year}-`) || !isWorkingDay(date, member.footprint) || holidays.has(date)) continue;
-    totals[reason]++;
+    if (reason === "vacation" || reason === "sick") totals[reason]++;
   }
   return totals;
 }

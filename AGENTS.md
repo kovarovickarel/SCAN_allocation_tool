@@ -20,6 +20,11 @@ Wands use effective monthly capacity. Personal Staffing includes unavailable
 capacity as occupied. External salary charges reduce paid salary and capacity
 by the same working-day factor, preserving allocated unit cost and deferral.
 See JSON_COMPATIBILITY.md and tests/member-availability.spec.ts before edits.
+Member absences also support `other` for individual statutory leave. Count it in
+unavailability/unpaid external days, never V/S budgets. The Other leave tool
+disables site/header holiday editing; public holidays retain precedence. Calendar
+cell/legend colours are vacation red, sickness blue, Other light orange and
+public holidays light green; fully shared header holidays use darker emerald.
 
 Project staffing and spending release rows default open. Their expansion choices
 persist locally per project ID, shared between staffing and spending via `useProjectReleaseVisibility`, outside

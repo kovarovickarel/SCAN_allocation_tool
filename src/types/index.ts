@@ -215,6 +215,7 @@ export interface AllocationProject {
 }
 
 export type TeamMemberRole = "engineering" | "management" | "both";
+export type MemberAbsence = "vacation" | "sick" | "other";
 
 export interface TeamMemberRecord {
   id: string;
@@ -230,7 +231,7 @@ export interface TeamMemberRecord {
   monthlySalaryCurrency?: string;
   deferredPayment?: boolean;
   paymentDelayMonths?: number;
-  absences?: Record<string, "vacation" | "sick">;
+  absences?: Record<string, MemberAbsence>;
   /** Derived site dates, never exported or saved on a member. */
   _siteHolidays?: readonly string[];
 }

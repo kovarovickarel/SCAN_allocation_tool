@@ -239,7 +239,7 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   entities(data.teamMembers, "Team members").forEach((member, index) => validateRecord(member, `data.teamMembers[${index}] (team member ${index + 1})`, () => {
     if (member.absences !== undefined) for (const [date, reason] of Object.entries(object(member.absences, "Member absences"))) {
       if (!validCalendarDate(date)) fail(`Member absences.${date}`, "expected a valid date in YYYY-MM-DD format.");
-      choice(reason, ["vacation", "sick"], `Member absences.${date}`);
+      choice(reason, ["vacation", "sick", "other"], `Member absences.${date}`);
     }
     delete member._siteHolidays;
     text(member.firstName, "Member first name"); text(member.lastName, "Member last name");

@@ -2,8 +2,8 @@
 
 ## Member availability (October 31)
 
-Schema 1 adds optional member `absences` (YYYY-MM-DD keys with `vacation` or
-`sick` values) and configuration `sitePublicHolidays` (site codes mapped to
+Schema 1 adds optional member `absences` (YYYY-MM-DD keys with `vacation`,
+`sick` or `other` values) and configuration `sitePublicHolidays` (site codes mapped to
 unique YYYY-MM-DD dates). Omission means no leave/holidays, preserving all older
 workspaces. Invalid dates/reasons are rejected before any import mutation.
 Derived `_siteHolidays` is never exported or retained from imported member data.
@@ -16,6 +16,12 @@ Availability edits and proportional allocation reductions are one history action
 Existing historical imports are not automatically rebalanced. Frozen fixtures
 remain unchanged. External paid salary/capacity now exclude working days marked
 absent; allocated effort retains its original salary-per-FTE rate.
+
+November 1: `other` represents individual statutory/other leave, excluded from
+vacation/sickness totals. It reduces capacity and external payable salary like
+public holidays, but cannot be applied to site/header rows. It may be recorded
+on weekends, which still have no capacity effect. Adding this enum value keeps
+all previous schema-1 exports valid; older apps need not import newer exports.
 
 ## Allocation release matching (October 31)
 

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from "react";
-import type { TeamMemberRecord } from "../../types";
+import type { MemberAbsence, TeamMemberRecord } from "../../types";
 import { FOOTPRINT_MAP, ThemeContext, TOOL_MAP, TOOLS } from "../../constants";
 import { BeachUmbrellaIcon, GlobeIcon, ChevronDownIcon, ChevronRightIcon } from "../ui/icons";
 import { PersonIcon } from "../ui/PersonIcon";
@@ -10,7 +10,8 @@ import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { isWorkingDay, memberMonthAvailability, memberYearAbsenceTotals, membersWithHolidays, removeHolidayAbsences } from "../../utils/memberAvailability";
 import { getCrossTeamMemberIds } from "../../utils/memberAllocations";
 
-type Absence = "vacation" | "sick";
+type Absence = MemberAbsence;
+const LEAVE_COLORS = { vacation: "#fb7185", sick: "#38bdf8", other: "#fed7aa", holiday: "#86efac" };
 const DAY_SIZE = 24;
 const HOLIDAY_HEIGHT = 20;
 const SITE_COLORS: Record<string, { header: string; tint: string }> = {
@@ -57,6 +58,7 @@ export function MemberAvailabilityModal({ toolName, members, allMembers = member
         (calendarRef.current?.scrollLeft ?? 0) - tracking.scrollLeft) / DAY_SIZE)));
       if (index === tracking.lastEnd) return;
       tracking.lastEnd = index;
+      if (drag.current?.site && drag.current.erase) setErasingHoliday(true);
       applyRangeRef.current(index, tracking.siteCode);
     };
     window.addEventListener("pointermove", move, { passive: false });
@@ -93,7 +95,9 @@ export function MemberAvailabilityModal({ toolName, members, allMembers = member
     if (!current) return;
     const erase = current.erase ?? (paint === "erase");
     const range = days.slice(Math.min(end, current.start), Math.max(end, current.start) + 1)
-      .filter(day => current.site || isWorkingDay(day.date, siteCode));
+      .filter(day => current.site || paint === "other" || isWorkingDay(day.date, siteCode) ||
+        (paint === "erase" && current.leave[current.row]?.[day.date] === "other"))
+      .filter(day => current.site || !current.sites[siteCode]?.includes(day.date));
     if (current.allSites) {
       const updated = { ...current.sites };
       const replaced: Record<string, string[]> = {};
@@ -126,17 +130,17 @@ export function MemberAvailabilityModal({ toolName, members, allMembers = member
     drag.current = { row, site, allSites, erase: site ? erase : undefined, start: index, leave, sites,
       tracking: { gridLeft, scrollLeft: calendarRef.current?.scrollLeft ?? 0, siteCode, pointerId: event.pointerId, target, dayCount: days.length, lastEnd: index } };
     target.setPointerCapture(event.pointerId);
-    setErasingHoliday(site && erase);
+    setErasingHoliday(false);
     applyRange(index, siteCode);
   };
   const cell = (row: string, siteCode: string, site: boolean, index: number) => {
     const day = days[index], working = isWorkingDay(day.date, siteCode);
     const holiday = sites[siteCode]?.includes(day.date);
     const absence = !site && leave[row]?.[day.date];
-    const color = holiday ? "#86efac" : site ? working ? siteColors(siteCode).tint : `color-mix(in srgb, #cbd5e1 80%, ${siteColors(siteCode).tint})` : !working ? "#e2e8f0" : absence === "vacation" ? "#fb7185" : absence === "sick" ? "#38bdf8" : "#ffffff";
+    const color = holiday ? LEAVE_COLORS.holiday : site ? working ? siteColors(siteCode).tint : `color-mix(in srgb, #cbd5e1 80%, ${siteColors(siteCode).tint})` : absence === "other" ? LEAVE_COLORS.other : !working ? "#e2e8f0" : absence === "vacation" ? LEAVE_COLORS.vacation : absence === "sick" ? LEAVE_COLORS.sick : "#ffffff";
     const name = site ? `${FOOTPRINT_MAP[siteCode]?.name ?? siteCode} public holiday` : `${members.find(member => member.id === row)?.firstName} ${members.find(member => member.id === row)?.lastName}`;
-    const status = holiday ? "Public holiday" : !working ? "Weekend" : absence === "vacation" ? "Vacation" : absence === "sick" ? "Sick leave" : "Available";
-    return <button key={day.date} type="button" disabled={!site && !working}
+    const status = holiday ? "Public holiday" : absence === "other" ? "Other leave" : !working ? "Weekend" : absence === "vacation" ? "Vacation" : absence === "sick" ? "Sick leave" : "Available";
+    return <button key={day.date} type="button" disabled={site ? paint === "other" : !working && paint !== "other" && absence !== "other"}
       aria-label={`${name}, ${day.date}: ${status}`} aria-pressed={Boolean(site ? holiday : absence)}
       title={`${name} · ${day.date} · ${status}`}
       onPointerDown={event => {
@@ -172,9 +176,9 @@ export function MemberAvailabilityModal({ toolName, members, allMembers = member
         <div className="flex items-center gap-2 text-xs"><button type="button" className={`px-2 py-1 cursor-pointer ${isRetro ? retroButton : "bg-white rounded border border-slate-300 hover:bg-slate-100"}`} aria-label="Previous year" onClick={() => setYear(value => Math.max(1900, value - 1))}>◀</button>
           <label className="font-bold">Year <input aria-label="Calendar year" type="number" min={1900} max={9998} value={year} className={`border px-2 py-1 w-24 font-mono ${isRetro ? "border-black bg-white" : "rounded border-slate-300 bg-white"}`} onChange={event => { const value = Number(event.target.value); if (Number.isInteger(value) && value >= 1900 && value <= 9998) setYear(value); }} /></label>
           <button type="button" className={`px-2 py-1 cursor-pointer ${isRetro ? retroButton : "bg-white rounded border border-slate-300 hover:bg-slate-100"}`} aria-label="Next year" onClick={() => setYear(value => Math.min(9998, value + 1))}>▶</button></div>
-        {([['vacation', 'Vacation', '#fb7185'], ['sick', 'Sick leave', '#38bdf8'], ['erase', 'Erase', '#ffffff']] as const).map(([value, label, color]) =>
+        {([['vacation', 'Vacation', LEAVE_COLORS.vacation], ['sick', 'Sick leave', LEAVE_COLORS.sick], ['other', 'Other leave', LEAVE_COLORS.other], ['erase', 'Erase', '#ffffff']] as const).map(([value, label, color]) =>
           <button key={value} type="button" aria-pressed={(erasingHoliday ? "erase" : paint) === value} onClick={() => setPaint(value)} className={`px-2.5 py-1 text-[11px] font-bold flex items-center gap-2 cursor-pointer ${isRetro ? `${retroButton} ${(erasingHoliday ? "erase" : paint) === value ? 'outline outline-1 outline-black' : ''}` : `rounded-lg border shadow-2xs ${(erasingHoliday ? "erase" : paint) === value ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}`}><span className="w-3 h-3 border border-slate-300" style={{ background: color }} />{label}</button>)}
-        <span className="text-xs flex items-center gap-1"><span className="w-3 h-3" style={{ background: "#86efac" }} />Public holiday (site row)</span>
+        <span className="text-xs flex items-center gap-1"><span className="w-3 h-3" style={{ background: LEAVE_COLORS.holiday }} />Public holiday (site row)</span>
         <span className="text-xs text-slate-500">Grey = weekend · Cairo: Sun–Thu · Other sites: Mon–Fri</span>
       </div>
       <div className={`flex-1 min-h-0 p-4 md:p-5 ${isRetro ? "bg-[#808080]" : "bg-slate-100"}`}>
@@ -196,7 +200,7 @@ export function MemberAvailabilityModal({ toolName, members, allMembers = member
           const marked = groups.filter(site => sites[site]?.includes(day.date)).length;
           const allMarked = groups.length > 0 && marked === groups.length;
           const label = `${paint === "erase" ? "Remove" : "Apply"} public holiday ${paint === "erase" ? "from" : "to"} shown sites on ${day.date}`;
-          return <button key={day.date} type="button" aria-label={label} title={label} disabled={!groups.length}
+          return <button key={day.date} type="button" aria-label={label} title={paint === "other" ? "Other leave applies to individual members only" : label} disabled={!groups.length || paint === "other"}
             aria-pressed={allMarked ? true : marked > 0 ? "mixed" : false} onClick={event => { if (event.detail === 0) applyHolidayToShownSites(day.date); }}
             onPointerDown={event => {
               const erase = paint === "erase" || allMarked;

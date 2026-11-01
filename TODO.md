@@ -1,7 +1,7 @@
 # TODO
 
 - [ ] Help for timelines
-- [ ] Extend the member availability calendar with dated part-time changes, joining/leaving dates and other commitments. Vacation, sick leave and site public holidays are implemented.
+- [ ] Extend the member availability calendar with dated part-time changes, joining/leaving dates and other commitments. Vacation, sick leave, individual statutory Other leave and site public holidays are implemented.
 - [ ] Deploy on a company server with browser access and persistent private workspaces per user, restored after browser closure and isolated from other users; retain JSON sharing. Confirm IT hosting/authentication requirements and define autosave, conflict handling and backups.
 
 - [ ] Hours breakdown

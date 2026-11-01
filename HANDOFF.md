@@ -4,6 +4,28 @@ Updated: 2026-11-01 (Europe/Prague).
 
 ## November 1: member availability calendar
 
+Latest feature: Other leave (`absences[date] = "other"`) is individual
+statutory leave, not part of the V/S budget. It uses the same capacity reduction,
+unpaid external salary, cross-team sharing, overwritten-leave cleanup and history
+paths. It can mark weekends without reducing working capacity. While its tool is
+selected, site/header holiday cells are disabled. The final palette restores
+vacation #fb7185, sickness #38bdf8 and holidays #86efac; Other is light orange
+#fed7aa. Grid borders retain slate-300. Fully shared header holidays use the
+darker emerald highlight, distinct from ordinary light-green holiday cells.
+Calendar counter threshold colours remain unchanged. Schema 1 remains backwards
+compatible; exports retain the new optional enum value and old files still load.
+All 26 non-download availability checks passed on the final code,
+as did TypeScript and the production Pages build. The sandbox currently cancels
+browser downloads, including unchanged tests, so new tests use the native Save As
+adapter. Three existing download-dependent checks remain blocked in this session;
+do not claim that the entire current 29-case availability suite passes here.
+
+Post-commit refinement: a single holiday click still erases immediately but does
+not temporarily select the Erase toolbar button. Show the temporary selection
+only after moving into another day during the drag. This is covered by the
+three-theme checks in the 26-case rerun. Localhost was restarted on 5173 and
+verified HTTP 200 after network permission was restored.
+
 The previous five context commits are confirmed on remote master at `e7cd2fa`;
 the corresponding Pages run succeeded and live asset hashes matched that build.
 The current availability work is grouped into local context commits, not pushed.

@@ -42,6 +42,21 @@ test("annual absence totals respect site work weeks, selected year and overlappi
   expect(memberYearAbsenceTotals(person, 2027)).toEqual({ vacation: 1, sick: 0 });
 });
 
+test("other leave reduces available and paid external capacity without consuming vacation or sick days", () => {
+  const other = Object.fromEntries(Object.keys(week).map(date => [date, 'other' as const]));
+  const person = { ...member, isExternal: true, monthlySalaryCost: 1000, absences: { ...other, '2026-02-07': 'other' as const } };
+  expect(memberMonthAvailability(person, feb).capacity).toBe(.75);
+  expect(memberYearAbsenceTotals(person, 2026)).toEqual({ vacation: 0, sick: 0 });
+  const charge = externalSalaryCharge(person, .25, 'EUR', feb)!;
+  expect(charge.capacityFTE).toBe(.75); expect(charge.salary).toBe(750);
+  const usage = externalSalaryUtilization({ currency: 'EUR', totalCost: 0, allocatedHours: 40, unpricedHours: 0, missingLocations: [], externalSalaryCharges: { m: charge } });
+  expect(usage.unusedFTE).toBe(.5);
+  const sibling = { ...person, id: 'sibling', tool: 'Other', absences: {} };
+  expect(applyMemberAbsenceEdits([sibling, { ...person, absences: {} }], { m: other })[0].absences).toEqual(other);
+  const data = workspace(); data.teamMembers = [{ ...person, isExternal: false }];
+  expect(parseWorkspaceFile(serializeWorkspace(data)).data.teamMembers[0].absences['2026-02-02']).toBe('other');
+});
+
 function workspace() {
   const data = historyWorkspace();
   data.projects[0] = { ...data.projects[0], startDate: "2026-02", duration: 12, milestones: getDefaultMilestones(12), mgmtMemberMonthlyAssignments: {} };
@@ -166,6 +181,52 @@ async function load(page: Page, theme: "vibrant" | "basic" | "retro", multiSite 
   await page.getByRole("button", { name: "Open Other member availability", exact: true }).click();
   return page.getByRole('dialog', { name: 'Other member availability' });
 }
+
+for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`other leave is individual, retains JSON/history and uses the leave palette (${theme})`, async ({ page }) => {
+  await page.addInitScript(() => {
+    let saved = '';
+    Object.defineProperty(window, '__otherLeaveSavedJson', { get: () => saved });
+    Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: async () => ({ createWritable: async () => ({
+      write: async (blob: Blob) => { saved = await blob.text(); }, close: async () => {}, abort: async () => {},
+    }) }) });
+  });
+  const dialog = await load(page, theme);
+  await dialog.getByRole('button', { name: 'Other leave', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Prague public holiday, 2026-02-02: Available', exact: true })).toBeDisabled();
+  await expect(dialog.getByRole('button', { name: 'Apply public holiday to shown sites on 2026-02-02', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Test Member, 2026-02-02: Available', exact: true }).press('Space');
+  await dialog.getByRole('button', { name: 'Test Member, 2026-02-07: Weekend', exact: true }).press('Space');
+  await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-02: Other leave', exact: true })).toHaveCSS('background-color', 'rgb(254, 215, 170)');
+  await expect(dialog.getByRole('group', { name: 'Test Member leave totals for 2026', exact: true })).toHaveText('V: 0S: 0');
+  await dialog.getByRole('button', { name: 'Vacation', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Test Member, 2026-02-03: Available', exact: true }).press('Space');
+  await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-03: Vacation', exact: true })).toHaveCSS('background-color', 'rgb(251, 113, 133)');
+  await dialog.getByRole('button', { name: 'Sick leave', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Test Member, 2026-02-04: Available', exact: true }).press('Space');
+  await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-04: Sick leave', exact: true })).toHaveCSS('background-color', 'rgb(56, 189, 248)');
+  await dialog.getByRole('button', { name: 'Prague public holiday, 2026-02-05: Available', exact: true }).press('Space');
+  await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-05: Public holiday', exact: true })).toHaveCSS('background-color', 'rgb(134, 239, 172)');
+  await dialog.getByRole('button', { name: 'Other leave', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Test Member, 2026-02-05: Public holiday', exact: true }).press('Space');
+  await dialog.getByRole('button', { name: 'Save & Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
+  const savedJson = () => page.evaluate(() => Reflect.get(window, '__otherLeaveSavedJson') as string);
+  await expect.poll(savedJson).not.toBe('');
+  const saved = parseWorkspaceFile(await savedJson()).data;
+  expect(saved.teamMembers[0].absences['2026-02-02']).toBe('other');
+  expect(saved.teamMembers[0].absences['2026-02-07']).toBe('other');
+  expect(saved.teamMembers[0].absences['2026-02-05']).toBeUndefined();
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Other member availability', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-02: Available', exact: true })).toHaveCount(1);
+  await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await page.getByRole('button', { name: 'Redo', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Other member availability', exact: true }).click();
+  await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-02: Other leave', exact: true })).toHaveCount(1);
+  await dialog.getByRole('button', { name: 'Erase', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Test Member, 2026-02-07: Other leave', exact: true }).press('Space');
+  await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-07: Weekend', exact: true })).toHaveCount(1);
+});
 
 for (const kind of ['member', 'site', 'header'] as const) test(`dragging outside the ${kind} row follows horizontal position and remains on the original row`, async ({ page }) => {
   const dialog = await load(page, 'vibrant', true);
@@ -363,8 +424,10 @@ for (const theme of ["vibrant", "basic", "retro"] as const) test(`calendar selec
   await emptySiteDay.scrollIntoViewIfNeeded();
   const fromHoliday = await occupiedSiteDay.boundingBox(), toEmpty = await emptySiteDay.boundingBox();
   await page.mouse.move(fromHoliday.x + 12, fromHoliday.y + 10); await page.mouse.down();
+  await expect(dialog.getByRole('button', { name: 'Erase', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await page.mouse.move(toEmpty.x + 12, toEmpty.y + 10, { steps: 8 });
   await expect(dialog.getByRole('button', { name: 'Erase', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.mouse.move(toEmpty.x + 12, toEmpty.y + 10, { steps: 8 }); await page.mouse.up();
+  await page.mouse.up();
   await expect(dialog.getByRole('button', { name: 'Prague public holiday, 2026-02-09: Available', exact: true })).toHaveCount(1);
   await expect(emptySiteDay).toHaveCount(1); // Crossing an empty cell must keep erasing, rather than paint it.
   await expect(dialog.getByRole('button', { name: 'Vacation', exact: true })).toHaveAttribute('aria-pressed', 'true');
