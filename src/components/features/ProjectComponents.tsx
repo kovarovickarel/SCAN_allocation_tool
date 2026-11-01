@@ -342,14 +342,14 @@ export function AddProjectModal({ onClose, onAdd, stabilityFactors = DEFAULT_STA
                 <option value="P2">P2 (Platform)</option>
               </select>
             </label>
-            <label className={`inline-flex self-start items-center gap-2 cursor-pointer text-xs font-semibold ${isRetro ? "text-black font-mono" : "text-gray-700"}`}>
+            <label className={`inline-flex self-start items-center gap-2 text-xs font-semibold ${isRetro ? "font-mono" : ""} ${draft.projectClass === "P2" ? "text-slate-400 cursor-not-allowed" : isRetro ? "text-black cursor-pointer" : "text-gray-700 cursor-pointer"}`}>
             <input
               type="checkbox"
               checked={draft.isRFQ}
               disabled={draft.projectClass === "P2"}
               title={draft.projectClass === "P2" ? "RFQ is available only for P1 (Customer) projects" : undefined}
               onChange={(e) => setDraft((d) => ({ ...d, isRFQ: e.target.checked }))}
-              className="w-4 h-4 accent-blue-600 cursor-pointer"
+              className="w-4 h-4 accent-blue-600 cursor-pointer disabled:cursor-not-allowed disabled:appearance-none disabled:bg-slate-200 disabled:border disabled:border-slate-300 disabled:rounded-sm"
             />
             RFQ
           </label>
@@ -1015,14 +1015,14 @@ export const ProjectBasket = memo(function ProjectBasket({
                 <option value="P2">P2 (Platform)</option>
               </select>
             </label>
-            <label className="inline-flex self-start items-center gap-2 text-[11px] text-slate-300 cursor-pointer">
+            <label className={`inline-flex self-start items-center gap-2 text-[11px] ${headerDraft.projectClass === "P2" ? "text-slate-500 cursor-not-allowed" : "text-slate-300 cursor-pointer"}`}>
               <input
                 type="checkbox"
                 checked={headerDraft.isRFQ}
                 disabled={headerDraft.projectClass === "P2"}
                 title={headerDraft.projectClass === "P2" ? "RFQ is available only for P1 (Customer) projects" : undefined}
                 onChange={(e) => setHeaderDraft((d) => ({ ...d, isRFQ: e.target.checked }))}
-                className="w-4 h-4 accent-blue-600 cursor-pointer"
+                className="w-4 h-4 accent-blue-600 cursor-pointer disabled:cursor-not-allowed disabled:appearance-none disabled:bg-slate-700 disabled:border disabled:border-slate-600 disabled:rounded-sm"
               />
               RFQ
             </label>
