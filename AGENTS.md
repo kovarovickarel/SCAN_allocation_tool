@@ -17,14 +17,36 @@ case-insensitive first/last-name match used by the Cross-Team badge. Preserve
 unrelated dates on sibling records; do not replace their entire calendars.
 Removing leave never restores allocations. Team manual limits and both Magic
 Wands use effective monthly capacity. Personal Staffing includes unavailable
-capacity as occupied. External salary charges reduce paid salary and capacity
+capacity as occupied. Sum actual workpackage/management allocations at full precision before adding unavailable FTE; round only rendered labels. Do not clamp totals to contracted capacity, since this hides real overbooking. See the monthly combined-timeline regressions in `tests/availability-integration.spec.ts`. External salary charges reduce paid salary and capacity
 by the same working-day factor, preserving allocated unit cost and deferral.
 See JSON_COMPATIBILITY.md and tests/member-availability.spec.ts before edits.
+Half-day leave uses optional object values `{ type: "vacation" | "sick" | "other" | "working", halfDay: true }`; existing full-day string values stay valid. Weight half-days as 0.5 in capacity, paid external capacity and annual V/S totals. Site public holidays remain full-day; a half-day working exception restores half a holiday. With Half-day checked, explicit Working day reduces full-day individual leave to half-day, or clears existing half-day leave. The calendar checkbox defaults unchecked and paints an upper-left coloured triangle, lower-right white. Preserve the fraction in cross-team edits, JSON and history.
 Member absences also support `other` for individual statutory leave. Count it in
 unavailability/unpaid external days, never V/S budgets. The Other leave tool
-disables site/header holiday editing; public holidays retain precedence. Calendar
+disables site/header holiday editing; public holidays retain precedence.
+Other leave edits must skip weekends, including Fri/Sat for Cairo. Preserve old
+imported weekend entries, allowing Working day to clear them. Calendar
 cell/legend colours are vacation red, sickness blue, Other light orange and
 public holidays light green; fully shared header holidays use darker emerald.
+Working day on a holiday stores member `absences[date] = "working"`, overriding
+holiday unavailability and restoring paid external capacity. Show a 14px dark-green W
+on the standard holiday-green background, without an extra outline; half-day working uses a white lower-right triangle behind the W. Removing a
+site holiday clears working exceptions for that date; re-adding it starts fresh. Working
+day on an existing W toggles it back to holiday. Do not count working entries
+as leave or include weekends in capacity. Member overrides share across teams.
+For Vacation/Sick/Other, starting on that selected leave type clears individual
+leave for the entire gesture, including other leave types. Keep public holidays
+and existing holiday-working exceptions untouched in this implicit clear mode;
+only explicitly selecting Working day may create/remove a holiday-work override.
+Show the temporary Working day toolbar selection only after crossing day cells.
+Availability drags reuse `useHorizontalSelectionAutoScroll`, passing the first
+day cell so its preceding sticky label defines the left scroll edge. Update the
+original row from clientX and scrollLeft even with a stationary/out-of-row pointer;
+stop scrolling on release, cancel, blur and unmount.
+
+Global Team Availability uses the same calendar, opened by the umbrella icon left of Export all. `globalAvailabilityMembers` groups by the existing cross-team name key and chooses the highest-FTE team record, breaking equal-FTE ties alphabetically by full team name. Display FTE is the sum of the person's team shares; never persist that aggregate to source records. Merge historical absence dates for display, with the ranked record winning conflicts. `globalAvailabilityDrafts` expands only actual date changes to the underlying records so a no-op save preserves unrelated historical dates. Both views use the same atomic save/reconciliation, public holidays, Undo/Redo and JSON source data. Global has its own local scroll preference.
+
+Availability calendar presentation is managed by `useAvailabilityCalendarView`: first open shows the current local year/month; subsequent opens restore year and horizontal/vertical scroll per team from localStorage (`scan-availability-position:<encoded tool>`), with a session fallback. Save, Cancel, Escape and close all preserve the viewport without saving cancelled planning edits. Position is excluded from JSON/history. The day header shows a small amber arrow above today only in the current year.
 
 Project staffing and spending release rows default open. Their expansion choices
 persist locally per project ID, shared between staffing and spending via `useProjectReleaseVisibility`, outside
@@ -58,6 +80,8 @@ to master. Inspect Git state before synchronizing, and do not assume that a remo
 push confirms the hosted deployment has finished.
 
 The app is hosted at https://kovarovickarel.github.io/SCAN_allocation_tool/. `vite.config.mjs` uses `/SCAN_allocation_tool/` only in `pages` mode and `/` for local development. Header images use `import.meta.env.BASE_URL`. Preserve prefix-safe asset paths. The Pages workflow deploys `master`; it runs `pnpm test:pages` before uploading the site. Hosting adds no shared persistence: users transfer planning data through JSON export/import.
+
+Weekend work factors are editable in Defaults configuration / Weekend work next to FTE costs. `weekendWork.ts` defines defaults 1.5/1.5/2; optional `weekendWorkFactors` is validated and transferred in workspace JSON/shared selective settings. They are intentionally inert: do not consume them in costing or capacity until the weekend-work feature is authorized. Preserve omitted factors when an older workspace is saved with unchanged effective defaults, so no-op saves do not create history or discard redo.
 
 ## Product overview
 

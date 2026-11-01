@@ -1,25 +1,23 @@
 # Test coverage
 
-November 1 follow-up: the availability suite now has 29 cases. Other leave adds
-one calculation/compatibility check and three theme-specific UI/Save As/history
-checks, including individual-only scope, annual-budget exclusion and the final
-leave palette. All 26 non-download cases, TypeScript and the Pages build pass. Current
-sandbox browser downloads are cancelled; three existing download-dependent cases
-are blocked by that environment, rather than counted as passing. The historical
-25-case complete result below predates these additions.
+## Availability validation (2026-11-01)
 
-Member availability update (2026-11-01): all 25 checks in
-`member-availability.spec.ts` passed, including calendar interaction in all three
-themes, out-of-row dragging, header holiday scope, toggling/overwritten leave,
-site collapse, fixed labels/clipping, cross-team markers/name shortening,
-annual totals/colour boundaries, month arrows/leap years, capacity reconciliation,
-external salaries, schema-1 compatibility and Undo/Redo. TypeScript and the Pages
-build passed. Earlier affected allocation, salary, workspace/selective import,
-deferred-payment and visual batches passed (263 distinct app checks overall).
-All five production checks passed earlier in this session, including calendar
-saving under the Pages prefix. Only two current UI references changed for the
-umbrella button. The complete 726-test result below is the previous baseline;
-the expanded application suite has not been rerun in full.
+Validation: 259 distinct targeted checks passed across the main batch and focused reruns, including all 74 availability checks and 185 related allocation, salary, settings, selective-import and history checks. TypeScript and the Pages production build passed. All failures from the initial expanded batch were resolved; no availability cases remain skipped or environment-blocked. This is a targeted validation, not a rerun of the entire application suite.
+
+The current availability coverage consists of 74 checks across:
+
+- `member-availability.spec.ts` (53): calendars, leave types, half-days and holiday-working exceptions, site/header scope, cross-team editing, annual counters, drag/erase/auto-scroll, dates, Save/Cancel/Undo, transfer, capacity and salary calculations.
+- `global-availability.spec.ts` (8): unique-person rows, highest-FTE/alphabetical team choice, team tags, safe historical merging, bidirectional global/team saves, independent remembered views and today markers in all themes.
+- `availability-integration.spec.ts` (7): actual monthly Personal Staffing cells in both teams' combined timelines, overlapping projects with different start months, under-capacity versus proportional reduction, half-days, holiday work, cancellation without refilling allocations, atomic Undo, real imported overbooking and replacement/removal across views. Theme-sensitive scenarios run in Vibrant, Basic and Retro.
+- `availability-regressions.spec.ts` (6): leap-day/year/project offsets, a fully absent month, engineering plus management sharing one monthly limit, Cairo versus Mon-Fri sites, and paid versus unused external salary across projects.
+
+`weekend-work-settings.spec.ts` adds five checks for the optional inactive configuration factors, validation, selective import and save/cancel/reset/history/JSON without changing project costs.
+
+The three formerly blocked availability export tests now use the real native Save As export path through `fixtures/workspaceSaveCapture.ts`. The harness receives the actual exported Blob, parses it through the production validator and checks its data; it avoids the environment's cancelled download streams. No availability cases are skipped or excluded. Browser download fallback coverage remains in the dedicated workspace/export suites.
+
+The monthly integration checks caught and now prevent rounding each project allocation before adding leave, which falsely showed 0.41 occupied against a valid 0.40 FTE capacity after a half-day absence. Personal Staffing keeps full precision until display and does not clamp away genuine overbooking. Source FTE shares remain unchanged. Frozen workspace compatibility fixtures are unchanged.
+
+The previous complete application baseline was 726 passing tests on 2026-10-31. Later focused runs are recorded in HANDOFF.md; do not describe that baseline as a complete run of the expanded application suite.
 
 Run `pnpm typecheck` and `pnpm test:e2e` for the current application.
 Use `pnpm test:export` for the focused export suite; it uses the same isolated
@@ -34,7 +32,7 @@ a separate development server on port 5174 and leaves the interactive app on
 
 | Area | Suites and important behavior |
 | --- | --- |
-| Member availability | `member-availability.spec.ts`; leave/holidays, site working weeks, monthly capacity, proportional allocation reductions, unpaid external capacity, JSON/history and calendar interaction. |
+| Member availability | `member-availability`, `global-availability`, `availability-integration` and `availability-regressions`; team/global links, exact monthly combined-timeline occupancy, cross-team members, leave/holidays/half-days, site working weeks, proportional reductions, unpaid external capacity, JSON/history and calendar interaction. |
 | October 31 release-card layout | `release-card-layout`: upright four-character rails in expanded/collapsed FTE and non-FTE cards, centred side gaps, no reserved space on unlabelled cards, details at full width without stretching the rail, all themes and both modes. |
 | Active management display | `management-inactive-months`: empty, non-editable inactive months in project/team staffing; sequential active-month numbering across gaps; engineering average restricted to months meeting the threshold, including a below-threshold month and unequal active demand; active segment borders in every theme. |
 | Allocation release editing and matching | `scheduling-milestone-layout` and `workpackage-system-release`: FTE/Other scheduling release field left of the start month; full-width non-FTE release field; saved/cancelled drafts, numeric rounding, mandatory rules, matched/unmatched manual and automatic allocation, separate stacked schedule/release messages, field-specific highlighting, font parity and atomic Undo. Historical imported mismatches remain supported. |

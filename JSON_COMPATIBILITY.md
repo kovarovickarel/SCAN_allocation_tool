@@ -1,9 +1,15 @@
 # Workspace JSON compatibility
 
+## Weekend work factors (November 1)
+
+Optional `configuration.weekendWorkFactors` stores non-negative finite numbers `weekend`, `publicHoliday`, and `weekendPublicHoliday`. Omitted settings in old schema-1 files use UI defaults 1.5, 1.5 and 2. The factors currently have no effect on costing, capacity or exports of calculated planning reports. JSON transfer/history retain explicit values; selective import applies them only through the Shared settings choice. Default configuration reset restores all three values. Frozen compatibility fixtures and schema version remain unchanged.
+
 ## Member availability (October 31)
 
+Half-day leaves additionally accept `{ "type": "vacation" | "sick" | "other" | "working", "halfDay": true }` per date. Full-day strings remain unchanged; the fraction is preserved on transfer and cross-team edits. Reject missing/false/non-boolean halfDay and unsupported object types such as holiday. Public holidays remain full-day; a half-day working exception restores half a working day of capacity and paid salary. A working object outside a holiday has no capacity effect. No schema bump or frozen fixture changes.
+
 Schema 1 adds optional member `absences` (YYYY-MM-DD keys with `vacation`,
-`sick` or `other` values) and configuration `sitePublicHolidays` (site codes mapped to
+`sick`, `other` or `working` values) and configuration `sitePublicHolidays` (site codes mapped to
 unique YYYY-MM-DD dates). Omission means no leave/holidays, preserving all older
 workspaces. Invalid dates/reasons are rejected before any import mutation.
 Derived `_siteHolidays` is never exported or retained from imported member data.
@@ -19,9 +25,20 @@ absent; allocated effort retains its original salary-per-FTE rate.
 
 November 1: `other` represents individual statutory/other leave, excluded from
 vacation/sickness totals. It reduces capacity and external payable salary like
-public holidays, but cannot be applied to site/header rows. It may be recorded
-on weekends, which still have no capacity effect. Adding this enum value keeps
+public holidays, but cannot be applied to site/header rows or new weekend cells.
+Clicks and drags follow site working weeks. Historical weekend entries remain
+importable, have no capacity effect and can be cleared with Working day.
+Adding this enum value keeps
 all previous schema-1 exports valid; older apps need not import newer exports.
+
+`working` is an explicit individual working-day exception to a site holiday.
+It restores normal working-day capacity and paid external salary, never V/S
+totals, and remains harmless on dates without holidays. Removing a site holiday
+clears its working exceptions as well as overwritten ordinary leave, so re-adding
+the holiday never restores a previous W automatically.
+Weekends remain outside the base working-day denominator. Cross-team changes,
+JSON transfer and Undo/Redo preserve the exception; no old fields are required
+or migrated, and existing allocations are never increased automatically.
 
 ## Allocation release matching (October 31)
 

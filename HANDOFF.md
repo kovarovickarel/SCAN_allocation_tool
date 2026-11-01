@@ -2,12 +2,175 @@
 
 Updated: 2026-11-01 (Europe/Prague).
 
+## Current handoff snapshot — read first (2026-11-01)
+
+This snapshot and the confirmed category requirements immediately below are authoritative. Later sections preserve earlier checkpoints and may mention superseded colours, button positions, test counts, download exclusions or pending questions. Do not implement historical backlog items automatically.
+
+### Repository and work status
+
+- Canonical laptop repository: `C:/Users/kovar/Documents/Codex/2026-10-03/hje/work/publish-repository`. Do not use the old Desktop ZIP copy.
+- This batch is grouped into context commits: `0db8388` disabled RFQ styling; `99aaccc` half-day/shared global calendars; `261a332` monthly staffing precision and regressions; `5bdc358` future weekend factors; `8680c84` native-save import/history tests; `b7d9b5e` updated guide. A following documentation commit records the handoff/backlog/validation state. The previous batch ends at `ae89edd`. No push has been performed. Inspect `git status`/`git log` before synchronizing; this snapshot does not verify current remote state.
+- The user plans to continue the configurable-category feature on another PC. Only its requirements/assessment were documented here; no dynamic-category registry or category CRUD implementation has been started.
+- Leave the user's interactive planning session on `http://127.0.0.1:5173/` intact. Development tests run separately on 5174; Pages preview tests use 4174. Planning data is not autosaved: avoid refreshing the interactive page without saving/exporting it.
+
+### Implemented and refined this session
+
+- **Half-day availability:** the checkbox starts unchecked on each opening. Vacation/Sick/Other can store `{ type, halfDay: true }`, reducing daily availability and pay impact by 0.5. Cells colour the upper-left triangle and leave the lower-right white. Explicit Working day turns a full individual leave into a half-day when checked, and clears an existing half-day leave. Site/header public holidays remain full-day.
+- **Holiday-working exceptions:** both `"working"` and `{ type: "working", halfDay: true }` are supported. Full or half working restores corresponding capacity/paid external salary; cells show a dark-green W, with a white lower-right triangle for half-working. Same-duration clicks toggle back to holiday; changing duration converts the override. Removing a site holiday clears overrides and overwritten leave across all teams, so re-adding it restores neither old leave nor W exceptions.
+- **Team/global connection:** the top-bar umbrella immediately left of Export all opens Global Team Availability, using the same calendar and save/reconciliation/history path as team availability. The global view contains all sites and one row per person (existing normalized cross-team name identity). Highest-FTE membership chooses the silhouette team; ties use alphabetical full team name. Capacity sums shares for display only; raw membership FTE remains unchanged. Global rows show unique team-icon tags with name tooltips and omit the Cross-Team text badge. Team calendars retain their badge. Global subtitle says Global Capacity; individual subtitles say Team Capacity.
+- **Calendar presentation:** Year is plain text with borderless left/right chevrons surrounding only its number, not an editable field. The duplicate year in the main header was removed. Half-day is right-aligned before the 300px member/day boundary. Leave buttons and legend begin after that boundary, share horizontal centre alignment, and use matching bold text; Half-day matches them too. Member/site rows remain compact. Site labels say `Public holidays →` with 4px right padding. Instruction text is `Click on/drag across day cells to apply leaves`. Footer explanatory text was removed, with action buttons kept right-aligned.
+- **Navigation/today:** `useAvailabilityCalendarView.ts` opens the current local month/year on first use, then remembers year plus horizontal/vertical position separately per team and global view, including Save, Cancel, Escape and close. This is local presentation state, not workspace/history data. The small amber **CSS triangle** above today sits at `top: -2px`; the experimental SVG replacement was explicitly reverted. It only exists in the actual current year and may be off-screen when a different year/month was remembered.
+- **Auto-scroll:** the shared `useHorizontalSelectionAutoScroll` hook accepts optional tuning. Availability uses `outsideViewportOnly: true`, `maxSpeed: 3600`, `acceleration: 18`, `rampDurationMs: 1200`. Despite the option name, its left boundary is the sticky member-label/right-day-grid boundary; moving into labels triggers left scroll. Right scroll starts beyond the calendar's right edge. Above/below alone does not trigger scrolling. The initial edge zone was removed. Increase speed gradually; stop immediately on release/cancel/blur and when returning within the horizontal bounds. Default behaviour of other timelines remains unchanged.
+- **Entry/header buttons:** the team availability umbrella sits below the compact/collapse button, right of Add Member, matching the compact control style/size. The global umbrella matches Export all height and has equal gaps to the tool switcher and Export all. Calendar header order is Expand, Collapse, divider, orange Export, divider, close. Export matches Export all styling without “all”, but is deliberately an **inactive placeholder**; team availability XLSX export remains TODO.
+- **Inactive weekend factors:** Defaults / Weekend Work Factors holds 1.5 / 1.5 / 2 for Weekend Work / Public Holiday Work / Weekend & Public Holiday Work. Values validate, stage/save/cancel/reset, transfer through JSON/shared selective import and support history. They do **not** yet change pay, capacity or costs. Old files may omit the optional field; an unchanged save must keep it omitted to preserve no-op Undo/Redo behaviour.
+- **Monthly Personal Staffing fix:** sum actual workpackage/management contributions at full precision before adding unavailable FTE. Round only labels; do not clamp away true overbooking. This fixes false 0.41 occupied against a legitimate 0.40 capacity after fractional leave and exposes actual imported overbooking correctly. Removing leave still never increases saved allocations.
+- **Other current changes:** P2 project RFQ labels and checkboxes are visibly grey/disabled. Help & Guide now has a dedicated Member Availability tab and current global/team, half-day, holiday-work, navigation, save/transfer and Weekend Work Factors explanations. TODO includes availability XLSX export and the agreed future category feature.
+
+### Source and tests to find quickly
+
+- Shared calendar: `src/components/features/MemberAvailabilityModal.tsx`; entry/save wiring in `src/App.tsx` and `TeamComponents.tsx`.
+- New files: `src/hooks/useAvailabilityCalendarView.ts`, `src/utils/globalAvailability.ts`, `src/utils/weekendWork.ts`. Existing monthly logic is in `memberAvailability.ts`, `availabilityAllocations.ts` and `TeamTimelineModal.tsx`.
+- JSON changes remain optional schema-1 additions; see `JSON_COMPATIBILITY.md`. `ConfigurationModal.tsx`, `workspaceFile.ts`, `SelectiveImportReview.tsx` and `selectiveWorkspaceImport.ts` include the weekend-factor form/transfer support. Frozen historical fixtures were not changed.
+- New tests: `tests/global-availability.spec.ts`, `availability-integration.spec.ts`, `availability-regressions.spec.ts`, `weekend-work-settings.spec.ts`; new fixtures `tests/fixtures/availabilityWorkspace.ts` and `workspaceSaveCapture.ts`. Existing member-availability, import/history, guide and configuration-label tests were updated.
+- Save capture exercises the actual native Save As export Blob and production parser. The three formerly blocked availability download-stream tests now pass without exclusions. The same harness is used for selective-import/history export assertions; dedicated download-fallback coverage remains separate.
+
+### Verified state and limits of validation
+
+- **74 availability checks** plus **185 related checks**, 259 distinct targeted tests, validated across the main run and focused reruns. Includes all themes, bidirectional team/global saves, cross-team sharing, exact monthly combined-timeline cells, offset projects/year/leap dates, full-month absence, management/engineering, external paid/unused salary, history and imports. No availability cases were skipped or excluded.
+- The main 259-case run initially passed 240; 19 import/history checks hit cancelled download streams. After migrating test capture, the 104-case import/history rerun passed 103 and exposed the real no-op configuration-save defect. That fix and all five weekend-factor tests then passed in a six-case focused rerun. Do not represent these as a single clean full-application run.
+- `pnpm typecheck`, `pnpm build:pages --configLoader native` and whitespace checks passed. The existing large-bundle warning remains. The last full-application 726-case result and Pages-browser checks in older sections predate this expanded batch; neither was rerun in full here.
+- Laptop execution uses `../playwright-current-local.config.mjs`, `../start-current-tests.mjs` and `../start-current-localhost.mjs` in the parent work folder. Those contain machine-specific paths and are not portable repository setup instructions; on the next PC use the repository scripts/dependencies and its browser installation, consulting the detailed environment notes below if necessary.
+
+## Planned feature: configurable categories (no implementation on this laptop)
+
+The user wants this feature implemented on another PC after the current session is committed/handed off. The answers below are confirmed and supersede earlier archive/reassignment, cloning and single-department suggestions. Do not implement this feature on this laptop.
+
+### Confirmed user requirements
+
+- Use the user-facing term **Categories**, supporting departments beyond System Validation.
+- Under Defaults configuration, allow category creation, editing and removal, including name, icon, colour and the number/names of **subcategories** such as Trace Checker/Pipeline. Subcategories are not workpackage basic types with phases/rates; those remain a separate concept.
+- Every category is editable/removable **except Other**. Other's category definition must remain protected from editing and removal. Preserve its existing separate workpackage/basic-type functionality; the user did not request locking that editor.
+- Category/subcategory deletion must prompt for confirmation. If confirmed, all associated workpackages and members are **permanently removed**, rather than archived or automatically reassigned. Delete only membership records owned by that category, keeping the same person's other category memberships and their data. Subcategory deletion removes only its workpackages, not parent-category members. Deletions must remain recoverable through Undo/Redo as a single complete action. This is authorization for the future product behaviour, not a request to delete data in the current workspace.
+- One workspace can contain categories from **several departments**. Users manually enter the necessary XLSX values in each category's settings. Do not impose one shared workspace-wide department or require an additional user-facing export-profile manager.
+- Each new category starts with **no workpackages, no team members and only the Standard workpackage basic type**. Do not clone an existing category, populate demo workpackages/members or add other basic types by default.
+- Preserve historical workspace imports and current calculations while introducing these capabilities.
+
+### Findings and constraints for the next agent
+
+- `src/constants/index.ts` owns frozen `TOOLS`, `TOOL_MAP`, `TEST_TOOLS`, abbreviations and palettes, referenced by 22 source files. `src/components/ui/icons.tsx` switches icons by category name; `PersonIcon.tsx` has its own name-based colours. Resolve all these through a saved category registry.
+- App header rendering uses `.slice(0, 5)` and `.slice(5, 10)` on TEST_TOOLS, so more than ten categories would be invisible. Introduce scalable ordered navigation. There is no inherent ten-category limit in the maths; do not promise a supported maximum without layout/performance testing.
+- Names currently act as references in members/workpackages, basic-type rates, management allocations, project visibility, Other scopes, summaries, local view preferences and imports. Stable category IDs are recommended so renaming preserves planning links. Internal `tool` field names need not all change in one commit; introduce consistent resolution/migration instead of isolated string replacements.
+- Subcategory references should be category-scoped. `hiddenSubcategories` currently stores bare names; duplicate names in different categories can otherwise collide. Current hierarchy is one level deep.
+- Other has legacy `tool === "Other" && !complexity` scheduling/calculation paths and cross-category scope semantics; KPI has a legacy type-editor branch. Preserve those behaviours independently of display-name changes. Other is explicitly protected. Do not automatically delete Other workpackages merely shared into a deleted category's scope rather than owned by it.
+- Confirmed deletions need atomic cleanup of workpackages, member records, schedules/allocations, category rate definitions, management references, project visibility, scopes and current selections. Confirmation should state affected counts. Reset to Defaults is a separate operation and must not silently delete referenced custom-category data.
+- Prefer portable icon-library keys plus a saved hex colour, deriving readable light/dark/Basic/Retro styles at runtime; user-composed Tailwind colour class names will not reliably generate CSS. Proposed registry fields include stable ID, name, abbreviation, order, icon key, colour, subcategories and XLSX metadata; exact fields are an implementation design, not all individually confirmed by the user.
+- Reuse the generic configurable phase engine, staffing, management overheads, non-FTE and availability logic. New-category creation is Standard-only and otherwise empty. The initial Standard phase/rate/duration values can be finalized on the next PC.
+- JSON must carry category definitions and export metadata. Full/selective imports must handle unknown IDs, same-name/different-ID conflicts, renamed built-ins and referenced subcategories atomically. Legacy files without the registry must still resolve the original built-ins. Keep frozen compatibility fixtures unchanged; consult JSON_COMPATIBILITY.md.
+
+### XLSX requirements and code locations
+
+- Users manually maintain category-level organizational/export values, supporting multiple departments in one file. Shared internal profiles are optional implementation detail; they are not an agreed additional UI requirement.
+- `projectPlanningXlsx.ts` writes fixed `1 Base`, `SystemValidation`, `6 SystemValidation`, `SysVal` into both Resource Planning and Expenses Proj Spec, with `SYV-General`/`SYV-Lead` resource roles. Dropdown validation lists are fixed too; changing cell text alone is insufficient.
+- `projectResourcePlanning.ts` hardcodes category/subcategory keyword/activity aliases, category ordering, BIE's LIDAR versus other sites' NON LiDAR prefix, and BIE/TRO HCC versus other sites LCC classification. `projectExpensesPlanning.ts` shares those mappings.
+- `planningWorkpackage.ts` derives 1-SYS1xx through 5-SYS5xx from releases/finish milestones. `managementPlanningShares.ts` attributes overhead to those codes. Another department may require different organization, roles and workpackage-code rules, not just a renamed department cell.
+- Identify the exact editable fields and validation during implementation; seed existing built-ins with their present SysVal mappings to preserve old exports, then make the requested category metadata editable. Apply mappings consistently to both sheets, dropdowns and management attribution.
+- The existing workbook structure may be reusable. Different mandatory columns or downstream import rules would require a separate template adapter; category editing alone cannot guarantee support for arbitrary XLSX layouts. A concrete department example remains useful before finalizing export fields.
+
+### Confirmed follow-up answers: deletion scope and recovery
+
+All three follow-up questions have been answered by the user:
+
+1. **Category deletion / cross-team members:** remove only their membership/source records in that category. Preserve their memberships, allocations and leave in all remaining categories.
+2. **Subcategory deletion:** remove only associated workpackages. Keep the parent category's members; no new member-to-subcategory assignment model is requested.
+3. **Undo:** deletion is recoverable through the existing Undo mechanism. “Permanent” means removal rather than archiving, not bypassing Undo. Restore deleted definitions, workpackages, membership records, settings and linked allocations together with their original IDs. Redo reapplies the same deletion.
+
+The product direction is now clear. The remaining implementation design work is the exact XLSX field list/validation, migration details, scalable navigation and Standard type phase/rate defaults; these are not reasons to reopen the confirmed deletion policy.
+
+### Proposed future implementation sequence
+
+1. Follow the confirmed deletion scope and Undo rules; collect an XLSX metadata example and define stable references/import migrations.
+2. Introduce the registry with current built-in defaults and historical compatibility.
+3. Replace fixed lists/icons/colours/visibility/availability paths and the ten-item navigation assumption.
+4. Add Defaults category/subcategory management, protected Other, confirmed cascade deletion and Standard-only empty creation.
+5. Apply manual category XLSX metadata to both sheets, dropdowns and overhead mappings.
+6. Test creation, rename, deletion, imports, Undo/Redo, team/global calendars, allocation/overheads, summaries, themes and XLSX, then recheck the full existing suite.
+
+## November 1: availability test audit
+
+Added 13 focused tests: seven cross-view/combined-timeline UI scenarios and six independent calculation regressions. Fixtures use two overlapping projects with different start dates and one member split 0.4/0.6 across Data Factory/KPI. They assert individual January, February and March capacity cells, half-days, under-capacity cases, proportional reductions across both projects, holiday-working restoration, allocation non-restoration, source FTE preservation and Undo. Other cases cover real imported overbooking, holiday replacement/removal across team/global calendars, leap-day/year offsets, full-month leave, engineering plus management sharing one limit, Cairo weekdays and external paid/unused capacity.
+
+Fixed the bug caught by the monthly scenario: Personal Staffing rounded each contribution before adding unavailable FTE, falsely showing 0.41 occupied against 0.40 capacity for a legitimate half-day absence. Contributions now retain precision and totals no longer clamp away genuine imported overbooking. The new scenarios assert both behaviours.
+
+The three existing availability export tests no longer depend on cancelled browser download streams. `fixtures/workspaceSaveCapture.ts` captures the real Save As Blob and runs the production parser before assertions. All 74 availability cases can now run without exclusions, plus five inactive weekend-factor checks. The earlier exclusion notes below are historical and superseded by this harness change. Validation completed: all 74 availability checks passed without exclusions. The broader 259-case batch initially passed 240 and encountered 19 cancelled download-stream failures in selective-import/history checks. Those suites now use the same real Save As Blob capture, and their 104-case rerun passed 103 while exposing one additional no-op-save defect: old workspaces gained default weekend factors on an unchanged configuration save, unnecessarily replacing the redo branch. The configuration modal now preserves an omitted optional field when effective factors are unchanged. All six focused settings/no-op-history checks then passed. All 259 distinct targeted checks are now validated across those runs; TypeScript and the Pages build passed. No full-application or Pages-browser suite rerun is claimed. The user subsequently requested context commits, remaining full-suite validation and a PowerShell push command; see the current snapshot for that release step.
+
+## November 1: Help & Guide refresh
+
+Reviewed the last committed guide update (`ae89edd`) and the subsequent uncommitted calendar/settings changes. Added a dedicated Member Availability tab, covering team/global entry points, deduplication and team-icon tags, site/header holiday editing, toggle/drag semantics, half-days, holiday work, totals, capacity/pay, navigation/today/remembered position, save/cancel/history/transfer and the inactive XLSX Export placeholder. Team-view help now points to this tab instead of duplicating a long paragraph. Calculation help explains Weekend Work Factors defaults, validation, reset/transfer and their intentionally inactive effect. FTE Costs capitalization and local presentation-versus-planning persistence descriptions are updated. Guide navigation coverage exercises both new sections.
+
+## November 1: weekend work settings
+
+Defaults configuration has a **Weekend Work Factors** tab immediately after **FTE Costs**, with rows **Weekend Work** (1.5), **Public Holiday Work** (1.5), and **Weekend & Public Holiday Work** (2). Each row has a short pay-multiplier description matching Stability Factors styling; the extra footer comment was removed at the user's request. Settings stage until Save, validate finite non-negative decimals, support Cancel/Undo/Redo/reset, and survive JSON transfer. Shared selective import offers Weekend work factors explicitly. Older files need no new fields. No calculations or pay premiums use these values yet; the weekend-work feature remains deferred. `tests/weekend-work-settings.spec.ts` covers defaults, input validation, transfer, reset/cancel/history, selective import and unchanged project cost across themes.
+
+## November 1: Global Team Availability
+
+A top-bar umbrella icon immediately left of Export all opens Global Team Availability. It reuses the team calendar, with all sites and one row per cross-team person. Highest FTE chooses the representative/silhouette team; equal shares break alphabetically by full team name, then ID for stability. Total capacity sums underlying team shares without modifying source FTE. `globalAvailability.ts` merges historical calendars for display and expands only user-edited dates for saving. Team/global saves share the existing atomic reconciliation and history; site/header holidays affect the same shared settings. Global has a separate local viewport preference; XLSX Export remains an inactive placeholder. New `tests/global-availability.spec.ts` covers ranking, historical no-op/removal, two-way team/global edits, sites absent from the current team, half-days, cancellation, Undo/Redo, JSON and unmodified source FTE across all themes.
+
+## November 1: availability navigation
+
+Year controls are now plain `Year < 2026 >` with borderless chevrons around the number; no typed year input or duplicate year in the header. Half-day is right-aligned before the member/day divider; toolbar buttons and legends align to the day grid and share a centre line. A small amber triangle points to today in the day header. First opening shows the current local month/year; `useAvailabilityCalendarView` remembers year and both scroll offsets per team, including Save, Cancel, Escape and close. These are local presentation preferences, excluded from planning JSON/history. Tests freeze November 15, 2026 and check current-month opening, marker, and all close/reopen paths in every theme.
+
+## November 1: half-day working restoration
+
+Working day now respects Half-day: full-day individual leave becomes half-day, while existing half-day leave clears. Public holidays stay site-wide/full-day, but individual `{ type: "working", halfDay: true }` restores 0.5 day of capacity and payable external salary. Full and half holiday-work modes convert each other; repeating the same mode toggles back to holiday. W is dark green; half holiday work has a white lower-right triangle. Removing the site holiday clears either kind of override, including across teams. JSON schema 1 remains backward compatible.
+
+Verification of the working restoration: 47 non-download availability checks passed, including click/drag interactions in all themes; TypeScript and the Pages production build passed. The three existing download checks remain excluded for the known environment issue.
+
+## November 1: half-day leave
+
+The availability toolbar now has an unchecked-by-default Half-day checkbox for Vacation, Sick leave and Other leave. Half-day cells colour the upper-left triangle only. Annual V/S totals show half-day fractions; effective capacity, proportional allocation reduction and unpaid external salary use 0.5 day. Public holidays remain full-day; see the later half-day working-restoration refinement above for W exceptions. Full-day-to-half-day conversion preserves the selected leave type; clicking the same type and duration clears it. Cross-team edits, history and JSON retain fractions. Historical string-only JSON still imports; new half-day objects are validated strictly.
+
+Verification: 43 availability tests passed (the three existing browser-download cases remain excluded due to the environment download cancellation issue); TypeScript and the Pages production build passed. No commit/push was requested for this feature.
+
 ## November 1: member availability calendar
+
+Latest edge-scroll refinement: availability selection now reuses the same
+horizontal auto-scroll hook as project staffing. Moving near/beyond either
+calendar edge scrolls progressively while keeping the original member/site/header
+row and apply/clear mode. A stationary pointer continues selection as scrolling
+moves dates underneath it. Stop on release/cancel/blur/unmount and clamp at year
+ends. Three new edge/reverse/stop tests and all 38 non-download availability
+checks passed, along with TypeScript. The three download cases remain blocked.
+
+Latest selection refinement: Vacation, Sick leave and Other leave now toggle to
+clearing when the gesture starts on their own existing type. The latched gesture
+clears mixed individual leave, including when the pointer leaves the row, without
+touching public holidays or existing W exceptions. It never creates holiday work;
+that requires explicitly selecting Working day. Toolbar feedback appears only
+after crossing into another day and resets on release. Three new mixed-leave
+checks plus six theme/holiday-work regressions passed; TypeScript passed too.
+
+Newest uncommitted follow-up: Working day can override an individual public
+holiday. The cell uses the standard holiday-green background and a 14px white W
+without an extra outline; the legend remains the standard 12px size. The site
+holiday itself remains. Click it again with Working day to restore the holiday,
+or drag to apply/remove exceptions using the starting cell's state. Save shares
+exceptions across the member's teams, supports Undo/Redo and exports the new
+optional schema-1 `working` enum. Effective capacity and paid external salary
+return for normal working days; V/S totals and weekend rules remain unchanged.
+Keep allocations unchanged when availability grows. Removing a public holiday
+clears all W exceptions at that site/date, including other teams; re-adding the
+holiday starts fresh. The four focused checks passed after updating this reset
+rule, including both site/header actions in all themes and cross-team Undo.
+Final verification for this follow-up: 31 non-download availability checks,
+TypeScript and the Pages build passed. The unchanged three download-dependent
+cases remain environment-blocked; the complete current suite contains 34 cases.
 
 Latest feature: Other leave (`absences[date] = "other"`) is individual
 statutory leave, not part of the V/S budget. It uses the same capacity reduction,
 unpaid external salary, cross-team sharing, overwritten-leave cleanup and history
-paths. It can mark weekends without reducing working capacity. While its tool is
+paths. New Other leave marks skip weekends (Fri/Sat in Cairo, Sat/Sun elsewhere),
+including while dragging. Historical weekend entries remain importable and can
+be cleared with Working day. While its tool is
 selected, site/header holiday cells are disabled. The final palette restores
 vacation #fb7185, sickness #38bdf8 and holidays #86efac; Other is light orange
 #fed7aa. Grid borders retain slate-300. Fully shared header holidays use the
