@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, readDownloadedBytes } from "./fixtures/downloadCapture";
+import { expect } from "@playwright/test";
 import { unzipSync, strFromU8 } from "fflate";
 
 test("individual project export uses its own filename and matching full-workspace colour index", async ({ page }) => {
@@ -7,8 +8,7 @@ test("individual project export uses its own filename and matching full-workspac
   await page.getByRole("button", { name: "Export project planning to Excel", exact: true }).nth(1).click();
   const download = await downloads;
   expect(download.suggestedFilename()).toMatch(/^MBAG_P1-\d{2}_\d{2}_\d{4}_\d{2}-\d{2}\.xlsx$/);
-  const chunks: Buffer[] = [];
-  for await (const chunk of (await download.createReadStream())!) chunks.push(Buffer.from(chunk));
+  const chunks = [await readDownloadedBytes(page, download)];
   const archive = unzipSync(Buffer.concat(chunks));
   const colour = await page.evaluate(({ sheet, styles }) => {
     const parse = (text: string) => new DOMParser().parseFromString(text, "application/xml");

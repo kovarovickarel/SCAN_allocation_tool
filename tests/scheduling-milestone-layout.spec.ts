@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, readDownloadedBytes } from "./fixtures/downloadCapture";
+import { expect } from "@playwright/test";
 import { historyWorkspace } from "./fixtures/historyWorkspace";
 import { serializeWorkspace } from "../src/utils/workspaceFile";
 
@@ -137,7 +138,7 @@ for (const mandatory of [false, true]) test(`allocation release is staged, round
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export workspace", exact: true }).click();
   await page.getByRole("button", { name: "Download JSON", exact: true }).click();
-  const chunks: Buffer[] = []; for await (const chunk of (await (await download).createReadStream())!) chunks.push(Buffer.from(chunk));
+  const chunks = [await readDownloadedBytes(page, await download)];
   const saved = JSON.parse(Buffer.concat(chunks).toString("utf8")).data.workpackages[0];
   expect(saved.systemRelease).toBe(130);
   expect(saved.projectId).toBe("p");

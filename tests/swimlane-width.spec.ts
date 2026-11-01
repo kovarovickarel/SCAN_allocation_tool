@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, readDownloadedBytes } from "./fixtures/downloadCapture";
+import { expect } from "@playwright/test";
 import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
 
 for (const viewport of [900, 1600]) test(`pool width limits preserve compact FTE/non-FTE cards (${viewport}px)`, async ({ page }) => {
@@ -62,9 +63,7 @@ test("swimlane widths are excluded from JSON exports", async ({ page }) => {
     const pending = page.waitForEvent("download");
     await page.getByRole("button", { name: "Export workspace", exact: true }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Download JSON", exact: true }).click();
-    const stream = await (await pending).createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+    const chunks = [await readDownloadedBytes(page, await pending)];
     return JSON.parse(Buffer.concat(chunks).toString("utf8")).data;
   };
   const before = await exportData();

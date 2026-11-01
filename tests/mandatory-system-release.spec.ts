@@ -1,4 +1,5 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, readDownloadedBytes } from "./fixtures/downloadCapture";
+import { expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { historyWorkspace } from "./fixtures/historyWorkspace";
 import { DEFAULT_TOOL_FTE_RATES } from "../src/constants";
@@ -63,7 +64,7 @@ async function exported(page: Page): Promise<WorkspaceData> {
   const downloading = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export workspace", exact: true }).click();
   await page.getByRole("button", { name: "Download JSON", exact: true }).click();
-  const chunks: Buffer[] = []; for await (const chunk of (await (await downloading).createReadStream())!) chunks.push(Buffer.from(chunk));
+  const chunks = [await readDownloadedBytes(page, await downloading)];
   return parseWorkspaceFile(Buffer.concat(chunks).toString("utf8")).data;
 }
 for (const tool of ["SYS.4", "SYS.5"]) test(`required release blocks adding and editing until a number is provided (${tool})`, async ({ page }) => {

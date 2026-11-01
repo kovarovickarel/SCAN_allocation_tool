@@ -1,6 +1,7 @@
+import { test, readDownloadedBytes } from "./fixtures/downloadCapture";
 import { ensureOtherSupplier } from "../src/utils/nonFteWorkpackages";
 import { enableAutomaticFteStart } from "./fixtures/automaticFteStart";
-import { test, expect, type Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFAULT_MGMT_SETTINGS,
   DEFAULT_FTE_COSTS, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, deepClone } from "../src/constants";
 import { createWorkspaceFile, parseWorkspaceFile, serializeWorkspace, type WorkspaceData } from "../src/utils/workspaceFile";
@@ -142,8 +143,7 @@ async function exportData(page: Page) {
   await page.getByRole("dialog").getByRole("button", { name: "Download JSON", exact: true }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^SCAN-workspace-.*\.json$/);
-  const stream = await download.createReadStream();
-  const chunks: Buffer[] = []; for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const chunks = [await readDownloadedBytes(page, download)];
   return parseWorkspaceFile(Buffer.concat(chunks).toString("utf8"));
 }
 async function upload(page: Page, data: WorkspaceData) {
@@ -232,8 +232,7 @@ test("review cancellation, backup and invalid files leave the current workspace 
   await page.getByRole("button", { name: "Export current workspace backup", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Download JSON", exact: true }).click();
   const backup = await downloadPromise;
-  const stream = await backup.createReadStream(); const chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const chunks = [await readDownloadedBytes(page, backup)];
   expect(parseWorkspaceFile(Buffer.concat(chunks).toString("utf8")).data).toEqual(original.data);
   await page.getByRole("dialog").getByRole("button", { name: "Cancel", exact: true }).click();
   expect((await exportData(page)).data).toEqual(original.data);

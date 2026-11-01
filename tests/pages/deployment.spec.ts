@@ -1,4 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { test, readDownloadedBytes } from "../fixtures/downloadCapture";
+import { expect } from "@playwright/test";
 import { parseWorkspaceFile, serializeWorkspace } from "../../src/utils/workspaceFile";
 import { unzipSync, strFromU8 } from "fflate";
 import { historyWorkspace } from "../fixtures/historyWorkspace";
@@ -50,9 +51,7 @@ test("built app exports and imports a JSON workspace at the Pages path", async (
   await page.getByRole("dialog").getByRole("button", { name: "Download JSON", exact: true }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toMatch(/\.json$/);
-  const stream = await download.createReadStream();
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const chunks = [await readDownloadedBytes(page, download)];
   const exported = parseWorkspaceFile(Buffer.concat(chunks).toString("utf8"));
   expect(exported.data.projects).toHaveLength(3);
   expect(exported.data.workpackages.filter(item => item.kind === "non-fte")).toHaveLength(4);
@@ -74,8 +73,7 @@ test("built app downloads all-project XLSX with prefix-safe template and lazy-lo
   await page.getByRole("button", { name: "Export all", exact: true }).click();
   const download = await downloading;
   expect(download.suggestedFilename()).toMatch(/^SCAN_Projects-\d{2}_\d{2}_\d{4}_\d{2}-\d{2}\.xlsx$/);
-  const chunks: Buffer[] = [];
-  for await (const chunk of (await download.createReadStream())!) chunks.push(Buffer.from(chunk));
+  const chunks = [await readDownloadedBytes(page, download)];
   const archive = unzipSync(Buffer.concat(chunks));
   expect(strFromU8(archive["xl/workbook.xml"])).toContain('name="Site hourly rates"');
   expect(archive["xl/worksheets/sheet1.xml"]).toBeDefined();
