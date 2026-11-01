@@ -1002,7 +1002,7 @@ export function TeamTimelineModal({
                 const maxAllowed = Math.min(cap, Math.max(assignedFTE, assignedFTE * (pRow.pDur / wpDuration)));
                 contrib = round2(Math.min(maxAllowed, wpMonthFTE * memberShare));
               }
-              if (contrib > 0) monthlyAllocations[gIdx].total = round2(monthlyAllocations[gIdx].total + contrib);
+              if (contrib > 0) monthlyAllocations[gIdx].total += contrib;
             }
           });
         }
@@ -1024,7 +1024,7 @@ export function TeamTimelineModal({
               } else if (assignedFTE > 0) {
                 contrib = round2(Math.min(assignedFTE, mgmtMonthFTE * memberShare));
               }
-              if (contrib > 0) monthlyAllocations[gIdx].total = round2(monthlyAllocations[gIdx].total + contrib);
+              if (contrib > 0) monthlyAllocations[gIdx].total += contrib;
             }
           });
         }
@@ -1032,7 +1032,8 @@ export function TeamTimelineModal({
 
       // Workpackage and management allocations share one monthly personal capacity.
       monthlyAllocations.forEach((allocation, index) => {
-        allocation.total = Math.min(cap, allocation.total) + memberMonthAvailability(member, minStartAbs + index).unavailable;
+        // Preserve allocation precision and real overbooking; round only display labels.
+        allocation.total += memberMonthAvailability(member, minStartAbs + index).unavailable;
       });
       const totalSum = monthlyAllocations.reduce((s, m) => s + m.total, 0);
       const avgFTE = totalMonths > 0 ? round2(totalSum / totalMonths) : 0;
