@@ -38,6 +38,7 @@ a separate development server on port 5174 and leaves the interactive app on
 
 | Area | Suites and important behavior |
 | --- | --- |
+| Availability drag rendering | `availability-performance`: memoized row isolation, capacity-cache invalidation, and large global/member/site/header drag selection. Local frame/render timings are diagnostic, with no hardware-specific FPS assertion. All 80 availability checks plus TypeScript/build and five Pages checks passed for this optimization. |
 | Member availability | `member-availability`, `global-availability`, `availability-integration` and `availability-regressions`; team/global links, exact monthly combined-timeline occupancy, cross-team members, leave/holidays/half-days, site working weeks, proportional reductions, unpaid external capacity, JSON/history and calendar interaction. |
 | October 31 release-card layout | `release-card-layout`: upright four-character rails in expanded/collapsed FTE and non-FTE cards, centred side gaps, no reserved space on unlabelled cards, details at full width without stretching the rail, all themes and both modes. |
 | Active management display | `management-inactive-months`: empty, non-editable inactive months in project/team staffing; sequential active-month numbering across gaps; engineering average restricted to months meeting the threshold, including a below-threshold month and unequal active demand; active segment borders in every theme. |

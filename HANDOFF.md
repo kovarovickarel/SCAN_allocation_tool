@@ -2,6 +2,46 @@
 
 Updated: 2026-11-01 (Europe/Prague).
 
+## Desktop follow-up: availability drag performance (2026-11-01)
+
+After pulling remote master through 0fb535e, profiling reproduced sluggish drag
+scrolling from full-calendar React rerenders. At equal member counts global/team
+behaved similarly; a 40-member global test was around 5 FPS during member dragging,
+while ordinary scrolling stayed around 60 FPS.
+
+MemberAvailabilityModal now delegates to memoized AvailabilityCalendarRows.tsx:
+member rows, site cells, header days, seven-day groups and individual day buttons.
+Stable interaction delegates preserve the latest draft/tool/half-day state without
+invalidating unaffected rows. Working-day flags and holiday lookups are cached;
+member capacity tooltips reuse the existing memberMonthAvailability calculation
+and invalidate only months with changed year/FTE/site/absence/holiday inputs.
+Yearly leave totals retain the existing calculation. No source-field, pay, capacity,
+allocation reconciliation, JSON or visual-layout changes were made.
+
+The full year's day-button DOM remains present for keyboard accessibility,
+scrollIntoView and pointer capture; memoized week signatures restrict shared-holiday
+updates to changed weeks rather than creating thousands of new day elements.
+The user explicitly requested identical scroll speed behaviour. The shared
+useHorizontalSelectionAutoScroll hook and availability parameters were NOT changed:
+outsideViewportOnly true, maxSpeed 3600, acceleration 18, rampDurationMs 1200.
+The existing 40 ms elapsed cap, edges, ramp and stop conditions are unchanged too.
+
+Isolated local after-measurements: median frame interval about 16.7 ms (~60 FPS)
+for 4-member team, 16/40-member global, and 40-member site/header drags. Forty-member
+render medians were ~4 ms (member), ~3 ms (site), ~9 ms (all-sites header). These are
+diagnostic local timings, not hard portable FPS assertions. Frame delays remain
+possible, but the scaling bottleneck is substantially reduced.
+
+Verified: all 80 availability tests (the previous 74 plus six new performance/
+isolation regressions), TypeScript, production Pages build and all five Pages
+checks passed. No full-application suite rerun is claimed. New permanent test files:
+tests/availability-performance.spec.ts and fixtures/availability-performance-harness.tsx.
+They check unchanged-member isolation, capacity cache invalidation including
+half-days/removal/holidays, large-calendar member/site/header selection, and emit
+frame/render timings without brittle FPS thresholds. Historical fixtures and
+screenshots are unchanged. This optimization, tests and handover notes are grouped
+in one commit for the user-authorized push to master; debug.log is excluded.
+
 ## Current handoff snapshot — read first (2026-11-01)
 
 This snapshot and the confirmed category requirements immediately below are authoritative. Later sections preserve earlier checkpoints and may mention superseded colours, button positions, test counts, download exclusions or pending questions. Do not implement historical backlog items automatically.

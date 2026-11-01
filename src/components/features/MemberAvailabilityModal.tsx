@@ -1,32 +1,16 @@
+import { AvailabilityCells, AvailabilityHeaderDays, AvailabilityMemberRow, DAY_SIZE, HOLIDAY_HEIGHT, LEAVE_COLORS, EMPTY_DATES, EMPTY_ABSENCES, EMPTY_TEAMS, labelClass, rowStyle, siteColors, type CalendarInteraction } from "./AvailabilityCalendarRows";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { MemberAbsence, MemberLeaveType, TeamMemberRecord } from "../../types";
 import { FOOTPRINT_MAP, ThemeContext, TOOL_MAP, TOOLS } from "../../constants";
-import { BeachUmbrellaIcon, GlobeIcon, ChevronDownIcon, ChevronRightIcon, ToolIcon } from "../ui/icons";
-import { PersonIcon } from "../ui/PersonIcon";
-import { ExternalMemberBadge } from "../ui/ExternalMemberBadge";
-import { CrossTeamBadge } from "../ui/CrossTeamBadge";
-import { ResponsiveMemberName } from "../ui/ResponsiveMemberName";
+import { BeachUmbrellaIcon, GlobeIcon, ChevronDownIcon, ChevronRightIcon } from "../ui/icons";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { useHorizontalSelectionAutoScroll } from "../../hooks/useHorizontalSelectionAutoScroll";
-import { isWorkingDay, memberAbsenceType, memberAbsenceDays, memberMonthAvailability, memberYearAbsenceTotals, membersWithHolidays, removeHolidayAbsences } from "../../utils/memberAvailability";
+import { isWorkingDay, memberAbsenceType, memberAbsenceDays, removeHolidayAbsences } from "../../utils/memberAvailability";
 import { useAvailabilityCalendarView } from "../../hooks/useAvailabilityCalendarView";
 import { globalAvailabilityMembers, globalAvailabilityDrafts } from "../../utils/globalAvailability";
 import { crossTeamMemberKey, getCrossTeamMemberIds } from "../../utils/memberAllocations";
 
 type Absence = MemberLeaveType;
-const formatLeaveDays = (value: number) => value % 1 === 0.5 ? `${Math.floor(value) || ""}½` : String(value);
-const LEAVE_COLORS = { vacation: "#fb7185", sick: "#38bdf8", other: "#fed7aa", holiday: "#86efac" };
-const DAY_SIZE = 24;
-const HOLIDAY_HEIGHT = 20;
-const SITE_COLORS: Record<string, { header: string; tint: string }> = {
-  PRA: { header: "#2563eb", tint: "#dbeafe" },
-  BIE: { header: "#7c3aed", tint: "#ede9fe" },
-  CHE: { header: "#c2410c", tint: "#ffedd5" },
-  TRO: { header: "#0e7490", tint: "#cffafe" },
-  CAI: { header: "#a16207", tint: "#fef3c7" },
-  TOK: { header: "#be185d", tint: "#fce7f3" },
-};
-const siteColors = (site: string) => SITE_COLORS[site] ?? { header: "#475569", tint: "#e2e8f0" };
 type Props = { global?: boolean; toolName: string; members: TeamMemberRecord[]; allMembers?: TeamMemberRecord[]; holidays: Record<string, string[]>;
   onClose: () => void;
   onSave: (absences: Record<string, Record<string, MemberAbsence>>, holidays: Record<string, string[]>) => void };
@@ -94,7 +78,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     const date = new Date(Date.UTC(year, 0, index + 1));
     return { date: date.toISOString().slice(0, 10), month: date.getUTCMonth(), day: date.getUTCDate() };
   }), [year]);
-  const groups = [...new Set(members.map(member => member.footprint))].sort();
+  const groups = useMemo(() => [...new Set(members.map(member => member.footprint))].sort(), [members]);
   const scrollToMonth = (month: number) => {
     const firstDay = days.findIndex(day => day.month === month);
     if (firstDay < 0) return;
@@ -169,34 +153,18 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     const firstDayCell = target.parentElement?.querySelector<HTMLButtonElement>(":scope > button[aria-pressed]") ?? null;
     startAutoScroll(firstDayCell, event.clientX, updateDragPosition);
   };
-  const cell = (row: string, siteCode: string, site: boolean, index: number) => {
-    const day = days[index], working = isWorkingDay(day.date, siteCode);
-    const holiday = sites[siteCode]?.includes(day.date);
-    const absenceEntry = site ? undefined : leave[row]?.[day.date];
-    const absence = memberAbsenceType(absenceEntry);
-    const halfMarked = !site && typeof absenceEntry === "object" && (!holiday || absence === "working");
-    const workingHoliday = Boolean(holiday && absence === "working");
-    const color = holiday ? LEAVE_COLORS.holiday : site ? working ? siteColors(siteCode).tint : `color-mix(in srgb, #cbd5e1 80%, ${siteColors(siteCode).tint})` : absence === "other" ? LEAVE_COLORS.other : !working ? "#e2e8f0" : absence === "vacation" ? LEAVE_COLORS.vacation : absence === "sick" ? LEAVE_COLORS.sick : "#ffffff";
-    const name = site ? `${FOOTPRINT_MAP[siteCode]?.name ?? siteCode} public holiday` : `${members.find(member => member.id === row)?.firstName} ${members.find(member => member.id === row)?.lastName}`;
-    const status = workingHoliday ? "Working on public holiday" : holiday ? "Public holiday" : absence === "other" ? "Other leave" : !working ? "Weekend" : absence === "vacation" ? "Vacation" : absence === "sick" ? "Sick leave" : "Available";
-    return <button key={day.date} type="button" disabled={site ? paint === "other" : !working && !(paint === "erase" && (absence === "other" || holiday))}
-      aria-label={`${name}, ${day.date}: ${status}`} aria-pressed={Boolean(site ? holiday : absence)}
-      title={`${name} · ${day.date} · ${status}${halfMarked ? " (Half-day)" : ""}`}
-      onPointerDown={event => {
-        const erase = site ? Boolean(holiday) : paint === "erase" || (!holiday && absence === paint && halfMarked === halfDay);
-        beginDrag(event, index, row, site, siteCode, erase);
-      }}
-      onKeyDown={event => { if (event.key === " " || event.key === "Enter") {
-        event.preventDefault(); drag.current = { row, site, halfDay, erase: site ? Boolean(holiday) : paint === "erase" || (!holiday && absence === paint && halfMarked === halfDay), clearHolidayWork: workingHoliday && halfMarked === halfDay && paint === "erase", start: index, leave, sites }; applyRange(index, siteCode); drag.current = null;
-      } }}
-      className={`border shrink-0 hover:ring-2 hover:ring-slate-700 hover:z-10 disabled:cursor-default ${isRetro ? "border-slate-500" : "border-slate-300"}`}
-      style={{ width: DAY_SIZE, height: site ? HOLIDAY_HEIGHT : DAY_SIZE, background: halfMarked ? `linear-gradient(135deg, ${color} 50%, #ffffff 50%)` : color, borderRadius: 0,
-        ...(site ? { borderColor: siteColors(siteCode).header, borderStyle: working ? "solid" : "dashed" } : {}),
-        ...(day.day === 1 && index > 0 ? { borderLeftColor: "#64748b" } : {}),
-        ...(workingHoliday ? { color: "#166534", fontSize: 14, fontWeight: 800 } : {}) }}>{workingHoliday ? "W" : null}</button>;
+  const interactionRef = useRef<(CalendarInteraction & { onHoliday: (date: string) => void }) | null>(null);
+  interactionRef.current = {
+    onBegin: beginDrag,
+    onHoliday: applyHolidayToShownSites,
+    onKeyboard: (row, site, siteCode, index, erase, clearHolidayWork) => {
+      drag.current = { row, site, halfDay, erase, clearHolidayWork, start: index, leave, sites };
+      applyRange(index, siteCode); drag.current = null;
+    },
   };
-  const labelClass = "sticky left-0 z-20 border-r px-4 shrink-0 flex items-center text-xs";
-  const rowStyle = { display: "flex", width: "max-content", alignItems: "center" } as const;
+  const handleBegin = useCallback<CalendarInteraction["onBegin"]>((...args) => interactionRef.current?.onBegin(...args), []);
+  const handleKeyboard = useCallback<CalendarInteraction["onKeyboard"]>((...args) => interactionRef.current?.onKeyboard(...args), []);
+  const handleHoliday = useCallback((date: string) => interactionRef.current?.onHoliday(date), []);
   return <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 md:p-6" role="presentation">
     <section role="dialog" aria-modal="true" aria-label={`${toolName} member availability`} className={`text-slate-800 flex flex-col w-[1380px] max-w-[97vw] h-[92vh] max-h-[95vh] overflow-hidden ${isRetro ? "bg-[#d4d0c8] border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono" : "bg-white rounded-2xl shadow-2xl border border-slate-300"}`}>
       <header className={`flex items-center justify-between gap-4 shrink-0 text-white ${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] px-4 py-2 border-b-2 border-black" : "bg-slate-900 px-6 py-3.5 border-b border-slate-800"}`}>
@@ -253,48 +221,18 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
             </div>;
           })}
         </div>
-        <div style={{ ...rowStyle, minHeight: 24 }}><div className={`${labelClass} bg-slate-900 border-slate-700 text-slate-400 text-[10px]`} style={{ width: 300, height: 24 }}>Click on/drag across day cells to apply leaves</div>{days.map((day, index) => {
-          const marked = groups.filter(site => sites[site]?.includes(day.date)).length;
-          const allMarked = groups.length > 0 && marked === groups.length;
-          const removeLabel = paint === "erase" && allMarked;
-          const label = `${removeLabel ? "Remove" : "Apply"} public holiday ${removeLabel ? "from" : "to"} shown sites on ${day.date}`;
-          return <button key={day.date} type="button" aria-label={label} title={paint === "other" ? "Other leave applies to individual members only" : label} disabled={!groups.length || paint === "other"}
-            aria-pressed={allMarked ? true : marked > 0 ? "mixed" : false} onClick={event => { if (event.detail === 0) applyHolidayToShownSites(day.date); }}
-            onPointerDown={event => {
-              const erase = allMarked;
-              beginDrag(event, index, "header", true, "", erase, true);
-            }}
-            className={`relative text-[8px] font-mono text-center shrink-0 h-6 select-none cursor-pointer hover:bg-slate-700 hover:text-white disabled:cursor-default ${allMarked ? "bg-emerald-900/50 text-green-300" : "text-slate-300"}`}
-            style={{ width: DAY_SIZE }} aria-current={day.date === today ? "date" : undefined}>{day.date === today && <span role="img" aria-label="Today" title={`Today: ${today}`} className="absolute left-1/2 -translate-x-1/2 -top-0.5 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-amber-400 pointer-events-none" />}{day.day}</button>;
-        })}</div>
+        <AvailabilityHeaderDays days={days} groups={groups} sites={sites} paint={paint} today={today} onBegin={handleBegin} onHoliday={handleHoliday} />
         </div>
         {groups.map(site => <React.Fragment key={site}>
           <div style={rowStyle}><button type="button" aria-label={`Toggle ${FOOTPRINT_MAP[site]?.name ?? site} members`} aria-expanded={!collapsedSites[site]}
             onClick={() => { drag.current = null; setCollapsedSites(current => ({ ...current, [site]: !current[site] })); }}
             className={`${labelClass} font-bold gap-2 text-white cursor-pointer hover:brightness-110`}
             style={{ width: 300, height: HOLIDAY_HEIGHT, paddingRight: 4, fontSize: 11, lineHeight: "16px", background: siteColors(site).header, borderColor: siteColors(site).header }}>
-            <span className="-ml-2 shrink-0">{collapsedSites[site] ? <ChevronRightIcon size={12} /> : <ChevronDownIcon size={12} />}</span><GlobeIcon size={12} /><span>{FOOTPRINT_MAP[site]?.name ?? site}</span><span className="ml-auto text-right text-[8px] uppercase tracking-wider opacity-80">Public holidays →</span></button>{days.map((_, index) => cell(site, site, true, index))}</div>
-          {!collapsedSites[site] && members.filter(member => member.footprint === site).map(member => {
-            const draft = membersWithHolidays([{ ...member, absences: leave[member.id] }], sites)[0];
-            const totals = memberYearAbsenceTotals(draft, year);
-            const vacationColor = totals.vacation > 30 ? "#991b1b" : totals.vacation <= 10 ? "#ef4444" : totals.vacation <= 20 ? "#f97316" : totals.vacation <= 25 ? "#eab308" : totals.vacation < 30 ? "#86efac" : "#16a34a";
-            const summary = Array.from({ length: 12 }, (_, month) => `${month + 1}: ${memberMonthAvailability(draft, year * 12 + month).capacity.toFixed(2)} FTE`).join('\n');
-            return <div key={member.id} style={rowStyle}><div className={`${labelClass} bg-white border-slate-200 border-b gap-2`} style={{ width: 300, height: DAY_SIZE, paddingLeft: 6, paddingRight: 6 }} title={`${member.firstName} ${member.lastName} · ${member.role}\nMonthly available capacity\n${summary}`}>
-              <PersonIcon role={member.role} toolName={member.tool} size={16} isCrossTeam={crossTeamMemberIds.has(member.id)} />
-              <div className="min-w-0 flex-1 flex items-center gap-1"><ResponsiveMemberName firstName={member.firstName} lastName={member.lastName} initialsWithPeriods className="font-bold text-[11px] text-slate-900" />
-                {global && <span role="group" aria-label={`${member.firstName} ${member.lastName} teams`} className="inline-flex items-center gap-0.5 shrink-0">
-                  {(memberTeams.get(crossTeamMemberKey(member)) ?? []).map(name => {
-                    const team = TOOL_MAP[name];
-                    return <span key={name} role="img" aria-label={`${name} team`} title={`${name} team`} className={`w-4 h-4 inline-flex items-center justify-center rounded border shrink-0 ${isRetro ? "bg-[#c0c0c0] border-slate-500 text-black" : `${team?.accent ?? "bg-slate-100"} ${team?.border ?? "border-slate-300"} ${team?.text ?? "text-slate-700"}`}`}><ToolIcon toolName={name} size={11} /></span>;
-                  })}
-                </span>}
-              </div>{!global && crossTeamMemberIds.has(member.id) && <CrossTeamBadge />}{member.isExternal && <ExternalMemberBadge />}
-              <span role="group" aria-label={`${member.firstName} ${member.lastName} leave totals for ${year}`} className="flex items-center gap-2.5 text-[12px] font-semibold font-mono shrink-0 tabular-nums">
-                <span title={`Vacation days in ${year}: ${totals.vacation} (working days, excluding public holidays)`} className={`text-slate-700 inline-flex items-baseline justify-between w-[38px] ${totals.vacation > 30 ? "bg-red-100 rounded" : ""}`}>V: <span className="text-[13px] leading-none" style={{ color: vacationColor, fontWeight: totals.vacation > 30 ? 900 : 700 }}>{formatLeaveDays(totals.vacation)}</span></span>
-                <span title={`Sick days in ${year}: ${totals.sick} (working days, excluding public holidays)`} className="text-slate-700 inline-flex items-baseline justify-between w-[38px]">S: <span className="text-[13px] leading-none" style={{ color: totals.sick <= 10 ? "#38bdf8" : "#1d4ed8", fontWeight: 700 }}>{formatLeaveDays(totals.sick)}</span></span>
-              </span>
-            </div>{days.map((_, index) => cell(member.id, site, false, index))}</div>;
-          })}
+            <span className="-ml-2 shrink-0">{collapsedSites[site] ? <ChevronRightIcon size={12} /> : <ChevronDownIcon size={12} />}</span><GlobeIcon size={12} /><span>{FOOTPRINT_MAP[site]?.name ?? site}</span><span className="ml-auto text-right text-[8px] uppercase tracking-wider opacity-80">Public holidays →</span></button><AvailabilityCells row={site} siteCode={site} site name={`${FOOTPRINT_MAP[site]?.name ?? site} public holiday`} days={days} holidays={sites[site] ?? EMPTY_DATES} paint={paint} halfDay={halfDay} isRetro={isRetro} onBegin={handleBegin} onKeyboard={handleKeyboard} /></div>
+          {!collapsedSites[site] && members.filter(member => member.footprint === site).map(member =>
+            <AvailabilityMemberRow key={member.id} member={member} absences={leave[member.id] ?? EMPTY_ABSENCES} holidays={sites[site] ?? EMPTY_DATES}
+              days={days} year={year} global={global} isCrossTeam={crossTeamMemberIds.has(member.id)} teams={memberTeams.get(crossTeamMemberKey(member)) ?? EMPTY_TEAMS}
+              paint={paint} halfDay={halfDay} isRetro={isRetro} onBegin={handleBegin} onKeyboard={handleKeyboard} />)}
         </React.Fragment>)}
         {!members.length && <p className="p-6 text-sm text-slate-500">No members in this team yet.</p>}
         </div>
