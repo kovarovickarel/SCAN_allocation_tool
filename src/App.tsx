@@ -1,5 +1,5 @@
 import { MemberAvailabilityModal } from "./components/features/MemberAvailabilityModal";
-import { absoluteMonth, applyMemberAbsenceEdits, membersWithHolidays } from "./utils/memberAvailability";
+import { applyMemberAbsenceEdits, membersWithHolidays } from "./utils/memberAvailability";
 import { reconcileAvailability } from "./utils/availabilityAllocations";
 import { useWorkspaceHistory, useWorkspaceAction } from "./hooks/useWorkspaceHistory";
 import { samePlanningValue, type PlanningState } from "./utils/workspaceHistory";
@@ -15,7 +15,7 @@ import { ProjectPlanningExportButton } from "./components/features/ProjectPlanni
 import type { WorkspaceData, WorkspaceView } from "./utils/workspaceFile";
 import { workpackageFinishViolation } from "./utils/workpackageFinishTargets";
 import { SummaryDashboard } from "./components/features/SummaryDashboard";
-import { ProjectIcon } from "./components/ui/icons";
+import { BeachUmbrellaIcon, ProjectIcon } from "./components/ui/icons";
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
 import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
 import { purchaseCost, purchaseCostSummary, purchaseMonthlyCosts, purchasePaymentSchedule, purchaseScheduleExceedsProject, isPurchasePaymentAltered, validPurchaseMonths, purchaseSubcategory, retainUsedSuppliers, ensureOtherSupplier, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
@@ -188,7 +188,7 @@ export default function App() {
     setFunctions, setProjects, setTeamMembers, setConfig, setTeamOtherWPScopes } = useWorkspaceHistory(createInitialPlanningState);
 
   const teamMembers = useMemo(() => membersWithHolidays(sourceMembers, config.sitePublicHolidays), [sourceMembers, config.sitePublicHolidays]);
-  const [showAvailability, setShowAvailability] = useState(false);
+  const [showAvailability, setShowAvailability] = useState<false | "team" | "global">(false);
   const handleSaveAvailability = useWorkspaceAction(history, "Save member availability", (absences, sitePublicHolidays) => {
     const current = history.present;
     if (Object.entries(absences).every(([id, dates]) => JSON.stringify(dates) === JSON.stringify(current.teamMembers.find(member => member.id === id)?.absences ?? {})) &&
@@ -822,8 +822,8 @@ export default function App() {
 
   return (
     <NonFteTypesContext.Provider value={config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES}><ThemeContext.Provider value={{ theme, isBasic, isRetro, setTheme, mode: appMode, isBasicMode }}>
-      {showAvailability && <MemberAvailabilityModal toolName={activeToolView} members={sourceMembers.filter(member => member.tool === activeToolView)} allMembers={sourceMembers}
-        holidays={config.sitePublicHolidays ?? {}} initialYear={projects.length ? Math.floor(Math.min(...projects.map(project => absoluteMonth(project.startDate))) / 12) : new Date().getFullYear()}
+      {showAvailability && <MemberAvailabilityModal global={showAvailability === "global"} toolName={showAvailability === "global" ? "Global" : activeToolView} members={showAvailability === "global" ? sourceMembers : sourceMembers.filter(member => member.tool === activeToolView)} allMembers={sourceMembers}
+        holidays={config.sitePublicHolidays ?? {}}
         onClose={() => setShowAvailability(false)} onSave={handleSaveAvailability} />}
       <div className={`min-h-screen ${isRetro ? "bg-[#008080] font-sans" : "bg-slate-950"} flex flex-col text-slate-800 select-none`}>
         <header className={`${isRetro ? "bg-[#c0c0c0] border-b-2 border-black shadow-[0_2px_0px_#fff]" : "bg-slate-900 border-b border-slate-800 shadow-lg"} px-4 md:px-5 py-3 flex items-center gap-5 shrink-0`}>
@@ -902,6 +902,7 @@ export default function App() {
           <div className="flex-1 min-w-4" />
 
           {/* Test Tool View Switcher */}
+          <div className="flex items-center gap-2.5 shrink-0">
           <div className="flex items-center gap-2 shrink-0">
             <WorkspaceFileControls getWorkspace={getWorkspace} onImport={importWorkspace} history={history}
               historyDisabled={functions.some(card => card._editing) || Boolean(draggedCard) || draggedProjectIndex !== null} />
@@ -1001,6 +1002,8 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <button type="button" aria-label="Open Global Team Availability" title="Global Team Availability" onClick={() => setShowAvailability("global")}
+              className={`inline-flex items-center justify-center transition-colors cursor-pointer ${isRetro ? "w-8 h-8 bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black" : "w-7 h-7 rounded-lg bg-slate-800/90 text-slate-400 border border-slate-700/60 hover:text-slate-200 hover:bg-slate-700"}`}><BeachUmbrellaIcon size={18} /></button>
             <ProjectPlanningExportButton options={{ projects, cards: functions, members: teamMembers, configuration: config }} />
             <button
               type="button"
@@ -1013,6 +1016,7 @@ export default function App() {
             >
               <span className="flex items-center"><PlusIcon size={13} />{!isBasicMode && <ProjectIcon size={16} className="shrink-0" />}</span> Add Project
             </button>
+          </div>
           </div>
         </header>
 
@@ -1081,7 +1085,7 @@ export default function App() {
                   isCompact={isTeamBucketCompact}
                   onToggleCompact={handleToggleTeamBucketCompact}
                   onOpenTimeline={() => setShowTeamTimeline(true)}
-                  onOpenAvailability={() => setShowAvailability(true)}
+                  onOpenAvailability={() => setShowAvailability("team")}
                   onAddClick={() => {
                     setEditingMember(null);
                     setShowAddMember(true);

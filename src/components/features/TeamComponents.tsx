@@ -92,10 +92,6 @@ export const TeamMembersPool = memo(function TeamMembersPool({
             <ResponsiveTeamName toolName={toolName} className={`font-bold text-sm tracking-tight ${isRetro ? "font-mono font-black" : ""}`} />
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <button type="button" onClick={onOpenAvailability} title="Member availability calendar" aria-label={`Open ${toolName} member availability`}
-              className={`p-1.5 rounded-md border cursor-pointer transition-colors ${isRetro ? "bg-[#c0c0c0] text-black border-black" : isBasic ? "text-blue-300 bg-slate-800 border-slate-700 hover:bg-slate-700" : "bg-white/70 border-current hover:bg-white"}`}>
-              <BeachUmbrellaIcon size={14} />
-            </button>
             <button
               type="button"
               onClick={onOpenTimeline}
@@ -112,6 +108,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
               <span>View staffing</span>
               <CalendarGanttIcon size={14} className="shrink-0 transition-transform group-hover:scale-110" />
             </button>
+
             <button
               type="button"
               onClick={onToggleCompact}
@@ -155,7 +152,15 @@ export const TeamMembersPool = memo(function TeamMembersPool({
             }`}
           >
             <span className="flex items-center"><PlusIcon size={12} />{!isBasicMode && <StaffingIcon size={12} className="shrink-0" />}</span> Add Member
-          </button>          </div>
+          </button>
+            <button type="button" onClick={onOpenAvailability} title="Member availability calendar" aria-label={`Open ${toolName} member availability`}
+              className={`p-1 rounded transition-colors cursor-pointer flex items-center justify-center ${isRetro
+                ? "text-white hover:bg-white/20"
+                : isBasic ? "text-slate-300 hover:text-white hover:bg-slate-800/50"
+                : (TEAM_COMPACT_BTN_STYLES[toolName]?.inactive || "opacity-70 hover:opacity-100 hover:bg-black/5")}`}>
+              <BeachUmbrellaIcon size={12} />
+            </button>
+          </div>
         </div>
       </div>
 

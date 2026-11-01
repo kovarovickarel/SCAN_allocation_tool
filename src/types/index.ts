@@ -215,7 +215,9 @@ export interface AllocationProject {
 }
 
 export type TeamMemberRole = "engineering" | "management" | "both";
-export type MemberAbsence = "vacation" | "sick" | "other";
+export type MemberLeaveType = "vacation" | "sick" | "other";
+export type MemberAbsenceType = MemberLeaveType | "working";
+export type MemberAbsence = MemberAbsenceType | { type: MemberAbsenceType; halfDay: true };
 
 export interface TeamMemberRecord {
   id: string;

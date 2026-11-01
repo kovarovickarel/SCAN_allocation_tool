@@ -239,7 +239,12 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   entities(data.teamMembers, "Team members").forEach((member, index) => validateRecord(member, `data.teamMembers[${index}] (team member ${index + 1})`, () => {
     if (member.absences !== undefined) for (const [date, reason] of Object.entries(object(member.absences, "Member absences"))) {
       if (!validCalendarDate(date)) fail(`Member absences.${date}`, "expected a valid date in YYYY-MM-DD format.");
-      choice(reason, ["vacation", "sick", "other"], `Member absences.${date}`);
+      if (typeof reason === "string") choice(reason, ["vacation", "sick", "other", "working"], `Member absences.${date}`);
+      else {
+        const half = object(reason, `Member absences.${date}`);
+        choice(half.type, ["vacation", "sick", "other", "working"], `Member absences.${date}.type`);
+        if (half.halfDay !== true) fail(`Member absences.${date}.halfDay`, "expected true for a half-day leave entry.");
+      }
     }
     delete member._siteHolidays;
     text(member.firstName, "Member first name"); text(member.lastName, "Member last name");

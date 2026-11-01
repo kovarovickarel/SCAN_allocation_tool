@@ -1,13 +1,21 @@
 import type { MemberAbsence, TeamMemberRecord } from "../types";
 import { crossTeamMemberKey } from "./memberAllocations";
 
-export function removeHolidayAbsences(members: readonly TeamMemberRecord[], drafts: Record<string, NonNullable<TeamMemberRecord["absences"]>>, datesBySite: Record<string, readonly string[]>) {
+export function memberAbsenceType(absence: MemberAbsence | undefined) {
+  return typeof absence === "object" ? absence.type : absence;
+}
+
+export function memberAbsenceDays(absence: MemberAbsence | undefined) {
+  return !absence || memberAbsenceType(absence) === "working" ? 0 : typeof absence === "object" ? 0.5 : 1;
+}
+
+export function removeHolidayAbsences(members: readonly TeamMemberRecord[], drafts: Record<string, NonNullable<TeamMemberRecord["absences"]>>, datesBySite: Record<string, readonly string[]>, clearWorking = false) {
   const updated = { ...drafts };
   for (const member of members) {
     const dates = datesBySite[member.footprint];
     if (!dates?.length) continue;
     const absences = { ...(drafts[member.id] ?? member.absences) };
-    for (const date of dates) delete absences[date];
+    for (const date of dates) if (clearWorking || memberAbsenceType(absences[date]) !== "working") delete absences[date];
     updated[member.id] = absences;
   }
   return updated;
@@ -22,7 +30,8 @@ export function applyMemberAbsenceEdits(members: readonly TeamMemberRecord[], dr
     const draft = drafts[member.id];
     if (!draft) continue;
     for (const date of new Set([...Object.keys(member.absences ?? {}), ...Object.keys(draft)])) {
-      if (member.absences?.[date] === draft[date]) continue;
+      if (memberAbsenceType(member.absences?.[date]) === memberAbsenceType(draft[date]) &&
+        (typeof member.absences?.[date] === "object") === (typeof draft[date] === "object")) continue;
       const key = crossTeamMemberKey(member);
       if (!edits.has(key)) edits.set(key, new Map());
       edits.get(key)!.set(date, draft[date]);
@@ -65,7 +74,8 @@ export function memberYearAbsenceTotals(member: TeamMemberRecord, year: number) 
   const totals = { vacation: 0, sick: 0 };
   for (const [date, reason] of Object.entries(member.absences ?? {})) {
     if (!date.startsWith(`${year}-`) || !isWorkingDay(date, member.footprint) || holidays.has(date)) continue;
-    if (reason === "vacation" || reason === "sick") totals[reason]++;
+    const type = memberAbsenceType(reason);
+    if (type === "vacation" || type === "sick") totals[type] += memberAbsenceDays(reason);
   }
   return totals;
 }
@@ -81,7 +91,9 @@ export function memberMonthAvailability(member: TeamMemberRecord | undefined, mo
     const date = `${year.toString().padStart(4, "0")}-${(index + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
     if (!isWorkingDay(date, member.footprint)) continue;
     workingDays++;
-    if (member.absences?.[date] || holidays.has(date)) absentDays++;
+    const absence = member.absences?.[date];
+    if (holidays.has(date)) absentDays += memberAbsenceType(absence) === "working" ? (typeof absence === "object" ? 0.5 : 0) : 1;
+    else absentDays += memberAbsenceDays(absence);
   }
   const factor = workingDays ? (workingDays - absentDays) / workingDays : 1;
   return { capacity: capacity * factor, unavailable: capacity * (1 - factor), factor, workingDays, absentDays };
