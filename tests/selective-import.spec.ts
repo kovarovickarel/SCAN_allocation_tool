@@ -1,3 +1,4 @@
+import { installWorkspaceSaveCapture, savedWorkspace } from "./fixtures/workspaceSaveCapture";
 import { test, expect, type Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFAULT_MGMT_SETTINGS,
@@ -323,15 +324,9 @@ test("frozen baseline imports selectively and re-exports using the original supp
 async function upload(page: Page, data: WorkspaceData) {
   await page.getByLabel("Workspace file", { exact: true }).setInputFiles({ name: "team.json", mimeType: "application/json", buffer: Buffer.from(serializeWorkspace(data)) });
 }
-async function exported(page: Page) {
-  await page.getByRole("button", { name: "Export workspace", exact: true }).click();
-  const waiting = page.waitForEvent("download"); await page.getByRole("dialog").getByRole("button", { name: "Download JSON", exact: true }).click();
-  const stream = await (await waiting).createReadStream(); const chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
-  return parseWorkspaceFile(Buffer.concat(chunks).toString("utf8")).data;
-}
+async function exported(page: Page) { return savedWorkspace(page); }
 async function openMerge(page: Page, incoming = workspace("team")) {
-  await page.addInitScript(() => Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined }));
+  await installWorkspaceSaveCapture(page);
   await page.goto("/"); await upload(page, workspace()); await page.getByRole("button", { name: "Import & Replace", exact: true }).click();
   const before = await exported(page); await upload(page, incoming);
   await expect(page.getByRole("radio", { name: "Replace entire workspace", exact: true })).toBeChecked();
@@ -355,10 +350,7 @@ test("browser: switching import modes preserves staged choices and backup export
   await page.getByRole("radio", { name: "Replace entire workspace", exact: true }).check();
   await page.getByRole("radio", { name: "Select what to import", exact: true }).check();
   await expect(page.getByLabel("Project match for Shared Project", { exact: true })).toHaveValue("skip");
-  await page.getByRole("button", { name: "Export current workspace backup", exact: true }).click();
-  const waiting = page.waitForEvent("download"); await page.getByRole("dialog").getByRole("button", { name: "Download JSON", exact: true }).click();
-  const stream = await (await waiting).createReadStream(); const chunks: Buffer[] = []; for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
-  expect(parseWorkspaceFile(Buffer.concat(chunks).toString("utf8")).data).toEqual(before);
+  expect(await savedWorkspace(page, "Export current workspace backup")).toEqual(before);
   await expect(page.getByLabel("Project match for Shared Project", { exact: true })).toHaveValue("skip");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
 });

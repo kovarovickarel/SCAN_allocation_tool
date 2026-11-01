@@ -1,3 +1,4 @@
+import { installWorkspaceSaveCapture, savedWorkspace } from "./fixtures/workspaceSaveCapture";
 import { readFileSync } from "node:fs";
 import { test, expect, type Page } from "@playwright/test";
 import { WorkspaceHistory, planningSnapshot, samePlanningValue } from "../src/utils/workspaceHistory";
@@ -107,13 +108,9 @@ test("frozen schema-1 import survives undo/redo and export without history metad
 });
 
 async function exported(page: Page) {
-  const pending = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export workspace", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Download JSON", exact: true }).click();
-  const stream = await (await pending).createReadStream(), chunks: Buffer[] = [];
-  for await (const chunk of stream!) chunks.push(Buffer.from(chunk));
+  const data = await savedWorkspace(page);
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  return parseWorkspaceFile(Buffer.concat(chunks).toString("utf8")).data;
+  return data;
 }
 async function upload(page: Page, data = historyWorkspace()) {
   await page.getByLabel("Workspace file", { exact: true }).setInputFiles({ name: "history.json", mimeType: "application/json", buffer: Buffer.from(serializeWorkspace(data)) });
@@ -121,7 +118,7 @@ async function upload(page: Page, data = historyWorkspace()) {
   await expect(page.getByRole("dialog")).toHaveCount(0);
 }
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined }));
+  await installWorkspaceSaveCapture(page);
 });
 
 test("toolbar is a 2x2 grid; startup and cancelled dialogs have no history", async ({ page }) => {
