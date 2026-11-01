@@ -4,6 +4,23 @@ Read this file before changing the application. It describes the current product
 
 ## Start here: current handoff
 
+Member availability is edited from the umbrella button left of View staffing.
+`memberAvailability.ts` resolves member absences plus shared site public holidays,
+using Mon–Fri except Cairo Sun–Thu. App derives members with `_siteHolidays` for
+calculations; source/history/JSON store only member `absences` and configuration
+`sitePublicHolidays`. Do not persist derived fields on members. Calendar saves
+call `reconcileAvailability` atomically with dates: reduce only overbooked
+calendar-month allocations proportionally across all projects and management.
+`applyMemberAbsenceEdits` shares changed leave dates (including removal and sick
+leave) across records identified by `crossTeamMemberKey`, the same trimmed,
+case-insensitive first/last-name match used by the Cross-Team badge. Preserve
+unrelated dates on sibling records; do not replace their entire calendars.
+Removing leave never restores allocations. Team manual limits and both Magic
+Wands use effective monthly capacity. Personal Staffing includes unavailable
+capacity as occupied. External salary charges reduce paid salary and capacity
+by the same working-day factor, preserving allocated unit cost and deferral.
+See JSON_COMPATIBILITY.md and tests/member-availability.spec.ts before edits.
+
 Project staffing and spending release rows default open. Their expansion choices
 persist locally per project ID, shared between staffing and spending via `useProjectReleaseVisibility`, outside
 workspace JSON and Undo/Redo. Closing a timeline or discarding planning edits does

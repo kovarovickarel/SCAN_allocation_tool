@@ -1,6 +1,93 @@
 # Development handoff
 
-Updated: 2026-10-31 (Europe/Prague).
+Updated: 2026-11-01 (Europe/Prague).
+
+## November 1: member availability calendar
+
+The previous five context commits are confirmed on remote master at `e7cd2fa`;
+the corresponding Pages run succeeded and live asset hashes matched that build.
+The current availability work is grouped into local context commits, not pushed.
+The canonical laptop checkout remains `work/publish-repository`; localhost 5173
+serves it. Do not use the old Desktop ZIP or reload a user's unsaved workspace.
+
+Context commits:
+- `c738f9e`: monthly availability, cross-team leave, allocation reconciliation,
+  external pay and workspace compatibility.
+- `9d6b6e7`: interactive availability calendar, team entry controls, member labels
+  and the final calendar presentation/selection behaviour.
+- `14bbc19`: 25 availability checks, Pages transfer check, coverage notes and
+  the two reviewed current visual references.
+- Final documentation commit: guide, agent/handoff notes and backlog cleanup.
+  No remote publication was requested for this batch.
+
+Current behaviour:
+- The umbrella button left of View staffing opens the team's yearly calendar.
+  Its header uses the same umbrella, dark timeline styling, and Expand/Collapse
+  buttons. Members have one row each under collapsible, site-coloured headers.
+  Labels stay fixed during horizontal scrolling. Table clipping/rounded corners
+  stop at the content and do not draw a border below the last member.
+- Member day cells are 24x24px with no vertical gaps; site cells are 24x20px.
+  Site headers use fixed site palettes and matching pale cells, grey-tinted on
+  weekends. Vacation is red, sickness blue, public holidays light green.
+- Month arrows smoothly scroll to adjacent months; January omits previous,
+  December omits next. Use the selected year's actual day offsets, including
+  leap years; honour reduced-motion preference.
+- Click/drag member or site cells to paint dates. Header day cells apply public
+  holidays only to the sites present in that team's table, including collapsed
+  groups. Header highlights require a holiday in every present site.
+- Public holidays may be entered on weekends without affecting capacity. Starting
+  on an occupied holiday selects Erase for that drag; crossing empty cells never
+  switches mode. Release/cancel restores the toolbar's original tool.
+- Pointer capture/window pointermove keeps edits on the starting row even when
+  the pointer is vertically elsewhere. Map x plus horizontal scroll to the day,
+  clamp to year bounds, and clean up on pointerup/cancel/unmount.
+- Public holidays replace underlying vacation/sick leave, including member
+  records in other teams at the affected site. Removing holidays does not restore
+  overwritten leave. Erasing an empty holiday cell preserves its individual leave.
+- Calendar Save & Close is one planning transaction. Cancel, cross and Escape
+  discard drafts; backdrop clicks preserve them. Collapse state is presentation
+  only. Undo/Redo and JSON retain committed dates and resulting allocation edits.
+- Cross-team leave edits/removals propagate by the existing trimmed,
+  case-insensitive first/last-name identity. Preserve unrelated sibling dates.
+  Availability silhouettes show the same star and Cross-Team tag; names shorten
+  full -> first initial/surname -> both initials, retaining full-name hover.
+- Member labels show fixed-width selected-year V/S working-day totals (not FTE
+  capacity), updated live and excluding holidays/weekends. Vacation colours:
+  0-10 red, 11-20 orange, 21-25 yellow, 26-29 light green, 30 green, >30 extra-bold
+  red. Sickness is light blue through 10, dark blue above 10. Numbers are 13px bold;
+  two-digit slots keep labels aligned. Monthly capacity remains in hover text.
+
+Calculation and compatibility rules:
+- Work Mon-Fri except Cairo/CAI Sun-Thu. Availability is base FTE times remaining
+  working days divided by all working days in the month. Count overlaps once.
+- Reconcile only allocations exceeding new capacity, proportionally across all
+  projects, engineering and active management. Materialize legacy scalar plans
+  and explicit zeros. Removing leave frees capacity without restoring allocations.
+- Team manual limits and both Magic Wands use monthly effective capacity.
+  Personal Staffing includes leave as occupied, with a detailed tooltip.
+- External payable salary and paid FTE both exclude leave/holidays; preserve the
+  original salary-per-FTE price and deferred payment dates. Do not count leave
+  as unused paid capacity. Projects pay only for allocated work.
+- Schema 1 optional member `absences` and configuration `sitePublicHolidays`
+  preserve all years. `_siteHolidays` is derived, never exported. Old files default
+  to no leave. Frozen fixtures remain unchanged. Selective import carries leave
+  with members and offers site holidays under Shared settings. Member edits and
+  configuration resets retain calendars. Historical overlaps are not migrated.
+
+Verification: all 25 availability checks and TypeScript passed on the final code.
+The production Pages build also passed. Earlier affected allocation, salary,
+workspace/compatibility/selective-import, deferred-payment and visual batches
+passed (263 distinct app checks including the now-expanded availability suite).
+The five Pages production checks passed earlier in this session; the calendar
+production check saves leave under the repository prefix. Only two reviewed
+current screenshots changed for the umbrella button. The full 726-test run below
+predates availability; the full expanded app suite was not rerun. Tests use 5174;
+Pages uses 4174, sequentially. The existing bundle-size advisory remains.
+
+New core files: MemberAvailabilityModal.tsx, memberAvailability.ts,
+availabilityAllocations.ts and tests/member-availability.spec.ts. Guide/agent/JSON
+notes are updated. TODO removes the requested six-week-release item and retains
+future dated part-time, joining/leaving and other-commitment calendar extensions.
 
 ## October 31: laptop release UI and test-suite refresh
 
