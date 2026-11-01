@@ -1,5 +1,11 @@
 # Test coverage
 
+## Release validation (2026-11-01)
+
+All 805 application tests are covered across today's runs: 260 previously passing checks reused with user permission, plus the remaining 545 exercised. After resolving OS download-stream capture failures and reviewing updated UI references, all 184 checks in the affected suites passed. All 10 strict visual checks passed again with snapshot updates disabled. All five production Pages checks, TypeScript and the Pages build passed. The existing bundle-size warning remains.
+
+`fixtures/downloadCapture.ts` reads the actual exported Blob associated with the download URL, retaining real download events and filename assertions without depending on a cancelled Windows download stream. Native Save As tests use `workspaceSaveCapture.ts`. Fourteen current UI references were reviewed and refreshed; historical references and frozen compatibility fixtures are unchanged. This is full inventory coverage across runs, not a single uninterrupted 805-test run. Earlier targeted/baseline counts below are historical checkpoints.
+
 ## Availability validation (2026-11-01)
 
 Validation: 259 distinct targeted checks passed across the main batch and focused reruns, including all 74 availability checks and 185 related allocation, salary, settings, selective-import and history checks. TypeScript and the Pages production build passed. All failures from the initial expanded batch were resolved; no availability cases remain skipped or environment-blocked. This is a targeted validation, not a rerun of the entire application suite.

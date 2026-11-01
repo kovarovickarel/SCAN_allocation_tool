@@ -4,6 +4,8 @@ Read this file before changing the application. It describes the current product
 
 ## Start here: current handoff
 
+Final release validation on 2026-11-01 covers all 805 application tests across today's runs (260 earlier passes reused, 545 remaining exercised), plus five production Pages checks. TypeScript, the Pages build and 10 strict visual checks passed. See the current HANDOFF.md snapshot and tests/README.md for the coverage method and Windows download-capture fixture. The user will push the prepared commits manually; do not infer remote/deployment status from local validation.
+
 Member availability is edited from the umbrella button left of View staffing.
 `memberAvailability.ts` resolves member absences plus shared site public holidays,
 using Mon–Fri except Cairo Sun–Thu. App derives members with `_siteHolidays` for
