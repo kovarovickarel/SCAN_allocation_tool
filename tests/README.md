@@ -1,5 +1,23 @@
 # Test coverage
 
+## Timeline expansion toggles (2026-11-02)
+
+`timeline-expansion-toggle.spec.ts` adds 12 browser checks across all three themes
+for project staffing, team staffing and team/global availability. Each scope has
+one action button; keyboard activation, stable width, mixed expansion, independent
+track choices and separate global groupings are checked. Updated spending tests
+cover the same single-action behaviour and partial member expansion.
+
+The Graph View / Timeline View switch reserves the longer label's width. Its
+existing expansion-preservation test now also checks matching dimensions in all
+three themes. Current references include the approved blue global availability
+button and sharper View staffing corners; hover behaviour and icon sizes remain.
+
+Final validation: all 865 application tests passed in one uninterrupted run,
+including all 10 current visual checks. TypeScript, the Pages build and all six
+production Pages checks passed. Thirteen current references were refreshed for
+the approved controls/styling; historical references and JSON fixtures are unchanged.
+
 ## Expanded availability XLSX coverage (2026-11-02)
 
 Final validation exercised all 851 app tests: 841 passed in the full run; all 10

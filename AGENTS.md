@@ -4,7 +4,7 @@ Read this file before changing the application. It describes the current product
 
 ## Start here: current handoff
 
-Release validation on 2026-11-02 covers all 851 application tests: 841 passed in the full run; the 10 visual checks passed after reviewing current references for the approved header spacing, then passed again with updates disabled. All six production Pages checks, TypeScript and the Pages build passed. Availability XLSX has 27 focused checks (`pnpm test:availability-export`). The user authorized pushing the prepared batch to remote master. See HANDOFF.md and tests/README.md; do not infer completed deployment from validation or a push.
+Release validation on 2026-11-02: all 865 application tests passed in one uninterrupted run, including all 10 current visual checks with reference updates disabled. All six production Pages checks, TypeScript and the Pages build passed. The batch adds single-action timeline expansion controls, stable spending-view button dimensions and approved toolbar styling. Thirteen current visual references were reviewed/refreshed; historical references and frozen JSON fixtures remain unchanged. See HANDOFF.md and tests/README.md. The user authorized pushing the grouped commits to master; do not infer completed deployment from validation or a push.
 
 Member availability is edited from the umbrella button left of View staffing.
 `memberAvailability.ts` resolves member absences plus shared site public holidays,

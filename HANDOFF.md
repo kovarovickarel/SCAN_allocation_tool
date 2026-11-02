@@ -4,6 +4,34 @@ Updated: 2026-11-02 (Europe/Prague).
 
 ## Current desktop snapshot - read first
 
+### Timeline controls and button polish (2026-11-02)
+
+The latest batch is grouped into these code commits, followed by the documentation
+and completed-TODO cleanup commit:
+
+- `851f3f4` - single Expand/Collapse action for each section/track scope across
+  project staffing, combined team staffing, spending and availability timelines.
+  Mixed scopes offer Expand; sections preserve independent track choices and
+  global availability keeps separate site/team expansion states. New controls
+  are presentation only and do not change workspace JSON or Undo/Redo data.
+- `09131a5` - Graph View and Timeline View keep the longer label's dimensions,
+  with regression coverage in Vibrant, Basic and Retro.
+- `3eb7f51` - global availability toolbar colours match its header icon without
+  changing sizes; View staffing matches Add Member corners and retains hover.
+  Includes the reviewed current visual references for this batch.
+
+Final validation: all 865 application tests passed in one uninterrupted run,
+including all 10 visual checks with reference updates disabled. TypeScript, the
+production Pages build and all six Pages checks passed. Thirteen current images
+were refreshed; historical references and frozen compatibility fixtures remain
+unchanged. The previous 148-test targeted run is superseded by this full result.
+The existing build chunk-size warning remains. The user authorized committing
+and pushing this batch to remote master; confirm synchronization with Git and
+treat hosted deployment completion separately. Leave unrelated debug.log alone.
+
+Removed the completed Expand/Collapse and View staffing corners TODO entries.
+The in-app guide and tests/README.md describe the new controls and coverage.
+
 ### Final validation and publication batch (2026-11-02)
 
 The user authorized pushing all local commits to remote master after testing.
