@@ -43,6 +43,30 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   const retroButton = "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black";
   const { year, setYear, calendarRef } = useAvailabilityCalendarView(toolName, DAY_SIZE);
   const captureGroupingPositions = useAvailabilityGroupingAnimation(calendarRef, grouping);
+  const [followingDays, setFollowingDays] = useState(31);
+  const followingDaysRef = useRef(31);
+  const restoreDecember = useRef(false);
+  React.useLayoutEffect(() => {
+    const calendar = calendarRef.current;
+    if (!calendar) return;
+    const measure = () => {
+      // Include only the whole cells needed beyond December's 31 days.
+      const count = Math.max(0, Math.min(31, Math.ceil((calendar.clientWidth - 300 - 31 * DAY_SIZE) / DAY_SIZE)));
+      if (count === followingDaysRef.current) return;
+      restoreDecember.current = calendar.scrollLeft > 0 && calendar.scrollWidth - calendar.clientWidth - calendar.scrollLeft <= DAY_SIZE + 3;
+      followingDaysRef.current = count;
+      setFollowingDays(count);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(calendar);
+    return () => observer.disconnect();
+  }, [calendarRef]);
+  React.useLayoutEffect(() => {
+    if (!restoreDecember.current) return;
+    restoreDecember.current = false;
+    if (calendarRef.current) calendarRef.current.scrollLeft = (Date.UTC(year, 11, 1) - Date.UTC(year, 0, 1)) / 86400000 * DAY_SIZE;
+  }, [followingDays, year, calendarRef]);
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [paint, setPaint] = useState<Absence | "erase">("vacation");
@@ -108,19 +132,19 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     window.addEventListener("blur", stop);
     return () => { stop(); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", stop); window.removeEventListener("pointercancel", stop); window.removeEventListener("blur", stop); };
   }, [stopDrag, updateDragPosition]);
-  const days = useMemo(() => Array.from({ length: (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86400000 }, (_, index) => {
+  const days = useMemo(() => Array.from({ length: (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86400000 + followingDays }, (_, index) => {
     const date = new Date(Date.UTC(year, 0, index + 1));
-    return { date: date.toISOString().slice(0, 10), month: date.getUTCMonth(), day: date.getUTCDate() };
-  }), [year]);
+    return { date: date.toISOString().slice(0, 10), month: date.getUTCMonth(), day: date.getUTCDate(), readOnly: date.getUTCFullYear() !== year };
+  }), [year, followingDays]);
   const groups = useMemo(() => [...new Set(members.map(member => member.footprint))].sort(), [members]);
   const scrollToMonth = (month: number) => {
-    const firstDay = days.findIndex(day => day.month === month);
+    const firstDay = days.findIndex(day => !day.readOnly && day.month === month);
     if (firstDay < 0) return;
     calendarRef.current?.scrollTo({ left: firstDay * DAY_SIZE,
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
   const applyHolidayToShownSites = (date: string) => {
-    if (categoryView) return;
+    if (categoryView || !date.startsWith(`${year}-`)) return;
     drag.current = null;
     const updated = { ...sites };
     const erase = groups.every(site => sites[site]?.includes(date));
@@ -139,6 +163,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     if (!current) return;
     const erase = current.erase ?? (paint === "erase");
     const range = days.slice(Math.min(end, current.start), Math.max(end, current.start) + 1)
+      .filter(day => !day.readOnly)
       .filter(day => current.site || isWorkingDay(day.date, siteCode) ||
         (erase && memberAbsenceType(current.leave[current.row]?.[day.date]) === "other"))
       .filter(day => current.site || paint === "erase" || !current.sites[siteCode]?.includes(day.date));
@@ -175,13 +200,13 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   };
   applyRangeRef.current = applyRange;
   const beginDrag = (event: React.PointerEvent<HTMLButtonElement>, index: number, row: string, site: boolean, siteCode: string, erase: boolean, allSites = false) => {
-    if (event.button !== 0 || (categoryView && site)) return;
+    if (event.button !== 0 || days[index]?.readOnly || (categoryView && site)) return;
     event.preventDefault();
     const target = event.currentTarget;
     const gridLeft = target.getBoundingClientRect().left - index * DAY_SIZE;
     drag.current = { row, site, allSites, erase, halfDay,
       clearHolidayWork: !site && paint === "erase" && memberAbsenceType(leave[row]?.[days[index].date]) === "working" && (typeof leave[row]?.[days[index].date] === "object") === halfDay && sites[siteCode]?.includes(days[index].date), start: index, leave, sites,
-      tracking: { gridLeft, scrollLeft: calendarRef.current?.scrollLeft ?? 0, siteCode, pointerId: event.pointerId, target, dayCount: days.length, lastEnd: index } };
+      tracking: { gridLeft, scrollLeft: calendarRef.current?.scrollLeft ?? 0, siteCode, pointerId: event.pointerId, target, dayCount: days.filter(day => !day.readOnly).length, lastEnd: index } };
     target.setPointerCapture(event.pointerId);
     setClearingDrag(false);
     applyRange(index, siteCode);
@@ -193,7 +218,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     onBegin: beginDrag,
     onHoliday: applyHolidayToShownSites,
     onKeyboard: (row, site, siteCode, index, erase, clearHolidayWork) => {
-      if ((categoryView && site)) return;
+      if (days[index]?.readOnly || (categoryView && site)) return;
       drag.current = { row, site, halfDay, erase, clearHolidayWork, start: index, leave, sites };
       applyRange(index, siteCode); drag.current = null;
     },
@@ -262,12 +287,13 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
         <div className={`w-max min-w-full bg-white ${isRetro ? "border-2 border-black" : "border border-slate-200 rounded-xl overflow-clip shadow-xs"}`}>
         <div className="sticky top-0 z-30 bg-slate-900 text-white shadow-xs">
         <div style={rowStyle}><div className={`${labelClass} bg-slate-900 border-slate-700 uppercase tracking-wider font-bold text-[11px]`} style={{ width: 300, height: 40 }}>Availability timeline</div>
-          {Array.from({ length: 12 }, (_, month) => {
+          {Array.from({ length: followingDays ? 13 : 12 }, (_, month) => {
+            const readOnly = month === 12;
             const name = new Date(Date.UTC(year, month, 1)).toLocaleString('en', { month: 'long', timeZone: 'UTC' });
             const arrowClass = "w-6 h-6 flex items-center justify-center shrink-0 text-slate-400 hover:text-white hover:bg-slate-700 rounded cursor-pointer";
-            return <div key={month} className="text-[10px] font-bold border-l border-slate-700 px-2 flex items-center justify-between h-10" style={{ width: days.filter(day => day.month === month).length * DAY_SIZE }}>
-              {month > 0 ? <button type="button" aria-label={`Previous month from ${name}`} onClick={() => scrollToMonth(month - 1)} className={arrowClass}><ChevronRightIcon size={12} className="rotate-180" /></button> : <span className="w-6 shrink-0" />}
-              <span>{name} {year}</span>
+            return <div key={month} className={`text-[10px] font-bold border-l px-2 flex items-center h-10 ${readOnly ? "bg-slate-200 text-slate-500 border-slate-300 justify-start" : "border-slate-700 justify-between"}`} style={{ width: days.filter(day => readOnly ? day.readOnly : !day.readOnly && day.month === month).length * DAY_SIZE }}>
+              {month > 0 && !readOnly ? <button type="button" aria-label={`Previous month from ${name}`} onClick={() => scrollToMonth(month - 1)} className={arrowClass}><ChevronRightIcon size={12} className="rotate-180" /></button> : <span className="w-6 shrink-0" />}
+              <span title={readOnly ? "Read-only - select the next year to edit January" : undefined}>{name} {readOnly ? year + 1 : year}</span>
               {month < 11 ? <button type="button" aria-label={`Next month from ${name}`} onClick={() => scrollToMonth(month + 1)} className={arrowClass}><ChevronRightIcon size={12} /></button> : <span className="w-6 shrink-0" />}
             </div>;
           })}
@@ -283,7 +309,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
               style={{ width: 300, height: HOLIDAY_HEIGHT, paddingRight: 4, fontSize: 11, lineHeight: "16px", borderRightWidth: 0 }}>
               <span className="-ml-2 shrink-0">{collapsedCategories[name] ? <ChevronRightIcon size={12} /> : <ChevronDownIcon size={12} />}</span>
               <ToolIcon toolName={name} size={12} /><span>{name}</span>
-            </button><AvailabilityCategoryBand dayCount={days.length} tool={name} /></div>
+            </button><AvailabilityCategoryBand dayCount={days.filter(day => !day.readOnly).length} readOnlyDayCount={followingDays} tool={name} /></div>
             {!collapsedCategories[name] && categoryMembers.filter(member => member.tool === name).map(member =>
               <AvailabilityMemberRow key={member.id} member={member} absences={leave[member.id] ?? EMPTY_ABSENCES} holidays={sites[member.footprint] ?? EMPTY_DATES}
                 days={days} year={year} global category isCrossTeam={crossTeamMemberIds.has(member.id)} teams={memberTeams.get(crossTeamMemberKey(member)) ?? EMPTY_TEAMS}

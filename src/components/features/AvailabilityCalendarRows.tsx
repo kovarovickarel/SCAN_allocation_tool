@@ -8,7 +8,7 @@ import { CrossTeamBadge } from "../ui/CrossTeamBadge";
 import { ResponsiveMemberName } from "../ui/ResponsiveMemberName";
 import { isWorkingDay, memberAbsenceType, memberMonthAvailability, memberYearAbsenceTotals } from "../../utils/memberAvailability";
 
-export type CalendarDay = { date: string; month: number; day: number };
+export type CalendarDay = { date: string; month: number; day: number; readOnly?: boolean };
 export type CalendarAbsences = Record<string, MemberAbsence>;
 export type CalendarPaint = MemberLeaveType | "erase";
 export type CalendarInteraction = {
@@ -65,25 +65,27 @@ const AvailabilityWeek = React.memo(function AvailabilityWeek({ days, start, wor
 type DayCellProps = Omit<CellProps, "days" | "absences" | "holidays"> & { day: CalendarDay; index: number; working: boolean; holiday: boolean; absenceEntry?: MemberAbsence };
 const AvailabilityDayCell = React.memo(function AvailabilityDayCell({ day, index, row, siteCode, site, name, working, holiday, absenceEntry, paint, halfDay, isRetro, onBegin, onKeyboard }: DayCellProps) {
     const absence = memberAbsenceType(absenceEntry);
-    const halfMarked = !site && typeof absenceEntry === "object" && (!holiday || absence === "working");
-    const workingHoliday = Boolean(holiday && absence === "working");
-    const color = holiday ? LEAVE_COLORS.holiday : site ? working ? siteColors(siteCode).tint : `color-mix(in srgb, #cbd5e1 80%, ${siteColors(siteCode).tint})` : absence === "other" ? LEAVE_COLORS.other : !working ? "#e2e8f0" : absence === "vacation" ? LEAVE_COLORS.vacation : absence === "sick" ? LEAVE_COLORS.sick : "#ffffff";
+    const halfMarked = !day.readOnly && !site && typeof absenceEntry === "object" && (!holiday || absence === "working");
+    const workingHoliday = !day.readOnly && Boolean(holiday && absence === "working");
+    const color = day.readOnly ? "#e2e8f0" : holiday ? LEAVE_COLORS.holiday : site ? working ? siteColors(siteCode).tint : `color-mix(in srgb, #cbd5e1 80%, ${siteColors(siteCode).tint})` : absence === "other" ? LEAVE_COLORS.other : !working ? "#e2e8f0" : absence === "vacation" ? LEAVE_COLORS.vacation : absence === "sick" ? LEAVE_COLORS.sick : "#ffffff";
 
-    const status = workingHoliday ? "Working on public holiday" : holiday ? "Public holiday" : absence === "other" ? "Other leave" : !working ? "Weekend" : absence === "vacation" ? "Vacation" : absence === "sick" ? "Sick leave" : "Available";
-    return <button key={day.date} type="button" disabled={site ? paint === "other" : !working && !(paint === "erase" && (absence === "other" || holiday))}
-      aria-label={`${name}, ${day.date}: ${status}`} aria-pressed={Boolean(site ? holiday : absence)}
+    const status = day.readOnly ? "Outside selected year (read-only)" : workingHoliday ? "Working on public holiday" : holiday ? "Public holiday" : absence === "other" ? "Other leave" : !working ? "Weekend" : absence === "vacation" ? "Vacation" : absence === "sick" ? "Sick leave" : "Available";
+    return <button key={day.date} type="button" disabled={day.readOnly || (site ? paint === "other" : !working && !(paint === "erase" && (absence === "other" || holiday)))}
+      aria-label={`${name}, ${day.date}: ${status}`} aria-pressed={day.readOnly ? undefined : Boolean(site ? holiday : absence)}
       title={`${name} · ${day.date} · ${status}${halfMarked ? " (Half-day)" : ""}`}
       onPointerDown={event => {
+        if (day.readOnly) return;
         const erase = site ? Boolean(holiday) : paint === "erase" || (!holiday && absence === paint && halfMarked === halfDay);
         onBegin(event, index, row, site, siteCode, erase);
       }}
-      onKeyDown={event => { if (event.key === " " || event.key === "Enter") {
+      onKeyDown={event => { if (!day.readOnly && (event.key === " " || event.key === "Enter")) {
         event.preventDefault(); onKeyboard(row, site, siteCode, index, site ? Boolean(holiday) : paint === "erase" || (!holiday && absence === paint && halfMarked === halfDay), workingHoliday && halfMarked === halfDay && paint === "erase");
       } }}
-      className={`border shrink-0 hover:ring-2 hover:ring-slate-700 hover:z-10 disabled:cursor-default ${isRetro ? "border-slate-500" : "border-slate-300"}`}
+      className={`border shrink-0 ${day.readOnly ? "cursor-default" : "hover:ring-2 hover:ring-slate-700 hover:z-10"} disabled:cursor-default ${isRetro ? "border-slate-500" : "border-slate-300"}`}
       style={{ width: DAY_SIZE, height: site ? HOLIDAY_HEIGHT : DAY_SIZE, background: halfMarked ? `linear-gradient(135deg, ${color} 50%, #ffffff 50%)` : color, borderRadius: 0,
-        ...(site ? { borderColor: siteColors(siteCode).header, borderStyle: working ? "solid" : "dashed" } : {}),
-        ...(day.day === 1 && index > 0 ? { borderLeftColor: "#64748b" } : {}),
+        ...(site && !day.readOnly ? { borderColor: siteColors(siteCode).header, borderStyle: working ? "solid" : "dashed" } : {}),
+        ...(day.day === 1 && index > 0 && !day.readOnly ? { borderLeftColor: "#64748b" } : {}),
+        ...(day.readOnly ? { borderColor: "#cbd5e1" } : {}),
         ...(workingHoliday ? { color: "#166534", fontSize: 14, fontWeight: 800 } : {}) }}>{workingHoliday ? "W" : null}</button>;
 });
 
@@ -96,25 +98,25 @@ export const AvailabilityHeaderDays = React.memo(function AvailabilityHeaderDays
           const marked = groups.filter(site => sites[site]?.includes(day.date)).length;
           const allMarked = groups.length > 0 && marked === groups.length;
           const removeLabel = paint === "erase" && allMarked;
-          const editable = allowHolidayEditing;
-          const label = allowHolidayEditing ? `${removeLabel ? "Remove" : "Apply"} public holiday ${removeLabel ? "from" : "to"} shown sites on ${day.date}` : `Calendar day ${day.date}`;
-          return <button key={day.date} type="button" aria-label={label} title={!allowHolidayEditing ? "Edit public holidays in site grouping" : paint === "other" ? "Other leave applies to individual members only" : label} disabled={!editable || !groups.length || paint === "other"}
+          const editable = allowHolidayEditing && !day.readOnly;
+          const label = day.readOnly ? `Calendar day ${day.date} (read-only)` : allowHolidayEditing ? `${removeLabel ? "Remove" : "Apply"} public holiday ${removeLabel ? "from" : "to"} shown sites on ${day.date}` : `Calendar day ${day.date}`;
+          return <button key={day.date} type="button" aria-label={label} title={day.readOnly ? "Only the selected year is editable" : !allowHolidayEditing ? "Edit public holidays in site grouping" : paint === "other" ? "Other leave applies to individual members only" : label} disabled={!editable || !groups.length || paint === "other"}
             aria-pressed={editable ? allMarked ? true : marked > 0 ? "mixed" : false : undefined} onClick={event => { if (editable && event.detail === 0) onHoliday(day.date); }}
             onPointerDown={event => {
               if (!editable) return;
               const erase = allMarked;
               onBegin(event, index, "header", true, "", erase, true);
             }}
-            className={`relative text-[8px] font-mono text-center shrink-0 h-6 select-none ${allowHolidayEditing ? `cursor-pointer hover:bg-slate-700 hover:text-white disabled:cursor-default ${allMarked ? "bg-emerald-900/50 text-green-300" : "text-slate-300"}` : "cursor-default text-slate-300"}`}
-            style={{ width: DAY_SIZE }} aria-current={day.date === today ? "date" : undefined}>{day.date === today && <span role="img" aria-label="Today" title={`Today: ${today}`} className="absolute left-1/2 -translate-x-1/2 -top-0.5 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-amber-400 pointer-events-none" />}{day.day}</button>;
+            className={`relative text-[8px] font-mono text-center shrink-0 h-6 select-none ${day.readOnly ? "bg-slate-200 text-slate-400 cursor-default" : allowHolidayEditing ? `cursor-pointer hover:bg-slate-700 hover:text-white disabled:cursor-default ${allMarked ? "bg-emerald-900/50 text-green-300" : "text-slate-300"}` : "cursor-default text-slate-300"}`}
+            style={{ width: DAY_SIZE }} aria-current={!day.readOnly && day.date === today ? "date" : undefined}>{!day.readOnly && day.date === today && <span role="img" aria-label="Today" title={`Today: ${today}`} className="absolute left-1/2 -translate-x-1/2 -top-0.5 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-amber-400 pointer-events-none" />}{day.day}</button>;
         })}</div>;
 });
 
 /** Non-interactive category headings continue as a single bar across the calendar. */
-export const AvailabilityCategoryBand = React.memo(function AvailabilityCategoryBand({ dayCount, tool }: { dayCount: number; tool: string }) {
-  return <div aria-hidden="true" data-availability-category-band={tool}
+export const AvailabilityCategoryBand = React.memo(function AvailabilityCategoryBand({ dayCount, tool, readOnlyDayCount = 0 }: { dayCount: number; tool: string; readOnlyDayCount?: number }) {
+  return <><div aria-hidden="true" data-availability-category-band={tool}
     className={`shrink-0 ${TOOL_MAP[tool]?.accent ?? "bg-slate-200"}`}
-    style={{ width: dayCount * DAY_SIZE, height: HOLIDAY_HEIGHT }} />;
+    style={{ width: dayCount * DAY_SIZE, height: HOLIDAY_HEIGHT }} />{readOnlyDayCount > 0 && <div aria-hidden="true" className="shrink-0 bg-slate-200" style={{ width: readOnlyDayCount * DAY_SIZE, height: HOLIDAY_HEIGHT }} />}</>;
 });
 
 export const AvailabilityMemberRow = React.memo(function AvailabilityMemberRow({ member, absences, holidays, days, year, global, category = false, isCrossTeam, teams, paint, halfDay, isRetro, onBegin, onKeyboard }: {
