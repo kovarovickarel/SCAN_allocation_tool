@@ -1,6 +1,30 @@
 # Test coverage
 
-## Availability desktop validation (2026-11-02)
+## Expanded availability XLSX coverage (2026-11-02)
+
+Final validation exercised all 851 app tests: 841 passed in the full run; all 10
+visual checks passed after reviewing/refreshing the current header-layout references
+and again with updates disabled. Six production Pages checks, TypeScript and the
+Pages build passed. Sixteen current images were updated for the approved header
+spacing; historical references and frozen JSON fixtures remain unchanged.
+
+Run `pnpm test:availability-export` for all 27 focused export checks. The original
+15 checks are supplemented by 12 in `availability-export-variants.spec.ts`:
+
+- All six sites: actual exported leave/holiday cell colours and fonts, full/half
+  vacation and sickness totals, weekend formula masks, and holiday-work exceptions.
+- Team and global workbooks: historical/future tabs, leap days, active-year selection,
+  allocation-year project labels, complete calendar ranges and empty-scope exports.
+- Cross-team historical conflicts versus team-scoped calendars, literal names with
+  XML/formula characters, source non-mutation and cancellation after generation starts.
+
+These inspect the generated XLSX package, not just the export mapping or palette.
+Existing browser tests cover real downloads, unsaved drafts, cancellation, retry,
+and identical exports under either global grouping. Spreadsheet rendering in
+Google Sheets remains a manual round-trip check; the automated checks validate
+OOXML content, formatting, formulas and cached results.
+
+## Earlier targeted availability validation (2026-11-02)
 
 All 108 targeted application checks passed in one run: the 80 existing availability
 checks plus 15 export, 10 grouping/animation and three year-end checks below.

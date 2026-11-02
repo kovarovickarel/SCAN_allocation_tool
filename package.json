@@ -10,6 +10,7 @@
     "dev": "vite --host 127.0.0.1",
     "test:e2e": "playwright test --config playwright.current-ui.config.ts",
     "test:export": "playwright test --config playwright.current-ui.config.ts planning-export",
+    "test:availability-export": "playwright test --config playwright.current-ui.config.ts availability-export",
     "test:pages": "pnpm build:pages && playwright test --config playwright.pages.config.ts",
     "test:e2e:historical": "playwright test tests/screens-and-interactions.spec.ts tests/visual.spec.ts",
     "typecheck": "tsc --noEmit"
