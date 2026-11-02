@@ -825,6 +825,7 @@ export default function App() {
   return (
     <NonFteTypesContext.Provider value={config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES}><ThemeContext.Provider value={{ theme, isBasic, isRetro, setTheme, mode: appMode, isBasicMode }}>
       {showAvailability && <MemberAvailabilityModal global={showAvailability === "global"} toolName={showAvailability === "global" ? "Global" : activeToolView} members={showAvailability === "global" ? sourceMembers : sourceMembers.filter(member => member.tool === activeToolView)} allMembers={sourceMembers}
+        exportContext={{ projects, workpackages: functions, configuration: config }}
         holidays={config.sitePublicHolidays ?? {}}
         onClose={() => setShowAvailability(false)} onSave={handleSaveAvailability} />}
       <div className={`min-h-screen ${isRetro ? "bg-[#008080] font-sans" : "bg-slate-950"} flex flex-col text-slate-800 select-none`}>

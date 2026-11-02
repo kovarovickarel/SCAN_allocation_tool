@@ -4,6 +4,21 @@ import { parseWorkspaceFile, serializeWorkspace } from "../../src/utils/workspac
 import { unzipSync, strFromU8 } from "fflate";
 import { historyWorkspace } from "../fixtures/historyWorkspace";
 
+test("built availability XLSX export loads its lazy module under the Pages prefix", async ({ page }) => {
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  page.on("response", response => { if (response.status() >= 400 && response.url().includes("4174")) errors.push(response.url()); });
+  await page.goto("./");
+  await page.getByRole("button", { name: "Open Global Team Availability", exact: true }).click();
+  const pending = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export team availability", exact: true }).click();
+  const download = await pending, files = unzipSync(await readDownloadedBytes(page, download));
+  expect(download.suggestedFilename()).toContain("SCAN_Availability_All_Teams-");
+  expect(strFromU8(files["xl/workbook.xml"])).toContain(`Vacation ${new Date().getFullYear()}`);
+  expect(strFromU8(files["xl/worksheets/sheet1.xml"])).toContain("Team Other");
+  expect(errors).toEqual([]);
+});
+
 test("built member availability calendar saves leave under the Pages prefix", async ({ page }) => {
   const data = historyWorkspace(); data.view.activeToolView = "Other";
   await page.goto("./");

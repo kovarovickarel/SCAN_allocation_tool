@@ -10,12 +10,16 @@ import { useAvailabilityCalendarView } from "../../hooks/useAvailabilityCalendar
 import { globalAvailabilityMembers, globalAvailabilityDrafts } from "../../utils/globalAvailability";
 import { crossTeamMemberKey, getCrossTeamMemberIds } from "../../utils/memberAllocations";
 
+import { applyMemberAbsenceEdits } from "../../utils/memberAvailability";
+import type { AvailabilityExportOptions } from "../../utils/availabilityExport";
+
 type Absence = MemberLeaveType;
 type Props = { global?: boolean; toolName: string; members: TeamMemberRecord[]; allMembers?: TeamMemberRecord[]; holidays: Record<string, string[]>;
+  exportContext?: Pick<AvailabilityExportOptions, "projects" | "workpackages" | "configuration">;
   onClose: () => void;
   onSave: (absences: Record<string, Record<string, MemberAbsence>>, holidays: Record<string, string[]>) => void };
 
-export function MemberAvailabilityModal({ global = false, toolName, members: inputMembers, allMembers = inputMembers, holidays, onClose, onSave }: Props) {
+export function MemberAvailabilityModal({ global = false, toolName, members: inputMembers, allMembers = inputMembers, holidays, exportContext, onClose, onSave }: Props) {
   const members = useMemo(() => global ? globalAvailabilityMembers(inputMembers) : inputMembers, [global, inputMembers]);
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
@@ -40,6 +44,30 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   const [clearingDrag, setClearingDrag] = useState(false);
   const [leave, setLeave] = useState(() => Object.fromEntries(members.map(member => [member.id, { ...member.absences }])));
   const [sites, setSites] = useState(() => structuredClone(holidays));
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const exportPending = useRef(false);
+  const exportController = useRef<AbortController | null>(null);
+  React.useEffect(() => () => exportController.current?.abort(), []);
+  async function exportAvailability() {
+    if (!exportContext || exportPending.current) return;
+    exportPending.current = true; setExporting(true); setExportError("");
+    const controller = new AbortController(); exportController.current = controller;
+    try {
+      const { createAvailabilityXlsx } = await import("../../utils/availabilityXlsx");
+      const drafts = global ? globalAvailabilityDrafts(inputMembers, members, leave) : leave;
+      const { bytes, fileName } = await createAvailabilityXlsx({ ...exportContext,
+        configuration: { ...exportContext.configuration, sitePublicHolidays: sites },
+        members: applyMemberAbsenceEdits(allMembers, drafts), tool: global ? undefined : toolName }, new Date(), controller.signal);
+      controller.signal.throwIfAborted();
+      const blob = new Blob([bytes as BlobPart], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob), link = document.createElement("a");
+      link.href = url; link.download = fileName; document.body.append(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      if (!controller.signal.aborted) setExportError(error instanceof Error ? error.message : "Availability could not be exported. Please try again.");
+    } finally { exportPending.current = false; if (!controller.signal.aborted) setExporting(false); }
+  }
   const [collapsedSites, setCollapsedSites] = useState<Record<string, boolean>>({});
   const drag = useRef<{ row: string; site: boolean; allSites?: boolean; erase?: boolean; halfDay?: boolean; clearHolidayWork?: boolean; start: number; leave: typeof leave; sites: typeof sites;
     tracking?: { gridLeft: number; scrollLeft: number; siteCode: string; pointerId: number; target: HTMLButtonElement; dayCount: number; lastEnd: number } } | null>(null);
@@ -178,8 +206,8 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
           <button type="button" aria-label="Collapse All" title="Collapse all site sections" onClick={() => { drag.current = null; setCollapsedSites(Object.fromEntries(groups.map(site => [site, true]))); }}
             className={`h-7 inline-flex items-center text-[11px] font-semibold px-2.5 transition-colors cursor-pointer ${isRetro ? retroButton : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"}`}>- Collapse</button>
           <div className="flex items-center border-l border-r border-slate-700 px-3 mx-1">
-          <button type="button" aria-label="Export team availability" className={`group h-7 inline-flex items-center gap-1.5 text-xs font-bold transition-colors cursor-pointer ${isRetro ? "px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white font-mono border-2 border-t-orange-300 border-l-orange-300 border-b-black border-r-black active:border-t-black active:border-l-black" : "px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white rounded-lg shadow"}`}>
-            <span>Export</span>
+          <button type="button" onClick={exportAvailability} disabled={exporting || !exportContext} aria-busy={exporting} aria-label="Export team availability" title={global ? "Export all teams to Excel" : "Export this team to Excel"} className={`group h-7 inline-flex items-center gap-1.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait ${isRetro ? "px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white font-mono border-2 border-t-orange-300 border-l-orange-300 border-b-black border-r-black active:border-t-black active:border-l-black" : "px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white rounded-lg shadow"}`}>
+            <span>{exporting ? "Preparing…" : "Export"}</span>
             {!isBasicMode && <svg width="16" height="16" className="transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M14 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z" /><path d="M14 2v7h7M7 13h10M7 17h10M11 11v9" />
             </svg>}
@@ -188,6 +216,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
           <button type="button" onClick={onClose} aria-label="Close member availability" className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer">✕</button>
         </div>
       </header>
+      {exportError && <div role="alert" className="px-6 py-2 bg-red-50 text-red-700 text-xs">{exportError}</div>}
       <div className={`px-4 md:px-5 py-2.5 grid items-center border-b shrink-0 ${isRetro ? "bg-[#d4d0c8] border-black" : "bg-slate-50 border-slate-200"}`} style={{ gridTemplateColumns: "301px minmax(0, 1fr)" }}>
         <div className={`flex items-center gap-2 pr-3 border-r min-h-7 ${isRetro ? "border-black" : "border-slate-300"}`}>
         <div className="flex items-center gap-1.5 text-sm leading-none h-7 shrink-0">
