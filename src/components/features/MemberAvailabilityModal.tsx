@@ -1,17 +1,17 @@
-import { AvailabilityCells, AvailabilityHeaderDays, AvailabilityMemberRow, DAY_SIZE, HOLIDAY_HEIGHT, LEAVE_COLORS, EMPTY_DATES, EMPTY_ABSENCES, EMPTY_TEAMS, labelClass, rowStyle, siteColors, type CalendarInteraction } from "./AvailabilityCalendarRows";
+import { AvailabilityCells, AvailabilityCategoryBand, AvailabilityHeaderDays, AvailabilityMemberRow, DAY_SIZE, HOLIDAY_HEIGHT, LEAVE_COLORS, EMPTY_DATES, EMPTY_ABSENCES, EMPTY_TEAMS, labelClass, rowStyle, siteColors, type CalendarInteraction } from "./AvailabilityCalendarRows";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { MemberAbsence, MemberLeaveType, TeamMemberRecord } from "../../types";
 import { FOOTPRINT_MAP, ThemeContext, TOOL_MAP, TOOLS } from "../../constants";
-import { BeachUmbrellaIcon, GlobeIcon, ChevronDownIcon, ChevronRightIcon } from "../ui/icons";
+import { BeachUmbrellaIcon, GlobeIcon, ChevronDownIcon, ChevronRightIcon, ToolIcon } from "../ui/icons";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { useHorizontalSelectionAutoScroll } from "../../hooks/useHorizontalSelectionAutoScroll";
 import { isWorkingDay, memberAbsenceType, memberAbsenceDays, removeHolidayAbsences } from "../../utils/memberAvailability";
 import { useAvailabilityCalendarView } from "../../hooks/useAvailabilityCalendarView";
-import { globalAvailabilityMembers, globalAvailabilityDrafts } from "../../utils/globalAvailability";
+import { globalAvailabilityMembers, globalAvailabilityDrafts, globalAvailabilityCategoryMembers } from "../../utils/globalAvailability";
 import { crossTeamMemberKey, getCrossTeamMemberIds } from "../../utils/memberAllocations";
-
 import { applyMemberAbsenceEdits } from "../../utils/memberAvailability";
 import type { AvailabilityExportOptions } from "../../utils/availabilityExport";
+import { useAvailabilityGroupingAnimation } from "../../hooks/useAvailabilityGroupingAnimation";
 
 type Absence = MemberLeaveType;
 type Props = { global?: boolean; toolName: string; members: TeamMemberRecord[]; allMembers?: TeamMemberRecord[]; holidays: Record<string, string[]>;
@@ -21,6 +21,11 @@ type Props = { global?: boolean; toolName: string; members: TeamMemberRecord[]; 
 
 export function MemberAvailabilityModal({ global = false, toolName, members: inputMembers, allMembers = inputMembers, holidays, exportContext, onClose, onSave }: Props) {
   const members = useMemo(() => global ? globalAvailabilityMembers(inputMembers) : inputMembers, [global, inputMembers]);
+  const [grouping, setGrouping] = useState<"site" | "category">("site");
+  const categoryView = global && grouping === "category";
+  const categoryMembers = useMemo(() => global ? globalAvailabilityCategoryMembers(inputMembers, members) : [], [global, inputMembers, members]);
+  const categoryGroups = useMemo(() => [...new Set(categoryMembers.map(member => member.tool))].sort(), [categoryMembers]);
+  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(allMembers), [allMembers]);
@@ -37,6 +42,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   const teamCapacity = members.reduce((sum, member) => sum + (Number(member.fte) || 0), 0);
   const retroButton = "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black";
   const { year, setYear, calendarRef } = useAvailabilityCalendarView(toolName, DAY_SIZE);
+  const captureGroupingPositions = useAvailabilityGroupingAnimation(calendarRef, grouping);
   const now = new Date();
   const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const [paint, setPaint] = useState<Absence | "erase">("vacation");
@@ -73,6 +79,11 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     tracking?: { gridLeft: number; scrollLeft: number; siteCode: string; pointerId: number; target: HTMLButtonElement; dayCount: number; lastEnd: number } } | null>(null);
   const applyRangeRef = useRef<(end: number, siteCode: string) => void>(() => {});
   const { startAutoScroll, stopAutoScroll } = useHorizontalSelectionAutoScroll({ outsideViewportOnly: true, maxSpeed: 3600, acceleration: 18, rampDurationMs: 1200 });
+  const stopDrag = useCallback(() => {
+    const tracking = drag.current?.tracking;
+    drag.current = null; setClearingDrag(false); stopAutoScroll();
+    if (tracking?.target.hasPointerCapture(tracking.pointerId)) tracking.target.releasePointerCapture(tracking.pointerId);
+  }, [stopAutoScroll]);
   const updateDragPosition = useCallback((clientX: number) => {
     const tracking = drag.current?.tracking;
     if (!tracking) return;
@@ -85,12 +96,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   }, []);
   useEscapeKey(onClose);
   React.useEffect(() => {
-    const stop = () => {
-      const tracking = drag.current?.tracking;
-      drag.current = null; setClearingDrag(false);
-      stopAutoScroll();
-      if (tracking?.target.hasPointerCapture(tracking.pointerId)) tracking.target.releasePointerCapture(tracking.pointerId);
-    };
+    const stop = stopDrag;
     const move = (event: PointerEvent) => {
       const tracking = drag.current?.tracking;
       if (!tracking || event.pointerId !== tracking.pointerId) return;
@@ -101,7 +107,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     window.addEventListener("pointerup", stop); window.addEventListener("pointercancel", stop);
     window.addEventListener("blur", stop);
     return () => { stop(); window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", stop); window.removeEventListener("pointercancel", stop); window.removeEventListener("blur", stop); };
-  }, [stopAutoScroll, updateDragPosition]);
+  }, [stopDrag, updateDragPosition]);
   const days = useMemo(() => Array.from({ length: (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86400000 }, (_, index) => {
     const date = new Date(Date.UTC(year, 0, index + 1));
     return { date: date.toISOString().slice(0, 10), month: date.getUTCMonth(), day: date.getUTCDate() };
@@ -114,6 +120,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
       behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
   const applyHolidayToShownSites = (date: string) => {
+    if (categoryView) return;
     drag.current = null;
     const updated = { ...sites };
     const erase = groups.every(site => sites[site]?.includes(date));
@@ -168,7 +175,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   };
   applyRangeRef.current = applyRange;
   const beginDrag = (event: React.PointerEvent<HTMLButtonElement>, index: number, row: string, site: boolean, siteCode: string, erase: boolean, allSites = false) => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || (categoryView && site)) return;
     event.preventDefault();
     const target = event.currentTarget;
     const gridLeft = target.getBoundingClientRect().left - index * DAY_SIZE;
@@ -186,6 +193,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     onBegin: beginDrag,
     onHoliday: applyHolidayToShownSites,
     onKeyboard: (row, site, siteCode, index, erase, clearHolidayWork) => {
+      if ((categoryView && site)) return;
       drag.current = { row, site, halfDay, erase, clearHolidayWork, start: index, leave, sites };
       applyRange(index, siteCode); drag.current = null;
     },
@@ -197,13 +205,27 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     <section role="dialog" aria-modal="true" aria-label={`${toolName} member availability`} className={`text-slate-800 flex flex-col w-[1380px] max-w-[97vw] h-[92vh] max-h-[95vh] overflow-hidden ${isRetro ? "bg-[#d4d0c8] border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono" : "bg-white rounded-2xl shadow-2xl border border-slate-300"}`}>
       <header className={`flex items-center justify-between gap-4 shrink-0 text-white ${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] px-4 py-2 border-b-2 border-black" : "bg-slate-900 px-6 py-3.5 border-b border-slate-800"}`}>
         <div className="flex items-center gap-3 min-w-0">
-          <div className={`p-1.5 shrink-0 ${isRetro ? "bg-[#000050] border-2 border-black" : `${global ? "bg-slate-800 border-slate-600 text-slate-200" : `${tool.accent} ${tool.border} ${tool.text}`} rounded-lg border`}`}><BeachUmbrellaIcon size={18} /></div>
+          <div className={`${global ? "p-2" : "p-1.5"} shrink-0 ${isRetro ? "bg-[#000050] border-2 border-black" : `${global ? "bg-blue-600/30 border-blue-500/40 text-blue-400" : `${tool.accent} ${tool.border} ${tool.text}`} rounded-lg border`}`}><BeachUmbrellaIcon size={18} /></div>
           <div><h2 className="font-black text-base tracking-tight">{toolName} Team Availability</h2><p className="text-xs text-slate-400 mt-0.5">{members.length} member{members.length === 1 ? "" : "s"} · {global ? "Global" : "Team"} Capacity: <strong className="text-white">{teamCapacity.toFixed(2)} FTE</strong></p></div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button type="button" aria-label="Expand All" title="Expand all site sections" onClick={() => { drag.current = null; setCollapsedSites({}); }}
+          {global && <><div role="group" aria-label="Availability grouping" className={`h-7 w-64 flex overflow-hidden border shrink-0 ${isRetro ? "border-black" : "rounded border-slate-600"}`}>
+            {(["site", "category"] as const).map(value => <button key={value} type="button"
+              aria-pressed={grouping === value} onClick={() => {
+                if (grouping === value) return;
+                stopDrag(); captureGroupingPositions(); setGrouping(value);
+              }}
+              className={`w-1/2 flex items-center justify-center gap-1.5 px-2 text-[11px] font-bold cursor-pointer transition-colors ${isRetro
+                ? `font-mono text-black ${grouping === value ? "bg-[#ffff80]" : "bg-[#c0c0c0] hover:bg-[#d4d0c8]"}`
+                : grouping === value ? "bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 ring-1 ring-inset ring-amber-400/50" : "bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700"}`}>
+              {value === "site" ? <GlobeIcon size={12} /> : <ToolIcon toolName="Other" size={12} />}
+              {value === "site" ? "Group by site" : "Group by team"}
+            </button>)}
+          </div><span role="separator" aria-orientation="vertical" className={`h-5 border-l mx-1 ${isRetro ? "border-black" : "border-slate-700"}`} /></>}
+
+          <button type="button" aria-label="Expand All" title={`Expand all ${categoryView ? "category" : "site"} sections`} onClick={() => { stopDrag(); if (categoryView) setCollapsedCategories({}); else setCollapsedSites({}); }}
             className={`h-7 inline-flex items-center text-[11px] font-semibold px-2.5 transition-colors cursor-pointer ${isRetro ? retroButton : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"}`}>+ Expand</button>
-          <button type="button" aria-label="Collapse All" title="Collapse all site sections" onClick={() => { drag.current = null; setCollapsedSites(Object.fromEntries(groups.map(site => [site, true]))); }}
+          <button type="button" aria-label="Collapse All" title={`Collapse all ${categoryView ? "category" : "site"} sections`} onClick={() => { stopDrag(); if (categoryView) setCollapsedCategories(Object.fromEntries(categoryGroups.map(name => [name, true]))); else setCollapsedSites(Object.fromEntries(groups.map(site => [site, true]))); }}
             className={`h-7 inline-flex items-center text-[11px] font-semibold px-2.5 transition-colors cursor-pointer ${isRetro ? retroButton : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"}`}>- Collapse</button>
           <div className="flex items-center border-l border-r border-slate-700 px-3 mx-1">
           <button type="button" onClick={exportAvailability} disabled={exporting || !exportContext} aria-busy={exporting} aria-label="Export team availability" title={global ? "Export all teams to Excel" : "Export this team to Excel"} className={`group h-7 inline-flex items-center gap-1.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait ${isRetro ? "px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white font-mono border-2 border-t-orange-300 border-l-orange-300 border-b-black border-r-black active:border-t-black active:border-l-black" : "px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white rounded-lg shadow"}`}>
@@ -231,7 +253,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
         {([['vacation', 'Vacation', LEAVE_COLORS.vacation], ['sick', 'Sick leave', LEAVE_COLORS.sick], ['other', 'Other leave', LEAVE_COLORS.other], ['erase', 'Working day', '#ffffff']] as const).map(([value, label, color]) =>
           <button key={value} type="button" aria-pressed={(clearingDrag ? "erase" : paint) === value} onClick={() => setPaint(value)} className={`px-2.5 h-7 leading-none text-[11px] font-bold flex items-center gap-2 cursor-pointer ${isRetro ? `${retroButton} ${(clearingDrag ? "erase" : paint) === value ? 'outline outline-1 outline-black' : ''}` : `rounded-lg border shadow-2xs ${(clearingDrag ? "erase" : paint) === value ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}`}><span className="w-3 h-3 shrink-0 border border-slate-300" style={{ background: color }} />{label}</button>)}
         <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span className="w-3 h-3 shrink-0 bg-slate-200 border border-slate-300" />Weekend</span>
-        <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span className="w-3 h-3 shrink-0" style={{ background: LEAVE_COLORS.holiday }} />Public holiday (site row)</span>
+        <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span className="w-3 h-3 shrink-0" style={{ background: LEAVE_COLORS.holiday }} /><span>Public holiday<span className={categoryView ? "invisible" : ""} aria-hidden={categoryView}> (site row)</span></span></span>
         <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span className="w-3 h-3 shrink-0 text-[10px] leading-none font-extrabold text-green-800 border border-slate-300 flex items-center justify-center" style={{ background: LEAVE_COLORS.holiday }}>W</span>Working on public holiday</span>
         </div>
       </div>
@@ -250,10 +272,25 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
             </div>;
           })}
         </div>
-        <AvailabilityHeaderDays days={days} groups={groups} sites={sites} paint={paint} today={today} onBegin={handleBegin} onHoliday={handleHoliday} />
+        <AvailabilityHeaderDays days={days} groups={groups} sites={sites} paint={paint} today={today} onBegin={handleBegin} onHoliday={handleHoliday} allowHolidayEditing={!categoryView} />
         </div>
-        {groups.map(site => <React.Fragment key={site}>
-          <div style={rowStyle}><button type="button" aria-label={`Toggle ${FOOTPRINT_MAP[site]?.name ?? site} members`} aria-expanded={!collapsedSites[site]}
+        {categoryView ? categoryGroups.map(name => {
+          const definition = TOOL_MAP[name];
+          return <React.Fragment key={name}>
+            <div style={rowStyle} data-availability-group={name}><button type="button" aria-label={`Toggle ${name} category members`} aria-expanded={!collapsedCategories[name]}
+              onClick={() => { stopDrag(); setCollapsedCategories(current => ({ ...current, [name]: !current[name] })); }}
+              className={`${labelClass} font-bold gap-2 cursor-pointer hover:brightness-110 ${definition?.accent ?? "bg-slate-200"} ${definition?.text ?? "text-slate-800"} ${definition?.border ?? "border-slate-300"}`}
+              style={{ width: 300, height: HOLIDAY_HEIGHT, paddingRight: 4, fontSize: 11, lineHeight: "16px", borderRightWidth: 0 }}>
+              <span className="-ml-2 shrink-0">{collapsedCategories[name] ? <ChevronRightIcon size={12} /> : <ChevronDownIcon size={12} />}</span>
+              <ToolIcon toolName={name} size={12} /><span>{name}</span>
+            </button><AvailabilityCategoryBand dayCount={days.length} tool={name} /></div>
+            {!collapsedCategories[name] && categoryMembers.filter(member => member.tool === name).map(member =>
+              <AvailabilityMemberRow key={member.id} member={member} absences={leave[member.id] ?? EMPTY_ABSENCES} holidays={sites[member.footprint] ?? EMPTY_DATES}
+                days={days} year={year} global category isCrossTeam={crossTeamMemberIds.has(member.id)} teams={memberTeams.get(crossTeamMemberKey(member)) ?? EMPTY_TEAMS}
+                paint={paint} halfDay={halfDay} isRetro={isRetro} onBegin={handleBegin} onKeyboard={handleKeyboard} />)}
+          </React.Fragment>;
+        }) : groups.map(site => <React.Fragment key={site}>
+          <div style={rowStyle} data-availability-group={site}><button type="button" aria-label={`Toggle ${FOOTPRINT_MAP[site]?.name ?? site} members`} aria-expanded={!collapsedSites[site]}
             onClick={() => { drag.current = null; setCollapsedSites(current => ({ ...current, [site]: !current[site] })); }}
             className={`${labelClass} font-bold gap-2 text-white cursor-pointer hover:brightness-110`}
             style={{ width: 300, height: HOLIDAY_HEIGHT, paddingRight: 4, fontSize: 11, lineHeight: "16px", background: siteColors(site).header, borderColor: siteColors(site).header }}>

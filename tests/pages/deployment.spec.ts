@@ -10,6 +10,9 @@ test("built availability XLSX export loads its lazy module under the Pages prefi
   page.on("response", response => { if (response.status() >= 400 && response.url().includes("4174")) errors.push(response.url()); });
   await page.goto("./");
   await page.getByRole("button", { name: "Open Global Team Availability", exact: true }).click();
+  await page.getByRole("button", { name: "Group by team", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Toggle KPI category members", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Calendar day / }).first()).toBeDisabled();
   const pending = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export team availability", exact: true }).click();
   const download = await pending, files = unzipSync(await readDownloadedBytes(page, download));

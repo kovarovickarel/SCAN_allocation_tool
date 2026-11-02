@@ -1,6 +1,6 @@
 import React, { useMemo, useRef } from "react";
 import type { MemberAbsence, MemberLeaveType, TeamMemberRecord } from "../../types";
-import { TOOL_MAP } from "../../constants";
+import { FOOTPRINT_MAP, TOOL_MAP } from "../../constants";
 import { ToolIcon } from "../ui/icons";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ExternalMemberBadge } from "../ui/ExternalMemberBadge";
@@ -87,29 +87,40 @@ const AvailabilityDayCell = React.memo(function AvailabilityDayCell({ day, index
         ...(workingHoliday ? { color: "#166534", fontSize: 14, fontWeight: 800 } : {}) }}>{workingHoliday ? "W" : null}</button>;
 });
 
-export const AvailabilityHeaderDays = React.memo(function AvailabilityHeaderDays({ days, groups, sites, paint, today, onBegin, onHoliday }: {
+export const AvailabilityHeaderDays = React.memo(function AvailabilityHeaderDays({ days, groups, sites, paint, today, onBegin, onHoliday, allowHolidayEditing = true }: {
   days: CalendarDay[]; groups: string[]; sites: Record<string, string[]>; paint: CalendarPaint; today: string;
   onBegin: CalendarInteraction["onBegin"]; onHoliday: (date: string) => void;
+  allowHolidayEditing?: boolean;
 }) {
   return <div style={{ ...rowStyle, minHeight: 24 }}><div className={`${labelClass} bg-slate-900 border-slate-700 text-slate-400 text-[10px]`} style={{ width: 300, height: 24 }}>Click on/drag across day cells to apply leaves</div>{days.map((day, index) => {
           const marked = groups.filter(site => sites[site]?.includes(day.date)).length;
           const allMarked = groups.length > 0 && marked === groups.length;
           const removeLabel = paint === "erase" && allMarked;
-          const label = `${removeLabel ? "Remove" : "Apply"} public holiday ${removeLabel ? "from" : "to"} shown sites on ${day.date}`;
-          return <button key={day.date} type="button" aria-label={label} title={paint === "other" ? "Other leave applies to individual members only" : label} disabled={!groups.length || paint === "other"}
-            aria-pressed={allMarked ? true : marked > 0 ? "mixed" : false} onClick={event => { if (event.detail === 0) onHoliday(day.date); }}
+          const editable = allowHolidayEditing;
+          const label = allowHolidayEditing ? `${removeLabel ? "Remove" : "Apply"} public holiday ${removeLabel ? "from" : "to"} shown sites on ${day.date}` : `Calendar day ${day.date}`;
+          return <button key={day.date} type="button" aria-label={label} title={!allowHolidayEditing ? "Edit public holidays in site grouping" : paint === "other" ? "Other leave applies to individual members only" : label} disabled={!editable || !groups.length || paint === "other"}
+            aria-pressed={editable ? allMarked ? true : marked > 0 ? "mixed" : false : undefined} onClick={event => { if (editable && event.detail === 0) onHoliday(day.date); }}
             onPointerDown={event => {
+              if (!editable) return;
               const erase = allMarked;
               onBegin(event, index, "header", true, "", erase, true);
             }}
-            className={`relative text-[8px] font-mono text-center shrink-0 h-6 select-none cursor-pointer hover:bg-slate-700 hover:text-white disabled:cursor-default ${allMarked ? "bg-emerald-900/50 text-green-300" : "text-slate-300"}`}
+            className={`relative text-[8px] font-mono text-center shrink-0 h-6 select-none ${allowHolidayEditing ? `cursor-pointer hover:bg-slate-700 hover:text-white disabled:cursor-default ${allMarked ? "bg-emerald-900/50 text-green-300" : "text-slate-300"}` : "cursor-default text-slate-300"}`}
             style={{ width: DAY_SIZE }} aria-current={day.date === today ? "date" : undefined}>{day.date === today && <span role="img" aria-label="Today" title={`Today: ${today}`} className="absolute left-1/2 -translate-x-1/2 -top-0.5 w-0 h-0 border-l-[5px] border-r-[5px] border-t-[6px] border-l-transparent border-r-transparent border-t-amber-400 pointer-events-none" />}{day.day}</button>;
         })}</div>;
 });
 
-export const AvailabilityMemberRow = React.memo(function AvailabilityMemberRow({ member, absences, holidays, days, year, global, isCrossTeam, teams, paint, halfDay, isRetro, onBegin, onKeyboard }: {
+/** Non-interactive category headings continue as a single bar across the calendar. */
+export const AvailabilityCategoryBand = React.memo(function AvailabilityCategoryBand({ dayCount, tool }: { dayCount: number; tool: string }) {
+  return <div aria-hidden="true" data-availability-category-band={tool}
+    className={`shrink-0 ${TOOL_MAP[tool]?.accent ?? "bg-slate-200"}`}
+    style={{ width: dayCount * DAY_SIZE, height: HOLIDAY_HEIGHT }} />;
+});
+
+export const AvailabilityMemberRow = React.memo(function AvailabilityMemberRow({ member, absences, holidays, days, year, global, category = false, isCrossTeam, teams, paint, halfDay, isRetro, onBegin, onKeyboard }: {
   member: TeamMemberRecord; absences: CalendarAbsences; holidays: string[]; days: CalendarDay[]; year: number;
   global: boolean; isCrossTeam: boolean; teams: string[]; paint: CalendarPaint; halfDay: boolean; isRetro: boolean;
+  category?: boolean;
 } & CalendarInteraction) {
   const capacityCache = useRef(new Map<number, { key: string; label: string }>());
   const { totals, summary } = useMemo(() => {
@@ -129,10 +140,20 @@ export const AvailabilityMemberRow = React.memo(function AvailabilityMemberRow({
       }).join('\n') };
   }, [member, absences, holidays, year]);
   const vacationColor = totals.vacation > 30 ? "#991b1b" : totals.vacation <= 10 ? "#ef4444" : totals.vacation <= 20 ? "#f97316" : totals.vacation <= 25 ? "#eab308" : totals.vacation < 30 ? "#86efac" : "#16a34a";
-  return <div style={rowStyle}><div className={`${labelClass} bg-white border-slate-200 border-b gap-2`} style={{ width: 300, height: DAY_SIZE, paddingLeft: 6, paddingRight: 6 }} title={`${member.firstName} ${member.lastName} · ${member.role}\nMonthly available capacity\n${summary}`}>
+  const crossCategory = category && isCrossTeam;
+  return <div style={rowStyle} data-availability-member={member.id} data-availability-category={category ? member.tool : undefined}><div className={`${labelClass} bg-white border-slate-200 border-b gap-2`} style={{ width: 300, height: DAY_SIZE, paddingLeft: 6, paddingRight: 6 }} title={`${member.firstName} ${member.lastName} · ${member.role}\nMonthly available capacity\n${summary}`}>
               <PersonIcon role={member.role} toolName={member.tool} size={16} isCrossTeam={isCrossTeam} />
-              <div className="min-w-0 flex-1 flex items-center gap-1"><ResponsiveMemberName firstName={member.firstName} lastName={member.lastName} initialsWithPeriods className="font-bold text-[11px] text-slate-900" />
-                {global && <span role="group" aria-label={`${member.firstName} ${member.lastName} teams`} className="inline-flex items-center gap-0.5 shrink-0">
+              <div className={`min-w-0 flex-1 flex items-center gap-1 ${category ? "leading-tight" : ""}`}><ResponsiveMemberName firstName={member.firstName} lastName={member.lastName} initialsWithPeriods className="font-bold text-[11px] text-slate-900" />
+                {category && <span aria-label={`${FOOTPRINT_MAP[member.footprint]?.name ?? member.footprint} site`}
+                  title={`Site: ${FOOTPRINT_MAP[member.footprint]?.name ?? member.footprint}${isCrossTeam ? ` · Calendar linked across ${teams.join(", ")}` : ""}`}
+                  className={`text-[8.5px] font-mono font-bold px-1.5 py-0.2 rounded border shrink-0 shadow-2xs ${isRetro ? "shadow-[1px_1px_0px_#000]" : ""}`}
+                  style={{ background: siteColors(member.footprint).header, color: "#ffffff", borderColor: `color-mix(in srgb, ${siteColors(member.footprint).header} 75%, #000000)` }}>
+                  {member.footprint.toUpperCase()}
+                </span>}
+                {crossCategory && <span role="group" aria-label={`${member.firstName} ${member.lastName} ${member.tool} membership`} className="inline-flex shrink-0">
+                  <CrossTeamBadge label={Number(member.fte).toFixed(2)} title={`Cross-Team Member - ${member.tool}: ${member.fte} FTE`} />
+                </span>}
+                {global && !category && <span role="group" aria-label={`${member.firstName} ${member.lastName} teams`} className="inline-flex items-center gap-0.5 shrink-0">
                   {teams.map(name => {
                     const team = TOOL_MAP[name];
                     return <span key={name} role="img" aria-label={`${name} team`} title={`${name} team`} className={`w-4 h-4 inline-flex items-center justify-center rounded border shrink-0 ${isRetro ? "bg-[#c0c0c0] border-slate-500 text-black" : `${team?.accent ?? "bg-slate-100"} ${team?.border ?? "border-slate-300"} ${team?.text ?? "text-slate-700"}`}`}><ToolIcon toolName={name} size={11} /></span>;

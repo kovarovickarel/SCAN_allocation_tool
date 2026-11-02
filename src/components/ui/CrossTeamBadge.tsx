@@ -1,7 +1,7 @@
 import { useContext } from "react";
 import { ThemeContext } from "../../constants";
 
-export function CrossTeamBadge() {
+export function CrossTeamBadge({ label = "Cross-Team", title = "Cross-Team Member" }: { label?: string; title?: string } = {}) {
   const { isBasic, isRetro } = useContext(ThemeContext);
   return (
     <span
@@ -12,9 +12,9 @@ export function CrossTeamBadge() {
           ? "bg-slate-100 text-slate-700 border-slate-300 font-sans"
           : "bg-indigo-50 text-indigo-700 border-indigo-200 font-sans"
       }`}
-      title="Cross-Team Member"
+      title={title}
     >
-      Cross-Team
+      {label}
     </span>
   );
 }
