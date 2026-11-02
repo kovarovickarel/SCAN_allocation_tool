@@ -95,7 +95,7 @@ export const TeamMembersPool = memo(function TeamMembersPool({
             <button
               type="button"
               onClick={onOpenTimeline}
-              className={`p-1 px-1.5 rounded-md border transition-all duration-150 cursor-pointer flex items-center justify-center gap-1 text-[11px] font-bold whitespace-nowrap group shadow-2xs hover:scale-105 active:scale-95 ${
+              className={`p-1 px-1.5 rounded border transition-all duration-150 cursor-pointer flex items-center justify-center gap-1 text-[11px] font-bold whitespace-nowrap group shadow-2xs hover:scale-105 active:scale-95 ${
                 isRetro
                   ? "text-black bg-[#c0c0c0] border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#ffff80] hover:shadow-[1px_1px_0px_#000]"
                   : isBasic

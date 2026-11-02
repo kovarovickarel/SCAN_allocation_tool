@@ -1006,7 +1006,7 @@ export default function App() {
 
           <div className="flex items-center gap-2.5 shrink-0">
             <button type="button" aria-label="Open Global Team Availability" title="Global Team Availability" onClick={() => setShowAvailability("global")}
-              className={`inline-flex items-center justify-center transition-colors cursor-pointer ${isRetro ? "w-8 h-8 bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black" : "w-7 h-7 rounded-lg bg-slate-800/90 text-slate-400 border border-slate-700/60 hover:text-slate-200 hover:bg-slate-700"}`}><BeachUmbrellaIcon size={18} /></button>
+              className={`inline-flex items-center justify-center transition-colors cursor-pointer ${isRetro ? "w-8 h-8 bg-[#000050] text-white border-2 border-black hover:bg-[#000080]" : "w-7 h-7 rounded-lg bg-blue-600/30 text-blue-400 border border-blue-500/40 hover:text-blue-300 hover:bg-blue-600/40"}`}><BeachUmbrellaIcon size={18} /></button>
             <ProjectPlanningExportButton options={{ projects, cards: functions, members: teamMembers, configuration: config }} />
             <button
               type="button"
