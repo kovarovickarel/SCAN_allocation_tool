@@ -4,14 +4,38 @@ Updated: 2026-11-02 (Europe/Prague).
 
 ## Current desktop snapshot - read first
 
+### Final validation and publication batch (2026-11-02)
+
+The user authorized pushing all local commits to remote master after testing.
+The full 851-test application inventory was exercised: 841 checks passed in the
+full run, with only 10 visual failures from the already approved header spacing.
+After reviewing those differences, 16 current reference images were refreshed.
+All 10 visual checks passed on regeneration and again with updates disabled.
+Historical image references and frozen JSON compatibility fixtures are unchanged.
+TypeScript, the production Pages build and all six Pages tests passed. The existing
+large-bundle warning remains. No application behavior needed changing for this batch.
+
+Availability XLSX now has 27 focused tests, including 12 new variant checks for
+actual cell colours/fonts at all six sites, leave counters and weekend masks,
+historical/future/leap-year tabs, allocation-year project names, empty scopes,
+cross-team calendar conflicts, literal names and cancellation during generation.
+Run `pnpm test:availability-export` independently when changing this export.
+The completed availability export TODO was removed as previously requested.
+
+This publication includes the five existing local commits below, the expanded
+tests, reviewed current visual references and these validation/backlog updates.
+Confirm remote synchronization with Git; Pages deployment completion is separate.
+
 The availability work is committed locally on master in these context groups:
 
 - `10510f2` - availability XLSX export, workbook formatting, notes, guide and tests.
 - `7cc0bad` - global site/team grouping, linked rows, badges, animation and controls.
 - `be5e437` - December left alignment with responsive read-only January filler.
 - A following documentation commit records this snapshot and the two requested TODO additions.
+- `8898287` - preserve the full app description and approved header spacing.
 
-No push was requested or performed. Remote/deployment state has not been checked.
+Remote master was fetched before publication and had no commits missing locally.
+The previously unpushed batch is now authorized for publication after the checks above.
 Keep unrelated `debug.log` untracked. Preserve the user's live planning session on
 http://127.0.0.1:5173/; do not refresh it without a workspace backup. Tests use 5174,
 and production Pages preview uses 4174. Localhost is running from this desktop repo.

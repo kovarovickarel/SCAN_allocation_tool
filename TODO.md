@@ -4,8 +4,6 @@
 
 - [ ] Expand/Collapse in one button
 
-- [ ] Add xlsx export for teams availability.
-
 - [ ] Help for timelines
 - [ ] Extend the member availability calendar with dated part-time changes, joining/leaving dates and other commitments. Vacation, sick leave, individual statutory Other leave and site public holidays are implemented.
 - [ ] Add weekend work after completing the core availability calendar. The three configurable pay factors are already available in Defaults / Weekend work but remain inactive. Consider additional monthly capacity above contracted FTE; confirm full/partial-day or hourly entry, premium attribution to projects/workpackages, external paid/unused capacity and how calendar-based FTE relates to the current 160-hour FTE-month. Pay factors: 1.5x for weekend OR public-holiday work; 2x when the day is BOTH a weekend and public holiday (not compounded). Keep capacity separate from pay multipliers. Replacement days and time off in lieu remain alternatives to decide on.

@@ -4,7 +4,7 @@ Read this file before changing the application. It describes the current product
 
 ## Start here: current handoff
 
-Final release validation on 2026-11-01 covers all 805 application tests across today's runs (260 earlier passes reused, 545 remaining exercised), plus five production Pages checks. TypeScript, the Pages build and 10 strict visual checks passed. See the current HANDOFF.md snapshot and tests/README.md for the coverage method and Windows download-capture fixture. The user will push the prepared commits manually; do not infer remote/deployment status from local validation.
+Release validation on 2026-11-02 covers all 851 application tests: 841 passed in the full run; the 10 visual checks passed after reviewing current references for the approved header spacing, then passed again with updates disabled. All six production Pages checks, TypeScript and the Pages build passed. Availability XLSX has 27 focused checks (`pnpm test:availability-export`). The user authorized pushing the prepared batch to remote master. See HANDOFF.md and tests/README.md; do not infer completed deployment from validation or a push.
 
 Member availability is edited from the umbrella button left of View staffing.
 `memberAvailability.ts` resolves member absences plus shared site public holidays,
