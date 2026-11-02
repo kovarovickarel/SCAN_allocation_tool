@@ -1,5 +1,9 @@
 # TODO
 
+- [ ] Round corners in the view staffing? Should be maybe sharp
+
+- [ ] Expand/Collapse in one button
+
 - [ ] Add xlsx export for teams availability.
 
 - [ ] Help for timelines

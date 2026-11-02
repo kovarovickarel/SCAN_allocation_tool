@@ -1,5 +1,97 @@
 # Development handoff
 
+Updated: 2026-11-02 (Europe/Prague).
+
+## Current desktop snapshot - read first
+
+The availability work is committed locally on master in these context groups:
+
+- `10510f2` - availability XLSX export, workbook formatting, notes, guide and tests.
+- `7cc0bad` - global site/team grouping, linked rows, badges, animation and controls.
+- `be5e437` - December left alignment with responsive read-only January filler.
+- A following documentation commit records this snapshot and the two requested TODO additions.
+
+No push was requested or performed. Remote/deployment state has not been checked.
+Keep unrelated `debug.log` untracked. Preserve the user's live planning session on
+http://127.0.0.1:5173/; do not refresh it without a workspace backup. Tests use 5174,
+and production Pages preview uses 4174. Localhost is running from this desktop repo.
+
+### Availability export
+
+The orange availability Export button now generates XLSX entirely in the browser.
+`availabilityExport.ts` owns data mapping; lazy-loaded `availabilityXlsx.ts` builds
+the OOXML package with fflate. No original personnel/template data is bundled.
+Team export includes only that team's members. Global export deduplicates people
+using silhouette-team ranking and adds three blank Team Other rows. Each year's
+sheet uses the current member roster because employment dates are not modeled.
+
+Tabs cover the current local year plus four years, with additional years only for
+scoped calendar entries/site holidays, never project/member records alone. Names
+end in (Ext) for external people. Team lists put the row's team first. Project lists
+include actual engineering or management allocations during that calendar year.
+Locations are Pra/Bie/Che/Cai/Tro/Tok in XLSX; UI site badges use uppercase codes.
+
+Preserve the user's reviewed sheet layout: 15.75pt body/team rows, 28pt headings,
+column B width 24.75, LZ-style calendar width 3.38, merged weekday rows 4-6,
+K:L calendar labels, explicit border colours, grey team dividers, blue metadata,
+angled Team header, legend, filter row, and the original TP/TH/UH/RE/SL notes.
+TP starts at zero; TH = 30 + TP; UH/RE/SL formulas support manually edited full and
+half days. Weekends follow each site, including Cairo Fri/Sat. Training is manual.
+
+Codes: h/s/o/t, their /2 variants, W and W/2 for holiday work, and P for public
+holidays. P has matching font/fill so its letter is hidden in the cell but remains
+in the formula bar. W/2 keeps W's full pink fill. h/2 and s/2 are white/bold.
+Other half-days have lighter category fills. Set BOTH foreground/background RGBs
+in conditional fills: automatic background imported as black in Google Sheets.
+Use solid tints rather than gradients because Sheets dropped the triangles.
+
+Filename stays SCAN_Availability_<scope>-DD_MM_YYYY_HH-mm.xlsx (All_Teams globally).
+The separate internal workbook title is SCAN Members Availability or <Team> Members
+Availability. Google Sheets may still name imported documents from the filename.
+Export uses the current calendar draft without saving it or recording history.
+Closing cancels pending generation; download errors support retry.
+
+### Global calendar grouping and navigation
+
+The segmented Group by site / Group by team control retains icons, a divider
+before Expand, equal-width options and the Manual Adjust amber selected palette.
+Team grouping repeats each person under all their teams, sharing a canonical ID
+and calendar. Each row retains its team's role/FTE but uses the canonical site.
+Do not save/export repeated presentation records or double-count header capacity.
+
+Site badges match member-card styling with exact site-row colours and contrasting
+text/borders. A number-only badge in Cross-Team styling follows the site badge for
+cross-functional people; all rows stay 24px. Tool headings are continuous bars.
+Team grouping cannot edit shared holidays from headings/day numbers; individual
+leave and holiday-working exceptions remain linked. The hidden '(site row)' legend
+suffix retains its space so the next legend item never shifts. Site/team collapse
+maps are independent and grouping resets to site when reopening.
+
+`useAvailabilityGroupingAnimation` captures canonical row positions and animates
+visible rows for 420ms, with 300ms header fades. Rapid reversals reuse in-flight
+positions; reduced-motion skips animations. No cloned calendars or state mutations.
+
+December can align at the left boundary. ResizeObserver measures the viewport and
+adds only enough grey January cells from the following year to fill the remainder.
+All member/site/header editing and captured ranges reject that derived read-only
+tail. Existing next-year data is preserved; selecting that year enables editing.
+Neither grouping/navigation preference nor derived days belong in JSON/history.
+
+### Validation
+
+All 108 targeted application checks passed together: 80 existing availability,
+15 export, 10 grouping/animation and three year-boundary checks. TypeScript, the
+production Pages build and all six Pages checks passed. Each of the three code
+commit snapshots also passed TypeScript independently in a temporary source copy.
+This is targeted validation, not a rerun of the full 805-test application inventory.
+The existing large-bundle warning remains. Frozen fixtures and schema 1 are unchanged.
+New export/calendar/transition screenshots were inspected without changing baselines.
+
+## Earlier handoff notes (historical)
+
+The snapshot above supersedes older availability placeholders, presentation notes,
+validation counts and local/remote status in the retained history below.
+
 Updated: 2026-11-01 (Europe/Prague).
 
 ## Desktop follow-up: availability drag performance (2026-11-01)

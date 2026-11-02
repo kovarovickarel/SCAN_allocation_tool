@@ -1,5 +1,35 @@
 # Test coverage
 
+## Availability desktop validation (2026-11-02)
+
+All 108 targeted application checks passed in one run: the 80 existing availability
+checks plus 15 export, 10 grouping/animation and three year-end checks below.
+TypeScript, the production Pages build and all six Pages checks passed. The three
+code commit snapshots independently passed TypeScript in an isolated source copy.
+No full 805-test rerun or reference-image updates are claimed. Existing bundle-size
+warnings remain; frozen JSON fixtures and historical references are unchanged.
+
+- `availability-export.spec.ts` (15): year selection, team/global scope and identity,
+  team-first labels, site abbreviations, allocation-based project lists, leap days,
+  Cairo weekends, holiday/half-day/working codes, actual workbook XML, cached totals,
+  editable formulas, reviewed borders/dimensions/colours/fonts, comments and VML,
+  hidden P rules, W/2 colour, non-mutation, cancellation, real downloads of drafts,
+  Cancel preservation and download error/retry handling.
+- `availability-category-grouping.spec.ts` (10): linked category rows in all themes,
+  unique capacity, site/FTE badges, consistent legends and segmented controls,
+  no holiday edits from team headings/day numbers, collapse state, Save/Cancel/Undo,
+  no-op grouping, equal XLSX contents in both views, pointer cleanup, animated row
+  regrouping/reversal and reduced-motion. Coordinate-based drags wait for animation.
+- `availability-year-tail.spec.ts` (3): December left alignment in team/site/category
+  views, leap years, minimal/responsive grey January filler, disabled editing and
+  clamped captured drags, preservation of next-year data and enabling it by year
+  selection. Includes wide and narrow viewport checks.
+- `pages/deployment.spec.ts` now checks team grouping and availability XLSX download
+  with the real production prefix and lazy-loaded module, alongside existing checks.
+
+Workbook/UI artifacts remain in test output directories for inspection. Other test
+suite descriptions and older validation checkpoints are retained below.
+
 ## Release validation (2026-11-01)
 
 All 805 application tests are covered across today's runs: 260 previously passing checks reused with user permission, plus the remaining 545 exercised. After resolving OS download-stream capture failures and reviewing updated UI references, all 184 checks in the affected suites passed. All 10 strict visual checks passed again with snapshot updates disabled. All five production Pages checks, TypeScript and the Pages build passed. The existing bundle-size warning remains.
