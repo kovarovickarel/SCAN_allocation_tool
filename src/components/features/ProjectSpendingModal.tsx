@@ -351,7 +351,10 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
             onClick={() => { setEditingPayment(null); setGraphView((previous) => !previous); }} title={graphView ? "Return to the spending timeline" : "Show cumulative and monthly spending charts"}>
             {graphView ? <CalendarGanttIcon size={14} className="text-yellow-300" /> :
               <svg width="14" height="14" className="text-yellow-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 14l5-6 5 3 4-7" /></svg>}
-            {graphView ? "Timeline View" : "Graph View"}
+            <span className="grid">
+              <span className="invisible [grid-area:1/1]" aria-hidden="true">Timeline View</span>
+              <span className="[grid-area:1/1]">{graphView ? "Timeline View" : "Graph View"}</span>
+            </span>
           </button>
           <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
           <button ref={closeRef} type="button" className={`transition-colors cursor-pointer ml-1 ${isRetro ? "w-6 h-6 bg-[#c0c0c0] text-black font-mono font-black border-2 border-t-white border-l-white border-b-black border-r-black flex items-center justify-center" : "p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"}`} aria-label="Close project spending" onClick={onClose}>✕</button>

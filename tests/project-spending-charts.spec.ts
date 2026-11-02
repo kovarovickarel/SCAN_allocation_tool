@@ -91,8 +91,8 @@ test("tool-specific graph retains separate management, matching title and yellow
   await expect(dialog.getByRole("heading", { name: "Project KPI Spending", exact: true }).locator("span")).toHaveClass(/text-emerald-600/);
 });
 
-test("switching views preserves timeline expansion and the toggle keeps matching dimensions and icon", async ({ page }) => {
-  await charts(page);
+for (const theme of ["vibrant", "basic", "retro"]) test(`switching views preserves timeline expansion and the toggle keeps matching dimensions and icon (${theme})`, async ({ page }) => {
+  await charts(page, `theme=${theme}`);
   await page.getByRole("button", { name: "Timeline View", exact: true }).click();
   const expand = page.getByRole("button", { name: "Collapse All", exact: true });
   const toggle = page.getByRole("button", { name: "Graph View", exact: true });
@@ -105,6 +105,9 @@ test("switching views preserves timeline expansion and the toggle keeps matching
   await page.getByRole("button", { name: "Expand spending tracks", exact: true }).click();
   await toggle.click();
   await expect(page.getByRole("button", { name: "Timeline View", exact: true }).locator("svg rect")).toHaveCount(1);
+  const timelineSize = (await page.getByRole("button", { name: "Timeline View", exact: true }).boundingBox())!;
+  expect(timelineSize.width).toBe(t.width);
+  expect(timelineSize.height).toBe(t.height);
   await page.getByRole("button", { name: "Timeline View", exact: true }).click();
   await expect(page.getByText("Prague Engineer", { exact: true }).first()).toBeVisible();
 });
