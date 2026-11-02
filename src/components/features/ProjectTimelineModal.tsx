@@ -1,3 +1,4 @@
+import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { useProjectReleaseVisibility } from "../../hooks/useProjectReleaseVisibility";
 import { releasesFromDrafts } from "../../utils/systemReleases";
@@ -500,6 +501,12 @@ export function ProjectTimelineModal({
     });
   }, [localProject, projectCards, toolFteRates, fteRates, hiddenTools, hiddenSubs, duration, mgmtEffortSummary, mgmtSettings, activityDrag]);
 
+  const allSectionsExpanded = toolTimelineData.every(row => !collapsedCategories[row.tool.name]);
+  const supportCards = toolTimelineData.flatMap(row => row.workpackages).filter(wp => !wp.isNegated && getSupportingPhases(wp.rates).length > 0);
+  const allSupportExpanded = supportCards.length > 0
+    ? supportCards.every(wp => !(customCollapsedWPs[wp.card.id] ?? globalSupportCollapsed))
+    : !globalSupportCollapsed;
+
   const totalProjectMonthlyFTE = useMemo(() => {
     const totals = [];
     for (let m = 0; m < duration; m++) {
@@ -632,70 +639,13 @@ export function ProjectTimelineModal({
                 : "bg-slate-800 rounded-lg border border-slate-700"
             }`}>
               <span className={`${isRetro ? "text-black" : "text-slate-400"} px-2 font-bold uppercase tracking-wider text-[9px]`}>Support Tracks:</span>
-              <button
-                type="button"
-                onClick={() => setAllSupportCollapsed(false)}
-                aria-label="Expand support tracks"
-                className={`px-2 py-1 font-bold transition-all cursor-pointer ${
-                  isRetro
-                    ? !globalSupportCollapsed
-                      ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000]"
-                      : "text-black hover:bg-black/10"
-                    : !globalSupportCollapsed
-                    ? "bg-indigo-600 text-white shadow-xs rounded"
-                    : "text-slate-300 hover:text-white rounded"
-                }`}
-                title="Show each supporting activity as an individual track under each workpackage"
-              >
-                + Expand
-              </button>
-              <button
-                type="button"
-                onClick={() => setAllSupportCollapsed(true)}
-                aria-label="Collapse support tracks"
-                className={`px-2 py-1 font-bold transition-all cursor-pointer ${
-                  isRetro
-                    ? globalSupportCollapsed
-                      ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000]"
-                      : "text-black hover:bg-black/10"
-                    : globalSupportCollapsed
-                    ? "bg-indigo-600 text-white shadow-xs rounded"
-                    : "text-slate-300 hover:text-white rounded"
-                }`}
-                title="Collapse support tracks into the core phase and add their FTEs directly into the core monthly cells"
-              >
-                - Collapse
-              </button>
+              <TimelineExpansionButton tracks expanded={allSupportExpanded} scope="support tracks" onToggle={() => setAllSupportCollapsed(allSupportExpanded)}
+                title={allSupportExpanded ? "Collapse support tracks into the core phase and add their FTEs directly into the core monthly cells" : "Show each supporting activity as an individual track under each workpackage"} />
             </div>
 
             <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
 
-            <button
-              type="button"
-              onClick={expandAll}
-              aria-label="Expand All"
-              title="Expand all timeline sections"
-              className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
-                isRetro
-                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
-                  : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
-              }`}
-            >
-              + Expand
-            </button>
-            <button
-              type="button"
-              onClick={collapseAll}
-              aria-label="Collapse All"
-              title="Collapse all timeline sections"
-              className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
-                isRetro
-                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
-                  : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
-              }`}
-            >
-              - Collapse
-            </button>
+            <TimelineExpansionButton expanded={allSectionsExpanded} onToggle={allSectionsExpanded ? collapseAll : expandAll} />
             <button
               type="button"
               onClick={onClose}

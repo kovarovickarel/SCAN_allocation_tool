@@ -112,6 +112,7 @@ test("category collapse/expand is independent of sites, and Cancel discards link
   await dialog.getByRole("button", { name: "Toggle KPI category members", exact: true }).click();
   await expect(dialog.locator('[data-availability-category="KPI"]')).toHaveCount(0);
   await expect(dialog.locator('[data-availability-category="Data Factory"]')).toHaveCount(2);
+  await dialog.getByRole("button", { name: "Expand All", exact: true }).click();
   await dialog.getByRole("button", { name: "Collapse All", exact: true }).click();
   await expect(dialog.locator("[data-availability-member]")).toHaveCount(0);
   await dialog.getByRole("button", { name: "Expand All", exact: true }).click();

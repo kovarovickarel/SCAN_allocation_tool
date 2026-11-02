@@ -94,15 +94,15 @@ test("tool-specific graph retains separate management, matching title and yellow
 test("switching views preserves timeline expansion and the toggle keeps matching dimensions and icon", async ({ page }) => {
   await charts(page);
   await page.getByRole("button", { name: "Timeline View", exact: true }).click();
-  const expand = page.getByRole("button", { name: "Expand All", exact: true });
+  const expand = page.getByRole("button", { name: "Collapse All", exact: true });
   const toggle = page.getByRole("button", { name: "Graph View", exact: true });
   const close = page.getByRole("button", { name: "Close project spending", exact: true });
   const e = (await expand.boundingBox())!, t = (await toggle.boundingBox())!, c = (await close.boundingBox())!;
   expect(t.height).toBe(e.height);
   expect(t.x).toBeGreaterThan(e.x);
   expect(c.x).toBeGreaterThan(t.x);
-  await expand.click();
-  await page.getByRole("button", { name: "Expanded Spending", exact: true }).click();
+  await expect(expand).toHaveAttribute("aria-expanded", "true");
+  await page.getByRole("button", { name: "Expand spending tracks", exact: true }).click();
   await toggle.click();
   await expect(page.getByRole("button", { name: "Timeline View", exact: true }).locator("svg rect")).toHaveCount(1);
   await page.getByRole("button", { name: "Timeline View", exact: true }).click();

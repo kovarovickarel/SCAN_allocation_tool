@@ -204,7 +204,7 @@ test("inactive workpackage months use exactly the outside-project appearance", a
   expect(await cells.nth(0).innerHTML()).toBe(await cells.nth(6).innerHTML());
   expect(await cells.nth(3).innerHTML()).toBe(await cells.nth(6).innerHTML());
   await optimize(page);
-  await timeline.getByRole("button", { name: "Expanded Allocation", exact: true }).click();
+  await timeline.getByRole("button", { name: "Expand allocation tracks", exact: true }).click();
   const memberCells = timeline.locator('[data-timeline-row="wp_member_a_Engineer"] > div');
   expect(await memberCells.nth(0).innerHTML()).toBe(await memberCells.nth(6).innerHTML());
 });

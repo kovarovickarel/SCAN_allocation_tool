@@ -18,8 +18,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`spending timeline expan
   await expect(dialog).not.toContainText("workpackages)");
   await expect(dialog).not.toContainText("Current allocations ×");
   await expect(dialog.getByText("€ 60,960", { exact: true }).first()).toBeVisible();
-  await dialog.getByRole("button", { name: "Expanded Spending", exact: true }).click();
-  await dialog.getByRole("button", { name: "Expand All", exact: true }).click();
+  await dialog.getByRole("button", { name: "Expand spending tracks", exact: true }).click();
   await expect(dialog.getByText("Prague Engineer", { exact: true }).first()).toBeVisible();
   await expect(dialog.getByText("Support Manager", { exact: true }).first()).toBeVisible();
   await dialog.getByRole("button", { name: "Collapse All", exact: true }).click();
@@ -32,7 +31,7 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`spending timeline expan
 
 for (const theme of ["vibrant", "basic", "retro"]) test(`equal large workpackage and member amounts keep distinct weights and fit (${theme})`, async ({ page }) => {
   const dialog = await openSpending(page, `theme=${theme}&highCost=1&dense=1`);
-  await dialog.getByRole("button", { name: "Expanded Spending", exact: true }).click();
+  await dialog.getByRole("button", { name: "Expand spending tracks", exact: true }).click();
   const rowFor = (name: string) => dialog.getByText(name, { exact: true }).locator('xpath=ancestor::div[contains(concat(" ", normalize-space(@class), " "), " grid ")][1]');
   const amountIn = (name: string) => rowFor(name).locator("span.inline-block.whitespace-nowrap").filter({ hasText: /^€460,000$/ }).nth(1);
   const workpackage = amountIn("Simulation Work");
@@ -88,27 +87,31 @@ test("project dashboard cost button opens the production spending dialog", async
 
 test("tool expansion and member spending expansion are independent and preserve each other", async ({ page }) => {
   const dialog = await openSpending(page);
-  const expandMembers = dialog.getByRole("button", { name: "Expanded Spending", exact: true });
-  const collapseMembers = dialog.getByRole("button", { name: "Collapsed Spending", exact: true });
+  const members = dialog.getByRole("group", { name: "Spending tracks", exact: true }).getByRole("button");
   const expandTools = dialog.getByRole("button", { name: "Expand All", exact: true });
   const collapseTools = dialog.getByRole("button", { name: "Collapse All", exact: true });
-  await expandTools.click();
+  await expect(collapseTools).toHaveCount(1);
+  await expect(expandTools).toHaveCount(0);
+  await expect(members).toHaveCount(1);
   await expect(dialog.getByText("KPI Work", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Prague Engineer", { exact: true })).toHaveCount(0);
-  await expandMembers.click();
-  await expect(expandMembers).toHaveAttribute("aria-pressed", "true");
+  await members.click();
+  await expect(members).toHaveAttribute("aria-expanded", "true");
   await collapseTools.click();
   await expect(dialog.getByText("KPI Work", { exact: true })).toHaveCount(0);
   await expandTools.click();
   await expect(dialog.getByText("Prague Engineer", { exact: true }).first()).toBeVisible();
-  await collapseMembers.click();
-  await expect(collapseMembers).toHaveAttribute("aria-pressed", "true");
+  await members.click();
+  await expect(members).toHaveAttribute("aria-expanded", "false");
   await expect(dialog.getByText("KPI Work", { exact: true })).toBeVisible();
   await expect(dialog.getByText("Prague Engineer", { exact: true })).toHaveCount(0);
   await dialog.getByRole("button", { name: "Expand spending by member for KPI Work", exact: true }).click();
-  await expect(dialog.getByRole("button", { name: "Collapse spending by member for KPI Work", exact: true })).toHaveText("- Collapse");
-  await expect(expandMembers).toHaveAttribute("aria-pressed", "false");
-  await expect(collapseMembers).toHaveAttribute("aria-pressed", "false");
+  // A partial member expansion offers Expand, which completes the whole scope.
+  await expect(members).toHaveAccessibleName("Expand spending tracks");
+  await members.click();
+  await expect(members).toHaveAccessibleName("Collapse spending tracks");
+  await members.click();
+  await expect(dialog.getByText("Prague Engineer", { exact: true })).toHaveCount(0);
 });
 
 test("spending summary rows use averages, complete total badges and compact million cells", async ({ page }) => {

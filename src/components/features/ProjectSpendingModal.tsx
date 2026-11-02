@@ -1,3 +1,4 @@
+import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { useProjectReleaseVisibility } from "../../hooks/useProjectReleaseVisibility";
 import { SystemReleasesTrack } from "./SystemReleasesTrack";
@@ -62,7 +63,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const [graphView, setGraphView] = useState(false);
   const memberTracks = spending.tools.flatMap((tool) => tool.tracks.filter((track) => track.members.length > 0));
   const allSpendingExpanded = memberTracks.length > 0 && memberTracks.every((track) => expandedTracks.has(track.id));
-  const allSpendingCollapsed = memberTracks.every((track) => !expandedTracks.has(track.id));
+  const allToolsExpanded = spending.tools.every(tool => !collapsedTools.has(tool.tool));
   const crossTeamIds = useMemo(() => getCrossTeamMemberIds(members), [members]);
   const paymentDuration = spending.monthlyCosts.length;
   const monthLabels = useMemo(() => {
@@ -119,10 +120,6 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const peak = Math.max(0, ...spending.monthlyCosts.map((cost) => costInEUR(cost, rate, salaryRates) ?? 0));
   const peakIndex = spending.monthlyCosts.findIndex((cost) => costInEUR(cost, rate, salaryRates) === peak);
   const peakCost = spending.monthlyCosts[peakIndex] || total;
-  const buttonClass = isRetro
-    ? "px-2.5 py-1 text-[11px] font-bold font-mono bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black cursor-pointer"
-    : "px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded cursor-pointer";
-
   const amount = (cost: WorkpackageAllocationCost, prefix = false, abbreviateMillions = false) => {
     if (cost.unpricedHours > 0 && cost.totalCost === 0 && !(cost.purchaseCostEUR > 0) && !cost.externalSalaryCharges) return "N/A";
     if (costInEUR(cost, rate, salaryRates) === null) return conversionFailed ? "N/A" : "…";
@@ -340,27 +337,15 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
             ? "bg-[#d4d0c8] border-2 border-t-black border-l-black border-b-white border-r-white text-black font-mono"
             : "bg-slate-800 rounded-lg border border-slate-700"}`}>
             <span className={`${isRetro ? "text-black" : "text-slate-400"} px-2 font-bold uppercase tracking-wider text-[9px] whitespace-nowrap`}>Spending Tracks:</span>
-            {[{ expanded: true, label: "Expanded Spending", active: allSpendingExpanded },
-              { expanded: false, label: "Collapsed Spending", active: allSpendingCollapsed }].map((control) => <button
-                key={control.label} type="button" aria-label={control.label} aria-pressed={control.active} disabled={memberTracks.length === 0}
-                onClick={() => setExpandedTracks(new Set(control.expanded ? memberTracks.map((track) => track.id) : []))}
-                title={`${control.expanded ? "Expand" : "Collapse"} individual member spending tracks under every workpackage, including management support`}
-                className={`px-2 py-1 font-bold transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-default ${isRetro
-                  ? control.active ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000]" : "text-black hover:bg-black/10"
-                  : control.active ? "bg-indigo-600 text-white shadow-xs rounded" : "text-slate-300 hover:text-white rounded"}`}>
-                {control.expanded ? "+ Expand" : "- Collapse"}
-              </button>)}
+            <TimelineExpansionButton tracks scope="spending tracks" expanded={allSpendingExpanded} disabled={memberTracks.length === 0}
+              onToggle={() => setExpandedTracks(new Set(allSpendingExpanded ? [] : memberTracks.map(track => track.id)))} />
           </div>
           <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
-          <button type="button" className={buttonClass} aria-label="Expand All" title="Expand all tool rows" onClick={() => {
-            setCollapsedTools(new Set());
-          }}>+ Expand</button>
-          <button type="button" className={buttonClass} aria-label="Collapse All" title="Collapse all tool rows" onClick={() => {
-            setCollapsedTools(new Set(spending.tools.map((tool) => tool.tool)));
-          }}>- Collapse</button>
+          <TimelineExpansionButton expanded={allToolsExpanded} disabled={spending.tools.length === 0}
+            onToggle={() => setCollapsedTools(new Set(allToolsExpanded ? spending.tools.map(tool => tool.tool) : []))} />
           </>}
           <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
-          <button type="button" className={`inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 focus-visible:outline-offset-2 ${isRetro
+          <button type="button" className={`h-7 inline-flex items-center gap-1.5 px-3 py-1 text-[11px] font-bold whitespace-nowrap cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-purple-300 focus-visible:outline-offset-2 ${isRetro
             ? "font-mono bg-purple-950 hover:bg-purple-900 text-yellow-300 border-2 border-t-purple-300 border-l-purple-300 border-b-purple-900 border-r-purple-900 shadow-[1px_1px_0px_#000]"
             : `text-yellow-300 border border-purple-500/40 rounded-lg shadow-sm ${isBasic ? "bg-purple-900/40 hover:bg-purple-900/50" : "bg-purple-600/30 hover:bg-purple-600/40"}`}`} aria-pressed={graphView}
             onClick={() => { setEditingPayment(null); setGraphView((previous) => !previous); }} title={graphView ? "Return to the spending timeline" : "Show cumulative and monthly spending charts"}>

@@ -1,3 +1,4 @@
+import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
 import { AvailabilityCells, AvailabilityCategoryBand, AvailabilityHeaderDays, AvailabilityMemberRow, DAY_SIZE, HOLIDAY_HEIGHT, LEAVE_COLORS, EMPTY_DATES, EMPTY_ABSENCES, EMPTY_TEAMS, labelClass, rowStyle, siteColors, type CalendarInteraction } from "./AvailabilityCalendarRows";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { MemberAbsence, MemberLeaveType, TeamMemberRecord } from "../../types";
@@ -137,6 +138,8 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     return { date: date.toISOString().slice(0, 10), month: date.getUTCMonth(), day: date.getUTCDate(), readOnly: date.getUTCFullYear() !== year };
   }), [year, followingDays]);
   const groups = useMemo(() => [...new Set(members.map(member => member.footprint))].sort(), [members]);
+  const visibleGroups = categoryView ? categoryGroups : groups;
+  const allGroupsExpanded = visibleGroups.every(name => !(categoryView ? collapsedCategories[name] : collapsedSites[name]));
   const scrollToMonth = (month: number) => {
     const firstDay = days.findIndex(day => !day.readOnly && day.month === month);
     if (firstDay < 0) return;
@@ -248,10 +251,12 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
             </button>)}
           </div><span role="separator" aria-orientation="vertical" className={`h-5 border-l mx-1 ${isRetro ? "border-black" : "border-slate-700"}`} /></>}
 
-          <button type="button" aria-label="Expand All" title={`Expand all ${categoryView ? "category" : "site"} sections`} onClick={() => { stopDrag(); if (categoryView) setCollapsedCategories({}); else setCollapsedSites({}); }}
-            className={`h-7 inline-flex items-center text-[11px] font-semibold px-2.5 transition-colors cursor-pointer ${isRetro ? retroButton : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"}`}>+ Expand</button>
-          <button type="button" aria-label="Collapse All" title={`Collapse all ${categoryView ? "category" : "site"} sections`} onClick={() => { stopDrag(); if (categoryView) setCollapsedCategories(Object.fromEntries(categoryGroups.map(name => [name, true]))); else setCollapsedSites(Object.fromEntries(groups.map(site => [site, true]))); }}
-            className={`h-7 inline-flex items-center text-[11px] font-semibold px-2.5 transition-colors cursor-pointer ${isRetro ? retroButton : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"}`}>- Collapse</button>
+          <TimelineExpansionButton expanded={allGroupsExpanded} disabled={visibleGroups.length === 0}
+            title={`${allGroupsExpanded ? "Collapse" : "Expand"} all ${categoryView ? "team" : "site"} sections`}
+            onToggle={() => { stopDrag();
+              const next = allGroupsExpanded ? Object.fromEntries(visibleGroups.map(name => [name, true])) : {};
+              if (categoryView) setCollapsedCategories(next); else setCollapsedSites(next);
+            }} />
           <div className="flex items-center border-l border-r border-slate-700 px-3 mx-1">
           <button type="button" onClick={exportAvailability} disabled={exporting || !exportContext} aria-busy={exporting} aria-label="Export team availability" title={global ? "Export all teams to Excel" : "Export this team to Excel"} className={`group h-7 inline-flex items-center gap-1.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait ${isRetro ? "px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white font-mono border-2 border-t-orange-300 border-l-orange-300 border-b-black border-r-black active:border-t-black active:border-l-black" : "px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white rounded-lg shadow"}`}>
             <span>{exporting ? "Preparing…" : "Export"}</span>

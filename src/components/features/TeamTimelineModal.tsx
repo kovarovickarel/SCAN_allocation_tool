@@ -1,3 +1,4 @@
+import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
 import { memberMonthAvailability } from "../../utils/memberAvailability";
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
 import { validateReleaseDrafts, releasePlanForSave, releasesFromDrafts, type SystemReleaseDraft } from "../../utils/systemReleases";
@@ -1064,6 +1065,15 @@ export function TeamTimelineModal({
 
   const minTableWidth = Math.max(940, 300 + totalMonths * 56);
 
+  const allSectionsExpanded = !collapsedPersonalCapacity && projectRows.every(row => !collapsedProjects[row.project.id]);
+  const allocationKeys = projectRows.flatMap(row => [
+    ...row.displayedWorkpackages.filter(wp => !wp.isNegated).map(wp => wp.card.id),
+    ...(row.mgmtRow ? [`mgmt_${row.project.id}`] : []),
+  ]);
+  const allAllocationExpanded = allocationKeys.length > 0
+    ? allocationKeys.every(key => expandedWPMembers[key] ?? allMemberTracksExpanded)
+    : allMemberTracksExpanded;
+
   const setAllMemberTracks = useCallback((expanded: boolean) => {
     setAllMemberTracksExpanded(expanded);
     setExpandedWPMembers({});
@@ -1229,73 +1239,12 @@ export function TeamTimelineModal({
                 : "bg-slate-800 rounded-lg border border-slate-700"
             }`}>
               <span className={`${isRetro ? "text-black" : "text-slate-400"} px-2 font-bold uppercase tracking-wider text-[9px]`}>Allocation Tracks:</span>
-              <button
-                type="button"
-                onClick={() => setAllMemberTracks(true)}
-                aria-label="Expanded Allocation"
-                aria-pressed={allMemberTracksExpanded}
-                className={`px-2 py-1 font-bold transition-all cursor-pointer ${
-                  isRetro
-                    ? allMemberTracksExpanded
-                      ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000]"
-                      : "text-black hover:bg-black/10"
-                    : allMemberTracksExpanded
-                    ? "bg-indigo-600 text-white shadow-xs rounded"
-                    : "text-slate-300 hover:text-white rounded"
-                }`}
-                title="Expand individual member allocation tracks under every workpackage, including management support"
-              >
-                + Expand
-              </button>
-              <button
-                type="button"
-                onClick={() => setAllMemberTracks(false)}
-                aria-label="Collapsed Allocation"
-                aria-pressed={!allMemberTracksExpanded}
-                className={`px-2 py-1 font-bold transition-all cursor-pointer ${
-                  isRetro
-                    ? !allMemberTracksExpanded
-                      ? "bg-[#000080] text-white border border-black shadow-[1px_1px_0px_#000]"
-                      : "text-black hover:bg-black/10"
-                    : !allMemberTracksExpanded
-                    ? "bg-indigo-600 text-white shadow-xs rounded"
-                    : "text-slate-300 hover:text-white rounded"
-                }`}
-                title="Collapse individual member allocation tracks under every workpackage, including management support"
-              >
-                - Collapse
-              </button>
+              <TimelineExpansionButton tracks expanded={allAllocationExpanded} scope="allocation tracks" onToggle={() => setAllMemberTracks(!allAllocationExpanded)} />
             </div>
 
             <div className={`h-5 w-px ${isRetro ? "bg-slate-400" : "bg-slate-700"} mx-1`} />
 
-            <button
-              type="button"
-              onClick={expandAll}
-              aria-label="Expand All"
-              title="Expand all timeline sections"
-              className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
-                isRetro
-                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
-                  : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
-              }`}
-            >
-              + Expand
-            </button>
-            <button
-              type="button"
-              onClick={collapseAll}
-              aria-label="Collapse All"
-              title="Collapse all timeline sections"
-              className={`text-[11px] font-semibold px-2.5 py-1 transition-colors cursor-pointer ${
-                isRetro
-                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black hover:bg-[#d4d0c8]"
-                  : "text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded"
-              }`}
-            >
-              - Collapse
-            </button>
-
+            <TimelineExpansionButton expanded={allSectionsExpanded} onToggle={allSectionsExpanded ? collapseAll : expandAll} />
             <button
               type="button"
               onClick={onClose}
