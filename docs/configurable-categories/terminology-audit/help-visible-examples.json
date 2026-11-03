@@ -1,0 +1,42 @@
+[
+  {
+    "tab": "Save & Transfer Workspace",
+    "text": "Replace entire workspace is the default import mode. It restores theme, mode, tool view, layout density and summary selections too. Cancel and invalid files leave the current workspace unchanged."
+  },
+  {
+    "tab": "Projects & Workpackages",
+    "text": "Owner is a single name, with suggestions from team members across all tool teams; you can also enter another name. Assumptions, Deliverables and Risks use bulleted lists. Use Add assumption, Add deliverable or Add risk, press Enter for another item, or remove an item with its bin icon. Empty items disappear when you leave them. Dragging inside a details text field selects text. Details are included in workspace JSON and copied with the workpackage."
+  },
+  {
+    "tab": "Export Planning to Excel",
+    "text": "First save any open editors and timeline drafts. Click a project's orange Export beside View timeline, or Export all beside Add Project. Each XLSX workbook includes Resource Planning, Expenses Proj Spec and Site hourly rates. Project exports include all of that project's tools and workpackages, regardless of the current view filters. Export all includes every project."
+  },
+  {
+    "tab": "Non-FTE Purchases",
+    "text": "Switch the Workpackage Pool to Non-FTE, then add a License, Workstation, Hardware, Contracted workpackage or Travel purchase. Choose its tool and subtool (such as SIL or PIL), supplier, EUR price, and reusability. Reusability scales the price using the same presets and custom factors as FTE workpackages. Both the base price and final price must be positive; a zero reusability factor cannot be saved for a purchase."
+  },
+  {
+    "tab": "External Members & Salaries",
+    "text": "External members use the same staffing rules as internal members: roles, monthly capacity, maintenance choices and allocation limits all apply. Their supplier tag follows the location tag. Long member names, team names and tool labels use abbreviations when space is limited; hover to see the full name."
+  },
+  {
+    "tab": "Project Spending",
+    "text": "Click a project’s Cost amount, or Spending → in Summary dashboard. The view follows the current tool scope and shows EUR costs for allocated internal effort, management support, purchases and allocated external salaries. Unallocated effort and unused salary are excluded. Missing rates or salaries are flagged; unavailable currency conversion is not treated as zero cost."
+  },
+  {
+    "tab": "Team Staffing & Combined Timeline",
+    "text": "It is calculated separately for each tool and month. With the default settings, each full 1.5 engineering FTE adds 0.2 management FTE: 1.5 needs 0.2, 3.0 needs 0.4, and months below 1.5 need none. Other workpackages do not generate management overhead. Manual management adjustments apply only in eligible months."
+  },
+  {
+    "tab": "Scheduling & Finish Targets",
+    "text": "In Workpackages configuration, add or edit an FTE basic type and enable System release mandatory to require a release when creating or editing its workpackages. Saving the configuration assigns R100 to existing instances of that type that have no release; existing selections are kept. Fresh SYS.4 and SYS.5 types have this enabled by default, and other tools do not. Imported older definitions keep their previous optional behavior. When allocating a workpackage with a release, that release must exist in the destination project."
+  },
+  {
+    "tab": "FTE Calculation & Overheads",
+    "text": "Standard Tool Lifecycle Model"
+  },
+  {
+    "tab": "Views, Modes & Themes",
+    "text": "Use the top-bar tool switcher buttons to focus on an individual domain (KPI, Data Factory, Vehicle Tooling, Visualization, Reprocessing, Range & Accuracy). In team view:"
+  }
+]
