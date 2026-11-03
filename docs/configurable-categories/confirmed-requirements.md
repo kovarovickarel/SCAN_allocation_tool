@@ -58,4 +58,3 @@ The product direction is now clear. The remaining implementation design work is 
 4. Add Defaults category/subcategory management, protected Other, confirmed cascade deletion and Standard-only empty creation.
 5. Apply manual category XLSX metadata to both sheets, dropdowns and overhead mappings.
 6. Test creation, rename, deletion, imports, Undo/Redo, team/global calendars, allocation/overheads, summaries, themes and XLSX, then recheck the full existing suite.
-

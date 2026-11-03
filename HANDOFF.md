@@ -1,8 +1,28 @@
 # Development handoff
 
-Updated: 2026-11-02 (Europe/Prague).
+Updated: 2026-11-03 (Europe/Prague).
 
 ## Current desktop snapshot - read first
+
+### Deferred categories feature: durable planning record (2026-11-03)
+
+The user considers configurable categories/subcategories likely the last major
+feature to add because the app would need to be forked at that point. The exact
+fork timing and scope remain undecided. This is a deferred planning decision,
+not authorization to implement the feature or create a fork now; it does not
+cancel other TODO items.
+
+Start with [the saved feature brief](docs/configurable-categories/README.md).
+It preserves the confirmed laptop requirements, deletion/atomic Undo policy,
+XLSX mapping and JSON-compatibility constraints, open decisions and both audits.
+The repository now contains all 29 screenshots: eight layout/scalability captures
+and 21 terminology gallery references, with exact hover-text transcriptions and
+25 Help passages across ten tabs. Paths are relative so the material works on
+another PC or in a future fork. The older confirmed discussion remains below
+and is also preserved in the feature folder.
+
+No application/source-data changes were made for storage. Documentation/image
+links were checked; no new application test run is claimed by this update.
 
 ### Timeline controls and button polish (2026-11-02)
 

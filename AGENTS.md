@@ -4,6 +4,8 @@ Read this file before changing the application. It describes the current product
 
 ## Start here: current handoff
 
+Deferred configurable-category planning is stored in [docs/configurable-categories/README.md](docs/configurable-categories/README.md), including both screenshot audits and confirmed deletion/Undo/XLSX requirements. The user considers it likely the last major feature because a fork would be needed; timing and fork scope remain undecided. Do not infer implementation or fork authorization from this backlog record.
+
 Release validation on 2026-11-02: all 865 application tests passed in one uninterrupted run, including all 10 current visual checks with reference updates disabled. All six production Pages checks, TypeScript and the Pages build passed. The batch adds single-action timeline expansion controls, stable spending-view button dimensions and approved toolbar styling. Thirteen current visual references were reviewed/refreshed; historical references and frozen JSON fixtures remain unchanged. See HANDOFF.md and tests/README.md. The user authorized pushing the grouped commits to master; do not infer completed deployment from validation or a push.
 
 Member availability is edited from the umbrella button left of View staffing.

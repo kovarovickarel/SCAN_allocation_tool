@@ -12,7 +12,7 @@
 
 - [ ] Populate tools with workpackages and set up GM, RIVIAN, and MOTIONAL
 
-- [ ] Add configurable Categories under Defaults: name/icon/colour and subcategories; protect Other; confirm deletion of category-owned workpackages/member memberships (subcategory deletion removes only workpackages), with Undo recovery; create empty categories with Standard as the only basic type; manually enter per-category XLSX values for several departments. Confirmed requirements, including all deletion and Undo decisions, are in HANDOFF.md; implementation is planned for another PC.
+- [ ] Add configurable Categories under Defaults: name/icon/colour and subcategories; protect Other; confirm deletion of category-owned workpackages/member memberships (subcategory deletion removes only workpackages), with Undo recovery; create empty categories with Standard as the only basic type; manually enter per-category XLSX values for several departments. Deferred: likely the last major feature, expected to require an app fork at that point; timing/scope remain undecided. See [the saved feature brief, confirmed requirements and screenshot audits](docs/configurable-categories/README.md).
 
 ## User-testing feedback (2026-10-12)
 
