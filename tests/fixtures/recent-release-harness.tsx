@@ -44,7 +44,8 @@ function Harness() {
     {screen === "tool" && <><select aria-label="Workpackage view" value={kind} onChange={e => setKind(e.target.value as WorkpackageView)}><option>both</option><option>fte</option><option>non-fte</option></select>
       <div data-testid="tool" style={{ width: 700 }}><ToolRow tool={TOOLS.find(tool => tool.name === "Data Factory")!} project={{ id: "p", duration: 12 } as any} projectId="p" projectDuration={12} projectMilestones={{}}
         workpackageView={kind} fteRates={DEFAULT_FTE_RATES} toolFteRates={DEFAULT_TOOL_FTE_RATES} managementAllocationCost={cost(10)}
-        toolCards={[{ id: "fte", name: "Engineering", tool: "Data Factory", subcategory: "Pipeline", projectId: "p", _fte: 0.25, _manHours: 480, _allocationCost: cost(40) },
+        toolCards={[{ id: "fte", name: "Engineering", tool: "Data Factory", subcategory: "Pipeline", projectId: "p", _fte: 0.25, _manHours: 480, _allocationCost: cost(40),
+          _effortProfile: { monthlyFTE: [0, 0, 0.5, 1, 0.5, 0, 0, 0, 0, 0, 0, 0], mainStart: 2, mainEnd: 4 } },
           { id: "purchase", name: "Purchase", tool: "Data Factory", subcategory: "Pipeline", projectId: "p", kind: "non-fte", purchaseType: "License", purchasePriceEUR: 90, _fte: 0, _allocationCost: { ...cost(0), allocatedHours: 0, purchaseCostEUR: 90 } }]}
         onDrop={() => {}} onDragStart={() => {}} onDragEnd={() => {}} onEdit={() => {}} onDelete={() => {}} /></div></>}
   </ThemeContext.Provider>;

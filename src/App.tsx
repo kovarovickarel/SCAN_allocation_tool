@@ -8,13 +8,14 @@ import { ResizableSwimlane } from "./components/ui/ResizableSwimlane";
 import { duplicateWorkpackage } from "./utils/duplicateWorkpackage";
 import { DEFAULT_NON_FTE_TYPES, NonFteTypesContext } from "./utils/nonFteBasicTypes";
 import { nominalWorkpackageManHoursBreakdown } from "./utils/manHours";
+import { workpackageEffortProfile } from "./utils/effortDisplay";
 import { supportingPhaseRates } from "./utils/supportingPhases";
 import { workpackageRateKey } from "./utils/workpackageTypes";
 import { releaseAssignmentError } from "./utils/systemReleases";
 import { WorkspaceFileControls } from "./components/features/WorkspaceFileControls";
 import { ProjectPlanningExportButton } from "./components/features/ProjectPlanningExportButton";
 import type { WorkspaceData, WorkspaceView } from "./utils/workspaceFile";
-import { workpackageFinishViolation } from "./utils/workpackageFinishTargets";
+import { workpackageFinishViolation, workpackageMainMonths } from "./utils/workpackageFinishTargets";
 import { SummaryDashboard } from "./components/features/SummaryDashboard";
 import { BeachUmbrellaIcon, ProjectIcon } from "./components/ui/icons";
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
@@ -338,13 +339,25 @@ export default function App() {
       const nominalBreakdown = nominalWorkpackageManHoursBreakdown(f, NOMINAL_BASELINE_PROJECT, config.fteRates, config.reusabilityFactors, config.stabilityFactors, config.toolFteRates);
       const nominalManHours = round2(nominalBreakdown.main + nominalBreakdown.maintenance + nominalBreakdown.supporting);
 
-      if (!f.projectId) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _nominalManHours: nominalManHours, _nominalManHoursBreakdown: nominalBreakdown, _manHoursBreakdown: { main: 0, maintenance: 0, supporting: 0 }, _manHours: 0, _isNegated: false, _isAltered: false, _allocationCost: undefined };
-      }
-
+      const complexityKey = workpackageRateKey(f, config.toolFteRates);
+      const rates =
+        config.toolFteRates?.[f.tool]?.[complexityKey] ??
+        config.fteRates?.[complexityKey] ??
+        DEFAULT_FTE_RATES[complexityKey] ??
+        DEFAULT_FTE_RATES["Point Cloud"];
       const project = projectIndex.get(f.projectId);
       if (!project) {
-        return { ...f, _fte: 0, _nominalFte: nominalFte, _nominalManHours: nominalManHours, _nominalManHoursBreakdown: nominalBreakdown, _manHoursBreakdown: { main: 0, maintenance: 0, supporting: 0 }, _manHours: 0, _isNegated: false, _isAltered: false, _allocationCost: undefined };
+        const duration = Math.max(NOMINAL_BASELINE_PROJECT.duration, workpackageMainMonths(f, config.fteRates, config.toolFteRates));
+        const nominalProject = { ...NOMINAL_BASELINE_PROJECT, duration };
+        const nominalCard = { ...f, startMonth: 1, otherStartMonth: 1 };
+        const lifecycle = computeWorkpackageLifecycleTimeline(nominalCard, nominalProject, rates, config.reusabilityFactors, config.stabilityFactors, false, duration);
+        const stability = f.tool === "Other" ? 1 : config.stabilityFactors[nominalProject.stability] ?? 1;
+        const monthlyFTE = lifecycle.map(month => {
+          const { dev, meetings } = supportingPhaseRates(nominalCard, rates, month, config.reusabilityFactors, stability);
+          return month.totalFTE + dev + meetings;
+        });
+        return { ...f, _fte: 0, _nominalFte: nominalFte, _nominalManHours: nominalManHours, _nominalManHoursBreakdown: nominalBreakdown, _manHoursBreakdown: { main: 0, maintenance: 0, supporting: 0 }, _manHours: 0, _isNegated: false, _isAltered: false, _allocationCost: undefined,
+          _effortProfile: workpackageEffortProfile(monthlyFTE, lifecycle) };
       }
 
       const isToolHidden = project.toolSet.has(f.tool);
@@ -364,12 +377,6 @@ export default function App() {
       );
 
       const isOther = f.tool === "Other" && !f.complexity;
-      const complexityKey = workpackageRateKey(f, config.toolFteRates);
-      const rates =
-        config.toolFteRates?.[f.tool]?.[complexityKey] ??
-        config.fteRates?.[complexityKey] ??
-        DEFAULT_FTE_RATES[complexityKey] ??
-        DEFAULT_FTE_RATES["Point Cloud"];
       const defaultMonths = computeWorkpackageLifecycleTimeline(
         f,
         project,
@@ -418,6 +425,7 @@ export default function App() {
 
       const finalFTE = isAltered ? round2(totalEffortMonths / project.duration) : defaultFte;
       const coverage = calculateWorkpackageCoverage(f, project.duration, coverageMonths, teamMembers);
+      const monthlyFTE = coverageMonths.map(month => month.totalWPMonthlyFTE);
 
       return {
         ...f,
@@ -429,10 +437,11 @@ export default function App() {
         _isNegated: false,
         _isAltered: isAltered,
         _fte: finalFTE,
+        _effortProfile: workpackageEffortProfile(monthlyFTE, defaultMonths),
         _coveragePct: coverage.coveragePct,
         _isMaintenanceOnlyUncovered: coverage.isMaintenanceOnlyUncovered,
         _allocationCost: calculateWorkpackageAllocationCost(f, project.duration,
-          coverageMonths.map((month) => month.totalWPMonthlyFTE), teamMembers, config.fteCosts, false, project.startDate),
+          monthlyFTE, teamMembers, config.fteCosts, false, project.startDate),
       };
     });
   }, [functions, projectIndex, config, teamMembers]);

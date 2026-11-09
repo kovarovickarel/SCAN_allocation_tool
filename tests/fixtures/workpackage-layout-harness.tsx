@@ -11,6 +11,7 @@ const mode = params.get("mode") || "extended";
 const card: WorkpackageCard = {
   id: "priced", name: "Scenario Simulation", tool: "Simulation", projectId: "project",
   reusability: "Other", customReusabilityFactor: 0.37, _fte: 1.23, _coveragePct: 100,
+  _effortProfile: { monthlyFTE: [...Array(6).fill(1.23), ...Array(12).fill(0)], mainStart: 0, mainEnd: 5 },
   _allocationCost: { currency: "EUR", totalCost: 123456.78, allocatedHours: 320,
     unpricedHours: 0, missingLocations: [] },
 };

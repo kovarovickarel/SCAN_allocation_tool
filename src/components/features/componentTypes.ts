@@ -66,6 +66,7 @@ export interface ToolRowProps extends ReusabilityRatesProps {
   suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;
   managementAllocationCost?: WorkpackageAllocationCost;
+  managementMonthlyFTE?: readonly number[];
   tool: ToolDefinition;
   reusabilityFactors?: FactorMap;
   teamMembers?: TeamMemberRecord[];

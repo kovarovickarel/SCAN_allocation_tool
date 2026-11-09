@@ -24,6 +24,7 @@ import { sumManHoursBreakdowns } from "../../utils/manHours";
 import { ManHoursLabel, WORKPACKAGE_EFFORT_BADGE_SIZE } from "../ui/ManHoursLabel";
 import { WORKING_HOURS_PER_MONTH, NOMINAL_BASELINE_PROJECT } from "../../constants";
 import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
+import { combineEffortProfiles, effortBadge, managementEffortBadge } from "../../utils/effortDisplay";
 import { workpackageFinishTarget } from "../../utils/workpackageFinishTargets";
 import { ResponsiveToolTagLabel } from "../ui/ResponsiveToolTagLabel";
 
@@ -443,6 +444,7 @@ export const FunctionCard = memo(function FunctionCard({
   const fte = isAssigned ? (card._fte ?? 0) : null;
   const nominalFTE = card._nominalFte ?? 0.35;
   const isNegated = Boolean(card._isNegated);
+  const effort = effortBadge(card._effortProfile, { nominal: !isAssigned, unused: isNegated });
   const manHours = isNegated ? 0 : isAssigned ? (card._manHours ?? (fte ?? 0) * (projectDuration || 12) * WORKING_HOURS_PER_MONTH) : (card._nominalManHours ?? nominalFTE * NOMINAL_BASELINE_PROJECT.duration * WORKING_HOURS_PER_MONTH);
   const isAltered = Boolean(card._isAltered);
   const finishTarget = workpackageFinishTarget(card);
@@ -513,12 +515,6 @@ export const FunctionCard = memo(function FunctionCard({
       }
     })();
 
-    const displayFTEText = isNegated
-      ? "0.00"
-      : fte !== null
-      ? fte.toFixed(2)
-      : nominalFTE.toFixed(2);
-
     const fteBadgeStyle = isRetro
       ? isNegated
         ? "text-gray-500 bg-gray-200 border border-black line-through font-mono"
@@ -586,8 +582,8 @@ export const FunctionCard = memo(function FunctionCard({
             {isAssigned && Math.round(manHours) > 0 && <span ref={compactManHoursRef} aria-hidden={hideCompactManHours || undefined} className={`inline-flex shrink-0 ${hideCompactManHours ? "absolute invisible pointer-events-none" : ""}`}>
               <ManHoursLabel hours={manHours} breakdown={isAssigned ? card._manHoursBreakdown : card._nominalManHoursBreakdown} nominal={!isAssigned} compact />
             </span>}
-            <span ref={compactEffortRef} aria-hidden={isAssigned && hideCompactEffort ? true : undefined} className={`font-mono font-bold text-[8px] px-1 py-0.2 rounded border shrink-0 whitespace-nowrap shadow-2xs ${fteBadgeStyle} ${isAssigned && hideCompactEffort ? "absolute invisible pointer-events-none" : ""}`}>
-              {displayFTEText}
+            <span ref={compactEffortRef} title={effort.title} aria-hidden={isAssigned && hideCompactEffort ? true : undefined} className={`font-mono font-bold text-[8px] px-1 py-0.2 rounded border shrink-0 whitespace-nowrap shadow-2xs ${fteBadgeStyle} ${isAssigned && hideCompactEffort ? "absolute invisible pointer-events-none" : ""}`}>
+              {effort.label}
             </span>
             <button
               ref={compactDeleteRef}
@@ -793,15 +789,16 @@ export const FunctionCard = memo(function FunctionCard({
         )}
       </div>
 
-      <div className="mt-1 pt-1 border-t border-black/10 flex items-center justify-between text-xs min-w-0 gap-1">
+      <div className="mt-1 pt-1 border-t border-black/10 flex flex-wrap items-center justify-between text-xs min-w-0 gap-1">
         <span className={`text-[9px] font-bold ${isRetro ? "text-black font-mono" : "text-gray-600"} uppercase shrink-0`}>
           {fte !== null ? "Efforts:" : "Nominal:"}
         </span>
-        <div className="flex flex-wrap items-center justify-end gap-1 min-w-0">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1 min-w-0">
           {isAssigned && <WorkpackageCostLabel cost={card._allocationCost} />}
           {isAssigned && <ManHoursLabel hours={manHours} breakdown={isAssigned ? card._manHoursBreakdown : card._nominalManHoursBreakdown} nominal={!isAssigned} />}
         <span
-          className={`font-mono font-bold ${WORKPACKAGE_EFFORT_BADGE_SIZE} rounded border truncate ${
+          title={effort.title}
+          className={`font-mono font-bold ${WORKPACKAGE_EFFORT_BADGE_SIZE} rounded border whitespace-nowrap shrink-0 ${
             isRetro
               ? isNegated
                 ? "text-gray-500 bg-gray-200 border-black line-through"
@@ -813,7 +810,7 @@ export const FunctionCard = memo(function FunctionCard({
               : "text-gray-700 bg-white border-gray-200"
           }`}
         >
-          {isNegated ? "0.00 FTE/yr" : fte !== null ? `${fte.toFixed(2)} FTE/yr` : `~${nominalFTE.toFixed(2)} FTE/yr`}
+          {effort.label}
         </span>
         </div>
       </div>
@@ -829,8 +826,13 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
   const { isBasic, isRetro, isBasicMode } = React.useContext(ThemeContext);
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
   if (!overheads || overheads.length === 0) return null;
-  const totalMgmtFTE = overheads.reduce((sum, o) => sum + (o.fte ?? 0), 0);
-  const totalMgmtHours = overheads.reduce((total, overhead) => total + getManagementMonthlyFTE(overhead, project).reduce((sum, fte) => sum + fte, 0) * WORKING_HOURS_PER_MONTH, 0);
+  const rows = overheads.map(overhead => ({ overhead, monthlyEffort: getManagementMonthlyFTE(overhead, project) }));
+  const combinedDemand = Array<number>(project.duration).fill(0);
+  for (const { monthlyEffort } of rows) {
+    monthlyEffort.forEach((fte, month) => { combinedDemand[month] += fte; });
+  }
+  const totalEffort = managementEffortBadge(combinedDemand);
+  const totalMgmtHours = combinedDemand.reduce((sum, fte) => sum + fte, 0) * WORKING_HOURS_PER_MONTH;
   const anyAltered = overheads.some((o) => o.isAltered);
 
   const containerStyle = isRetro
@@ -846,26 +848,26 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
 
   return (
     <div className={`p-2.5 ${containerStyle} border rounded-lg flex flex-col gap-1.5 shadow-2xs`}>
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1">
         <span className={`text-[11px] font-bold ${headerTextColor} uppercase tracking-wide flex items-center gap-1.5`}>
           {!isBasicMode && <ManagementIcon size={14} className={`shrink-0 ${iconColor} opacity-90`} />}
           MANAGEMENT SUPPORT OVERHEAD{anyAltered ? "*" : ""}
         </span>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="ml-auto flex items-center gap-1.5 shrink-0">
           <ManHoursLabel hours={totalMgmtHours} breakdown={{ main: 0, maintenance: 0, supporting: totalMgmtHours }} size="tool" tone="management" />
           <span
-            className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded ${isRetro ? "bg-white border-2 border-black shadow-[1px_1px_0px_#000] text-black" : "bg-white/80 border border-black/10 text-gray-800 shadow-2xs"}`}
-            title={`Total Management Support: ${totalMgmtFTE.toFixed(2)} FTE/yr`}
+            className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded whitespace-nowrap ${isRetro ? "bg-white border-2 border-black shadow-[1px_1px_0px_#000] text-black" : "bg-white/80 border border-black/10 text-gray-800 shadow-2xs"}`}
+            title={totalEffort.title}
           >
-            {totalMgmtFTE.toFixed(2)} FTE/yr
+            {totalEffort.label}
           </span>
         </div>
       </div>
       <div className="flex flex-col gap-1">
-        {overheads.map((o) => {
+        {rows.map(({ overhead: o, monthlyEffort }) => {
           const assignments = project.mgmtMemberAssignments?.[o.tool] || {};
           const monthlyAssignments = project.mgmtMemberMonthlyAssignments?.[o.tool] || {};
-          const monthlyEffort = getManagementMonthlyFTE(o, project);
+          const effort = managementEffortBadge(monthlyEffort);
           const { coveragePct } = calculateManagementCoverage(assignments, monthlyAssignments, monthlyEffort);
           const allocationCost = allocationCosts.get(o.tool);
           const allocatedMembers = !isCompact ? teamMembers.filter((member) =>
@@ -880,7 +882,7 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
                   <span>
                     {o.tool}{o.isAltered ? "*" : ""}
                   </span>
-                  <span className={`font-mono whitespace-nowrap ${fteTextColor}`}>+{o.fte.toFixed(2)} FTE/yr</span>
+                  <span className={`font-mono whitespace-nowrap ${fteTextColor}`} title={effort.title}>+{effort.label}</span>
                 </span>
                 <div className="flex items-center gap-1.5 shrink-0">
                   <WorkpackageCostLabel cost={allocationCost} tone="management" />
@@ -915,6 +917,7 @@ export const ToolRow = memo(function ToolRow({
   tool,
   fteCosts = DEFAULT_FTE_COSTS,
   managementAllocationCost,
+  managementMonthlyFTE,
   reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   fteRates,
   toolFteRates,
@@ -945,9 +948,9 @@ export const ToolRow = memo(function ToolRow({
     [draggedCard, tool]
   );
 
-  const toolTotalFTE = useMemo(
-    () => toolCards.reduce((sum, c) => sum + (c._fte ?? 0), 0),
-    [toolCards]
+  const toolEffort = useMemo(
+    () => effortBadge(combineEffortProfiles(toolCards, projectDuration, managementMonthlyFTE), { showPeak: true }),
+    [toolCards, projectDuration, managementMonthlyFTE]
   );
   const toolTotalCost = useMemo(() => sumWorkpackageAllocationCosts(
     [...toolCards.filter((card) => card.projectId === projectId && !card._isNegated
@@ -1019,7 +1022,7 @@ export const ToolRow = memo(function ToolRow({
 
   return (
     <div className={`${rowBg} rounded-lg overflow-hidden flex flex-col shadow-xs shrink-0 w-full h-auto`}>
-      <div className={`px-2.5 py-1.5 ${headerBg} text-xs font-bold uppercase tracking-wide flex items-center justify-between shrink-0`}>
+      <div className={`px-2.5 py-1.5 ${headerBg} text-xs font-bold uppercase tracking-wide flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1 shrink-0`}>
         <span className="flex items-center gap-1.5">
           {!isBasicMode && <ToolIcon toolName={tool.name} size={13} className="shrink-0 opacity-80" />}
           <span>{tool.name}</span>
@@ -1037,7 +1040,7 @@ export const ToolRow = memo(function ToolRow({
             </button>
           )}
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="ml-auto flex flex-wrap justify-end items-center gap-1.5">
           {!isBasicMode && unusedInThisTool.length > 0 && (
             <span className="text-[10px] lowercase font-normal px-1.5 py-0.5 rounded bg-amber-100/90 text-amber-800 border border-amber-300 font-sans" title="Subcategories marked as unused in this project">
               {unusedInThisTool.length} unused
@@ -1045,12 +1048,12 @@ export const ToolRow = memo(function ToolRow({
           )}
           <WorkpackageCostLabel cost={toolTotalCost} />
           {workpackageView !== "non-fte" && <ManHoursLabel size="tool" breakdown={sumManHoursBreakdowns(toolCards)} hours={toolCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />}
-          <span
-            className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded ${isRetro ? "bg-white border-2 border-black text-black shadow-[1px_1px_0px_#000]" : "bg-white/90 border border-black/10 text-gray-800 shadow-2xs"}`}
-            title={`${toolCards.length} workpackage(s) · Total: ${toolTotalFTE.toFixed(2)} FTE/yr`}
+          {workpackageView !== "non-fte" && <span
+            className={`text-[11px] font-mono font-bold px-1.5 py-0.5 rounded whitespace-nowrap normal-case ${isRetro ? "bg-white border-2 border-black text-black shadow-[1px_1px_0px_#000]" : "bg-white/90 border border-black/10 text-gray-800 shadow-2xs"}`}
+            title={toolEffort.title}
           >
-            {toolTotalFTE.toFixed(2)} FTE/yr
-          </span>
+            {toolEffort.label}
+          </span>}
         </div>
       </div>
 
@@ -1094,7 +1097,7 @@ export const ToolRow = memo(function ToolRow({
             const slotCards = workpackageView === "non-fte" ? [] : allSlotCards;
             const slotPurchases = hasMultipleSlots ? purchaseCards.filter(card => purchaseSubcategory(card) === sub) : [];
             const showSlotCategories = slotCards.length > 0 && slotPurchases.length > 0;
-            const slotTotalFTE = allSlotCards.reduce((sum, c) => sum + (c._fte ?? 0), 0);
+            const slotEffort = effortBadge(combineEffortProfiles(allSlotCards, projectDuration), { showPeak: true });
             const slotTotalCost = sumWorkpackageAllocationCosts(
               [...slotCards, ...slotPurchases]
                 .filter(card => card.projectId === projectId && !card._isNegated)
@@ -1177,15 +1180,15 @@ export const ToolRow = memo(function ToolRow({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="ml-auto flex flex-wrap items-center justify-end gap-1 min-w-0 [&>span]:[-webkit-text-stroke:0.2px]">
                       <WorkpackageCostLabel cost={slotTotalCost} size="subcategory" />
-                      {!isBasicMode && <>
-                      {workpackageView !== "non-fte" && <ManHoursLabel size="subcategory" breakdown={sumManHoursBreakdowns(allSlotCards)} hours={allSlotCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />}
+                      {!isBasicMode && workpackageView !== "non-fte" && <>
+                      <ManHoursLabel size="subcategory" breakdown={sumManHoursBreakdowns(allSlotCards)} hours={allSlotCards.reduce((sum, card) => sum + (card.kind === "non-fte" || card._isNegated ? 0 : card._manHours ?? (card._fte ?? 0) * projectDuration * WORKING_HOURS_PER_MONTH), 0)} />
                       <span
-                        className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/90 border border-black/10 text-gray-800 shadow-2xs shrink-0"
-                        title={`${sub}: ${slotTotalFTE.toFixed(2)} FTE/yr`}
+                        className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-white/90 border border-black/10 text-gray-800 shadow-2xs shrink-0 whitespace-nowrap"
+                        title={slotEffort.title}
                       >
-                        {slotTotalFTE.toFixed(2)} FTE/yr
+                        {slotEffort.label}
                       </span>
                       </>}
                     </div>

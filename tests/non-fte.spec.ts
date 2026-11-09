@@ -203,7 +203,8 @@ test("the app assigns and unassigns purchases without changing staffing and filt
   await card.dragTo(page.getByRole("heading", { name: "GM", exact: true }));
   await month(page, 2).click();
   await page.getByRole("button", { name: "Confirm & Place in Project" }).click();
-  await expect(project).toContainText("Total: 0.00 FTE/yr");
+  await expect(project).toContainText("0.00 Avg FTE");
+  await expect(project).toContainText("0.00 Peak FTE");
   await expect(project).toContainText("Non-FTE: 100");
   await project.getByRole("button", { name: "Show FTE workpackages", exact: true }).click();
   await expect(card).toHaveCount(0);

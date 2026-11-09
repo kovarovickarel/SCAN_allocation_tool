@@ -9,17 +9,17 @@ for (const theme of ["vibrant", "basic", "retro"]) for (const mode of ["extended
     await page.waitForLoadState("networkidle");
     const narrow = page.getByTestId("cards-120");
     const wide = page.getByTestId("cards-360");
-    await expect(narrow.getByText("1.23", { exact: true }).first()).toBeHidden();
-    await expect(wide.getByText("1.23", { exact: true }).first()).toBeVisible();
+    await expect(narrow.getByText("1.23 FTE·6m", { exact: true }).first()).toBeHidden();
+    await expect(wide.getByText("1.23 FTE·6m", { exact: true }).first()).toBeVisible();
     await expect(narrow.getByText("Other", { exact: true }).last()).toBeVisible();
     await expect.poll(() => wide.locator('span[title="Other Reusability 0.37×"]').evaluate((el) => el.firstChild?.textContent)).toBe("Other Reusability ");
     await expect(page).toHaveScreenshot(`priced-cards-${theme}-${mode}.png`, { fullPage: true, maxDiffPixels: 0 });
     // Resize in both directions: invisible measurements must not flicker or stay stale.
     await narrow.evaluate((element) => { element.style.width = "360px"; });
-    await expect(narrow.getByText("1.23", { exact: true }).first()).toBeVisible();
+    await expect(narrow.getByText("1.23 FTE·6m", { exact: true }).first()).toBeVisible();
     await expect.poll(() => narrow.locator('span[title="Other Reusability 0.37×"]').evaluate((el) => el.firstChild?.textContent)).toBe("Other Reusability ");
     await narrow.evaluate((element) => { element.style.width = "120px"; });
-    await expect(narrow.getByText("1.23", { exact: true }).first()).toBeHidden();
+    await expect(narrow.getByText("1.23 FTE·6m", { exact: true }).first()).toBeHidden();
     await expect.poll(() => narrow.locator('span[title="Other Reusability 0.37×"]').evaluate((el) => el.firstChild?.textContent)).toBe("Other ");
   });
 }

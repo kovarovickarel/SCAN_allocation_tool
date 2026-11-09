@@ -19,6 +19,7 @@ import { ProjectPlanningExportButton } from "./ProjectPlanningExportButton";
 import { ProjectReusabilityModal } from "./ProjectReusabilityModal";
 import { MilestoneMonthInput } from "../ui/MilestoneMonthInput";
 import { ManagementOverheads, ToolRow } from './WorkpackageComponents';
+import { averageFTE, combineEffortProfiles, peakFTE } from "../../utils/effortDisplay";
 import { ProjectTimelineModal } from './ProjectTimelineModal';
 import { ProjectClassBadge } from "../ui/ProjectClassBadge";
 import { ProjectRFQBadge } from '../ui/ProjectRFQBadge';
@@ -594,37 +595,38 @@ export const ProjectBasket = memo(function ProjectBasket({
     return map;
   }, [projectCards]);
 
-  const effortSummary = useMemo(() => {
-    if (activeToolView === "all") {
-      return calculateProjectEffort(projectCards, mgmtSettings, project, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
-    }
-    const scopedCards = projectCards.filter(
-      (c) => c.tool === activeToolView || c.tool === "Other"
-    );
-    const fullEffort = calculateProjectEffort(scopedCards, mgmtSettings, project, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
-    const filteredOverheads = fullEffort.overheads.filter((o) => o.tool === activeToolView);
-    const mgmtFTE = filteredOverheads.reduce((sum, o) => sum + (o.fte ?? 0), 0);
-    return {
-      engFTE: fullEffort.engFTE,
-      mgmtFTE: round2(mgmtFTE),
-      totalFTE: round2(fullEffort.engFTE + mgmtFTE),
-      overheads: filteredOverheads,
-    };
-  }, [projectCards, mgmtSettings, project, activeToolView, fteRates, toolFteRates, reusabilityFactors, stabilityFactors]);
+  const scopedCards = useMemo(() => activeToolView === "all" ? projectCards :
+    projectCards.filter(card => card.tool === activeToolView || card.tool === "Other"), [projectCards, activeToolView]);
 
-  const managementAllocationCosts = useMemo(() => new Map(effortSummary.overheads.map((overhead) => {
+  const overheads = useMemo(() => {
+    const effort = calculateProjectEffort(scopedCards, mgmtSettings, project, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
+    return activeToolView === "all" ? effort.overheads : effort.overheads.filter(overhead => overhead.tool === activeToolView);
+  }, [scopedCards, mgmtSettings, project, activeToolView, fteRates, toolFteRates, reusabilityFactors, stabilityFactors]);
+
+  const staffing = useMemo(() => {
+    const management = Array<number>(project.duration).fill(0);
+    for (const overhead of overheads) {
+      getManagementMonthlyFTE(overhead, project).forEach((value, month) => { management[month] += value; });
+    }
+    const { monthlyFTE } = combineEffortProfiles(scopedCards, project.duration, management);
+    const average = averageFTE(monthlyFTE);
+    const managementAverage = averageFTE(management);
+    return { average, managementAverage, engineeringAverage: average - managementAverage, peak: peakFTE(monthlyFTE) };
+  }, [scopedCards, project, overheads]);
+
+  const managementAllocationCosts = useMemo(() => new Map(overheads.map((overhead) => {
     const monthlyEffort = getManagementMonthlyFTE(overhead, project);
     return [overhead.tool, applySalaryTotals(calculateWorkpackageAllocationCost({
       id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support", tool: overhead.tool,
       _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
       memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {},
     }, project.duration, monthlyEffort, teamMembers, fteCosts, false, project.startDate), salaryAllocationTotals || {})] as const;
-  })), [effortSummary.overheads, project, teamMembers, fteCosts, salaryAllocationTotals]);
+  })), [overheads, project, teamMembers, fteCosts, salaryAllocationTotals]);
 
   const projectCost = useMemo(() => calculateProjectSpending({
-    project, cards: projectCards, members: teamMembers, overheads: effortSummary.overheads,
+    project, cards: projectCards, members: teamMembers, overheads,
     fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView, salaryAllocationTotals,
-  }).totalCost, [project, projectCards, teamMembers, effortSummary.overheads,
+  }).totalCost, [project, projectCards, teamMembers, overheads,
     fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView, salaryAllocationTotals]);
 
   const hiddenTools = project.hiddenTools || [];
@@ -1207,13 +1209,14 @@ export const ProjectBasket = memo(function ProjectBasket({
                   <span>&middot;</span>
                   <span>{project.stability} ({stabilityFactors[project.stability] ?? 1}x)</span>
                 </div>
-                <div className={`text-xs font-mono font-bold ${isRetro ? "text-amber-300" : "text-emerald-400"} mt-0.5`}>
-                  {activeToolView !== "all" ? `${activeToolView} Total:` : "Total:"} {effortSummary.totalFTE.toFixed(2)} FTE/yr
-                  {!isBasicMode && (
-                    <span className={`text-[10px] ${isRetro ? "text-slate-200" : "text-slate-400"} font-normal ml-1`}>
-                      (Eng: {effortSummary.engFTE.toFixed(2)} + Mgmt: {effortSummary.mgmtFTE.toFixed(2)})
-                    </span>
-                  )}
+                <div className={`text-xs font-mono font-bold ${isRetro ? "text-amber-300" : "text-emerald-400"} mt-0.5 flex flex-wrap gap-x-2`}>
+                  <span>{activeToolView === "all" ? "Total:" : `${activeToolView} Total:`}</span>
+                  <span className="whitespace-nowrap" title={`Average required capacity over all ${project.duration} project months. Engineering: ${staffing.engineeringAverage.toFixed(2)} FTE. Management: ${staffing.managementAverage.toFixed(2)} FTE.`}>
+                    {staffing.average.toFixed(2)} Avg FTE
+                  </span>
+                  <span className="whitespace-nowrap text-red-300" title={staffing.peak.month ? `Highest combined engineering and management demand, first reached in M${staffing.peak.month}.` : "No planned FTE demand"}>
+                    {staffing.peak.value.toFixed(2)} Peak FTE
+                  </span>
                 </div>
                 <ProjectCostSummary cost={projectCost} onOpen={() => setShowSpendingModal(true)} />
               </div>
@@ -1271,7 +1274,7 @@ export const ProjectBasket = memo(function ProjectBasket({
       </div>
 
       <div className="flex flex-col gap-3 p-3 overflow-y-auto overflow-x-hidden flex-1 min-h-0">
-        {effectiveWorkpackageView !== "non-fte" && <ManagementOverheads overheads={effortSummary.overheads} project={project} teamMembers={teamMembers} isCompact={isCompact} allocationCosts={managementAllocationCosts} />}
+        {effectiveWorkpackageView !== "non-fte" && <ManagementOverheads overheads={overheads} project={project} teamMembers={teamMembers} isCompact={isCompact} allocationCosts={managementAllocationCosts} />}
 
         {visibleTools.map((tool) => (
           <ToolRow
@@ -1280,6 +1283,7 @@ export const ProjectBasket = memo(function ProjectBasket({
             suppliers={suppliers}
             fteCosts={fteCosts}
             managementAllocationCost={managementAllocationCosts.get(tool.name)}
+            managementMonthlyFTE={overheads.find(overhead => overhead.tool === tool.name)?.monthlyFTE}
             key={tool.name}
             reusabilityFactors={reusabilityFactors}
             fteRates={fteRates}
@@ -1383,7 +1387,7 @@ export const ProjectBasket = memo(function ProjectBasket({
           project={project}
           cards={cards}
           members={teamMembers}
-          overheads={effortSummary.overheads}
+          overheads={overheads}
           fteCosts={fteCosts}
           fteRates={fteRates}
           toolFteRates={toolFteRates}

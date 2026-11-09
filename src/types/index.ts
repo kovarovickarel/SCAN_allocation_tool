@@ -174,6 +174,7 @@ export interface WorkpackageCard {
   _isMgmt?: boolean;
   _isNegated?: boolean;
   _nominalManHoursBreakdown?: ManHoursBreakdown;
+  _effortProfile?: EffortProfile;
   _manHoursBreakdown?: ManHoursBreakdown;
   _nominalManHours?: number;
   _manHours?: number;
@@ -282,3 +283,10 @@ declare module "react" {
 }
 
 export interface ManHoursBreakdown { main: number; maintenance: number; supporting: number; }
+
+export interface EffortProfile {
+  monthlyFTE: number[];
+  /** Zero-based inclusive main-phase bounds, or -1 when there is no main phase. */
+  mainStart: number;
+  mainEnd: number;
+}

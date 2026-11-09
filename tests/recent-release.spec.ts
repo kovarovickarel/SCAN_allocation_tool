@@ -86,5 +86,26 @@ for (const [kind, toolCost, slotCost, mh] of [["both", "140 EUR", "130 EUR", tru
   await open(page, "tool"); await page.getByLabel("Workpackage view").selectOption(kind);
   const header = page.getByTestId("tool").locator(":scope > div > div").first(); await expect(header).toContainText(toolCost);
   const slot = page.getByText("Pipeline", { exact: true }).first().locator("..").locator(".."); await expect(slot).toContainText(slotCost);
-  if (mh) await expect(header).toContainText("480 MH"); else { await expect(header).not.toContainText(" MH"); await expect(slot).not.toContainText(" MH"); }
+  for (const heading of [header, slot]) {
+    const effort = heading.getByText("0.67 FTE·3m", { exact: true });
+    if (mh) {
+      await expect(heading).toContainText("480 MH");
+      await expect(effort).toHaveAttribute("title", /M3–M5.*\nPeak demand: 1\.00 FTE in M4/);
+    } else {
+      await expect(heading).not.toContainText(" MH");
+      await expect(effort).toHaveCount(0);
+    }
+  }
+});
+
+test("wrapped subtool badges line up with the right edge of their heading", async ({ page }) => {
+  await open(page, "tool");
+  await page.getByTestId("tool").evaluate(node => { node.style.width = "450px"; });
+  const name = page.getByText("Pipeline", { exact: true }).first();
+  const heading = name.locator("../..");
+  const effort = heading.getByText("0.67 FTE·3m", { exact: true });
+  await expect(effort).toBeVisible();
+  const [nameBox, headingBox, effortBox] = await Promise.all([name.boundingBox(), heading.boundingBox(), effort.boundingBox()]);
+  expect(effortBox!.y).toBeGreaterThanOrEqual(nameBox!.y + nameBox!.height);
+  expect(Math.abs(effortBox!.x + effortBox!.width - headingBox!.x - headingBox!.width)).toBeLessThan(1);
 });
