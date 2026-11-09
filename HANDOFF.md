@@ -1,8 +1,54 @@
 # Development handoff
 
-Updated: 2026-11-03 (Europe/Prague).
+Updated: 2026-11-09 (Europe/Prague).
 
 ## Current desktop snapshot - read first
+
+### Board staffing badges and project peaks (2026-11-09)
+
+- `6c54c11` adds the staffing displays, regression tests and six updated current
+  card screenshots across Vibrant, Basic and Retro in both app modes.
+- `7019b7b` explains the badges in Help & Guide and removes the two resolved
+  FTE averaging items from TODO. Nine backlog items remain.
+
+These two commits are on desktop `master`. The desktop's last known
+`origin/master` is `405be36`. Check Git before switching PCs. Once the desktop
+commits and this handoff are published, fetch and fast-forward the canonical
+laptop checkout at `C:/Users/kovar/Documents/Codex/2026-10-03/hje/work/publish-repository`.
+If you want to continue the current planning session as well as the code,
+export the workspace JSON on the desktop and import it on the laptop.
+
+- Workpackage badges such as `0.50 FTE·9m` show average required capacity over
+  the main execution window. They include support during that window. Assigned
+  cards use project stability and saved monthly effort overrides. Pool cards
+  use the Ideal reference and retain the nominal `~` marker.
+- Tool and subtool badges use the span from the first main phase to the last
+  across their workpackages, including gaps. The tooltip shows the busiest
+  month and average effort after main execution when there is any. Tool totals
+  include management. Subtool totals cover their own workpackages. Subtool
+  cost, man-hour and FTE tags use bolder text and align right when they wrap.
+- Project headers show `Total:` followed by Avg FTE over the full project
+  duration and Peak FTE in light red. The peak comes from the highest combined
+  engineering and management month. Team views apply the existing team scope
+  including Other workpackages. Non-FTE display filtering still leaves project
+  staffing totals visible and hides the tool and subtool FTE badges.
+- Management Support Overhead averages positive-demand months in each row.
+  The overall badge sums the tools month by month, counting overlapping months
+  once. Both tool rows and the overall badge give peak FTE and its month on hover.
+
+`src/utils/effortDisplay.ts` formats these displays using derived monthly effort
+profiles from `App.tsx` and existing management demand. The change is limited to
+the board displays. Workspace JSON, costing, allocation and timeline report
+calculations retain their existing rules.
+
+TypeScript and all 54 focused tests passed with screenshot updates disabled.
+The focused run covers the new metrics, project scope, overlapping management
+months, non-FTE filtering, badge spacing and responsive alignment. To repeat it:
+
+```powershell
+pnpm typecheck
+pnpm test:e2e effort-display workpackage-layout recent-release man-hours non-fte --workers=4 --update-snapshots=none
+```
 
 ### Deferred categories feature: durable planning record (2026-11-03)
 
