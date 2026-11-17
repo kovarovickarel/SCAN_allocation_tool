@@ -3,6 +3,7 @@ import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { absoluteMonth, memberMonthAvailability, memberMonthPremiumWork, memberPremiumWorkOnDate, type PremiumWorkDay } from "../../utils/memberAvailability";
 import { editPremiumAllocation, makePremiumAssignment, premiumAssignmentDate, premiumAssignmentHours, premiumAssignmentKey, workpackagePremiumHours } from "../../utils/premiumAssignments";
 import { PremiumWorkDays } from "./PremiumWorkDays";
+import { PersonalStaffingLeaveRows } from "./PersonalStaffingLeaveRows";
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
 import { validateReleaseDrafts, releasePlanForSave, releasesFromDrafts, type SystemReleaseDraft } from "../../utils/systemReleases";
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
@@ -175,6 +176,7 @@ export function TeamTimelineModal({
 
   const [collapsedProjects, setCollapsedProjects] = useState({});
   const [collapsedPersonalCapacity, setCollapsedPersonalCapacity] = useState(false);
+  const [expandedPersonalMembers, setExpandedPersonalMembers] = useState<Record<string, boolean>>({});
   const [selectedWPForAssign, setSelectedWPForAssign] = useState(null);
   const [selectedAdjustMember, setSelectedAdjustMember] = useState(null);
   const [draggedMember, setDraggedMember] = useState(null);
@@ -1145,15 +1147,17 @@ export function TeamTimelineModal({
       }
 
       // Workpackage and management allocations share one monthly personal capacity.
+      let hasLeaveRows = false;
       monthlyAllocations.forEach((allocation, index) => {
         // Preserve allocation precision and real overbooking; round only display labels.
         allocation.regularAllocated = allocation.regularOccupied;
         const availability = memberMonthAvailability(member, minStartAbs + index);
         allocation.regularOccupied += availability.unavailable;
+        if (availability.absentDays > 0) hasLeaveRows = true;
       });
       const hasAnyOverallocation = monthlyAllocations.some((m) => m.regularOccupied > cap + 0.001);
 
-      return { member, cap, hasAnyOverallocation, monthlyAllocations };
+      return { member, cap, hasAnyOverallocation, hasLeaveRows, monthlyAllocations };
     });
   }, [members, totalMonths, projectRows, toolName, minStartAbs]);
 
@@ -2546,12 +2550,13 @@ export function TeamTimelineModal({
               {!collapsedPersonalCapacity && (
                 <div className={`divide-y ${isRetro ? "divide-black bg-[#ffffec]" : "divide-slate-200 bg-white"}`}>
                   {memberTimelineRows.map((mRow) => {
-                    const { member, cap, hasAnyOverallocation, monthlyAllocations } = mRow;
+                    const { member, cap, hasAnyOverallocation, hasLeaveRows, monthlyAllocations } = mRow;
                     const initials = `${member.firstName?.[0] || ""}${member.lastName?.[0] || ""}`.toUpperCase() || "TM";
+                    const showLeave = hasLeaveRows && Boolean(expandedPersonalMembers[member.id]);
 
                     return (
+                      <div key={member.id}>
                       <div
-                        key={member.id}
                         className={`grid grid-cols-[300px_1fr] items-center min-h-[44px] transition-colors ${
                           isRetro ? "bg-white hover:bg-[#fbf8ee]" : "hover:bg-slate-50/80"
                         }`}
@@ -2630,6 +2635,27 @@ export function TeamTimelineModal({
                             </span>
                             {member.isExternal && <ExternalMemberBadge />}
                             {crossTeamMemberIds.has(member.id) && <CrossTeamBadge />}
+                            {hasLeaveRows && <button
+                              type="button"
+                              draggable={false}
+                              aria-label={`${showLeave ? "Collapse" : "Expand"} leave breakdown for ${member.firstName} ${member.lastName}`}
+                              aria-expanded={showLeave}
+                              aria-controls={showLeave ? `personal-leave-${member.id}` : undefined}
+                              onMouseDown={event => event.stopPropagation()}
+                              onClick={event => {
+                                event.stopPropagation();
+                                setExpandedPersonalMembers(current => ({ ...current, [member.id]: !current[member.id] }));
+                              }}
+                              className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 border transition-colors cursor-pointer shrink-0 ${
+                                isRetro
+                                  ? "bg-[#c0c0c0] text-black font-mono border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black"
+                                  : showLeave
+                                    ? "font-sans bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200 rounded"
+                                    : "font-sans bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 rounded"
+                              }`}
+                            >
+                              {showLeave ? "- Collapse" : "+ Expand"}
+                            </button>}
                           </div>
                         </div>
 
@@ -2647,7 +2673,7 @@ export function TeamTimelineModal({
                                 assignedPremiumDays.set(day.date, [...new Set(bookings.map(item => item.cardName))].join(", "));
                               }
                             }
-                            const val = alloc.regularOccupied;
+                            const val = showLeave ? alloc.regularAllocated : alloc.regularOccupied;
                             const isOver = alloc.regularOccupied > cap + 0.001;
                             const ratio = cap > 0 ? val / cap : 0;
                             const pct = Math.round(ratio * 100);
@@ -2687,6 +2713,8 @@ export function TeamTimelineModal({
                             );
                           })}
                         </div>
+                      </div>
+                      {showLeave && <PersonalStaffingLeaveRows member={member} startMonth={minStartAbs} monthLabels={monthLabels} isRetro={isRetro} />}
                       </div>
                     );
                   })}

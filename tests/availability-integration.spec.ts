@@ -42,6 +42,84 @@ async function capacity(page: Page, team: string, checks: { month: number; name?
   await page.keyboard.press('Escape');
 }
 
+for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`personal leave breakdown shows only used leave types with isolated compact monthly cells (${theme})`, async ({ page }) => {
+  await load(page, theme, data => {
+    data.teamMembers[0].absences = {
+      '2026-01-05': 'vacation', '2026-01-06': 'vacation',
+      '2026-01-07': { type: 'sick', halfDay: true }, '2026-01-08': 'sick',
+      '2026-01-09': { type: 'working', halfDay: true },
+      '2026-01-17': 'working', '2026-02-02': 'other', '2026-02-03': 'vacation',
+    };
+    data.teamMembers[2].absences = { '2020-01-02': 'vacation', '2026-01-10': 'sick', '2026-01-17': 'working' };
+    data.configuration.sitePublicHolidays = { PRA: ['2026-01-08', '2026-01-09', '2026-01-10'] };
+  });
+  await page.getByRole('button', { name: 'Open Data Factory Combined Team Timeline', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  const breakdown = dialog.locator('[aria-label="Shared Person leave breakdown"]');
+  const expand = dialog.getByRole('button', { name: 'Expand leave breakdown for Shared Person', exact: true });
+  const january = dialog.locator('[title^="Shared Person ("][title*="Month 1 ("][title*="Leave / public holidays:"]');
+  const summary = dialog.getByTitle(/Month 1 .*Overall Team Capacity Used/);
+  const summaryBefore = await summary.getAttribute('title');
+  await expect(january).toHaveAttribute('title', /0\.28 \/ 0\.40 FTE occupied \(70%\)/);
+  await expect(breakdown).toHaveCount(0);
+  await expand.press('Enter');
+  await expect(january).toHaveAttribute('title', /0\.20 \/ 0\.40 FTE occupied \(50%\)/);
+  await expect(summary).toHaveAttribute('title', summaryBefore!);
+  await expect(breakdown).toBeVisible();
+  const rows = breakdown.locator(':scope > div');
+  await expect(rows).toHaveCount(4);
+  const leaveOrder = ['Public holidays', 'Vacation', 'Sick leave', 'Other leave'];
+  for (const [index, label] of leaveOrder.entries()) {
+    await expect(rows.nth(index)).toContainText(label);
+    await expect(breakdown.getByText(label, { exact: true })).toBeVisible();
+  }
+  await expect(breakdown.getByTitle('Shared Person · Vacation · 01/2026 · 2 days · 0.036 FTE unavailable', { exact: true })).toHaveText('0.036');
+  await expect(breakdown.getByTitle('Shared Person · Sick leave · 01/2026 · 0.5 days · 0.009 FTE unavailable', { exact: true })).toHaveText('0.009');
+  await expect(breakdown.getByTitle('Shared Person · Public holidays · 01/2026 · 2 days · 0.036 FTE unavailable', { exact: true })).toHaveText('0.036');
+  const vacation = rows.nth(1).locator('[title]');
+  await expect(vacation).toHaveCount(2);
+  for (const cell of await vacation.all()) {
+    await expect(cell).toHaveCSS('height', '16px');
+    await expect(cell).toHaveCSS('border-style', 'dashed');
+    await expect(cell).toHaveCSS('border-top-left-radius', '6px');
+    await expect(cell).toHaveCSS('border-top-right-radius', '6px');
+  }
+  const collapse = dialog.getByRole('button', { name: 'Collapse leave breakdown for Shared Person', exact: true });
+  await collapse.click();
+  await expect(january).toHaveAttribute('title', /0\.28 \/ 0\.40 FTE occupied \(70%\)/);
+  await expect(breakdown).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Expand leave breakdown for Free Member', exact: true })).toHaveCount(0);
+  await expect(dialog.locator('[aria-label="Free Member leave breakdown"] > div')).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Save & Close', exact: true })).toBeDisabled();
+});
+
+test('worked weekday public holidays occupy full normal capacity and remain in the expanded holiday row', async ({ page }) => {
+  await load(page, 'vibrant', data => {
+    data.teamMembers[2].absences = {
+      '2026-02-14': 'working',
+      '2026-02-16': 'working',
+      '2026-02-17': { type: 'working', halfDay: true },
+    };
+    data.configuration.sitePublicHolidays = { BIE: ['2026-02-14', '2026-02-16', '2026-02-17'] };
+  });
+  await page.getByRole('button', { name: 'Open Data Factory Combined Team Timeline', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  const february = dialog.locator('[title^="Free Member ("][title*="Month 2 ("][title*="Leave / public holidays:"]');
+  await expect(february).toHaveAttribute('title', /0\.05 \/ 0\.50 FTE occupied \(10%\)/);
+  await expect(february).toHaveAttribute('title', /2\/20 working days unavailable/);
+  await february.getByRole('button', { name: 'Choose premium work day' }).click();
+  await expect(february.getByRole('button', { name: '2026-02-16 · 8 h · Public Holiday Work · 1.5×', exact: true })).toBeVisible();
+  await expect(february.getByRole('button', { name: '2026-02-17 · 4 h · Public Holiday Work · 1.5×', exact: true })).toBeVisible();
+  await february.getByRole('button', { name: 'Choose premium work day' }).press('Escape');
+  await dialog.getByRole('button', { name: 'Expand leave breakdown for Free Member', exact: true }).click();
+  await expect(february).toHaveAttribute('title', /0\.00 \/ 0\.50 FTE occupied \(0%\)/);
+  const breakdown = dialog.locator('[aria-label="Free Member leave breakdown"]');
+  await expect(breakdown.locator(':scope > div')).toHaveCount(1);
+  await expect(breakdown.getByTitle('Free Member · Public holidays · 02/2026 · 2 days · 0.05 FTE unavailable', { exact: true })).toHaveText('0.05');
+  await dialog.getByRole('button', { name: 'Collapse leave breakdown for Free Member', exact: true }).click();
+  await expect(february).toHaveAttribute('title', /0\.05 \/ 0\.50 FTE occupied \(10%\)/);
+});
+
 test('personal staffing displays one or two premium dates directly and offers a picker for three', async ({ page }) => {
   await load(page, 'vibrant', data => {
     data.teamMembers[0].absences = {
