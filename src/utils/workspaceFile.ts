@@ -1,10 +1,10 @@
-import { WEEKEND_WORK_FACTOR_FIELDS, type WeekendWorkFactors } from "./weekendWork";
+import { WEEKEND_WORK_FACTOR_FIELDS, type WeekendWorkSettings } from "./weekendWork";
 import { validCalendarDate } from "./memberAvailability";
 import { DEFAULT_NON_FTE_TYPES, validNonFteTypes } from "./nonFteBasicTypes";
 import { validSupportingPhases } from "./supportingPhases";
 import { ensureMandatoryWorkpackageReleases, validWorkpackagePhases, normalizeToolBasicTypes } from "./workpackageTypes";
 import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_OTHER_SETTINGS, DEFAULT_MGMT_SETTINGS,
-  DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS, PROJECT_TYPES } from "../constants";
+  DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, FOOTPRINTS, TOOLS, PROJECT_TYPES } from "../constants";
 import type { AllocationProject, TeamMemberRecord, WorkpackageCard, FteCostSettings, SupplierRecord } from "../types";
 import { workpackageFinishViolation } from "./workpackageFinishTargets";
 import { getDefaultMilestones } from "./helpers";
@@ -17,7 +17,7 @@ import { purchaseScheduleExceedsProject } from "./nonFteWorkpackages";
 export const WORKSPACE_FILE_VERSION = 1;
 export const MAX_WORKSPACE_FILE_BYTES = 20 * 1024 * 1024;
 export type WorkspaceConfiguration = {
-  weekendWorkFactors?: WeekendWorkFactors;
+  weekendWorkFactors?: WeekendWorkSettings;
   sitePublicHolidays?: Record<string, string[]>;
   nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
   suppliers: SupplierRecord[]; fteRates: typeof DEFAULT_FTE_RATES; toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
@@ -192,7 +192,19 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
   template(config.stabilityFactors, DEFAULT_STABILITY_FACTORS, "Stability factors");
   if (config.weekendWorkFactors !== undefined) {
     const factors = object(config.weekendWorkFactors, "Weekend work factors");
-    for (const field of WEEKEND_WORK_FACTOR_FIELDS) number(factors[field.key], `Weekend work factors.${field.key}`);
+    const validateFactors = (value: unknown, label: string) => {
+      const rates = object(value, label);
+      for (const { key } of WEEKEND_WORK_FACTOR_FIELDS) number(rates[key], `${label}.${key}`);
+    };
+    if (WEEKEND_WORK_FACTOR_FIELDS.some(({ key }) => Object.hasOwn(factors, key)) || !Object.keys(factors).length) {
+      validateFactors(factors, "Weekend work factors");
+    } else {
+      const siteCodes = FOOTPRINTS.map(site => site.code);
+      for (const [site, rates] of Object.entries(factors)) {
+        choice(site, siteCodes, "Weekend work factors site");
+        validateFactors(rates, `Weekend work factors for ${site}`);
+      }
+    }
   }
   object(config.fteCosts, "Cost settings");
   currency(config.fteCosts.currency, "Cost currency");

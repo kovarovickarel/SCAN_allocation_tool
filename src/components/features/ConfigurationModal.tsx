@@ -1,4 +1,4 @@
-import { DEFAULT_WEEKEND_WORK_FACTORS, WEEKEND_WORK_FACTOR_FIELDS, parseWeekendWorkFactor, type WeekendWorkFactors } from "../../utils/weekendWork";
+import { WEEKEND_WORK_FACTOR_FIELDS, parseWeekendWorkFactor, weekendWorkFactorsForSite, type WeekendWorkFactors, type WeekendWorkSettings } from "../../utils/weekendWork";
 import { DEFAULT_NON_FTE_TYPES, NON_FTE_ICONS } from "../../utils/nonFteBasicTypes";
 import { NonFteTypeIcon } from "../ui/NonFteTypeIcon";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -32,7 +32,7 @@ import { convertHourlyRateInputs, fetchLatestExchangeRate } from "../../utils/cu
 import { retainUsedSuppliers, ensureOtherSupplier, isOtherSupplier } from "../../utils/nonFteWorkpackages";
 
 type ConfigurationModalConfig = {
-  weekendWorkFactors?: WeekendWorkFactors;
+  weekendWorkFactors?: WeekendWorkSettings;
   sitePublicHolidays?: Record<string, string[]>;
   nonFteTypes?: typeof DEFAULT_NON_FTE_TYPES;
   suppliers?: SupplierRecord[];
@@ -62,6 +62,13 @@ interface ConfigurationModalProps {
   RotateCcwIcon: React.ComponentType<ConfigurationIconProps>;
 }
 
+function weekendWorkInputs(settings?: WeekendWorkSettings) {
+  return Object.fromEntries(FOOTPRINTS.map(({ code }) => {
+    const factors = weekendWorkFactorsForSite(settings, code);
+    return [code, Object.fromEntries(WEEKEND_WORK_FACTOR_FIELDS.map(({ key }) => [key, String(factors[key])]))];
+  }));
+}
+
 export function ConfigurationModal({
   scope = "defaults",
   initialTool = TOOLS[0].name,
@@ -80,8 +87,11 @@ export function ConfigurationModal({
   const [draft, setDraft] = useState(() => deepClone({ ...config, nonFteTypes: config.nonFteTypes ?? DEFAULT_NON_FTE_TYPES, toolFteRates: normalizeToolBasicTypes(config.toolFteRates), suppliers: ensureOtherSupplier(config.suppliers ?? DEFAULT_SUPPLIERS), fteCosts: config.fteCosts ?? DEFAULT_FTE_COSTS }));
   const [hourlyRateInputs, setHourlyRateInputs] = useState<Record<string, string>>(() =>
     Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(config.fteCosts?.hourlyRates?.[location.code] ?? "")])));
-  const [weekendInputs, setWeekendInputs] = useState(() => Object.fromEntries(WEEKEND_WORK_FACTOR_FIELDS.map(({ key }) => [key, String(config.weekendWorkFactors?.[key] ?? DEFAULT_WEEKEND_WORK_FACTORS[key])])));
-  const hasInvalidWeekendFactors = WEEKEND_WORK_FACTOR_FIELDS.some(({ key }) => parseWeekendWorkFactor(weekendInputs[key]) === undefined);
+  const [weekendSite, setWeekendSite] = useState(FOOTPRINTS[0].code);
+  const [weekendInputs, setWeekendInputs] = useState(() => weekendWorkInputs(config.weekendWorkFactors));
+  const invalidWeekendSites = FOOTPRINTS.filter(({ code }) =>
+    WEEKEND_WORK_FACTOR_FIELDS.some(({ key }) => parseWeekendWorkFactor(weekendInputs[code][key]) === undefined));
+  const hasInvalidWeekendFactors = invalidWeekendSites.length > 0;
   const hasInvalidHourlyRates = FOOTPRINTS.some((location) => parseFteHourlyRate(hourlyRateInputs[location.code]) === undefined);
   const [isConvertingCurrency, setIsConvertingCurrency] = useState(false);
   const [conversionNotice, setConversionNotice] = useState<string | null>(null);
@@ -316,7 +326,6 @@ export function ConfigurationModal({
       suppliers: ensureOtherSupplier(config.suppliers ?? DEFAULT_SUPPLIERS),
       fteRates: deepClone(DEFAULT_FTE_RATES),
       fteCosts: deepClone(DEFAULT_FTE_COSTS),
-      weekendWorkFactors: { ...DEFAULT_WEEKEND_WORK_FACTORS },
       toolFteRates: deepClone(config.toolFteRates),
       otherDefaults: { ...config.otherDefaults },
       management: { ...DEFAULT_MGMT_SETTINGS },
@@ -324,7 +333,7 @@ export function ConfigurationModal({
       stabilityFactors: { ...DEFAULT_STABILITY_FACTORS },
     });
     setHourlyRateInputs(Object.fromEntries(FOOTPRINTS.map((location) => [location.code, String(DEFAULT_FTE_COSTS.hourlyRates[location.code] ?? "")])));
-    setWeekendInputs(Object.fromEntries(WEEKEND_WORK_FACTOR_FIELDS.map(({ key }) => [key, String(DEFAULT_WEEKEND_WORK_FACTORS[key])])));
+    setWeekendInputs(weekendWorkInputs());
   };
 
   const activeToolRates = pendingType?.rates ?? draft.toolFteRates?.[selectedTool]?.[selectedComplexity] ?? draft.fteRates[selectedComplexity];
@@ -854,16 +863,26 @@ export function ConfigurationModal({
           </div>}
 
           {activeTab === "weekend" && <div className="flex flex-col gap-4">
+            <div role="group" aria-label="Weekend work sites" className={`flex flex-wrap gap-1 border-b pb-2 ${isRetro ? "border-black" : "border-slate-200"}`}>
+              {FOOTPRINTS.map(({ code, name }) => (
+                <button key={code} type="button" aria-pressed={weekendSite === code} onClick={() => setWeekendSite(code)}
+                  className={`px-2.5 py-1 text-[11px] font-bold cursor-pointer ${isRetro
+                    ? `border font-mono ${weekendSite === code ? "bg-[#000080] text-white border-black" : "bg-[#c0c0c0] border-t-white border-l-white border-r-black border-b-black text-black hover:bg-[#d4d0c8]"}`
+                    : `rounded-md ${weekendSite === code ? "bg-blue-100 text-blue-800" : "text-slate-600 hover:bg-slate-100"}`}`}>
+                  {name}
+                </button>
+              ))}
+            </div>
             {WEEKEND_WORK_FACTOR_FIELDS.map(({ key, label, description }) => <div key={key} className={`flex justify-between items-center gap-4 p-3 ${isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "border border-slate-200 rounded-xl bg-slate-50/70"}`}>
               <div>
                 <label htmlFor={`weekend-factor-${key}`} className="text-xs font-bold text-slate-800 block">{label}</label>
                 <span id={`weekend-description-${key}`} className={`text-[11px] ${isRetro ? "text-slate-700" : "text-gray-500"}`}>{description}</span>
               </div>
-              <input id={`weekend-factor-${key}`} aria-describedby={`weekend-description-${key}`} type="text" inputMode="decimal" value={weekendInputs[key]} aria-invalid={parseWeekendWorkFactor(weekendInputs[key]) === undefined}
-                onChange={event => setWeekendInputs(current => ({ ...current, [key]: event.target.value.replace(",", ".") }))}
+              <input id={`weekend-factor-${key}`} aria-describedby={`weekend-description-${key}`} type="text" inputMode="decimal" value={weekendInputs[weekendSite][key]} aria-invalid={parseWeekendWorkFactor(weekendInputs[weekendSite][key]) === undefined}
+                onChange={event => setWeekendInputs(current => ({ ...current, [weekendSite]: { ...current[weekendSite], [key]: event.target.value.replace(",", ".") } }))}
                 className={`w-28 shrink-0 text-xs px-2.5 py-1.5 font-mono font-bold text-right focus:outline-none ${isRetro ? "border-2 border-t-black border-l-black border-b-white border-r-white bg-white text-black" : "border border-gray-300 rounded bg-white focus:ring-1 focus:ring-blue-500"}`} />
             </div>)}
-            {hasInvalidWeekendFactors && <p role="alert" className="text-xs text-red-700">Enter a valid, non-negative number for each factor.</p>}
+            {hasInvalidWeekendFactors && <p role="alert" className="text-xs text-red-700">Enter valid, non-negative factors for {invalidWeekendSites.map(site => site.name).join(", ")}.</p>}
           </div>}
           {activeTab === "costs" && (
             <div className="flex flex-col gap-3">
@@ -1038,9 +1057,14 @@ export function ConfigurationModal({
               type="button"
               onClick={() => {
                 if (isEditingType || isAddingPurchaseType || hasInvalidHourlyRates || hasInvalidWeekendFactors || hasInvalidPhases || currencyRequest.current) return;
-                const factors = Object.fromEntries(WEEKEND_WORK_FACTOR_FIELDS.map(({ key }) => [key, parseWeekendWorkFactor(weekendInputs[key])!])) as WeekendWorkFactors;
-                // Omitted factors in older files already mean the defaults: preserve no-op saves and redo.
-                const weekendWorkFactors = config.weekendWorkFactors === undefined && WEEKEND_WORK_FACTOR_FIELDS.every(({ key }) => factors[key] === DEFAULT_WEEKEND_WORK_FACTORS[key]) ? undefined : factors;
+                const factors = Object.fromEntries(FOOTPRINTS.map(({ code }) => [code,
+                  Object.fromEntries(WEEKEND_WORK_FACTOR_FIELDS.map(({ key }) =>
+                    [key, parseWeekendWorkFactor(weekendInputs[code][key])!])) as WeekendWorkFactors]));
+                // Preserve the original shape on no-op saves, including omitted settings and legacy shared rates.
+                const weekendWorkFactors = FOOTPRINTS.every(({ code }) => {
+                  const original = weekendWorkFactorsForSite(config.weekendWorkFactors, code);
+                  return WEEKEND_WORK_FACTOR_FIELDS.every(({ key }) => factors[code][key] === original[key]);
+                }) ? config.weekendWorkFactors : factors;
                 onSave({ ...draft, weekendWorkFactors, suppliers: retainUsedSuppliers(draft.suppliers, config.suppliers ?? DEFAULT_SUPPLIERS, usedSupplierIds), fteCosts: { ...draft.fteCosts, hourlyRates: Object.fromEntries(FOOTPRINTS.map((location) =>
                   [location.code, parseFteHourlyRate(hourlyRateInputs[location.code]) ?? null])) } }, typeRenames);
                 onClose();

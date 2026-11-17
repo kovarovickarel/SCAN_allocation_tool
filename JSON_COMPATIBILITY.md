@@ -2,7 +2,7 @@
 
 ## Weekend work factors (November 1)
 
-Optional `configuration.weekendWorkFactors` stores non-negative finite numbers `weekend`, `publicHoliday`, and `weekendPublicHoliday`. Omitted settings in old schema-1 files use UI defaults 1.5, 1.5 and 2. The factors currently have no effect on costing, capacity or exports of calculated planning reports. JSON transfer/history retain explicit values; selective import applies them only through the Shared settings choice. Default configuration reset restores all three values. Frozen compatibility fixtures and schema version remain unchanged.
+Optional `configuration.weekendWorkFactors` accepts either the original shared set of rates or a map keyed by site code (for example, `PRA`). Each set has finite non-negative numbers `weekend`, `publicHoliday`, and `weekendPublicHoliday`. Legacy shared rates apply to every site. Omitted settings or sites use 1.5, 1.5 and 2. Saving an unchanged configuration preserves its source representation. Reset to Defaults restores the rates across all sites. The factors currently have no effect on costing, capacity or planning XLSX reports. JSON transfer and history retain explicit values. Selective import applies them only through the existing Shared settings choice. Frozen compatibility fixtures and schema version remain unchanged.
 
 ## Member availability (October 31)
 

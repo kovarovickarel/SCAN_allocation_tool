@@ -2,14 +2,21 @@ import { createSelectiveImportPlan, previewSelectiveImport } from "../src/utils/
 import { test, expect } from '@playwright/test';
 import { historyWorkspace } from './fixtures/historyWorkspace';
 import { createWorkspaceFile, parseWorkspaceFile, serializeWorkspace } from '../src/utils/workspaceFile';
-import { DEFAULT_WEEKEND_WORK_FACTORS, parseWeekendWorkFactor } from '../src/utils/weekendWork';
+import { DEFAULT_WEEKEND_WORK_FACTORS, parseWeekendWorkFactor, weekendWorkFactorsForSite } from '../src/utils/weekendWork';
 
 test('weekend factors retain schema-1 compatibility and validate all saved values', () => {
   const data = historyWorkspace();
   expect(parseWorkspaceFile(serializeWorkspace(data)).data.configuration.weekendWorkFactors).toBeUndefined();
   data.configuration.weekendWorkFactors = { weekend: 1.75, publicHoliday: 1.6, weekendPublicHoliday: 2.5 };
   expect(parseWorkspaceFile(serializeWorkspace(data)).data.configuration.weekendWorkFactors).toEqual(data.configuration.weekendWorkFactors);
-  for (const factors of [{ weekend: -1, publicHoliday: 1.5, weekendPublicHoliday: 2 }, { weekend: 1.5 }, { weekend: '1.5', publicHoliday: 1.5, weekendPublicHoliday: 2 }, null]) {
+  expect(weekendWorkFactorsForSite(data.configuration.weekendWorkFactors, 'CAI')).toEqual(data.configuration.weekendWorkFactors);
+  const cairoFactors = { ...DEFAULT_WEEKEND_WORK_FACTORS, weekend: 2 };
+  data.configuration.weekendWorkFactors = { CAI: cairoFactors };
+  const restored = parseWorkspaceFile(serializeWorkspace(data)).data.configuration.weekendWorkFactors;
+  expect(restored).toEqual({ CAI: cairoFactors });
+  expect(weekendWorkFactorsForSite(restored, 'PRA')).toEqual(DEFAULT_WEEKEND_WORK_FACTORS);
+  for (const factors of [{ weekend: -1, publicHoliday: 1.5, weekendPublicHoliday: 2 }, { weekend: 1.5 },
+    { weekend: '1.5', publicHoliday: 1.5, weekendPublicHoliday: 2 }, { PRA: { weekend: 1.5 } }, { XYZ: cairoFactors }, null]) {
     const file = createWorkspaceFile(data); Object.assign(file.data.configuration, { weekendWorkFactors: factors });
     expect(() => parseWorkspaceFile(JSON.stringify(file))).toThrow(/Weekend work factors/);
   }
@@ -35,10 +42,15 @@ for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`weekend work f
   };
   let dialog = await open();
   const labels = ['Weekend Work', 'Public Holiday Work', 'Weekend & Public Holiday Work'];
+  const selectSite = (name: string) => dialog.getByRole('group', { name: 'Weekend work sites' }).getByRole('button', { name, exact: true }).click();
   for (const [i, value] of ['1.5', '1.5', '2'].entries()) await expect(dialog.getByLabel(labels[i], { exact: true })).toHaveValue(value);
   await dialog.getByLabel(labels[0], { exact: true }).fill('-2');
+  await selectSite('Cairo');
+  await expect(dialog.getByLabel(labels[0], { exact: true })).toHaveValue('1.5');
   await expect(dialog.getByRole('button', { name: 'Save Configuration', exact: true })).toBeDisabled();
-  await expect(dialog.getByRole('alert')).toBeVisible();
+  await expect(dialog.getByRole('alert')).toContainText('Prague');
+  await dialog.getByLabel(labels[0], { exact: true }).fill('2.2');
+  await selectSite('Prague');
   await dialog.getByLabel(labels[0], { exact: true }).fill('1,75');
   await dialog.getByLabel(labels[1], { exact: true }).fill('1.8');
   await dialog.getByLabel(labels[2], { exact: true }).fill('2.5');
@@ -49,6 +61,8 @@ for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`weekend work f
   dialog = await open(); await expect(dialog.getByLabel(labels[0], { exact: true })).toHaveValue('1.75');
   await dialog.getByRole('button', { name: 'Reset to Defaults', exact: true }).click();
   for (const [i, value] of ['1.5', '1.5', '2'].entries()) await expect(dialog.getByLabel(labels[i], { exact: true })).toHaveValue(value);
+  await selectSite('Cairo');
+  await expect(dialog.getByLabel(labels[0], { exact: true })).toHaveValue('1.5');
   await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   dialog = await open(); await expect(dialog.getByLabel(labels[0], { exact: true })).toHaveValue('1.5'); await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -56,14 +70,17 @@ for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`weekend work f
   await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
   await expect.poll(() => page.evaluate(() => Reflect.get(window, '__weekendSaved'))).not.toBe('');
   const saved = JSON.parse(await page.evaluate(() => Reflect.get(window, '__weekendSaved'))).data;
-  expect(saved.configuration.weekendWorkFactors).toEqual({ weekend: 1.75, publicHoliday: 1.8, weekendPublicHoliday: 2.5 });
+  expect(Object.keys(saved.configuration.weekendWorkFactors)).toHaveLength(6);
+  expect(saved.configuration.weekendWorkFactors.PRA).toEqual({ weekend: 1.75, publicHoliday: 1.8, weekendPublicHoliday: 2.5 });
+  expect(saved.configuration.weekendWorkFactors.CAI).toEqual({ ...DEFAULT_WEEKEND_WORK_FACTORS, weekend: 2.2 });
+  expect(saved.configuration.weekendWorkFactors.BIE).toEqual(DEFAULT_WEEKEND_WORK_FACTORS);
 });
 
 
 test('selective imports keep weekend factors unless explicitly chosen as shared settings', () => {
   const current = historyWorkspace(), incoming = historyWorkspace();
   current.configuration.weekendWorkFactors = { ...DEFAULT_WEEKEND_WORK_FACTORS };
-  incoming.configuration.weekendWorkFactors = { weekend: 2, publicHoliday: 2.25, weekendPublicHoliday: 3 };
+  incoming.configuration.weekendWorkFactors = { PRA: { weekend: 2, publicHoliday: 2.25, weekendPublicHoliday: 3 } };
   const plan = createSelectiveImportPlan(current, incoming);
   const kept = previewSelectiveImport(current, incoming, plan);
   expect(kept.errors).toEqual([]);
