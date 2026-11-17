@@ -122,7 +122,6 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
           },
           onDropCapture: premiumDrop.onDrop,
         } : undefined;
-        const premiumHighlight = isPremiumTarget ? "bg-amber-200/70 outline outline-1 -outline-offset-1 outline-amber-500" : "";
         const monthOnlyLabel = isCellDragOver && (
           <div className="absolute inset-0 bg-emerald-400/30 rounded pointer-events-none flex items-center justify-center">
             <span className="text-[7.5px] font-black font-mono bg-emerald-900 text-white px-1 py-0.2 rounded shadow">
@@ -135,7 +134,7 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
             <div
               key={gIdx}
               {...premiumTargetProps}
-              className={`h-full flex items-center justify-center p-0.5 text-center ${premiumHighlight}`}
+              className="h-full flex items-center justify-center p-0.5 text-center"
             >
               {isPremiumTarget && isCellDragOver ? (
                 <div className={`relative h-8.5 w-full rounded border bg-white ${CELL_DROP_HIGHLIGHT}`}>
@@ -198,7 +197,7 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
             onDragLeave={(e) => onCellDragLeave?.(e, cellKey)}
             onDrop={(e) => onCellDrop?.(e, pRelIdx, displayFTE)}
             {...premiumTargetProps}
-            className={`h-full flex items-center justify-center p-0.5 ${paddingRight} relative ${premiumHighlight}`}
+            className={`h-full flex items-center justify-center p-0.5 ${paddingRight} relative`}
           >
             {hasActivityTarget && (
               <div

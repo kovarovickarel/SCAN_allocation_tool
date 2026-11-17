@@ -2,7 +2,7 @@ import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
 import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { absoluteMonth, memberMonthAvailability, memberMonthPremiumWork, memberPremiumWorkOnDate, type PremiumWorkDay } from "../../utils/memberAvailability";
 import { editPremiumAllocation, makePremiumAssignment, premiumAssignmentDate, premiumAssignmentHours, premiumAssignmentKey, workpackagePremiumHours } from "../../utils/premiumAssignments";
-import { PremiumWorkDays } from "./PremiumWorkDays";
+import { PremiumWorkDays, type PremiumWorkBooking } from "./PremiumWorkDays";
 import { PersonalStaffingLeaveRows } from "./PersonalStaffingLeaveRows";
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
 import { validateReleaseDrafts, releasePlanForSave, releasesFromDrafts, type SystemReleaseDraft } from "../../utils/systemReleases";
@@ -38,15 +38,13 @@ import { TeamAllocationPriorityModal } from "./TeamAllocationPriorityModal";
 import { calculatePortfolioSalaryTotals } from "../../utils/projectSpending";
 import { applySalaryTotals } from "../../utils/externalSalaries";
 
-function premiumStaffingText(regularFTE: number, capacity: number, isRetro: boolean): React.CSSProperties {
+function premiumStaffingText(regularFTE: number, capacity: number, isRetro: boolean) {
   const usage = regularFTE / (capacity || 1);
-  if (usage <= 0.3) return { color: "#784000" };
-  if (usage <= 0.55 || (isRetro && usage > 1.0001)) return { color: "#3d2000" };
-  // Give the light gold a defined edge where the heatmap is closer in brightness.
-  if (usage < 0.75 || usage > 1.0001) {
-    return { color: "#ffefa0", WebkitTextStroke: "1px #271701", paintOrder: "stroke fill" };
-  }
-  return { color: "#ffefa0" };
+  if (isRetro && usage > 1.0001) return { color: "#682800" };
+  if (usage <= 0.2) return { color: "#a84600" };
+  if (usage <= 0.5) return { color: "#682800" };
+  if (usage <= 0.7) return { color: "#3f1800" };
+  return { color: "#ffbd73" };
 }
 
 export function TeamTimelineModal({
@@ -562,6 +560,18 @@ export function TeamTimelineModal({
       },
     } : item));
     setExpandedWPMembers(current => ({ ...current, [card.id]: true }));
+    setIsDirty(true);
+  }
+
+  function releasePremiumWork(date: string, booking: PremiumWorkBooking) {
+    setLocalCards(current => current.map(card => {
+      if (card.id !== booking.cardId) return card;
+      const assignments = { ...card.memberPremiumAssignments };
+      const remaining = (assignments[booking.memberId] ?? []).filter(entry => premiumAssignmentDate(entry) !== date);
+      if (remaining.length) assignments[booking.memberId] = remaining;
+      else delete assignments[booking.memberId];
+      return { ...card, memberPremiumAssignments: Object.keys(assignments).length ? assignments : undefined };
+    }));
     setIsDirty(true);
   }
 
@@ -2667,8 +2677,10 @@ export function TeamTimelineModal({
                             const availability = memberMonthAvailability(member, minStartAbs + gIdx);
                             const premiumDays = memberMonthPremiumWork(member, minStartAbs + gIdx, weekendWorkFactors);
                             const assignedPremiumDays = new Map<string, string>();
+                            const premiumBookings = new Map<string, readonly PremiumWorkBooking[]>();
                             for (const day of premiumDays) {
                               const bookings = premiumAssignments.get(premiumAssignmentKey(member, day.date)) ?? [];
+                              premiumBookings.set(day.date, bookings);
                               if (bookings.reduce((sum, item) => sum + item.hours, 0) >= day.hours - 1e-8) {
                                 assignedPremiumDays.set(day.date, [...new Set(bookings.map(item => item.cardName))].join(", "));
                               }
@@ -2687,6 +2699,8 @@ export function TeamTimelineModal({
                                 >
                                   {premiumDays.length > 0 && <PremiumWorkDays days={premiumDays} isRetro={isRetro}
                                     assignments={assignedPremiumDays}
+                                    bookings={premiumBookings}
+                                    onRelease={releasePremiumWork}
                                     onDragStart={persistPremiumAssignments
                                       ? (event, day) => startPremiumDrag(event, member, day) : undefined}
                                     onDragEnd={() => {

@@ -142,15 +142,18 @@ test('personal staffing displays one or two premium dates directly and offers a 
   const allocated = cell('Shared Person');
   const singleDay = allocated.getByTitle('2026-01-03 · 8 h · Weekend Work · 1.5×');
   await expect(singleDay).toHaveText('03');
-  const hasEmptyLowerSlot = await singleDay.evaluate(day => {
+  const hasEmptyUpperSlot = await singleDay.evaluate(day => {
     const slot = day.getBoundingClientRect();
     const strip = day.parentElement!;
     const bounds = strip.getBoundingClientRect();
-    return strip.lastElementChild === day && getComputedStyle(strip).backgroundColor === 'rgba(0, 0, 0, 0)'
-      && slot.top === bounds.top && Math.abs(slot.height * 2 + 2 - bounds.height) < 1;
+    return getComputedStyle(strip).backgroundColor === 'rgba(0, 0, 0, 0)'
+      && slot.bottom === bounds.bottom && Math.abs(slot.height * 2 + 2 - bounds.height) < 1;
   });
-  expect(hasEmptyLowerSlot).toBe(true);
-  await expect(allocated.getByRole('button', { name: 'Choose premium work day' })).toHaveCount(0);
+  expect(hasEmptyUpperSlot).toBe(true);
+  const singleArrow = allocated.getByRole('button', { name: 'Choose premium work day' });
+  await expect(singleArrow).toBeVisible();
+  await expect(singleArrow).toHaveCSS('animation-name', 'none');
+  expect((await singleArrow.boundingBox())!.y).toBeGreaterThan((await singleDay.boundingBox())!.y + 15);
   const twoDays = cell('Shared Person', 2);
   const upper = twoDays.getByTitle('2026-02-07 · 8 h · Weekend Work · 1.5×');
   const lower = twoDays.getByTitle('2026-02-08 · 4 h · Weekend Work · 1.5×');
@@ -174,7 +177,8 @@ test('personal staffing displays one or two premium dates directly and offers a 
     };
   });
   expect(stripStyle).toEqual({ gap: 3, dateGap: 2, stripBackground: 'rgba(0, 0, 0, 0)', stripBorder: '0px', dateBorder: '0px' });
-  await expect(twoDays.getByRole('button', { name: 'Choose premium work day' })).toHaveCount(0);
+  await expect(twoDays.getByRole('button', { name: 'Choose premium work day' })).toBeVisible();
+  await expect(twoDays.getByRole('button', { name: 'Choose premium work day' })).toHaveCSS('animation-name', 'none');
   const free = cell('Free Member');
   await expect(free).toHaveAttribute('title', /0\.02 \/ 0\.50 FTE occupied/);
   const first = '2026-01-01 · 8 h · Public Holiday Work · 1.6×';
@@ -182,6 +186,7 @@ test('personal staffing displays one or two premium dates directly and offers a 
   const third = '2026-01-17 · 8 h · Weekend & Public Holiday Work · 2.5×';
   const arrow = free.getByRole('button', { name: 'Choose premium work day' });
   await expect(arrow).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await expect(arrow).toHaveCSS('animation-name', 'premium-work-arrow-pulse');
   const highlight = free.locator('svg > rect[stroke-dasharray]');
   await expect(highlight).toHaveCSS('animation-name', 'premium-work-dashes');
   await expect(free.locator('svg:has(> rect[stroke-dasharray])')).toHaveCSS('filter', /drop-shadow\(/);
@@ -199,11 +204,13 @@ test('personal staffing displays one or two premium dates directly and offers a 
   await expect(halfDayIcon).toHaveText('04');
   await expect(halfDayIcon).toHaveCSS('background-image', /linear-gradient\(135deg, .*rgb\(255, 255, 255\) 50%\)/);
   const lastOption = free.getByRole('list').getByRole('button').last();
-  await expect(lastOption).toHaveAccessibleName(first);
+  await expect(lastOption).toHaveAccessibleName(second);
   const lastIcon = lastOption.locator('[aria-hidden="true"]');
-  await expect(lastIcon).toHaveText('01');
-  const [slotBounds, iconBounds] = await Promise.all([holiday.boundingBox(), lastIcon.boundingBox()]);
+  await expect(lastIcon).toHaveText('04');
+  const [slotBounds, iconBounds] = await Promise.all([free.getByTitle(second).boundingBox(), lastIcon.boundingBox()]);
   expect(iconBounds).toEqual(slotBounds);
+  const topMenuIcon = free.getByRole('button', { name: first }).locator('[aria-hidden="true"]');
+  expect(await topMenuIcon.boundingBox()).toEqual(await holiday.boundingBox());
   await free.getByRole('button', { name: third }).click();
   const weekendHoliday = free.getByTitle(third);
   await expect(weekendHoliday).toHaveText('17');
@@ -212,6 +219,9 @@ test('personal staffing displays one or two premium dates directly and offers a 
   await expect(weekendHoliday).toHaveCSS('outline-color', 'rgb(149, 98, 13)');
   await expect(weekendHoliday).toHaveCSS('-webkit-text-stroke-width', '0px');
   await expect(free.getByTitle(first)).toHaveCount(0);
+  const movedUp = free.getByTitle(second);
+  await expect(movedUp).toBeVisible();
+  expect((await movedUp.boundingBox())!.y).toBeLessThan((await weekendHoliday.boundingBox())!.y);
   await expect(arrow).toBeFocused();
   await expect(arrow).toHaveAttribute('aria-expanded', 'false');
   await arrow.click();
@@ -223,6 +233,7 @@ test('personal staffing displays one or two premium dates directly and offers a 
   await expect(dialog).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(highlight).toHaveCSS('animation-name', 'none');
+  await expect(arrow).toHaveCSS('animation-name', 'none');
   await expect(highlight).toHaveAttribute('stroke-dasharray', '5 5');
 });
 
@@ -274,7 +285,7 @@ test('premium work drags from the staffing row and dropdown into the matching wo
   const regularAndPremiumRow = dialog.locator('[data-timeline-row="wp_member_p-Data Factory_member"]');
   const premiumCell = regularAndPremiumRow.getByTitle(/Premium work: 8 h/);
   await expect(premiumCell).toHaveText('0.2563%');
-  await expect(premiumCell).toHaveCSS('color', 'rgb(61, 32, 0)');
+  await expect(premiumCell).toHaveCSS('color', 'rgb(104, 40, 0)');
   await expect(premiumCell).toHaveCSS('text-shadow', 'none');
   const personalJanuary = dialog.locator('[title^="Shared Person ("][title*="Month 1 ("][title*="Leave / public holidays:"]');
   await expect(personalJanuary).toHaveAttribute('title', /0\.20 \/ 0\.40 FTE occupied \(50%\)/);
@@ -284,6 +295,15 @@ test('premium work drags from the staffing row and dropdown into the matching wo
   await expect(assignedJan).toHaveAttribute('draggable', 'false');
   await expect(assignedJan).toHaveCSS('filter', 'grayscale(1)');
   await expect(assignedJan.locator('..').locator('svg > rect[stroke-dasharray]')).toHaveCount(0);
+  await expect(assignedJan.locator('..').getByRole('button', { name: 'Choose premium work day' })).toHaveCSS('animation-name', 'none');
+  const januaryArrow = personalJanuary.getByRole('button', { name: 'Choose premium work day' });
+  await januaryArrow.click();
+  await personalJanuary.getByRole('button', { name: 'Remove premium work on 2026-01-03 from History project Data Factory' }).click();
+  await expect(janBadge).toHaveAttribute('draggable', 'true');
+  await expect(regularAndPremiumRow.locator(':scope > div').first().locator('[title]')).not.toHaveAttribute('title', /Premium work:/);
+  await januaryArrow.press('Escape');
+  await janBadge.dragTo(phaseLabel);
+  await expect(assignedJan).toHaveAttribute('draggable', 'false');
 
   const freeFebruary = dialog.locator('[title^="Free Member ("][title*="Month 2 ("][title*="Leave / public holidays:"]');
   const arrow = freeFebruary.getByRole('button', { name: 'Choose premium work day' });
@@ -294,7 +314,7 @@ test('premium work drags from the staffing row and dropdown into the matching wo
   const premiumOnlyRow = dialog.locator('[data-timeline-row="wp_member_p2-Data Factory_idle"]');
   const premiumOnlyCell = premiumOnlyRow.getByTitle(/Premium work: 4 h/);
   await expect(premiumOnlyCell).toHaveText('0.035%');
-  await expect(premiumOnlyCell).toHaveCSS('color', 'rgb(120, 64, 0)');
+  await expect(premiumOnlyCell).toHaveCSS('color', 'rgb(168, 70, 0)');
   await expect(offsetMonths.nth(1)).toContainText('23%');
   await arrow.click();
   const assignedFeb = freeFebruary.getByRole('button', { name: /2026-02-08 · 4 h.*Allocated to Offset project Data Factory/ });
@@ -382,7 +402,7 @@ test('manual staffing uses premium work by priority and releases it before regul
   await expect(january.getByTitle(/Premium work:/)).toHaveCount(0);
   await edit('1.07');
   await expect(january).toHaveText('1.07107%');
-  await expect(january.getByTitle(/Premium work: 19.2 h/)).toHaveCSS('color', 'rgb(255, 239, 160)');
+  await expect(january.getByTitle(/Premium work: 19.2 h/)).toHaveCSS('color', 'rgb(255, 189, 115)');
   const personalJanuary = dialog.locator('[title^="Free Member ("][title*="Month 1 ("][title*="Leave / public holidays:"]');
   await expect(personalJanuary).toHaveAttribute('title', /1\.00 \/ 1\.00 FTE occupied \(100%\)/);
   await expect(personalJanuary).not.toHaveAttribute('title', /OVERALLOCATED!/);
