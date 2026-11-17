@@ -491,12 +491,11 @@ export function computeWorkpackageLifecycleTimeline(card, project, rates, reusab
 }
 
 
-export function formatFTEPerMille(val) {
-  if (val === undefined || val === null || isNaN(val) || Math.abs(val) < 0.0005) {
-    return "0";
-  }
-  const rounded = Math.round((val + Number.EPSILON) * 1000) / 1000;
-  return Number(rounded.toFixed(3)).toString();
+export function formatRemainingFTE(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value) || value <= 0) return "0";
+  const hundredths = value * 100;
+  const tolerance = Number.EPSILON * 8 * Math.max(1, Math.abs(hundredths));
+  return String(Math.ceil(hundredths - tolerance) / 100);
 }
 
 export function computeActivitySegments(alignedTimelineCells) {

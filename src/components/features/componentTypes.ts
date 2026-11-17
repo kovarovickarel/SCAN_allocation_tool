@@ -237,6 +237,8 @@ export interface AdjustMemberAllocationModalProps {
 
 export interface TeamTimelineModalProps {
   onSaveSystemReleases?: (projectId: string, releases: AllocationProject["systemReleases"]) => void;
+  onSavePremiumAssignments?: (cardId: string, assignments: WorkpackageCard["memberPremiumAssignments"]) => void;
+  weekendWorkFactors?: import("../../utils/weekendWork").WeekendWorkSettings;
   onCommit?: (save: () => void) => void;
   suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;

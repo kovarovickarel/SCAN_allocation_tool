@@ -7,6 +7,7 @@ export function duplicateWorkpackage(source: WorkpackageCard, id: string): Workp
   if (copy.kind !== "non-fte") {
     delete copy.memberAssignments;
     delete copy.memberMonthlyAssignments;
+    delete copy.memberPremiumAssignments;
     delete copy.memberMaintenancePreferences;
   }
   return copy;

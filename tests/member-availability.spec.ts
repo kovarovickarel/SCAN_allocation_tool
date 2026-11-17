@@ -58,13 +58,13 @@ test("other leave reduces available and paid external capacity without consuming
   expect(parseWorkspaceFile(serializeWorkspace(data)).data.teamMembers[0].absences['2026-02-02']).toBe('other');
 });
 
-test("working-day overrides restore holiday availability and paid salary without counting as leave", () => {
+test("weekday holiday work keeps regular holiday occupancy and a separate premium day", () => {
   const person = { ...member, absences: { '2026-02-02': 'working' as const }, _siteHolidays: ['2026-02-02'], isExternal: true, monthlySalaryCost: 1000 };
-  expect(memberMonthAvailability(person, feb).capacity).toBe(1);
+  expect(memberMonthAvailability(person, feb).capacity).toBe(.95);
   expect(memberMonthAvailability({ ...person, absences: {} }, feb).capacity).toBe(.95);
   expect(memberYearAbsenceTotals(person, 2026)).toEqual({ vacation: 0, sick: 0 });
   const charge = externalSalaryCharge(person, .25, 'EUR', feb)!;
-  expect(charge.capacityFTE).toBe(1); expect(charge.salary).toBe(1000);
+  expect(charge.capacityFTE).toBe(.95); expect(charge.salary).toBe(950);
   const result = removeHolidayAbsences([person], { m: person.absences }, { PRA: ['2026-02-02'] });
   expect(result.m['2026-02-02']).toBe('working');
   expect(removeHolidayAbsences([person], { m: person.absences }, { PRA: ['2026-02-02'] }, true).m['2026-02-02']).toBeUndefined();
@@ -73,7 +73,7 @@ test("working-day overrides restore holiday availability and paid salary without
   const data = workspace(); data.teamMembers = [{ ...person, isExternal: false }]; data.configuration.sitePublicHolidays = { PRA: ['2026-02-02'] };
   const parsed = parseWorkspaceFile(serializeWorkspace(data)).data;
   expect(parsed.teamMembers[0].absences['2026-02-02']).toBe('working');
-  expect(memberMonthAvailability(membersWithHolidays(parsed.teamMembers, parsed.configuration.sitePublicHolidays)[0], feb).capacity).toBe(1);
+  expect(memberMonthAvailability(membersWithHolidays(parsed.teamMembers, parsed.configuration.sitePublicHolidays)[0], feb).capacity).toBe(.95);
 });
 
 function workspace() {
@@ -917,7 +917,7 @@ test('half-day holiday work keeps full regular holiday occupancy, transfers and 
   const data = workspace(); data.teamMembers = [{ ...person, isExternal: false }]; data.configuration.sitePublicHolidays = { PRA: ['2026-02-02'] };
   const parsed = parseWorkspaceFile(serializeWorkspace(data)).data;
   expect(parsed.teamMembers[0].absences!['2026-02-02']).toEqual(half);
-  expect(memberMonthAvailability(membersWithHolidays(parsed.teamMembers, parsed.configuration.sitePublicHolidays)[0], feb).capacity).toBeCloseTo(.975);
+  expect(memberMonthAvailability(membersWithHolidays(parsed.teamMembers, parsed.configuration.sitePublicHolidays)[0], feb).capacity).toBeCloseTo(.95);
 });
 
 for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`half Working day restores leave and toggles partial holiday work (${theme})`, async ({ page }) => {

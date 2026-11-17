@@ -137,11 +137,13 @@ test("add-as-new resolves colliding project, card, member and supplier IDs and r
   expect(card.memberMonthlyAssignments).toEqual({ "import-pm-member-1": { 0: 0.2 } });
   expect(result.workpackages[4].supplierId).toBe("import-pm-supplier-1");
 });
-test("allocations remap scalar/monthly/preference keys and replace rather than add", () => {
+test("allocations remap scalar, monthly, premium date and preference keys", () => {
   const s = scenario(); s.current.workpackages[0].memberMonthlyAssignments = { "pm-member": { 0: 0.1 } };
   Object.assign(s.incoming.workpackages[0], { memberAssignments: { "team-member": 0.2 }, memberMonthlyAssignments: { "team-member": { 0: 0.3 } }, memberMaintenancePreferences: { "team-member": false } });
+  s.incoming.workpackages[0].memberPremiumAssignments = { "team-member": ["2026-01-03"] };
   const card = valid(s).workpackages[0]; expect(card.memberAssignments).toEqual({ "pm-member": 0.2 });
   expect(card.memberMonthlyAssignments).toEqual({ "pm-member": { 0: 0.3 } }); expect(card.memberMaintenancePreferences).toEqual({ "pm-member": false });
+  expect(card.memberPremiumAssignments).toEqual({ "pm-member": ["2026-01-03"] });
 });
 for (const global of [true, false]) test(`excluding allocations (${global ? "global" : "per workpackage"}) retains matched allocations`, () => {
   const s = scenario(); allocate(s); s.current.workpackages[0].memberMonthlyAssignments = { "pm-member": { 0: 0.1 } };

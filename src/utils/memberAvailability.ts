@@ -1,5 +1,6 @@
 import type { MemberAbsence, TeamMemberRecord } from "../types";
 import { crossTeamMemberKey } from "./memberAllocations";
+import { weekendWorkFactorsForSite, type WeekendWorkFactors, type WeekendWorkSettings } from "./weekendWork";
 
 export function memberAbsenceType(absence: MemberAbsence | undefined) {
   return typeof absence === "object" ? absence.type : absence;
@@ -84,21 +85,59 @@ export function memberYearAbsenceTotals(member: TeamMemberRecord, year: number) 
   return totals;
 }
 
-export function memberMonthAvailability(member: TeamMemberRecord | undefined, month: number) {
-  const capacity = Math.max(0, Number(member?.fte) || 0);
-  if (!member) return { capacity: 0, unavailable: 0, factor: 1, workingDays: 0, absentDays: 0 };
+export type PremiumWorkDay = {
+  date: string;
+  hours: number;
+  kind: keyof WeekendWorkFactors;
+  multiplier: number;
+};
+
+export function memberPremiumWorkOnDate(member: TeamMemberRecord, date: string, settings?: WeekendWorkSettings): PremiumWorkDay | undefined {
+  const entry = member.absences?.[date];
+  if (memberAbsenceType(entry) !== "working") return;
+  const weekend = !isWorkingDay(date, member.footprint);
+  const holiday = member._siteHolidays?.includes(date);
+  if (!weekend && !holiday) return;
+  const kind = weekend ? (holiday ? "weekendPublicHoliday" : "weekend") : "publicHoliday";
+  const factors = weekendWorkFactorsForSite(settings, member.footprint);
+  return { date, hours: typeof entry === "object" ? 4 : 8, kind, multiplier: factors[kind] };
+}
+
+export function memberMonthPremiumWork(member: TeamMemberRecord, month: number, settings?: WeekendWorkSettings): PremiumWorkDay[] {
+  const year = Math.floor(month / 12);
+  const prefix = `${year}-${String(month % 12 + 1).padStart(2, "0")}-`;
+  const days: PremiumWorkDay[] = [];
+  for (const date of Object.keys(member.absences ?? {})) {
+    if (!date.startsWith(prefix)) continue;
+    const day = memberPremiumWorkOnDate(member, date, settings);
+    if (day) days.push(day);
+  }
+  return days.sort((first, second) => first.date.localeCompare(second.date));
+}
+
+export function memberMonthLeaveDays(member: TeamMemberRecord, month: number) {
+  const leaveDays = { vacation: 0, sick: 0, holiday: 0, other: 0 };
   const year = Math.floor(month / 12), index = month % 12;
   const days = new Date(Date.UTC(year, index + 1, 0)).getUTCDate();
   const holidays = new Set(member._siteHolidays ?? []);
-  let workingDays = 0, absentDays = 0;
+  let workingDays = 0;
   for (let day = 1; day <= days; day++) {
     const date = `${year.toString().padStart(4, "0")}-${(index + 1).toString().padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
     if (!isWorkingDay(date, member.footprint)) continue;
     workingDays++;
     const absence = member.absences?.[date];
-    if (holidays.has(date)) absentDays += memberAbsenceType(absence) === "working" ? (typeof absence === "object" ? 0.5 : 0) : 1;
-    else absentDays += memberAbsenceDays(absence);
+    const type = memberAbsenceType(absence);
+    if (holidays.has(date)) leaveDays.holiday += 1;
+    else if (type === "vacation" || type === "sick" || type === "other") leaveDays[type] += memberAbsenceDays(absence);
   }
+  return { workingDays, leaveDays };
+}
+
+export function memberMonthAvailability(member: TeamMemberRecord | undefined, month: number) {
+  const capacity = Math.max(0, Number(member?.fte) || 0);
+  if (!member) return { capacity: 0, unavailable: 0, factor: 1, workingDays: 0, absentDays: 0 };
+  const { workingDays, leaveDays } = memberMonthLeaveDays(member, month);
+  const absentDays = Object.values(leaveDays).reduce((sum, days) => sum + days, 0);
   const factor = workingDays ? (workingDays - absentDays) / workingDays : 1;
   return { capacity: capacity * factor, unavailable: capacity * (1 - factor), factor, workingDays, absentDays };
 }

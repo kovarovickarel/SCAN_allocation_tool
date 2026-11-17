@@ -299,6 +299,20 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     for (const key of ["memberAssignments", "customCoreFTE", "customDevSupportFTE", "customMeetingsFTE", "purchasePaymentOverrides", "purchasePaymentShares"]) if (card[key] !== undefined) numericMap(card[key], key);
     if (card.customSupportingActivityFTE !== undefined) for (const months of Object.values(object(card.customSupportingActivityFTE, "Supporting activity overrides"))) numericMap(months, "Supporting activity monthly overrides");
     if (card.memberMonthlyAssignments !== undefined) numericMap(card.memberMonthlyAssignments, "Monthly allocations", 2);
+    if (card.memberPremiumAssignments !== undefined) {
+      for (const entries of Object.values(object(card.memberPremiumAssignments, "Premium work allocations"))) {
+        if (!Array.isArray(entries)) fail("Premium work allocations", "expected a list.");
+        const dates = new Set<string>();
+        for (const entry of entries) {
+          const date = typeof entry === "string" ? entry : object(entry, "Premium work allocation").date;
+          if (typeof date !== "string" || !validCalendarDate(date) || dates.has(date))
+            fail("Premium work allocations", "expected distinct dates in YYYY-MM-DD format.");
+          if (typeof entry !== "string" && (typeof entry.hours !== "number" || !(entry.hours > 0 && entry.hours <= 8)))
+            fail("Premium work allocations", "expected more than zero and at most eight hours.");
+          dates.add(date);
+        }
+      }
+    }
     if (card.memberMaintenancePreferences !== undefined) numericMap(card.memberMaintenancePreferences, "Maintenance preferences", 1, true);
     if (card.kind === "non-fte") {
       choice(card.purchaseType, config.nonFteTypes.map(type => type.name), "Purchase type"); number(card.purchasePriceEUR, "Purchase price");

@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from "react";
 import { ThemeContext } from "../../constants";
-import { computeActivitySegments, formatFTEPerMille, getCoverageGradientStyle } from "../../utils/helpers";
+import { computeActivitySegments, formatRemainingFTE, getCoverageGradientStyle } from "../../utils/helpers";
 
 export interface TimelineGanttCellCore {
   isPhaseStart?: boolean;
@@ -39,6 +39,13 @@ interface TimelineGanttGridProps {
   dragOverCellKey: string | null;
   isNegated?: boolean;
   rowId: string;
+  isPremiumDragging?: boolean;
+  premiumDrop?: {
+    monthIndex: number;
+    projectStartIndex: number;
+    onHover: (cellKey: string, isOver: boolean) => void;
+    onDrop: (event: React.DragEvent<HTMLDivElement>) => void;
+  };
   onCellDragOver?: (
     event: React.DragEvent<HTMLElement>,
     cellKey: string,
@@ -61,12 +68,16 @@ interface TimelineGanttGridProps {
   ) => void;
 }
 
+const CELL_DROP_HIGHLIGHT = "!border-2 !border-emerald-500 ring-2 ring-emerald-400 scale-105 z-30 shadow-lg brightness-110";
+
 export const TimelineGanttGrid = memo(function TimelineGanttGrid({
   totalMonths,
   alignedCells = [],
   dragOverCellKey,
   isNegated = false,
   rowId,
+  isPremiumDragging = false,
+  premiumDrop,
   onCellDragOver,
   onCellDragLeave,
   onCellDrop,
@@ -86,25 +97,60 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
 
   return (
     <div
+      data-gantt-row={rowId}
       className="grid h-full py-1 px-1.5 select-none relative items-center"
       style={{ gridTemplateColumns: `repeat(${totalMonths}, minmax(52px, 1fr))` }}
     >
       {alignedCells.map((cell, gIdx) => {
+        const isPremiumTarget = premiumDrop?.monthIndex === gIdx;
+        const pRelIdx = cell.isInside ? cell.pMonthIdx - 1 : gIdx - (premiumDrop?.projectStartIndex ?? 0);
+        const cellKey = `${rowId}_m${pRelIdx}`;
+        const isCellDragOver = dragOverCellKey === cellKey;
+        const premiumTargetProps = isPremiumTarget ? {
+          "data-premium-drop-target": rowId,
+          onDragOverCapture: (event: React.DragEvent<HTMLDivElement>) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.dataTransfer.dropEffect = "move";
+            premiumDrop.onHover(cellKey, true);
+          },
+          onDragLeave: (event: React.DragEvent<HTMLDivElement>) => {
+            const nextTarget = event.relatedTarget;
+            if (!(nextTarget instanceof Node) || !event.currentTarget.contains(nextTarget)) {
+              premiumDrop.onHover(cellKey, false);
+            }
+          },
+          onDropCapture: premiumDrop.onDrop,
+        } : undefined;
+        const premiumHighlight = isPremiumTarget ? "bg-amber-200/70 outline outline-1 -outline-offset-1 outline-amber-500" : "";
+        const monthOnlyLabel = isCellDragOver && (
+          <div className="absolute inset-0 bg-emerald-400/30 rounded pointer-events-none flex items-center justify-center">
+            <span className="text-[7.5px] font-black font-mono bg-emerald-900 text-white px-1 py-0.2 rounded shadow">
+              M{pRelIdx + 1} ONLY
+            </span>
+          </div>
+        );
         if (!cell.isInside) {
           return (
             <div
               key={gIdx}
-              className="h-full flex items-center justify-center p-0.5 text-center"
+              {...premiumTargetProps}
+              className={`h-full flex items-center justify-center p-0.5 text-center ${premiumHighlight}`}
             >
-              <span className={`${isRetro ? "text-black/40 font-mono" : "text-slate-300 font-mono"} text-[10px] select-none`}>
-                &middot;
-              </span>
+              {isPremiumTarget && isCellDragOver ? (
+                <div className={`relative h-8.5 w-full rounded border bg-white ${CELL_DROP_HIGHLIGHT}`}>
+                  {monthOnlyLabel}
+                </div>
+              ) : (
+                <span className={`${isRetro ? "text-black/40 font-mono" : "text-slate-300 font-mono"} text-[10px] select-none`}>
+                  &middot;
+                </span>
+              )}
             </div>
           );
         }
 
         const mData = cell.coreM;
-        const pRelIdx = cell.pMonthIdx - 1;
         const isStart = mData.isPhaseStart;
         const isEnd = mData.isPhaseEnd;
         const roundedClasses = isRetro
@@ -116,15 +162,14 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
         const coveredFTE = cell.coveredFTE ?? 0;
         const leftFTE = cell.leftFTE ?? Math.max(0, displayFTE - coveredFTE);
         const cellCoveragePct = displayFTE > 0 ? Math.round((coveredFTE / displayFTE) * 100) : 0;
-        const formattedLeftFTE = formatFTEPerMille(leftFTE);
+        const formattedLeftFTE = formatRemainingFTE(leftFTE);
         const cellStyle = getCoverageGradientStyle(coveredFTE, displayFTE, isNegated);
 
-        const cellKey = `${rowId}_m${pRelIdx}`;
-        const isCellDragOver = dragOverCellKey === cellKey;
         const activity = activityByMonth.get(gIdx);
         const activityKey = activity ? `${rowId}_activity_${activity.monthIndices[0]}` : null;
         const isActivityDragOver = activityKey !== null && dragOverCellKey === activityKey;
         const isActivityStart = Boolean(onActivityDrop && !isNegated && activity?.monthIndices[0] === pRelIdx);
+        const hasActivityTarget = isActivityStart && !isPremiumDragging;
         const activityRange = activity
           ? `M${activity.monthIndices[0] + 1}–M${activity.monthIndices[activity.monthIndices.length - 1] + 1}`
           : "";
@@ -152,9 +197,10 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
             onDragOver={(e) => onCellDragOver?.(e, cellKey, pRelIdx, displayFTE)}
             onDragLeave={(e) => onCellDragLeave?.(e, cellKey)}
             onDrop={(e) => onCellDrop?.(e, pRelIdx, displayFTE)}
-            className={`h-full flex items-center justify-center p-0.5 ${paddingRight} relative`}
+            {...premiumTargetProps}
+            className={`h-full flex items-center justify-center p-0.5 ${paddingRight} relative ${premiumHighlight}`}
           >
-            {isActivityStart && (
+            {hasActivityTarget && (
               <div
                 onDragOver={handleActivityDragOver}
                 onDragLeave={handleActivityDragLeave}
@@ -173,18 +219,12 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
               style={cellStyle}
               className={`w-full h-8.5 ${roundedClasses} border relative flex flex-col items-center justify-center select-none shadow-2xs transition-all ${
                 isCellDragOver || isActivityDragOver
-                  ? "!border-2 !border-emerald-500 ring-2 ring-emerald-400 scale-105 z-30 shadow-lg brightness-110"
+                  ? CELL_DROP_HIGHLIGHT
                   : ""
               } ${!isStart ? "border-l-0" : ""} ${!isEnd ? "border-r border-dashed border-white/25" : ""}`}
               title={cell.tooltip}
             >
-              {isCellDragOver && (
-                <div className="absolute inset-0 bg-emerald-400/30 rounded pointer-events-none flex items-center justify-center">
-                  <span className="text-[7.5px] font-black font-mono bg-emerald-900 text-white px-1 py-0.2 rounded shadow">
-                    M{cell.pMonthIdx} ONLY
-                  </span>
-                </div>
-              )}
+              {monthOnlyLabel}
 
               {mData.phaseSpan > 1 && !isNegated && (
                 <div
@@ -196,10 +236,10 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
 
               {displayFTE > 0 && mData.shortPhase && (
                 <span
-                  onDragOver={isActivityStart ? handleActivityDragOver : undefined}
-                  onDragLeave={isActivityStart ? handleActivityDragLeave : undefined}
-                  onDrop={isActivityStart ? handleActivityDrop : undefined}
-                  title={isActivityStart ? `Drop member onto ${activity.shortPhase.toUpperCase()} phase label to allocate entire subactivity (${activityRange})` : undefined}
+                  onDragOver={hasActivityTarget ? handleActivityDragOver : undefined}
+                  onDragLeave={hasActivityTarget ? handleActivityDragLeave : undefined}
+                  onDrop={hasActivityTarget ? handleActivityDrop : undefined}
+                  title={hasActivityTarget ? `Drop member onto ${activity.shortPhase.toUpperCase()} phase label to allocate entire subactivity (${activityRange})` : undefined}
                   className={`text-[7px] font-bold uppercase tracking-wider opacity-85 leading-none ${mData.phaseSpan > 1 ? "mt-0.5" : ""} ${isActivityStart ? "self-stretch text-center relative z-40" : ""}`}
                 >
                   {mData.shortPhase}

@@ -20,6 +20,10 @@ html.scan-release-dragging * {
   50% { box-shadow: 0 0 9px 3px rgba(239, 68, 68, 0.8); }
 }
 
+@keyframes premium-work-dashes {
+  to { stroke-dashoffset: -10; }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .system-release-missing {
     animation: missing-release-glow 1.8s ease-in-out infinite;

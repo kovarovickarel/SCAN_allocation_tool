@@ -1,4 +1,4 @@
-import { round2 } from "../constants";
+import { round2, WORKING_HOURS_PER_MONTH } from "../constants";
 import type { WorkpackageCard, TeamMemberRecord, NumericMap, MonthlyNumericMap } from "../types";
 
 // Materialize legacy scalar assignments before replacing a project's monthly plan.
@@ -48,7 +48,8 @@ export function calculateWorkpackageCoverage(
   projectDuration: number,
   months: readonly { shortPhase?: string; totalWPMonthlyFTE: number }[],
   members: readonly TeamMemberRecord[],
-  isNegated = false
+  isNegated = false,
+  premiumHours: readonly number[] = [],
 ) {
   const assignments = card.memberAssignments || {};
   const monthlyAssignments = card.memberMonthlyAssignments || {};
@@ -74,7 +75,7 @@ export function calculateWorkpackageCoverage(
           coveredFTE += parseFloat(String(memberMonths[monthIdx])) || 0;
         }
       }
-      coveredFTE = Math.min(displayFTE, coveredFTE);
+      coveredFTE = Math.min(displayFTE, coveredFTE + (premiumHours[monthIdx] ?? 0) / WORKING_HOURS_PER_MONTH);
     }
     return { displayFTE, coveredFTE, leftFTE: Math.max(0, displayFTE - coveredFTE), shortPhase: month.shortPhase };
   });

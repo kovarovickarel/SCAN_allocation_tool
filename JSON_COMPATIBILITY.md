@@ -1,12 +1,18 @@
 # Workspace JSON compatibility
 
+## Dated premium work assignments
+
+FTE workpackages may include optional `memberPremiumAssignments`, keyed by member ID with arrays of distinct dates. A `YYYY-MM-DD` string assigns all of the logged premium hours for that date. A `{ date, hours }` entry assigns part of a day, with a positive hour count up to eight. Full transfers retain the field and selective transfers remap member IDs through the allocation options. Planning reconciliation removes dates that are no longer eligible and limits combined assignments across projects and teams to the logged hours for each person and date. Workspaces with date strings or with the field omitted require no migration.
+
+Engineering premium assignments follow the regular staffing role rules. If an older workspace contains an engineering premium assignment for a management-only member, reconciliation releases the assignment and retains the logged premium day.
+
 ## Weekend work factors (November 1)
 
 Optional `configuration.weekendWorkFactors` accepts either the original shared set of rates or a map keyed by site code (for example, `PRA`). Each set has finite non-negative numbers `weekend`, `publicHoliday`, and `weekendPublicHoliday`. Legacy shared rates apply to every site. Omitted settings or sites use 1.5, 1.5 and 2. Saving an unchanged configuration preserves its source representation. Reset to Defaults restores the rates across all sites. The factors currently have no effect on costing, capacity or planning XLSX reports. JSON transfer and history retain explicit values. Selective import applies them only through the existing Shared settings choice. Frozen compatibility fixtures and schema version remain unchanged.
 
 ## Member availability (October 31)
 
-Half-day leaves additionally accept `{ "type": "vacation" | "sick" | "other" | "working", "halfDay": true }` per date. Full-day strings remain unchanged; the fraction is preserved on transfer and cross-team edits. Reject missing/false/non-boolean halfDay and unsupported object types such as holiday. Public holidays remain full-day; a half-day working exception restores half a working day of capacity and paid salary. A working object outside a holiday has no capacity effect. No schema bump or frozen fixture changes.
+Half-day leaves additionally accept `{ "type": "vacation" | "sick" | "other" | "working", "halfDay": true }` per date. Full-day strings remain unchanged; the fraction is preserved on transfer and cross-team edits. Reject missing/false/non-boolean halfDay and unsupported object types such as holiday. Weekday public holidays always occupy a full normal working day, including when the member logs full-day or half-day premium work. Logged work is separately available as eight or four premium hours. No schema bump or frozen fixture changes.
 
 Schema 1 adds optional member `absences` (YYYY-MM-DD keys with `vacation`,
 `sick`, `other` or `working` values) and configuration `sitePublicHolidays` (site codes mapped to
@@ -27,15 +33,18 @@ November 1: `other` represents individual statutory/other leave, excluded from
 vacation/sickness totals. It reduces capacity and external payable salary like
 public holidays, but cannot be applied to site/header rows or new weekend cells.
 Clicks and drags follow site working weeks. Historical weekend entries remain
-importable, have no capacity effect and can be cleared with Working day.
+importable, have no capacity effect and can be cleared with a right-click.
 Adding this enum value keeps
 all previous schema-1 exports valid; older apps need not import newer exports.
 
-`working` is an explicit individual working-day exception to a site holiday.
-It restores normal working-day capacity and paid external salary, never V/S
-totals, and remains harmless on dates without holidays. Removing a site holiday
-clears its working exceptions as well as overwritten ordinary leave, so re-adding
-the holiday never restores a previous W automatically.
+`working` records an individual holiday-work exception or a weekend-work mark.
+On a holiday that falls on a normal working day, the full holiday remains
+occupied in normal capacity and the Public holidays breakdown. The logged hours
+are separately available for premium allocation. Weekend marks use the same full-day and
+half-day values and never occupy normal capacity. Neither counts
+toward V/S totals. Removing a site holiday on a regular working day clears its
+working exceptions and overwritten leave. On a weekend, changing the site
+holiday preserves the working entry and its duration.
 Weekends remain outside the base working-day denominator. Cross-team changes,
 JSON transfer and Undo/Redo preserve the exception; no old fields are required
 or migrated, and existing allocations are never increased automatically.

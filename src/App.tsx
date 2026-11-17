@@ -1,6 +1,7 @@
 import { DEFAULT_WEEKEND_WORK_FACTORS } from "./utils/weekendWork";
 import { MemberAvailabilityModal } from "./components/features/MemberAvailabilityModal";
 import { applyMemberAbsenceEdits, membersWithHolidays } from "./utils/memberAvailability";
+import { workpackagePremiumHours } from "./utils/premiumAssignments";
 import { reconcileAvailability } from "./utils/availabilityAllocations";
 import { useWorkspaceHistory, useWorkspaceAction } from "./hooks/useWorkspaceHistory";
 import { samePlanningValue, type PlanningState } from "./utils/workspaceHistory";
@@ -424,7 +425,8 @@ export default function App() {
       }
 
       const finalFTE = isAltered ? round2(totalEffortMonths / project.duration) : defaultFte;
-      const coverage = calculateWorkpackageCoverage(f, project.duration, coverageMonths, teamMembers);
+      const premiumHours = workpackagePremiumHours(f, teamMembers, project.startDate, project.duration);
+      const coverage = calculateWorkpackageCoverage(f, project.duration, coverageMonths, teamMembers, false, premiumHours.totals);
       const monthlyFTE = coverageMonths.map(month => month.totalWPMonthlyFTE);
 
       return {
@@ -718,6 +720,7 @@ export default function App() {
         copiedCard.projectId = copy.id;
         delete copiedCard.memberAssignments;
         delete copiedCard.memberMonthlyAssignments;
+        delete copiedCard.memberPremiumAssignments;
         delete copiedCard.memberMaintenancePreferences;
         return copiedCard;
       });
@@ -747,6 +750,12 @@ export default function App() {
         ...(maintenancePreferences !== undefined ? { memberMaintenancePreferences: maintenancePreferences } : {}),
       } : f))
     );
+  }, []);
+
+  const handleUpdateCardPremiumAssignments = useWorkspaceAction(history, "Save premium work allocations", (
+    cardId: string, assignments: WorkpackageCard["memberPremiumAssignments"],
+  ) => {
+    setFunctions(prev => prev.map(card => card.id === cardId ? { ...card, memberPremiumAssignments: assignments } : card));
   }, []);
 
   const handleUpdateProjectMgmtAssignments = useWorkspaceAction(history, "Save management allocations", (projectId, tName, newAssignments) => {
@@ -1334,6 +1343,7 @@ export default function App() {
         {showTeamTimeline && activeToolView !== "all" && (
           <TeamTimelineModal
             suppliers={config.suppliers}
+            weekendWorkFactors={config.weekendWorkFactors}
             toolName={activeToolView}
             initialShowOtherWPs={teamOtherWPScopes[activeToolView]?.included ?? false}
             initialExcludedOtherWPIds={teamOtherWPScopes[activeToolView]?.excludedCardIds ?? []}
@@ -1356,6 +1366,7 @@ export default function App() {
             onClose={() => setShowTeamTimeline(false)}
             onSaveAssignments={handleUpdateCardAssignments}
             onSaveMonthlyAssignments={handleUpdateCardMonthlyAssignments}
+            onSavePremiumAssignments={handleUpdateCardPremiumAssignments}
             onSaveMgmtAssignments={handleUpdateProjectMgmtAssignments}
             onSaveMgmtMonthlyAssignments={handleUpdateProjectMgmtMonthlyAssignments}
           />

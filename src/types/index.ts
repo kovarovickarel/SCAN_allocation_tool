@@ -126,6 +126,8 @@ export interface WorkpackageDetails {
   risks?: string;
 }
 
+export type PremiumAssignment = string | { date: string; hours: number };
+
 export interface WorkpackageCard {
   details?: WorkpackageDetails;
   id: string;
@@ -164,6 +166,7 @@ export interface WorkpackageCard {
   otherMaintenanceEffort?: NumericInput;
   memberAssignments?: NumericMap;
   memberMonthlyAssignments?: MonthlyNumericMap;
+  memberPremiumAssignments?: Record<string, PremiumAssignment[]>;
   memberMaintenancePreferences?: MemberMaintenancePreferences;
   customCoreFTE?: FteMap;
   customDevSupportFTE?: FteMap;

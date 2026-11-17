@@ -52,7 +52,7 @@ export function memberImportChoice(member: TeamMemberRecord, current: WorkspaceD
   const choice = suggestRecord(member, current.teamMembers.filter(value => value.tool === member.tool), memberName);
   return choice.targetId && (!plan.membersEnabled || !plan.tools.includes(member.tool)) ? { ...choice, action: "keep" } : choice;
 }
-const allocationKeys = ["memberAssignments", "memberMonthlyAssignments", "memberMaintenancePreferences"] as const;
+const allocationKeys = ["memberAssignments", "memberMonthlyAssignments", "memberMaintenancePreferences", "memberPremiumAssignments"] as const;
 function referencedMembers(card: WorkpackageCard) { return [...new Set(allocationKeys.flatMap(key => Object.keys(card[key] ?? {})))]; }
 export function allocationDependencies(current: WorkspaceData, incoming: WorkspaceData, plan: SelectiveImportPlan) {
   const ids = new Set<string>();
@@ -230,6 +230,7 @@ export function previewSelectiveImport(current: WorkspaceData, incoming: Workspa
     if (value.kind === "non-fte") { value.purchaseType = purchaseTypeMap.get(value.purchaseType!) ?? value.purchaseType; value.supplierId = supplier(card.supplierId); value.supplierName = result.configuration.suppliers.find(item => item.id === value.supplierId)?.name; }
     if (plan.allocations && choice.allocations !== false) {
       value.memberAssignments = remap(card.memberAssignments); value.memberMonthlyAssignments = remap(card.memberMonthlyAssignments); value.memberMaintenancePreferences = remap(card.memberMaintenancePreferences);
+      if (card.memberPremiumAssignments) value.memberPremiumAssignments = remap(card.memberPremiumAssignments);
     } else for (const key of allocationKeys) { if (target?.[key]) (value as any)[key] = copy(target[key]); else delete value[key]; }
     if (value.reusability && value.reusability !== "Other" && result.configuration.reusabilityFactors[value.reusability] === undefined && incoming.configuration.reusabilityFactors[value.reusability] !== undefined) {
       (result.configuration.reusabilityFactors as any)[value.reusability] = incoming.configuration.reusabilityFactors[value.reusability]; notes.push(`Add required reusability factor ${value.reusability}.`);
