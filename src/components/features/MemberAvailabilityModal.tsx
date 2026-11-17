@@ -1,6 +1,6 @@
-import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
-import { AvailabilityCells, AvailabilityCategoryBand, AvailabilityHeaderDays, AvailabilityMemberRow, DAY_SIZE, HOLIDAY_HEIGHT, LEAVE_COLORS, EMPTY_DATES, EMPTY_ABSENCES, EMPTY_TEAMS, labelClass, rowStyle, siteColors, type CalendarInteraction } from "./AvailabilityCalendarRows";
+import { TimelineHelpGuide } from "./TimelineHelpGuide";
+import { AvailabilityCells, AvailabilityCategoryBand, AvailabilityHeaderDays, AvailabilityMemberRow, DAY_SIZE, HOLIDAY_HEIGHT, LEAVE_COLORS, WEEKEND_COLOR, WEEKEND_WORK_COLOR, EMPTY_DATES, EMPTY_ABSENCES, EMPTY_TEAMS, labelClass, rowStyle, siteColors, type CalendarInteraction } from "./AvailabilityCalendarRows";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { MemberAbsence, MemberLeaveType, TeamMemberRecord } from "../../types";
 import { FOOTPRINT_MAP, ThemeContext, TOOL_MAP, TOOLS } from "../../constants";
@@ -101,7 +101,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     } finally { exportPending.current = false; if (!controller.signal.aborted) setExporting(false); }
   }
   const [collapsedSites, setCollapsedSites] = useState<Record<string, boolean>>({});
-  const drag = useRef<{ row: string; site: boolean; allSites?: boolean; erase?: boolean; halfDay?: boolean; clearHolidayWork?: boolean; start: number; leave: typeof leave; sites: typeof sites;
+  const drag = useRef<{ row: string; site: boolean; allSites?: boolean; erase?: boolean; secondary?: boolean; halfDay?: boolean; clearWork?: boolean; start: number; leave: typeof leave; sites: typeof sites;
     tracking?: { gridLeft: number; scrollLeft: number; siteCode: string; pointerId: number; target: HTMLButtonElement; dayCount: number; lastEnd: number } } | null>(null);
   const applyRangeRef = useRef<(end: number, siteCode: string) => void>(() => {});
   const { startAutoScroll, stopAutoScroll } = useHorizontalSelectionAutoScroll({ outsideViewportOnly: true, maxSpeed: 3600, acceleration: 18, rampDurationMs: 1200 });
@@ -166,34 +166,32 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     const current = drag.current;
     if (!current) return;
     const erase = current.erase ?? (paint === "erase");
+    const markWork = !current.secondary && paint === "erase" && !current.clearWork;
     const range = days.slice(Math.min(end, current.start), Math.max(end, current.start) + 1)
       .filter(day => !day.readOnly)
-      .filter(day => current.site || isWorkingDay(day.date, siteCode) ||
+      .filter(day => current.site || current.secondary || paint === "erase" || isWorkingDay(day.date, siteCode) ||
         (erase && memberAbsenceType(current.leave[current.row]?.[day.date]) === "other"))
-      .filter(day => current.site || paint === "erase" || !current.sites[siteCode]?.includes(day.date));
-    if (current.allSites) {
+      .filter(day => current.site || current.secondary || paint === "erase" || !current.sites[siteCode]?.includes(day.date));
+    if (current.site) {
       const updated = { ...current.sites };
       const replaced: Record<string, string[]> = {};
-      for (const site of groups) {
+      for (const site of current.allSites ? groups : [current.row]) {
         const dates = new Set(current.sites[site] ?? []);
         replaced[site] = range.filter(day => !erase || dates.has(day.date)).map(day => day.date);
-        range.forEach(day => erase ? dates.delete(day.date) : dates.add(day.date));
+        if (!replaced[site].length) continue;
+        replaced[site].forEach(date => erase ? dates.delete(date) : dates.add(date));
         updated[site] = [...dates].sort();
       }
       setSites(updated);
       setLeave(removeHolidayAbsences(allMembers, current.leave, replaced, erase));
-    } else if (current.site) {
-      const dates = new Set(current.sites[current.row] ?? []);
-      const replaced = range.filter(day => !erase || dates.has(day.date)).map(day => day.date);
-      range.forEach(day => erase ? dates.delete(day.date) : dates.add(day.date));
-      setSites({ ...current.sites, [current.row]: [...dates].sort() });
-      setLeave(removeHolidayAbsences(allMembers, current.leave, { [current.row]: replaced }, erase));
     } else {
       const dates = { ...current.leave[current.row] };
       range.forEach(day => {
         if (erase) {
-          if (paint === "erase" && current.sites[siteCode]?.includes(day.date) && !current.clearHolidayWork) dates[day.date] = (current.halfDay ?? halfDay) ? { type: "working", halfDay: true } : "working";
-          else if (paint === "erase" && !current.sites[siteCode]?.includes(day.date) && (current.halfDay ?? halfDay) && memberAbsenceDays(dates[day.date]) === 1) {
+          const holiday = current.sites[siteCode]?.includes(day.date);
+          const regularDay = !holiday && isWorkingDay(day.date, siteCode);
+          if (markWork && !regularDay) dates[day.date] = (current.halfDay ?? halfDay) ? { type: "working", halfDay: true } : "working";
+          else if ((current.secondary || paint === "erase") && !holiday && (current.halfDay ?? halfDay) && memberAbsenceDays(dates[day.date]) === 1) {
             const type = memberAbsenceType(dates[day.date]) as MemberLeaveType;
             dates[day.date] = { type, halfDay: true };
           } else delete dates[day.date];
@@ -203,13 +201,21 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
     }
   };
   applyRangeRef.current = applyRange;
+  const startsOnMatchingWork = (row: string, site: boolean, siteCode: string, date: string) => {
+    if (site || paint !== "erase") return false;
+    const entry = leave[row]?.[date];
+    return memberAbsenceType(entry) === "working" && (typeof entry === "object") === halfDay &&
+      (!isWorkingDay(date, siteCode) || Boolean(sites[siteCode]?.includes(date)));
+  };
   const beginDrag = (event: React.PointerEvent<HTMLButtonElement>, index: number, row: string, site: boolean, siteCode: string, erase: boolean, allSites = false) => {
-    if (event.button !== 0 || days[index]?.readOnly || (categoryView && site)) return;
+    const secondary = event.button === 2;
+    const day = days[index];
+    if ((event.button !== 0 && !secondary) || !day || day.readOnly || (categoryView && site)) return;
     event.preventDefault();
     const target = event.currentTarget;
     const gridLeft = target.getBoundingClientRect().left - index * DAY_SIZE;
-    drag.current = { row, site, allSites, erase, halfDay,
-      clearHolidayWork: !site && paint === "erase" && memberAbsenceType(leave[row]?.[days[index].date]) === "working" && (typeof leave[row]?.[days[index].date] === "object") === halfDay && sites[siteCode]?.includes(days[index].date), start: index, leave, sites,
+    drag.current = { row, site, allSites, erase: secondary || erase, secondary, halfDay,
+      clearWork: startsOnMatchingWork(row, site, siteCode, day.date), start: index, leave, sites,
       tracking: { gridLeft, scrollLeft: calendarRef.current?.scrollLeft ?? 0, siteCode, pointerId: event.pointerId, target, dayCount: days.filter(day => !day.readOnly).length, lastEnd: index } };
     target.setPointerCapture(event.pointerId);
     setClearingDrag(false);
@@ -221,9 +227,10 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   interactionRef.current = {
     onBegin: beginDrag,
     onHoliday: applyHolidayToShownSites,
-    onKeyboard: (row, site, siteCode, index, erase, clearHolidayWork) => {
-      if (days[index]?.readOnly || (categoryView && site)) return;
-      drag.current = { row, site, halfDay, erase, clearHolidayWork, start: index, leave, sites };
+    onKeyboard: (row, site, siteCode, index, erase) => {
+      const day = days[index];
+      if (!day || day.readOnly || (categoryView && site)) return;
+      drag.current = { row, site, halfDay, erase, clearWork: startsOnMatchingWork(row, site, siteCode, day.date), start: index, leave, sites };
       applyRange(index, siteCode); drag.current = null;
     },
   };
@@ -282,7 +289,10 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
         <div className="flex flex-wrap items-center gap-3 pl-3 min-w-0">
         {([['vacation', 'Vacation', LEAVE_COLORS.vacation], ['sick', 'Sick leave', LEAVE_COLORS.sick], ['other', 'Other leave', LEAVE_COLORS.other], ['erase', 'Working day', '#ffffff']] as const).map(([value, label, color]) =>
           <button key={value} type="button" aria-pressed={(clearingDrag ? "erase" : paint) === value} onClick={() => setPaint(value)} className={`px-2.5 h-7 leading-none text-[11px] font-bold flex items-center gap-2 cursor-pointer ${isRetro ? `${retroButton} ${(clearingDrag ? "erase" : paint) === value ? 'outline outline-1 outline-black' : ''}` : `rounded-lg border shadow-2xs ${(clearingDrag ? "erase" : paint) === value ? 'bg-slate-800 text-white border-slate-700' : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-100'}`}`}><span className="w-3 h-3 shrink-0 border border-slate-300" style={{ background: color }} />{label}</button>)}
-        <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span className="w-3 h-3 shrink-0 bg-slate-200 border border-slate-300" />Weekend</span>
+        <div className="flex items-center gap-3">
+          <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span className="w-3 h-3 shrink-0 border border-slate-300" style={{ background: WEEKEND_COLOR }} />Weekend</span>
+          <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span aria-hidden="true" className="w-3 h-3 shrink-0 text-[10px] font-extrabold border border-slate-300 flex items-center justify-center" style={{ background: WEEKEND_COLOR, color: WEEKEND_WORK_COLOR }}>W</span><span>Weekend work</span></span>
+        </div>
         <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span className="w-3 h-3 shrink-0" style={{ background: LEAVE_COLORS.holiday }} /><span>Public holiday<span className={categoryView ? "invisible" : ""} aria-hidden={categoryView}> (site row)</span></span></span>
         <span className="text-[11px] font-bold text-slate-600 leading-none h-7 flex items-center gap-1"><span className="w-3 h-3 shrink-0 text-[10px] leading-none font-extrabold text-green-800 border border-slate-300 flex items-center justify-center" style={{ background: LEAVE_COLORS.holiday }}>W</span>Working on public holiday</span>
         </div>

@@ -26,18 +26,22 @@ by the same working-day factor, preserving allocated unit cost and deferral.
 See JSON_COMPATIBILITY.md and tests/member-availability.spec.ts before edits.
 Half-day leave uses optional object values `{ type: "vacation" | "sick" | "other" | "working", halfDay: true }`; existing full-day string values stay valid. Weight half-days as 0.5 in capacity, paid external capacity and annual V/S totals. Site public holidays remain full-day; a half-day working exception restores half a holiday. With Half-day checked, explicit Working day reduces full-day individual leave to half-day, or clears existing half-day leave. The calendar checkbox defaults unchecked and paints an upper-left coloured triangle, lower-right white. Preserve the fraction in cross-team edits, JSON and history.
 Member absences also support `other` for individual statutory leave. Count it in
-unavailability/unpaid external days, never V/S budgets. The Other leave tool
-disables site/header holiday editing; public holidays retain precedence.
+unavailability/unpaid external days, never V/S budgets. Site and day-header
+holiday editing also works with Other leave selected. Public holidays retain precedence.
 Other leave edits must skip weekends, including Fri/Sat for Cairo. Preserve old
-imported weekend entries, allowing Working day to clear them. Calendar
+imported weekend leave entries and allow right-click erasure. Calendar
 cell/legend colours are vacation red, sickness blue, Other light orange and
 public holidays light green; fully shared header holidays use darker emerald.
 Working day on a holiday stores member `absences[date] = "working"`, overriding
 holiday unavailability and restoring paid external capacity. Show a 14px dark-green W
 on the standard holiday-green background, without an extra outline; half-day working uses a white lower-right triangle behind the W. Removing a
-site holiday clears working exceptions for that date; re-adding it starts fresh. Working
+site holiday clears working exceptions on regular working days. Weekend work
+keeps its duration when a holiday is added or removed and follows the date's shade. Working
 day on an existing W toggles it back to holiday. Do not count working entries
 as leave or include weekends in capacity. Member overrides share across teams.
+Working day can click or drag across weekends. Starting on weekend or holiday work
+of the selected duration clears work during that gesture. Weekend work uses a dark grey W on the weekend shade, with a white
+lower-right triangle for a half day. Right-click clears that work mark.
 For Vacation/Sick/Other, starting on that selected leave type clears individual
 leave for the entire gesture, including other leave types. Keep public holidays
 and existing holiday-working exceptions untouched in this implicit clear mode;

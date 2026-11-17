@@ -15,7 +15,11 @@ export function removeHolidayAbsences(members: readonly TeamMemberRecord[], draf
     const dates = datesBySite[member.footprint];
     if (!dates?.length) continue;
     const absences = { ...(drafts[member.id] ?? member.absences) };
-    for (const date of dates) if (clearWorking || memberAbsenceType(absences[date]) !== "working") delete absences[date];
+    for (const date of dates) {
+      const keepWork = memberAbsenceType(absences[date]) === "working" &&
+        (!clearWorking || !isWorkingDay(date, member.footprint));
+      if (!keepWork) delete absences[date];
+    }
     updated[member.id] = absences;
   }
   return updated;

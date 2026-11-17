@@ -79,7 +79,7 @@ export function availabilityDayEntry(member: TeamMemberRecord, date: string, hol
   const absence = member.absences?.[date], type = memberAbsenceType(absence);
   const half = typeof absence === "object";
   const holiday = holidays.has(date), working = isWorkingDay(date, member.footprint);
-  const code = holiday ? type === "working" && working ? "W" : "P" :
+  const code = type === "working" && (holiday || !working) ? "W" : holiday ? "P" :
     type === "vacation" ? "h" : type === "sick" ? "s" : type === "other" ? "o" : "";
   return { code: code ? code + (half && code !== "P" ? "/2" : "") : "", holiday, working,
     eligible: working && !holiday };

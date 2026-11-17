@@ -13,7 +13,7 @@ export type CalendarAbsences = Record<string, MemberAbsence>;
 export type CalendarPaint = MemberLeaveType | "erase";
 export type CalendarInteraction = {
   onBegin: (event: React.PointerEvent<HTMLButtonElement>, index: number, row: string, site: boolean, siteCode: string, erase: boolean, allSites?: boolean) => void;
-  onKeyboard: (row: string, site: boolean, siteCode: string, index: number, erase: boolean, clearHolidayWork: boolean) => void;
+  onKeyboard: (row: string, site: boolean, siteCode: string, index: number, erase: boolean) => void;
 };
 export const EMPTY_DATES: string[] = [];
 export const EMPTY_ABSENCES: CalendarAbsences = {};
@@ -22,6 +22,8 @@ export const labelClass = "sticky left-0 z-20 border-r px-4 shrink-0 flex items-
 export const rowStyle = { display: "flex", width: "max-content", alignItems: "center" } as const;
 const formatLeaveDays = (value: number) => value % 1 === 0.5 ? `${Math.floor(value) || ""}½` : String(value);
 export const LEAVE_COLORS = { vacation: "#fb7185", sick: "#38bdf8", other: "#fed7aa", holiday: "#86efac" };
+export const WEEKEND_COLOR = "#e2e8f0";
+export const WEEKEND_WORK_COLOR = "#374151";
 export const DAY_SIZE = 24;
 export const HOLIDAY_HEIGHT = 20;
 const SITE_COLORS: Record<string, { header: string; tint: string }> = {
@@ -33,6 +35,8 @@ const SITE_COLORS: Record<string, { header: string; tint: string }> = {
   TOK: { header: "#be185d", tint: "#fce7f3" },
 };
 export const siteColors = (site: string) => SITE_COLORS[site] ?? { header: "#475569", tint: "#e2e8f0" };
+
+const suppressCalendarContextMenu = (event: React.MouseEvent<HTMLButtonElement>) => event.preventDefault();
 
 type CellProps = CalendarInteraction & { row: string; siteCode: string; site: boolean; name: string;
   days: CalendarDay[]; absences?: CalendarAbsences; holidays: string[]; paint: CalendarPaint; halfDay: boolean; isRetro: boolean };
@@ -66,27 +70,32 @@ type DayCellProps = Omit<CellProps, "days" | "absences" | "holidays"> & { day: C
 const AvailabilityDayCell = React.memo(function AvailabilityDayCell({ day, index, row, siteCode, site, name, working, holiday, absenceEntry, paint, halfDay, isRetro, onBegin, onKeyboard }: DayCellProps) {
     const absence = memberAbsenceType(absenceEntry);
     const halfMarked = !day.readOnly && !site && typeof absenceEntry === "object" && (!holiday || absence === "working");
-    const workingHoliday = !day.readOnly && Boolean(holiday && absence === "working");
-    const color = day.readOnly ? "#e2e8f0" : holiday ? LEAVE_COLORS.holiday : site ? working ? siteColors(siteCode).tint : `color-mix(in srgb, #cbd5e1 80%, ${siteColors(siteCode).tint})` : absence === "other" ? LEAVE_COLORS.other : !working ? "#e2e8f0" : absence === "vacation" ? LEAVE_COLORS.vacation : absence === "sick" ? LEAVE_COLORS.sick : "#ffffff";
+    const workingWeekend = !day.readOnly && !working && absence === "working";
+    const workingHoliday = !day.readOnly && holiday && absence === "working";
+    const workColor = workingHoliday ? "#166534" : workingWeekend ? WEEKEND_WORK_COLOR : undefined;
+    const color = day.readOnly ? WEEKEND_COLOR : holiday ? LEAVE_COLORS.holiday : site ? working ? siteColors(siteCode).tint : `color-mix(in srgb, #cbd5e1 80%, ${siteColors(siteCode).tint})` : absence === "other" ? LEAVE_COLORS.other : !working ? WEEKEND_COLOR : absence === "vacation" ? LEAVE_COLORS.vacation : absence === "sick" ? LEAVE_COLORS.sick : "#ffffff";
 
-    const status = day.readOnly ? "Outside selected year (read-only)" : workingHoliday ? "Working on public holiday" : holiday ? "Public holiday" : absence === "other" ? "Other leave" : !working ? "Weekend" : absence === "vacation" ? "Vacation" : absence === "sick" ? "Sick leave" : "Available";
-    return <button key={day.date} type="button" disabled={day.readOnly || (site ? paint === "other" : !working && !(paint === "erase" && (absence === "other" || holiday)))}
+    const status = day.readOnly ? "Outside selected year (read-only)" : workingWeekend ? holiday ? "Working on weekend public holiday" : "Working on weekend" : workingHoliday ? "Working on public holiday" : holiday ? "Public holiday" : absence === "other" ? "Other leave" : !working ? "Weekend" : absence === "vacation" ? "Vacation" : absence === "sick" ? "Sick leave" : "Available";
+    // Editable dates can receive a secondary gesture even when the selected tool is unavailable.
+    const primaryDisabled = !site && !working && paint !== "erase";
+    return <button key={day.date} type="button" disabled={day.readOnly} aria-disabled={primaryDisabled || undefined}
+      tabIndex={primaryDisabled ? -1 : undefined} onContextMenu={suppressCalendarContextMenu}
       aria-label={`${name}, ${day.date}: ${status}`} aria-pressed={day.readOnly ? undefined : Boolean(site ? holiday : absence)}
       title={`${name} · ${day.date} · ${status}${halfMarked ? " (Half-day)" : ""}`}
       onPointerDown={event => {
-        if (day.readOnly) return;
+        if (day.readOnly || (primaryDisabled && event.button !== 2)) return;
         const erase = site ? Boolean(holiday) : paint === "erase" || (!holiday && absence === paint && halfMarked === halfDay);
         onBegin(event, index, row, site, siteCode, erase);
       }}
-      onKeyDown={event => { if (!day.readOnly && (event.key === " " || event.key === "Enter")) {
-        event.preventDefault(); onKeyboard(row, site, siteCode, index, site ? Boolean(holiday) : paint === "erase" || (!holiday && absence === paint && halfMarked === halfDay), workingHoliday && halfMarked === halfDay && paint === "erase");
+      onKeyDown={event => { if (!day.readOnly && !primaryDisabled && (event.key === " " || event.key === "Enter")) {
+        event.preventDefault(); onKeyboard(row, site, siteCode, index, site ? Boolean(holiday) : paint === "erase" || (!holiday && absence === paint && halfMarked === halfDay));
       } }}
-      className={`border shrink-0 ${day.readOnly ? "cursor-default" : "hover:ring-2 hover:ring-slate-700 hover:z-10"} disabled:cursor-default ${isRetro ? "border-slate-500" : "border-slate-300"}`}
+      className={`border shrink-0 ${day.readOnly || primaryDisabled ? "cursor-default" : "hover:ring-2 hover:ring-slate-700 hover:z-10"} ${isRetro ? "border-slate-500" : "border-slate-300"}`}
       style={{ width: DAY_SIZE, height: site ? HOLIDAY_HEIGHT : DAY_SIZE, background: halfMarked ? `linear-gradient(135deg, ${color} 50%, #ffffff 50%)` : color, borderRadius: 0,
         ...(site && !day.readOnly ? { borderColor: siteColors(siteCode).header, borderStyle: working ? "solid" : "dashed" } : {}),
         ...(day.day === 1 && index > 0 && !day.readOnly ? { borderLeftColor: "#64748b" } : {}),
         ...(day.readOnly ? { borderColor: "#cbd5e1" } : {}),
-        ...(workingHoliday ? { color: "#166534", fontSize: 14, fontWeight: 800 } : {}) }}>{workingHoliday ? "W" : null}</button>;
+        ...(workColor ? { color: workColor, fontSize: 14, fontWeight: 800 } : {}) }}>{workColor ? "W" : null}</button>;
 });
 
 export const AvailabilityHeaderDays = React.memo(function AvailabilityHeaderDays({ days, groups, sites, paint, today, onBegin, onHoliday, allowHolidayEditing = true }: {
@@ -100,7 +109,8 @@ export const AvailabilityHeaderDays = React.memo(function AvailabilityHeaderDays
           const removeLabel = paint === "erase" && allMarked;
           const editable = allowHolidayEditing && !day.readOnly;
           const label = day.readOnly ? `Calendar day ${day.date} (read-only)` : allowHolidayEditing ? `${removeLabel ? "Remove" : "Apply"} public holiday ${removeLabel ? "from" : "to"} shown sites on ${day.date}` : `Calendar day ${day.date}`;
-          return <button key={day.date} type="button" aria-label={label} title={day.readOnly ? "Only the selected year is editable" : !allowHolidayEditing ? "Edit public holidays in site grouping" : paint === "other" ? "Other leave applies to individual members only" : label} disabled={!editable || !groups.length || paint === "other"}
+          return <button key={day.date} type="button" aria-label={label} title={day.readOnly ? "Only the selected year is editable" : !allowHolidayEditing ? "Edit public holidays in site grouping" : label} disabled={!editable || !groups.length}
+            onContextMenu={suppressCalendarContextMenu}
             aria-pressed={editable ? allMarked ? true : marked > 0 ? "mixed" : false : undefined} onClick={event => { if (editable && event.detail === 0) onHoliday(day.date); }}
             onPointerDown={event => {
               if (!editable) return;

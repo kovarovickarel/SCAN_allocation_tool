@@ -12,13 +12,14 @@ function fixture(tool?: string) {
   const data = availabilityWorkspace();
   data.teamMembers[0].absences = { "2026-01-05": "vacation", "2026-01-06": { type: "vacation", halfDay: true },
     "2026-01-07": "sick", "2026-01-08": { type: "sick", halfDay: true }, "2026-01-09": "other",
-    "2026-01-10": "vacation", "2026-01-12": "vacation", "2026-01-13": { type: "working", halfDay: true } };
+    "2026-01-10": "vacation", "2026-01-12": "vacation", "2026-01-13": { type: "working", halfDay: true },
+    "2026-01-17": "working", "2026-01-18": { type: "working", halfDay: true }, "2026-01-24": "working" };
   data.teamMembers[1].absences = { ...data.teamMembers[0].absences };
   data.teamMembers[1].isExternal = true;
   data.teamMembers[1].monthlySalaryCost = 10000;
   data.teamMembers[1].monthlySalaryCurrency = "EUR";
   data.teamMembers[1].supplierId = "supplier-luxoft";
-  data.configuration.sitePublicHolidays = { PRA: ["2026-01-12", "2026-01-13"], CAI: ["2035-04-01"] };
+  data.configuration.sitePublicHolidays = { PRA: ["2026-01-12", "2026-01-13", "2026-01-24"], CAI: ["2035-04-01"] };
   const options: AvailabilityExportOptions = { ...data, members: data.teamMembers, tool };
   return { data, options };
 }
@@ -78,6 +79,9 @@ test("full/half leave codes, holidays and working exceptions preserve app eligib
   expect(availabilityDayEntry(member, "2026-01-08", holidays).code).toBe("s/2");
   expect(availabilityDayEntry(member, "2026-01-12", holidays)).toMatchObject({ code: "P", holiday: true, eligible: false });
   expect(availabilityDayEntry(member, "2026-01-13", holidays)).toMatchObject({ code: "W/2", eligible: false });
+  expect(availabilityDayEntry(member, "2026-01-17", holidays)).toMatchObject({ code: "W", holiday: false, working: false, eligible: false });
+  expect(availabilityDayEntry(member, "2026-01-18", holidays)).toMatchObject({ code: "W/2", holiday: false, working: false, eligible: false });
+  expect(availabilityDayEntry(member, "2026-01-24", holidays)).toMatchObject({ code: "W", holiday: true, working: false, eligible: false });
   expect(availabilityDayEntry(member, "2026-01-10", holidays).eligible).toBe(false);
 });
 
@@ -164,6 +168,13 @@ for (const tool of [undefined, "Data Factory"] as const) test(`actual availabili
           anchors: Array.from(vml.getElementsByTagNameNS("urn:schemas-microsoft-com:office:excel", "Column")).map(col => col.textContent) };
       }),
       conditional: Array.from(sheet.getElementsByTagName("cfRule")).map(rule => rule.textContent),
+      workColorRules: Array.from(sheet.getElementsByTagName("cfRule"))
+        .filter(rule => [`M${row}="W"`, `M${row}="W/2"`].some(value => rule.textContent?.includes(value)))
+        .map(rule => ({ dxf: rule.getAttribute("dxfId"), formula: rule.textContent! })),
+      weekendResetRule: Array.from(sheet.getElementsByTagName("cfRule"))
+        .find(rule => rule.textContent?.startsWith(`AND(M${row}="E",`))?.textContent,
+      weekendLegend: { code: value("C1").text, label: value("D1").text, ...appearance("C1") },
+      workCells: ["AC", "AD", "AJ"].map(col => ({ code: at(col).text, ...appearance(`${col}${row}`) })),
       pane: sheet.getElementsByTagName("pane")[0]?.getAttribute("topLeftCell"),
       appearance: { header: appearance("M3"), weekday: appearance("M4"), day: appearance(`M${row}`), weekend: appearance(`O${row}`),
         details: appearance(`A${row}`), team: appearance("M8"), teamDetails: appearance("B8"), teamLabel: appearance("A8"), vacation: appearance(`Q${row}`),
@@ -202,7 +213,7 @@ for (const tool of [undefined, "Data Factory"] as const) test(`actual availabili
   expect(result.ruleColors.map(rule => rule.foreground)).toEqual([
     "FFCC0000", "FF38761D", "FFA64D79", "FF8E7CC3", "FFF4CCCC",
     "FFE68080", "FF9CBB8E", "FFD3A6BC", "FFC7BEE1", "FFF4CCCC",
-    "FFFFFFFF", "FFD9D9D9", "FFF4CCCC", "FFF4CCCC",
+    "FFFFFFFF", "FFD9D9D9", "FFF4CCCC", "FFF4CCCC", "FFD9D9D9", "FFD9D9D9",
   ]);
   expect(result.ruleColors.every(rule => rule.foreground === rule.background)).toBe(true);
   for (const index of [5, 6]) {
@@ -213,9 +224,26 @@ for (const tool of [undefined, "Data Factory"] as const) test(`actual availabili
     expect(half.font).toBe("FFFFFFFF"); expect(half.bold).toBe(true);
   }
   expect(result.ruleColors[13].font).toBe(result.ruleColors[13].background); // P stays stored, but is invisible in the cell.
+  expect(result.ruleColors[15].font).toBe("FFD9D9D9"); // E looks like a blank weekend.
+  expect(result.weekendLegend).toMatchObject({ code: "W", label: "weekend work", alignment: "left", fill: "FFD9D9D9" });
+  const resetColumns = result.weekendResetRule!.match(/COLUMN\(\),\{([\d,]+)\}/)![1].split(",").map(Number);
+  expect(resetColumns).toEqual(expect.arrayContaining([15, 16, 36])); // normal and public-holiday weekends
+  for (const weekday of [14, 17]) expect(resetColumns).not.toContain(weekday);
   expect(result.conditional).toContain(`M${result.row}="t"`);
-  expect(result.conditional).toContain(`M${result.row}="W"`);
-  expect(result.conditional).toContain(`M${result.row}="W/2"`);
+  expect(result.workCells.map(({ code, fill }) => [code, fill])).toEqual([
+    ["W", "FFD9D9D9"], ["W/2", "FFD9D9D9"], ["W", "FFF4CCCC"],
+  ]);
+  expect(result.workColorRules.map(rule => rule.dxf)).toEqual(["14", "4", "14", "9"]);
+  const weekendColumns = result.workColorRules[0].formula.match(/COLUMN\(\),\{([\d,]+)\}/)![1].split(",").map(Number);
+  expect(weekendColumns).toEqual(expect.arrayContaining([15, 16, 29, 30])); // includes unmarked Jan 3–4
+  expect(weekendColumns).not.toContain(36); // Jan 24 is a weekend public holiday
+  const weekendRule = `ISNUMBER(MATCH(COLUMN(),{${weekendColumns.join(",")}},0))`;
+  expect(result.workColorRules.map(rule => rule.formula)).toEqual(
+    ["W", "W/2"].flatMap(code => [
+      `AND(M${result.row}="${code}",${weekendRule})`,
+      `AND(M${result.row}="${code}",NOT(${weekendRule}))`,
+    ]),
+  );
   expect(result.conditional).toContain(`M${result.row}="P"`);
   expect(result.appearance.holidayCell.font).toBe(result.appearance.holidayCell.fill);
   expect(result.appearance.holidayCell.fill).toBe("FFF4CCCC");

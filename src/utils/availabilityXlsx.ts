@@ -42,24 +42,34 @@ function styles() {
     xf(1, 3, 0, false, 6), xf(1, 3, 0, false, 6),
     ...[8, 7, 9, 10, 11, 6].map((fillId, index) => xf(index < 2 ? 1 : index === 4 ? 3 : 0, fillId).replace('horizontal="center"', 'horizontal="left"')),
     xf(0, 4).replace('horizontal="center"', 'horizontal="left"'), xf(1, 2, 60, false, 7), xf(1, 2, 0, false, 7),
-    xf(0, 4, 45), xf(0, 17, 0, false, 8), xf(4, 6)]; // 29: Weekday label; 30: pale calendar filter row.
+    xf(0, 4, 45), xf(0, 17, 0, false, 8), xf(4, 6),
+    xf(0, 5).replace('horizontal="center"', 'horizontal="left"')]; // 32: weekend work legend.
   // Explicit thin borders survive XLSX import; hairline borders can disappear.
   const border = (color: string, topColor = color, bottomColor = color) => `<border>${["left", "right", "top", "bottom"].map(side => `<${side} style="thin"><color rgb="FF${side === "top" ? topColor : side === "bottom" ? bottomColor : color}"/></${side}>`).join("")}</border>`;
   const whiteLeaveFont = '<font><b/><color rgb="FFFFFFFF"/></font>';
   const blackLeaveFont = '<font><b val="0"/><color rgb="FF000000"/></font>';
-  return `<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="${NS}"><fonts count="5"><font><sz val="10"/><name val="Arial"/><color rgb="FF000000"/></font><font><b/><sz val="10"/><name val="Arial"/><color rgb="FFFFFFFF"/></font><font><sz val="10"/><name val="Arial"/><color rgb="FFFFFFFF"/></font><font><b/><sz val="10"/><name val="Arial"/><color rgb="FF000000"/></font><font><sz val="10"/><name val="Arial"/><color rgb="FF${PALETTE.holiday}"/></font></fonts><fills count="${fills.length}">${fills.join("")}</fills><borders count="9"><border/>${border("E0E0E0")}${border("000000")}${border("0E4C84")}${border("595959", "000000")}${border("BFBFBF")}${border("5C5C5C")}${border("0E4C84", "0E4C84", "000000")}${border("C7C7C7", "C7C7C7", "000000")}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfs.join("")}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="${codeColors.length * 2 + 4}">${codeColors.map((color, index) => `<dxf>${index < 2 ? whiteLeaveFont : blackLeaveFont}${fill(color)}</dxf>`).join("")}${halfColors.map((color, index) => `<dxf>${index < 2 ? whiteLeaveFont : blackLeaveFont}${fill(color)}</dxf>`).join("")}${["FFFFFF", PALETTE.weekend, PALETTE.holiday].map(color => `<dxf>${fill(color)}</dxf>`).join("")}<dxf><font><color rgb="FF${PALETTE.holiday}"/></font>${fill(PALETTE.holiday)}</dxf></dxfs></styleSheet>`;
+  const dxfs = [
+    ...[...codeColors, ...halfColors].map((color, index) => `<dxf>${index % codes.length < 2 ? whiteLeaveFont : blackLeaveFont}${fill(color)}</dxf>`),
+    ...["FFFFFF", PALETTE.weekend, PALETTE.holiday].map(color => `<dxf>${fill(color)}</dxf>`),
+    `<dxf><font><color rgb="FF${PALETTE.holiday}"/></font>${fill(PALETTE.holiday)}</dxf>`,
+    `<dxf>${blackLeaveFont}${fill(PALETTE.weekend)}</dxf>`,
+    `<dxf><font><color rgb="FF${PALETTE.weekend}"/></font>${fill(PALETTE.weekend)}</dxf>`,
+  ];
+  return `<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="${NS}"><fonts count="5"><font><sz val="10"/><name val="Arial"/><color rgb="FF000000"/></font><font><b/><sz val="10"/><name val="Arial"/><color rgb="FFFFFFFF"/></font><font><sz val="10"/><name val="Arial"/><color rgb="FFFFFFFF"/></font><font><b/><sz val="10"/><name val="Arial"/><color rgb="FF000000"/></font><font><sz val="10"/><name val="Arial"/><color rgb="FF${PALETTE.holiday}"/></font></fonts><fills count="${fills.length}">${fills.join("")}</fills><borders count="9"><border/>${border("E0E0E0")}${border("000000")}${border("0E4C84")}${border("595959", "000000")}${border("BFBFBF")}${border("5C5C5C")}${border("0E4C84", "0E4C84", "000000")}${border("C7C7C7", "C7C7C7", "000000")}</borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="${xfs.length}">${xfs.join("")}</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles><dxfs count="${dxfs.length}">${dxfs.join("")}</dxfs></styleSheet>`;
 }
 
 function worksheet(options: AvailabilityExportOptions, year: number, members: ReturnType<typeof availabilityExportMembers>, projectNames: ReturnType<typeof availabilityProjectNames>) {
   const days = availabilityCalendarDays(year), last = column(days.length + 12);
-  const rows: string[] = [], merges: string[] = [], ranges: string[] = [];
+  const rows: string[] = [], merges: string[] = [];
+  const ranges: { ref: string; weekendColumns: number[]; ordinaryWeekendColumns: number[] }[] = [];
   const clearedFills: { address: string; dxf: number }[] = [];
   const heading: string[][] = Array.from({ length: 7 }, () => []);
-  const legend = [["s", "sickleave", 9], ["h", "vacation", 8], ["o", "other holiday (parental leave...)", 10],
-    ["t", "training / seminar day", 11], ["W", "working on public holiday", 12], ["P", "public holiday", 5]] as const;
+  const legend = [["s", "sickleave"], ["h", "vacation"], ["o", "other holiday (parental leave...)"],
+    ["t", "training / seminar day"], ["W", "working on public holiday"], ["P", "public holiday"]] as const;
   legend.forEach(([code, label], index) => {
     heading[index].push(cell(`A${index + 1}`, code, 20 + index), cell(`B${index + 1}`, label, 26));
   });
+  heading[0].push(cell("C1", "W", 32), cell("D1", "weekend work", 26));
   heading[0].push(cell("K1", "Month")); heading[1].push(cell("K2", "Calendar Week"));
   heading[2].push(cell("K3", "Day of Month")); heading[3].push(cell("K4", "Weekday", 29));
   merges.push("K1:L1", "K2:L2", "K3:L3", "K4:L6");
@@ -101,14 +111,20 @@ function worksheet(options: AvailabilityExportOptions, year: number, members: Re
       formula(`J${r}`, `SUMPRODUCT(((${range}="h")+(${range}="h/2")*0.5),${mask})`, used),
       formula(`K${r}`, `MAX(0,I${r}-J${r})`, Math.max(0, 30 - used)),
       formula(`L${r}`, `SUMPRODUCT(((${range}="s")+(${range}="s/2")*0.5),${mask})`, sick));
+    const weekendColumns: number[] = [];
+    const ordinaryWeekendColumns: number[] = [];
     entries.forEach((entry, index) => {
+      const weekendOnly = !entry.working && !entry.holiday;
+      if (!entry.working) weekendColumns.push(index + 13);
+      if (weekendOnly) ordinaryWeekendColumns.push(index + 13);
       if (entry.code) clearedFills.push({ address: `${column(index + 13)}${r}`, dxf: entry.code === "P" ? entry.working ? 10 : 11 : entry.holiday ? 12 : !entry.working ? 11 : 10 });
       const codeIndex = codes.indexOf(entry.code.replace("/2", ""));
-      const style = entry.code === "P" ? 31 : codeIndex >= 0 ? 8 + codeIndex + (entry.code.endsWith("/2") ? 5 : 0) : entry.holiday ? 5 : !entry.working ? 4 : 0;
+      const style = entry.code === "P" ? 31 : weekendOnly && codes[codeIndex] === "W" ? 4
+        : codeIndex >= 0 ? 8 + codeIndex + (entry.code.endsWith("/2") ? 5 : 0) : entry.holiday ? 5 : !entry.working ? 4 : 0;
       cells.push(cell(`${column(index + 13)}${r}`, entry.code, style));
     });
     rows.push(`<row r="${r}" ht="15.75" customHeight="1">${cells.join("")}</row>`);
-    ranges.push(`M${r}:${last}${r}`);
+    ranges.push({ ref: `M${r}:${last}${r}`, weekendColumns, ordinaryWeekendColumns });
   };
   const teams = [...new Set(members.map(member => member.tool))].sort();
   for (const team of [...teams, ...(!options.tool && !teams.includes("Other") ? ["Other"] : [])]) {
@@ -119,10 +135,22 @@ function worksheet(options: AvailabilityExportOptions, year: number, members: Re
   }
   // Formula-based rules retain editable training/full/half-day colours after users change cells.
   let priority = 0;
-  const conditionals = ranges.map(range => {
-    const first = range.split(":")[0];
-    return `<conditionalFormatting sqref="${range}">${[...codes, ...codes.map(code => `${code}/2`), "P"].map((code, index) =>
-      `<cfRule type="expression" dxfId="${code === "P" ? 13 : index}" priority="${++priority}"><formula>${first}="${code}"</formula></cfRule>`).join("")}</conditionalFormatting>`;
+  const columnMatches = (columns: number[]) =>
+    columns.length ? `ISNUMBER(MATCH(COLUMN(),{${columns.join(",")}},0))` : "FALSE";
+  const conditionals = ranges.map(({ ref, weekendColumns, ordinaryWeekendColumns }) => {
+    const first = ref.split(":")[0];
+    const ordinaryWeekend = columnMatches(ordinaryWeekendColumns);
+    const rule = (expression: string, dxf: number) =>
+      `<cfRule type="expression" dxfId="${dxf}" priority="${++priority}"><formula>${xml(expression)}</formula></cfRule>`;
+    const rules = [...codes, ...codes.map(code => `${code}/2`), "P"].map((code, index) => {
+      const matches = `${first}="${code}"`;
+      if (code !== "W" && code !== "W/2") return rule(matches, code === "P" ? 13 : index);
+      // The underlying fill is not readable by a Sheets formula. Classify by
+      // the exported site calendar so overwriting a P still keeps holiday styling.
+      return rule(`AND(${matches},${ordinaryWeekend})`, 14) + rule(`AND(${matches},NOT(${ordinaryWeekend}))`, index);
+    });
+    rules.push(rule(`AND(${first}="E",${columnMatches(weekendColumns)})`, 15));
+    return `<conditionalFormatting sqref="${ref}">${rules.join("")}</conditionalFormatting>`;
   }).join("") + clearedFills.map(({ address, dxf }) =>
     `<conditionalFormatting sqref="${address}"><cfRule type="expression" dxfId="${dxf}" priority="${++priority}"><formula>${address}=""</formula></cfRule></conditionalFormatting>`).join("");
   const widths = [22.5, 24.75, 18.5, 24.75, 25.38, 22.25, 10.75, 6.13, 6.75, 5.63, 11.25, 11.25];

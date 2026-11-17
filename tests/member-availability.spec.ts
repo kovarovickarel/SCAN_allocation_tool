@@ -263,8 +263,11 @@ for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`other leave is
   });
   const dialog = await load(page, theme);
   await dialog.getByRole('button', { name: 'Other leave', exact: true }).click();
-  await expect(dialog.getByRole('button', { name: 'Prague public holiday, 2026-02-02: Available', exact: true })).toBeDisabled();
-  await expect(dialog.getByRole('button', { name: 'Apply public holiday to shown sites on 2026-02-02', exact: true })).toBeDisabled();
+  await dialog.getByRole('button', { name: 'Prague public holiday, 2026-02-10: Available', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Apply public holiday to shown sites on 2026-02-11', exact: true }).click();
+  for (const day of ['10', '11']) {
+    await expect(dialog.getByRole('button', { name: `Test Member, 2026-02-${day}: Public holiday`, exact: true })).toBeVisible();
+  }
   await dialog.getByRole('button', { name: 'Test Member, 2026-02-02: Available', exact: true }).press('Space');
   await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-07: Weekend', exact: true })).toBeDisabled();
   const friday = dialog.getByRole('button', { name: 'Test Member, 2026-02-06: Available', exact: true });
@@ -298,6 +301,7 @@ for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`other leave is
   expect(saved.teamMembers[0].absences['2026-02-08']).toBeUndefined();
   expect(saved.teamMembers[0].absences['2026-02-09']).toBe('other');
   expect(saved.teamMembers[0].absences['2026-02-05']).toBeUndefined();
+  expect(saved.configuration.sitePublicHolidays.PRA).toEqual(['2026-02-05', '2026-02-10', '2026-02-11']);
   await page.getByRole('button', { name: 'Undo', exact: true }).click();
   await page.getByRole('button', { name: 'Open Other member availability', exact: true }).click();
   await expect(dialog.getByRole('button', { name: 'Test Member, 2026-02-02: Available', exact: true })).toHaveCount(1);
@@ -440,6 +444,115 @@ test("Working day keeps public-holiday click and drag toggling while clearing in
   await expect(dialog.getByRole('button', { name: 'Prague public holiday, 2026-02-10: Public holiday', exact: true })).toHaveCount(1);
   await dragSite('Public holiday');
   await expect(dialog.getByRole('button', { name: 'Prague public holiday, 2026-02-10: Available', exact: true })).toHaveCount(1);
+});
+
+test("Working day drags record and clear full and half weekend work", async ({ page }) => {
+  await installWorkspaceSaveCapture(page);
+  const dialog = await load(page, 'vibrant');
+  const cell = (day: string, state: string) => dialog.getByRole('button', { name: `Test Member, 2026-02-${day}: ${state}`, exact: true });
+  const dragBetween = async (start: ReturnType<typeof cell>, end: ReturnType<typeof cell>) => {
+    await end.scrollIntoViewIfNeeded();
+    const firstBox = (await start.boundingBox())!;
+    const lastBox = (await end.boundingBox())!;
+    await page.mouse.move(firstBox.x + 12, firstBox.y + 12);
+    await page.mouse.down();
+    await page.mouse.move(lastBox.x + 12, lastBox.y + 12, { steps: 8 });
+    await page.mouse.up();
+  };
+  await cell('06', 'Available').click();
+  await cell('09', 'Available').click();
+  await dialog.getByRole('button', { name: 'Working day', exact: true }).click();
+  await dragBetween(cell('06', 'Vacation'), cell('09', 'Vacation'));
+  await expect(cell('09', 'Available')).toBeVisible();
+
+  const weekendWork = cell('07', 'Working on weekend');
+  const sundayWork = cell('08', 'Working on weekend');
+  await expect(weekendWork).toHaveText('W');
+  await expect(weekendWork).toHaveCSS('color', 'rgb(55, 65, 81)');
+  await expect(weekendWork).toHaveCSS('background-color', 'rgb(226, 232, 240)');
+  await expect(sundayWork).toHaveText('W');
+
+  await dialog.getByRole('checkbox', { name: 'Half-day', exact: true }).check();
+  await dragBetween(weekendWork, sundayWork);
+  await expect(weekendWork).toHaveAttribute('title', /Half-day/);
+  await expect(sundayWork).toHaveAttribute('title', /Half-day/);
+  await expect(weekendWork).toHaveCSS('background-image', /linear-gradient\(135deg, rgb\(226, 232, 240\) 50%, rgb\(255, 255, 255\) 50%\)/);
+  await dragBetween(sundayWork, weekendWork);
+  await expect(cell('07', 'Weekend')).toBeVisible();
+  await expect(cell('08', 'Weekend')).toBeVisible();
+  await cell('07', 'Weekend').press('Space');
+  await dialog.getByRole('button', { name: 'Save & Close', exact: true }).click();
+  const saved = await savedWorkspace(page);
+  expect(saved.teamMembers[0].absences).toEqual({ '2026-02-07': { type: 'working', halfDay: true } });
+});
+
+test("right-click and right-drag erase member entries and clear holidays only from holiday rows", async ({ page }) => {
+  await installWorkspaceSaveCapture(page);
+  const data = workspace();
+  data.view.activeToolView = 'Other';
+  data.teamMembers = [
+    { ...member, tool: 'Other', absences: { '2026-02-03': { type: 'working', halfDay: true }, '2026-02-07': 'working', '2026-02-10': 'sick' } },
+    { ...member, id: 'bie', firstName: 'BIE', tool: 'Other', footprint: 'BIE', absences: {} },
+  ];
+  data.configuration.sitePublicHolidays = { PRA: ['2026-02-03', '2026-02-09', '2026-02-12', '2026-02-13'], BIE: ['2026-02-13'] };
+  await page.goto('/');
+  await page.getByLabel('Workspace file', { exact: true }).setInputFiles({ name: 'right-erase.json', mimeType: 'application/json', buffer: Buffer.from(serializeWorkspace(data)) });
+  await page.getByRole('button', { name: 'Import & Replace', exact: true }).click();
+  await page.getByRole('button', { name: 'Open Other member availability', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Other member availability' });
+  const button = (name: string) => dialog.getByRole('button', { name, exact: true });
+  const cell = (day: string, state: string) => button(`Test Member, 2026-02-${day}: ${state}`);
+  await button('Working day').click();
+  await cell('03', 'Working on public holiday').click({ button: 'right' });
+  await cell('03', 'Public holiday').click({ button: 'right' });
+  await expect(cell('03', 'Public holiday')).toHaveCount(1);
+
+  await button('Other leave').click();
+  const last = cell('10', 'Sick leave');
+  await last.scrollIntoViewIfNeeded();
+  const firstBox = (await cell('07', 'Working on weekend').boundingBox())!;
+  const lastBox = (await last.boundingBox())!;
+  await page.mouse.move(firstBox.x + 12, firstBox.y + 12);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(lastBox.x + 12, lastBox.y + 12, { steps: 8 });
+  await page.mouse.up({ button: 'right' });
+  await expect(cell('09', 'Public holiday')).toHaveCount(1);
+  await expect(cell('10', 'Available')).toHaveCount(1);
+  await expect(button('Other leave')).toHaveAttribute('aria-pressed', 'true');
+
+  await button('Prague public holiday, 2026-02-12: Public holiday').click({ button: 'right' });
+  await button('Apply public holiday to shown sites on 2026-02-13').click({ button: 'right' });
+  await button('Apply public holiday to shown sites on 2026-02-14').click({ button: 'right' });
+  await button('Save & Close').click();
+  const saved = await savedWorkspace(page);
+  expect(saved.teamMembers.find(person => person.id === 'm').absences).toEqual({});
+  expect(saved.configuration.sitePublicHolidays).toEqual({ PRA: ['2026-02-03', '2026-02-09'], BIE: [] });
+});
+
+test("weekend work keeps full and half days when site or header holidays are toggled", async ({ page }) => {
+  const dialog = await load(page, 'vibrant');
+  const button = (name: string) => dialog.getByRole('button', { name, exact: true });
+  const work = (day: string, holiday = false) =>
+    button(`Test Member, 2026-02-${day}: Working on weekend${holiday ? ' public holiday' : ''}`);
+  await expect(dialog.getByText('Weekend work', { exact: true })).toBeVisible();
+  await button('Working day').click();
+  await button('Test Member, 2026-02-07: Weekend').click();
+  await dialog.getByRole('checkbox', { name: 'Half-day', exact: true }).check();
+  await button('Test Member, 2026-02-08: Weekend').click();
+
+  await button('Prague public holiday, 2026-02-07: Weekend').click();
+  await button('Apply public holiday to shown sites on 2026-02-08').press('Space');
+  await expect(work('07', true)).toHaveCSS('background-color', 'rgb(134, 239, 172)');
+  await expect(work('08', true)).toHaveCSS('background-image', /rgb\(134, 239, 172\) 50%, rgb\(255, 255, 255\) 50%/);
+  for (const day of ['07', '08']) {
+    await expect(work(day, true)).toHaveText('W');
+    await expect(work(day, true)).toHaveCSS('color', 'rgb(22, 101, 52)');
+  }
+  await button('Prague public holiday, 2026-02-07: Public holiday').click({ button: 'right' });
+  await button('Remove public holiday from shown sites on 2026-02-08').press('Space');
+  await expect(work('07')).toHaveCSS('background-color', 'rgb(226, 232, 240)');
+  await expect(work('08')).toHaveCSS('background-image', /rgb\(226, 232, 240\) 50%, rgb\(255, 255, 255\) 50%/);
+  for (const day of ['07', '08']) await expect(work(day)).toHaveCSS('color', 'rgb(55, 65, 81)');
 });
 
 test("removing public holidays never restores overwritten leave, including members in other teams at that site", async ({ page }) => {
@@ -740,7 +853,7 @@ test('half-day leave scales capacity, salary, annual totals and cross-team edits
   expect(memberYearAbsenceTotals(person, 2026)).toEqual({ vacation: .5, sick: .5 });
   const holiday = membersWithHolidays([person], { PRA: ['2026-02-02'] })[0];
   expect(memberMonthAvailability(holiday, feb).absentDays).toBe(2);
-  expect(memberMonthAvailability({ ...holiday, absences: { ...holiday.absences, '2026-02-02': 'working' } }, feb).absentDays).toBe(1);
+  expect(memberMonthAvailability({ ...holiday, absences: { ...holiday.absences, '2026-02-02': 'working' } }, feb).absentDays).toBe(2);
   const charge = externalSalaryCharge({ ...person, isExternal: true, monthlySalaryCost: 1000 }, .25, 'EUR', feb)!;
   expect(charge.salary).toBeCloseTo(925); expect(charge.capacityFTE).toBeCloseTo(.925);
   expect(charge.salary * charge.allocatedFTE / charge.capacityFTE).toBeCloseTo(250);
@@ -787,13 +900,13 @@ for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`half-day calen
   await expect(page.getByRole('button', { name: 'Test Member, 2026-02-03: Sick leave', exact: true })).toHaveCSS('background-image', /linear-gradient/);
 });
 
-test('half-day holiday work restores half capacity and pay, transfers and clears with the holiday', () => {
+test('half-day holiday work keeps full regular holiday occupancy, transfers and clears with the holiday', () => {
   const half = { type: 'working', halfDay: true } as const;
   const person = { ...member, absences: { '2026-02-02': half }, _siteHolidays: ['2026-02-02'], isExternal: true, monthlySalaryCost: 1000 };
-  expect(memberMonthAvailability(person, feb).absentDays).toBe(.5);
-  expect(memberMonthAvailability(person, feb).capacity).toBeCloseTo(.975);
+  expect(memberMonthAvailability(person, feb).absentDays).toBe(1);
+  expect(memberMonthAvailability(person, feb).capacity).toBeCloseTo(.95);
   expect(memberYearAbsenceTotals(person, 2026)).toEqual({ vacation: 0, sick: 0 });
-  expect(externalSalaryCharge(person, .25, 'EUR', feb)!.salary).toBeCloseTo(975);
+  expect(externalSalaryCharge(person, .25, 'EUR', feb)!.salary).toBeCloseTo(950);
   expect(memberMonthAvailability({ ...person, _siteHolidays: [] }, feb).capacity).toBe(1);
   const sibling = { ...person, id: 'sibling', tool: 'Other', absences: {} };
   const shared = applyMemberAbsenceEdits([{ ...person, absences: {} }, sibling], { m: person.absences });
