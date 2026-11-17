@@ -1,4 +1,6 @@
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
+import { ProjectTimelineHeatmapScale } from "../ui/ProjectTimelineHeatmapScale";
+import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { useProjectReleaseVisibility } from "../../hooks/useProjectReleaseVisibility";
 import { releasesFromDrafts } from "../../utils/systemReleases";
@@ -42,6 +44,8 @@ export function ProjectTimelineModal({
   const [localProject, setLocalProject] = useState(() => deepClone(project));
   const [localCards, setLocalCards] = useState(() => deepClone(cards));
   const [isDirty, setIsDirty] = useState(false);
+  const toolName = activeToolView === "all" ? "" : ` ${activeToolView}`;
+  const timelineTitle = `${localProject.name} Project${toolName} Timeline`;
 
   const { startYear, startMonth } = useMemo(() => {
     const raw = localProject.startDate || "2026-01";
@@ -552,8 +556,8 @@ export function ProjectTimelineModal({
           isRetro
             ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] text-white px-4 py-2 border-b-2 border-black font-mono"
             : "bg-slate-900 text-white px-6 py-3.5 border-b border-slate-800"
-        } flex items-center justify-between shrink-0`}>
-          <div className="flex items-center gap-3">
+        } flex flex-wrap items-center justify-between gap-y-2 shrink-0`}>
+          <div className="flex min-w-0 items-center gap-3 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
             <div className={`p-1.5 ${
               isRetro
                 ? "bg-[#000050] border-2 border-t-white border-l-white border-b-black border-r-black text-white"
@@ -565,7 +569,7 @@ export function ProjectTimelineModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className={`text-base font-black tracking-tight ${isRetro ? "font-mono text-white" : ""}`}>{localProject.name} Monthly Staffing Timeline</h2>
+                <h2 className={`text-base font-black tracking-tight ${isRetro ? "font-mono text-white" : ""}`}>{timelineTitle}</h2>
                 {localProject.type && (
                   <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded border shadow-2xs ${
                     isRetro
@@ -595,9 +599,10 @@ export function ProjectTimelineModal({
                 </span>
               </div>
             </div>
+            <TimelineHelpGuide view="staffing" timelineTitle={timelineTitle} />
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2.5">
             {!isBasicMode && (
               <>
                 <button
@@ -1698,19 +1703,7 @@ export function ProjectTimelineModal({
             ? "bg-[#d4d0c8] border-t-2 border-white px-5 py-3 font-mono text-black"
             : "bg-slate-50 border-t border-slate-200 px-6 py-3"
         } flex flex-wrap items-center justify-between gap-3 text-xs shrink-0`}>
-          <div className="flex items-center flex-wrap gap-4">
-            <span className={`font-bold ${isRetro ? "text-black font-mono uppercase" : "text-slate-700 uppercase"} text-[10px] tracking-wider`}>Heatmap Scale:</span>
-            <div className="flex items-center gap-2">
-              <span className={`text-[11px] font-mono font-bold ${isRetro ? "text-black" : "text-emerald-700"}`}>0.0 FTE</span>
-              <div
-                className={`w-36 h-3 ${isRetro ? "border-2 border-black rounded-none shadow-[1px_1px_0px_#000]" : "rounded-full border border-slate-300 shadow-inner"}`}
-                style={{
-                  background: "linear-gradient(to right, rgb(34, 197, 94), rgb(234, 200, 24) 50%, rgb(239, 68, 68))",
-                }}
-              />
-              <span className={`text-[11px] font-mono font-bold ${isRetro ? "text-red-700" : "text-red-600"}`}>3.0+ FTE</span>
-            </div>
-          </div>
+          <ProjectTimelineHeatmapScale />
 
           <div className="flex items-center gap-2.5">
             <button

@@ -1,6 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { ThemeContext } from "../../constants";
 import type { PlanningExportOptions } from "../../utils/portfolioPlanning";
+import { SpreadsheetIcon } from "../ui/icons";
 
 export function ProjectPlanningExportButton({ options }: { options: PlanningExportOptions }) {
   const { isBasicMode, isRetro } = useContext(ThemeContext);
@@ -45,9 +46,7 @@ export function ProjectPlanningExportButton({ options }: { options: PlanningExpo
           : "px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white rounded-lg shadow"
         : "pl-2 pr-[3px] py-1 rounded text-orange-400 hover:text-orange-300 hover:bg-slate-800/80"}`}>
       <span>{allProjects ? "Export all" : "Export"}</span>
-      {(!allProjects || !isBasicMode) && <svg width="16" height="16" className="transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="M14 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z" /><path d="M14 2v7h7M7 13h10M7 17h10M11 11v9" />
-      </svg>}
+      {(!allProjects || !isBasicMode) && <SpreadsheetIcon className="transition-transform group-hover:scale-110" />}
     </button>
     {feedback && <div role={feedback.error ? "alert" : "status"} className="absolute right-0 top-full mt-2 z-40 w-72 p-3 pr-7 rounded border border-slate-300 bg-white text-slate-800 shadow-lg text-xs font-normal">
       {feedback.message}

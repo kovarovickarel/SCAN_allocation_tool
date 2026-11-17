@@ -17,7 +17,7 @@ import { ProjectPlanningExportButton } from "./components/features/ProjectPlanni
 import type { WorkspaceData, WorkspaceView } from "./utils/workspaceFile";
 import { workpackageFinishViolation, workpackageMainMonths } from "./utils/workpackageFinishTargets";
 import { SummaryDashboard } from "./components/features/SummaryDashboard";
-import { BeachUmbrellaIcon, ProjectIcon } from "./components/ui/icons";
+import { BeachUmbrellaIcon, ProjectIcon, SummaryDashboardIcon } from "./components/ui/icons";
 import { NonFteWorkpackageModal } from "./components/features/NonFteWorkpackageModal";
 import { AssignNonFteModal } from "./components/features/AssignNonFteModal";
 import { purchaseCost, purchaseCostSummary, purchaseMonthlyCosts, purchasePaymentSchedule, purchaseScheduleExceedsProject, isPurchasePaymentAltered, validPurchaseMonths, purchaseSubcategory, retainUsedSuppliers, ensureOtherSupplier, hasValidPurchasePaymentShares } from "./utils/nonFteWorkpackages";
@@ -60,6 +60,7 @@ import {
 import { reconcileProjectTimelineAllocations } from "./utils/timelineAllocations";
 import { ConfigurationModal } from "./components/features/ConfigurationModal";
 import { HelpGuideModal } from "./components/features/HelpGuideModal";
+import { HelpGuideButton } from "./components/ui/HelpGuideButton";
 import {
   AddFunctionModal,
   AddProjectModal,
@@ -68,7 +69,6 @@ import {
   CalendarGanttIcon,
   GlobeIcon,
   GripHorizontalIcon,
-  HelpCircleIcon,
   ManagementIcon,
   PaletteIcon,
   PlusIcon,
@@ -868,19 +868,7 @@ export default function App() {
               <SettingsIcon size={12} className={isRetro ? "text-black" : "text-blue-400 group-hover:rotate-45 transition-transform duration-200"} />
               <span>Default&apos;s Configuration</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setShowHelpModal(true)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold transition-all shadow-xs cursor-pointer group ${
-                isRetro
-                  ? "bg-[#c0c0c0] text-black font-mono font-bold border-2 border-t-white border-l-white border-b-black border-r-black active:border-t-black active:border-l-black active:border-b-white active:border-r-white"
-                  : "bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 border border-slate-700 hover:border-amber-500/50 rounded-lg"
-              }`}
-              title="Open User Guide & Feature Reference"
-            >
-              <HelpCircleIcon size={13} className={isRetro ? "text-black" : "text-amber-400 group-hover:scale-110 transition-transform"} />
-              <span>Help &amp; Guide</span>
-            </button>
+            <HelpGuideButton onClick={() => setShowHelpModal(true)} />
             <button
               type="button"
               onClick={() => setAppMode((m) => (m === "extended" ? "basic" : "extended"))}
@@ -924,7 +912,7 @@ export default function App() {
               className={`w-9 h-9 flex items-center justify-center transition-colors cursor-pointer border ${isRetro
                 ? showSummaryDashboard ? "bg-[#000080] text-white border-2 border-t-black border-l-black border-b-white border-r-white" : "bg-[#c0c0c0] text-black border-2 border-t-white border-l-white border-b-black border-r-black"
                 : showSummaryDashboard ? "bg-blue-600 text-white border-transparent shadow-md ring-2 ring-blue-400 rounded-lg" : "bg-transparent text-slate-400 border-transparent hover:text-white hover:bg-slate-800 rounded-lg"}`}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              <SummaryDashboardIcon />
             </button>
 
             <button
@@ -1337,7 +1325,6 @@ export default function App() {
         {showHelpModal && (
           <HelpGuideModal
             onClose={() => setShowHelpModal(false)}
-            HelpCircleIcon={HelpCircleIcon}
             GripHorizontalIcon={GripHorizontalIcon}
             GlobeIcon={GlobeIcon}
             CalendarGanttIcon={CalendarGanttIcon}

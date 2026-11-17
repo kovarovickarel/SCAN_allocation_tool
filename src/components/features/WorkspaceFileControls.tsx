@@ -1,18 +1,12 @@
 import { SelectiveImportReview } from "./SelectiveImportReview";
 import { WorkspaceHistoryButtons } from "../ui/WorkspaceHistoryButtons";
+import { FileArrowIcon } from "../ui/icons";
 import type { WorkspaceHistory } from "../../utils/workspaceHistory";
 import { useContext, useEffect, useRef, useState } from "react";
 import { ThemeContext } from "../../constants";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { MAX_WORKSPACE_FILE_BYTES, parseWorkspaceFile, serializeWorkspace, workspaceExportFilename } from "../../utils/workspaceFile";
 import type { WorkspaceData, WorkspaceFile } from "../../utils/workspaceFile";
-
-function FileArrowIcon({ downward = false }: { downward?: boolean }) {
-  return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-    <path d="M4 16v4h16v-4" />
-    {downward ? <path d="M12 3v12m-4-4 4 4 4-4" /> : <path d="M12 15V3m-4 4 4-4 4 4" />}
-  </svg>;
-}
 
 type SavePickerWindow = Window & {
   showSaveFilePicker?: (options: { id: string; suggestedName: string; startIn: string;

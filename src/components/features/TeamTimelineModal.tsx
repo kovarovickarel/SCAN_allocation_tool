@@ -1,3 +1,4 @@
+import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
 import { memberMonthAvailability } from "../../utils/memberAvailability";
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
@@ -1119,8 +1120,8 @@ export function TeamTimelineModal({
           isRetro
             ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] text-white px-4 py-2 border-b-2 border-black font-mono"
             : "bg-slate-900 text-white px-6 py-3.5 border-b border-slate-800"
-        } flex items-center justify-between shrink-0`}>
-          <div className="flex items-center gap-3">
+        } flex flex-wrap items-center justify-between gap-y-2 shrink-0`}>
+          <div className="flex min-w-0 items-center gap-3 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
             <div className={`p-1.5 ${
               isRetro
                 ? "bg-[#000050] border-2 border-t-white border-l-white border-b-black border-r-black text-white"
@@ -1141,9 +1142,10 @@ export function TeamTimelineModal({
                 Span: <strong className="text-white">{monthLabels[0]?.fullLabel}</strong> &rarr; <strong className="text-white">{monthLabels[monthLabels.length - 1]?.fullLabel}</strong> ({totalMonths} Mo) &middot; Team Capacity: <strong className="text-white">{teamCapacityTotal.toFixed(2)} FTE</strong>
               </p>
             </div>
+            <TimelineHelpGuide view="combined" />
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap justify-end">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-1 2xl:gap-2">
             <button
               type="button"
               onClick={() => {

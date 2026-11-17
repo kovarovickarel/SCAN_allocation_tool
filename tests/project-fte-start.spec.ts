@@ -98,7 +98,11 @@ test("manual schedules re-open for deadline correction instead of automatic warn
   await page.getByRole("button", { name: "Confirm & Place in Project" }).click();
   await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).nth(1).click();
   dialog = page.getByRole("dialog");
-  await expect(dialog.getByRole("heading", { name: "MBAG Monthly Staffing Timeline" })).toBeVisible();
+  await expect(dialog.getByRole("heading", { name: "MBAG Project KPI Timeline", exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Help & Guide", exact: true }).click();
+  const guide = page.getByRole("dialog", { name: "MBAG Project KPI Timeline Help & Guide", exact: true });
+  await expect(guide).toBeVisible();
+  await guide.getByRole("button", { name: "Close Guide", exact: true }).click();
   await expect(dialog.getByText("Reschedule test", { exact: true })).toBeVisible();
   await dialog.getByRole("button", { name: "Expand support tracks", exact: true }).click();
   for (const prefix of ["supporting_"]) {

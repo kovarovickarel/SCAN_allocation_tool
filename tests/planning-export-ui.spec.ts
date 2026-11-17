@@ -84,15 +84,30 @@ test("Help guide exposes the current planning, selective import and Excel export
   await expect(dialog.getByRole("link", { name: /importer/i })).toHaveCount(0);
   await dialog.getByRole("button", { name: "Save & Transfer Workspace", exact: true }).click();
   await expect(dialog.getByText("Select what to import", { exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "FTE Calculation & Overheads", exact: true }).click();
+  await dialog.getByRole("button", { name: "Effort, Costs & Defaults", exact: true }).click();
   await expect(dialog.getByRole("heading", { name: "Phase effort in man-hours" })).toBeVisible();
+  await expect(dialog.locator("code").filter({ hasText: "6 × 160 MH = 960 MH" })).toHaveClass("font-bold font-mono");
   await expect(dialog.getByRole("heading", { name: "Weekend Work Factors", exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "Member Availability", exact: true }).click();
-  await expect(dialog.getByRole("heading", { name: "Team and global availability", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "Half-days and holiday work", exact: true })).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "Save, cancel and transfer calendars", exact: true })).toBeVisible();
-  await dialog.getByRole("button", { name: "Team Staffing & Combined Timeline", exact: true }).click();
-  await expect(dialog.getByRole("button", { name: "Member Availability", exact: true })).toBeVisible();
+  await dialog.getByRole("button", { name: "Views, Modes & Themes", exact: true }).click();
+  const modes = dialog.getByRole("heading", { name: "Extended and Basic modes", exact: true }).locator("..");
+  const display = dialog.getByRole("heading", { name: "Themes and layout", exact: true }).locator("..");
+  await expect(modes.getByTestId("help-guide-cue")).toHaveText("Mode: Extended");
+  await expect(display.getByTestId("help-guide-cue")).toHaveText("Theme: Vibrant");
+  await expect(display.getByText(/turn on compact view/i)).toBeVisible();
+  await dialog.getByRole("button", { name: "Timelines", exact: true }).click();
+  await expect(dialog.getByRole("heading", { name: "Choose a timeline", exact: true })).toBeVisible();
+  for (const [timeline, control] of [
+    ["Project Overall Timeline", "Manual Adjust"],
+    ["Project Spending Timeline", "Graph View"],
+    ["Team Combined Timeline", "Auto-allocate team"],
+    ["Team Availability Timeline", "Group by team"],
+  ]) {
+    const section = dialog.getByRole("heading", { name: timeline, exact: true }).locator("..");
+    await expect(section.getByTestId("help-guide-cue")).toBeVisible();
+    await expect(section.getByText(control, { exact: true })).toBeVisible();
+  }
+  await expect(dialog.getByText("GM Project Timeline", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("GM Project KPI Timeline", { exact: true })).toBeVisible();
 
   await page.keyboard.press("Escape"); await expect(dialog).toHaveCount(0);
 });

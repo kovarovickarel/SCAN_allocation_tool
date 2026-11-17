@@ -1,9 +1,10 @@
+import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
 import { AvailabilityCells, AvailabilityCategoryBand, AvailabilityHeaderDays, AvailabilityMemberRow, DAY_SIZE, HOLIDAY_HEIGHT, LEAVE_COLORS, EMPTY_DATES, EMPTY_ABSENCES, EMPTY_TEAMS, labelClass, rowStyle, siteColors, type CalendarInteraction } from "./AvailabilityCalendarRows";
 import React, { useCallback, useMemo, useRef, useState } from "react";
 import type { MemberAbsence, MemberLeaveType, TeamMemberRecord } from "../../types";
 import { FOOTPRINT_MAP, ThemeContext, TOOL_MAP, TOOLS } from "../../constants";
-import { BeachUmbrellaIcon, GlobeIcon, ChevronDownIcon, ChevronRightIcon, ToolIcon } from "../ui/icons";
+import { BeachUmbrellaIcon, GlobeIcon, ChevronDownIcon, ChevronRightIcon, SpreadsheetIcon, ToolIcon } from "../ui/icons";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
 import { useHorizontalSelectionAutoScroll } from "../../hooks/useHorizontalSelectionAutoScroll";
 import { isWorkingDay, memberAbsenceType, memberAbsenceDays, removeHolidayAbsences } from "../../utils/memberAvailability";
@@ -231,12 +232,13 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   const handleHoliday = useCallback((date: string) => interactionRef.current?.onHoliday(date), []);
   return <div className="fixed inset-0 z-[100] bg-black/75 backdrop-blur-xs flex items-center justify-center p-3 md:p-6" role="presentation">
     <section role="dialog" aria-modal="true" aria-label={`${toolName} member availability`} className={`text-slate-800 flex flex-col w-[1380px] max-w-[97vw] h-[92vh] max-h-[95vh] overflow-hidden ${isRetro ? "bg-[#d4d0c8] border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono" : "bg-white rounded-2xl shadow-2xl border border-slate-300"}`}>
-      <header className={`flex items-center justify-between gap-4 shrink-0 text-white ${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] px-4 py-2 border-b-2 border-black" : "bg-slate-900 px-6 py-3.5 border-b border-slate-800"}`}>
-        <div className="flex items-center gap-3 min-w-0">
+      <header className={`flex flex-wrap items-center justify-between gap-x-4 gap-y-2 shrink-0 text-white ${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] px-4 py-2 border-b-2 border-black" : "bg-slate-900 px-6 py-3.5 border-b border-slate-800"}`}>
+        <div className="flex min-w-0 items-center gap-3 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
           <div className={`${global ? "p-2" : "p-1.5"} shrink-0 ${isRetro ? "bg-[#000050] border-2 border-black" : `${global ? "bg-blue-600/30 border-blue-500/40 text-blue-400" : `${tool.accent} ${tool.border} ${tool.text}`} rounded-lg border`}`}><BeachUmbrellaIcon size={18} /></div>
           <div><h2 className="font-black text-base tracking-tight">{toolName} Team Availability</h2><p className="text-xs text-slate-400 mt-0.5">{members.length} member{members.length === 1 ? "" : "s"} · {global ? "Global" : "Team"} Capacity: <strong className="text-white">{teamCapacity.toFixed(2)} FTE</strong></p></div>
+          <TimelineHelpGuide view="availability" />
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {global && <><div role="group" aria-label="Availability grouping" className={`h-7 w-64 flex overflow-hidden border shrink-0 ${isRetro ? "border-black" : "rounded border-slate-600"}`}>
             {(["site", "category"] as const).map(value => <button key={value} type="button"
               aria-pressed={grouping === value} onClick={() => {
@@ -260,9 +262,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
           <div className="flex items-center border-l border-r border-slate-700 px-3 mx-1">
           <button type="button" onClick={exportAvailability} disabled={exporting || !exportContext} aria-busy={exporting} aria-label="Export team availability" title={global ? "Export all teams to Excel" : "Export this team to Excel"} className={`group h-7 inline-flex items-center gap-1.5 text-xs font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-wait ${isRetro ? "px-3 py-1.5 bg-orange-600 hover:bg-orange-500 text-white font-mono border-2 border-t-orange-300 border-l-orange-300 border-b-black border-r-black active:border-t-black active:border-l-black" : "px-3 py-1.5 bg-orange-500 hover:bg-orange-400 text-white rounded-lg shadow"}`}>
             <span>{exporting ? "Preparing…" : "Export"}</span>
-            {!isBasicMode && <svg width="16" height="16" className="transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M14 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z" /><path d="M14 2v7h7M7 13h10M7 17h10M11 11v9" />
-            </svg>}
+            {!isBasicMode && <SpreadsheetIcon className="transition-transform group-hover:scale-110" />}
           </button>
           </div>
           <button type="button" onClick={onClose} aria-label="Close member availability" className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer">✕</button>

@@ -1,6 +1,28 @@
 import { memo } from "react";
 import type { SvgIconProps, ToolIconProps } from '../features/componentTypes';
 
+export function FileArrowIcon({ downward = false }: { downward?: boolean }) {
+  return <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 16v4h16v-4" />
+    {downward ? <path d="M12 3v12m-4-4 4 4 4-4" /> : <path d="M12 15V3m-4 4 4-4 4 4" />}
+  </svg>;
+}
+
+export function SpreadsheetIcon({ size = 16, className }: SvgIconProps) {
+  return <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M14 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V9z" /><path d="M14 2v7h7M7 13h10M7 17h10M11 11v9" />
+  </svg>;
+}
+
+export function SummaryDashboardIcon({ size = 18, className }: SvgIconProps) {
+  return <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <rect x="14" y="14" width="7" height="7" rx="1" />
+  </svg>;
+}
+
 export const LightningBoltIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
     <path d="M13 2 4 14h7l-1 8 10-13h-7l1-7Z" />
@@ -90,6 +112,12 @@ export const CalendarGanttIcon = memo(({ size = 14, className = "" }: SvgIconPro
     <line x1="3" y1="10" x2="21" y2="10" />
     <line x1="7" y1="14" x2="13" y2="14" strokeWidth="2.5" />
     <line x1="11" y1="18" x2="17" y2="18" strokeWidth="2.5" />
+  </svg>
+));
+
+export const SpendingGraphIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M3 3v18h18M7 14l5-6 5 3 4-7" />
   </svg>
 ));
 

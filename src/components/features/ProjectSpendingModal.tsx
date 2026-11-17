@@ -1,4 +1,5 @@
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
+import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { useProjectReleaseVisibility } from "../../hooks/useProjectReleaseVisibility";
 import { SystemReleasesTrack } from "./SystemReleasesTrack";
@@ -16,7 +17,7 @@ import { getCrossTeamMemberIds } from "../../utils/memberAllocations";
 import { computeWorkpackageLifecycleTimeline, normalizeMilestones } from "../../utils/helpers";
 import { useEuroCostConversion } from "../../hooks/useEuroCostConversion";
 import { useEscapeKey } from "../../hooks/useEscapeKey";
-import { CalendarGanttIcon, ChevronDownIcon, ChevronRightIcon, LockIcon, UnlockIcon, ManagementIcon, RotateCcwIcon, ToolIcon } from "../ui/icons";
+import { CalendarGanttIcon, ChevronDownIcon, ChevronRightIcon, LockIcon, UnlockIcon, ManagementIcon, RotateCcwIcon, SpendingGraphIcon, ToolIcon } from "../ui/icons";
 import { PersonIcon } from "../ui/PersonIcon";
 import { ProjectClassBadge } from "../ui/ProjectClassBadge";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
@@ -297,7 +298,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     <div onClick={(event) => event.stopPropagation()} className={`w-[1360px] max-w-[97vw] h-[92vh] max-h-[95vh] flex flex-col overflow-hidden ${
       isRetro ? "bg-[#d4d0c8] rounded-none border-2 border-t-white border-l-white border-b-black border-r-black shadow-[6px_6px_0px_#000] font-mono text-black" : "bg-white rounded-2xl shadow-2xl border border-slate-300"}`}>
       <div className={`flex items-center justify-between gap-3 flex-wrap shrink-0 ${isRetro ? "bg-gradient-to-r from-[#000080] via-[#0000a8] to-[#1084d0] text-white px-4 py-2 border-b-2 border-black font-mono" : "bg-slate-900 text-white px-6 py-3.5 border-b border-slate-800"}`}>
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex min-w-0 items-center gap-3 [&>button]:shrink-0 [&>button]:whitespace-nowrap">
           <div className={`p-1.5 flex items-center justify-center text-lg font-bold shrink-0 text-yellow-400 ${isRetro ? "bg-purple-950 border-2 border-t-purple-300 border-l-purple-300 border-b-purple-900 border-r-purple-900" : isBasic ? "rounded-lg bg-purple-900/40 border border-purple-500/40" : "p-2 rounded-lg bg-purple-600/30 border border-purple-500/40"}`}><span className="w-[18px] h-[18px] flex items-center justify-center">€</span></div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
@@ -313,8 +314,9 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
               <span title={peak > 0 ? monthLabels[peakIndex] : "No priced allocations yet"}>Peak: <strong className="text-red-500">{amount(peakCost, true)}</strong>{peak > 0 ? ` (${monthLabels[peakIndex]})` : ""}</span>
             </div>
           </div>
+          <TimelineHelpGuide view="spending" />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
           {!graphView && <>
           {onSavePayments && <>
             <button type="button" disabled={!editableTracks.length} aria-pressed={manualAdjust}
@@ -350,7 +352,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
             : `text-yellow-300 border border-purple-500/40 rounded-lg shadow-sm ${isBasic ? "bg-purple-900/40 hover:bg-purple-900/50" : "bg-purple-600/30 hover:bg-purple-600/40"}`}`} aria-pressed={graphView}
             onClick={() => { setEditingPayment(null); setGraphView((previous) => !previous); }} title={graphView ? "Return to the spending timeline" : "Show cumulative and monthly spending charts"}>
             {graphView ? <CalendarGanttIcon size={14} className="text-yellow-300" /> :
-              <svg width="14" height="14" className="text-yellow-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3v18h18M7 14l5-6 5 3 4-7" /></svg>}
+              <SpendingGraphIcon size={14} className="text-yellow-300" />}
             <span className="grid">
               <span className="invisible [grid-area:1/1]" aria-hidden="true">Timeline View</span>
               <span className="[grid-area:1/1]">{graphView ? "Timeline View" : "Graph View"}</span>

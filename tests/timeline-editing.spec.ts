@@ -21,7 +21,7 @@ test.describe("timeline editing behavior", () => {
 
     await page.getByTitle("View Project Timeline (Gantt Chart)").first().click();
     const dialog = page.getByRole("dialog");
-    await expect(dialog.getByRole("heading", { name: "GM Monthly Staffing Timeline" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "GM Project Timeline", exact: true })).toBeVisible();
     await dialog.getByRole("button", { name: "Manual Adjust: Disabled" }).click();
 
     const rows = dialog.locator("[data-timeline-row]");

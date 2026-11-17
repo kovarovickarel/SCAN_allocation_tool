@@ -46,7 +46,7 @@ test.describe("visual coverage across screens and interactions", () => {
     await openApp(page);
 
     await page.getByTitle("View Project Timeline (Gantt Chart)").first().click();
-    await expect(page.getByRole("heading", { name: "GM Monthly Staffing Timeline" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "GM Project Timeline", exact: true })).toBeVisible();
     await expect(page).toHaveScreenshot("project-staffing-timeline.png", {
       fullPage: true,
       maxDiffPixelRatio: 0.002,
@@ -125,13 +125,24 @@ test.describe("visual coverage across screens and interactions", () => {
     await page.getByRole("button", { name: "Help & Guide" }).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog.getByRole("heading", { name: "SCAN Tooling Calculator Guide" })).toBeVisible();
-    await expect(page).toHaveScreenshot("guide-team-staffing.png", {
+    const firstTopic = dialog.getByTestId("help-guide-topics").getByRole("button").first();
+    await expect(firstTopic).toHaveText("Overview");
+    await expect(firstTopic).toHaveAttribute("aria-pressed", "true");
+    await expect(dialog.getByRole("heading", { name: "What the app is for" })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "Save and continue later" })).toBeVisible();
+    await expect(page).toHaveScreenshot("guide-overview.png", {
       fullPage: true,
       maxDiffPixelRatio: 0.002,
     });
 
-    await dialog.getByRole("button", { name: "Gantt Timeline & Range Editing" }).click();
-    await expect(page).toHaveScreenshot("guide-gantt-timeline.png", {
+    await dialog.getByRole("button", { name: "Timelines", exact: true }).click();
+    await expect(page).toHaveScreenshot("guide-timelines.png", {
+      fullPage: true,
+      maxDiffPixelRatio: 0.002,
+    });
+
+    await dialog.getByRole("button", { name: "Projects & Workpackages" }).click();
+    await expect(page).toHaveScreenshot("guide-projects-and-workpackages.png", {
       fullPage: true,
       maxDiffPixelRatio: 0.002,
     });
