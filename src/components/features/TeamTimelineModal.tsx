@@ -3,6 +3,7 @@ import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { absoluteMonth, memberMonthAvailability, memberMonthPremiumWork, memberPremiumWorkOnDate, type PremiumWorkDay } from "../../utils/memberAvailability";
 import { editPremiumAllocation, makePremiumAssignment, premiumAssignmentDate, premiumAssignmentHours, premiumAssignmentKey, workpackagePremiumHours } from "../../utils/premiumAssignments";
 import { PremiumWorkDays, type PremiumWorkBooking } from "./PremiumWorkDays";
+import { allocateTeamWithPremiums } from "../../utils/automaticPremiumAllocation";
 import { PersonalStaffingLeaveRows } from "./PersonalStaffingLeaveRows";
 import { ReleaseValidationPrompt } from "./ReleaseValidationPrompt";
 import { validateReleaseDrafts, releasePlanForSave, releasesFromDrafts, type SystemReleaseDraft } from "../../utils/systemReleases";
@@ -607,8 +608,10 @@ export function TeamTimelineModal({
     setIsDirty(true);
   }, [hasTeamAllocations, members, toolName, isCardInTeamScope, setRangeSelection]);
 
-  const applyAutoAllocation = useCallback((result: ReturnType<typeof allocateTeamByProjectPriority>) => {
-    const updates = new Map<string, { memberAssignments: NumericMap; memberMonthlyAssignments: MonthlyNumericMap }>();
+  const applyAutoAllocation = useCallback((result: ReturnType<typeof allocateTeamByProjectPriority> & {
+    premiumAllocations?: Map<string, NonNullable<WorkpackageCard["memberPremiumAssignments"]>>;
+  }) => {
+    const updates = new Map<string, Partial<WorkpackageCard>>();
     const projectUpdates = new Map<string, { assignments: NumericMap; monthly: MonthlyNumericMap }>();
     for (const selected of autoAllocationProjects) {
       const summarize = (previous: NumericMap, monthly: MonthlyNumericMap): NumericMap => {
@@ -624,9 +627,12 @@ export function TeamTimelineModal({
         const monthly = result.allocations.get(wp.card.id);
         if (!monthly) continue;
         const assignments = summarize(wp.card.memberAssignments || {}, monthly);
+        const premium = result.premiumAllocations?.get(wp.card.id);
         if (JSON.stringify(monthly) !== JSON.stringify(wp.card.memberMonthlyAssignments || {})
-          || JSON.stringify(assignments) !== JSON.stringify(wp.card.memberAssignments || {})) {
-          updates.set(wp.card.id, { memberAssignments: assignments, memberMonthlyAssignments: monthly });
+          || JSON.stringify(assignments) !== JSON.stringify(wp.card.memberAssignments || {})
+          || (premium && JSON.stringify(premium) !== JSON.stringify(wp.card.memberPremiumAssignments || {}))) {
+          updates.set(wp.card.id, { memberAssignments: assignments, memberMonthlyAssignments: monthly,
+            ...(premium ? { memberPremiumAssignments: Object.keys(premium).length ? premium : undefined } : {}) });
         }
       }
       const mgmtMonthly = selected.row.mgmtRow && result.allocations.get(selected.row.mgmtRow.syntheticCard.id);
@@ -655,11 +661,16 @@ export function TeamTimelineModal({
   }, [autoAllocationProjects, members, toolName, setRangeSelection]);
 
   const handleAutoAllocate = useCallback((priorities: NumericMap) => {
-    const result = allocateTeamByProjectPriority(autoAllocationProjects.map(({ row, targets }) => ({
+    const allocationProjects = autoAllocationProjects.map(({ row, targets }) => ({
       id: row.project.id, monthOffset: row.pOffset, duration: row.pDur, targets,
-    })), members, totalMonths, priorities, fteCosts, minStartAbs);
+    }));
+    const result = persistPremiumAssignments
+      ? allocateTeamWithPremiums(allocationProjects, members, totalMonths, priorities, fteCosts, minStartAbs,
+        cards, allMembers, weekendWorkFactors)
+      : allocateTeamByProjectPriority(allocationProjects, members, totalMonths, priorities, fteCosts, minStartAbs);
     applyAutoAllocation(result);
-  }, [autoAllocationProjects, members, totalMonths, applyAutoAllocation, fteCosts, minStartAbs]);
+  }, [autoAllocationProjects, members, totalMonths, applyAutoAllocation, fteCosts, minStartAbs,
+    persistPremiumAssignments, cards, allMembers, weekendWorkFactors]);
 
   const handleAutoAllocateProject = useCallback((projectId: string) => {
     const project = projects.find((item) => item.id === projectId);

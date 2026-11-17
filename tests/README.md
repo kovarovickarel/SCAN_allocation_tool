@@ -1,5 +1,11 @@
 # Test coverage
 
+`automatic-premium-allocation.spec.ts` covers regular-capacity-first automatic
+allocation, then weekend/public-holiday, public-holiday and weekend premiums.
+Cases include partial days, cross-team reservations, selected-project priorities,
+fixed foreign bookings, calendar alignment and engineering/maintenance eligibility.
+These new cases have not yet been run; test execution remains deferred.
+
 ## Timeline expansion toggles (2026-11-02)
 
 `timeline-expansion-toggle.spec.ts` adds 12 browser checks across all three themes
