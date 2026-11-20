@@ -1,8 +1,129 @@
 # Development handoff
 
-Updated: 2026-11-09 (Europe/Prague).
+Updated: 2026-11-20 (Europe/Prague).
 
 ## Current desktop snapshot - read first
+
+### Context commits and publication request (2026-11-20)
+
+The user requested grouping all pending application/test/documentation changes and
+pushing all unpublished commits to remote master. The feature commits are:
+
+- `9dfbfae`: remembered timeline Manual Adjust and expansion preferences.
+- `9c1f116`: management premiums, cost calculations, reporting and heatmap styling.
+- `e03b797`: schedule-shift and member-FTE reconciliation, plus cross-view tests.
+- `f40b5fd`: localized premium guides, crisp illustrations and production checks.
+
+The final documentation commit records validation and removes the first three open
+TODO items as requested: extended availability dates, premium consistency review
+and premium documentation follow-up. No application changes were made while
+splitting this validated batch. The prior unpublished premium feature commits are
+also included in the authorized push. Check Git/remote state for publication status;
+a successful push is not evidence that the hosted deployment has completed.
+
+### Full regression validation (2026-11-20)
+
+The user authorized and requested the complete test run, superseding earlier test
+execution deferrals. All **949 application tests passed in one uninterrupted run**
+(5.0 minutes), including all 10 current visual checks, with reference updates
+disabled. TypeScript, the production Pages build and all **7 production Pages
+checks** also passed. Application and production browser batches ran sequentially.
+
+Coverage now includes dated engineering/management premiums, full/half/partial
+hours, roles, cross-team budgets, regular-first auto-allocation, internal/external
+costs, salary deferral and unused premium costs. Schedule-shift tests keep bookings
+in their calendar months, release excess premiums before normal shares and reject
+old inactive drop targets. FTE-reduction tests check proportional trimming across
+projects and management, leave-adjusted caps, preserved premiums and atomic history.
+Cross-view checks compare coverage and costs across project/team timelines,
+workpackage/tool totals, spending and Summary, including actual App save/export and
+Undo/Redo flows. Remembered controls and guide language/illustration checks passed.
+
+The first full run exposed outdated control-reset, capacity-repair and dropdown
+expectations. Tests now follow the approved behavior. A repeated Basic-mode drag
+uses a viewport that keeps both drop targets visible. The one refreshed current
+combined-team visual reference contains the approved >100% premium legend;
+historical references and frozen JSON fixtures remain unchanged.
+
+The validation request itself did not commit, push or deploy; the later publication
+request is recorded above.
+Logs are local ignored artifacts in `test-results/validation/`; rerunning browser
+tests can clear that directory. The user subsequently removed the first three open
+TODO items, as recorded above.
+
+### Remembered timeline controls (2026-11-19; committed November 20)
+
+`useTimelineViewPreference` stores Manual Adjust and expansion choices separately
+for project staffing, project spending, combined staffing and availability. It
+preserves section, support/member-track and individual-row choices on close/reopen
+and reload. Manual controls retain their existing first-use defaults. Preferences
+use `scan-timeline-view:*` localStorage keys with a session fallback when storage is
+unavailable; they are excluded from workspace JSON, planning drafts and Undo/Redo.
+Reopen/reload regressions were added to `timeline-expansion-toggle.spec.ts`.
+Validated by the November 20 full run above; included in the context commits above.
+
+### Schedule-shift allocation cleanup (2026-11-19; committed November 20)
+
+Project timeline saves and workpackage schedule dialogs now retain bookings in
+their original months rather than shifting staffing with phases. Revised demand
+caps release excess premium hours first (partial days supported), then proportionally
+reduce normal member shares. Legacy scalar assignments are materialized against the
+old schedule so new active months cannot gain implicit staffing. Management support
+uses the same cleanup, including tools with only premium bookings. Both assignment
+maps are saved atomically for Undo/Redo. Premium drag targets and drop handlers now
+reject inactive/fully covered months and cap new bookings to remaining demand.
+Regression definitions are in `tests/timeline-allocation-reconciliation.spec.ts`.
+Validated by the November 20 full run above; included in the context commits above.
+
+### Proportional member FTE reductions (2026-11-19; committed November 20)
+
+Lowering a member's contracted FTE now trims normal engineering and management
+allocations proportionally across overlapping project calendar months where they
+exceed the new leave-adjusted capacity. Under-limit months and premium bookings
+are retained. Scalar weights are resolved at the old FTE before applying the cap.
+The edit and all reductions form one Undo/Redo transaction; increases do not
+restore removed work. Matched-member selective imports preview the same reduction.
+Full historical imports remain unchanged. The ordinary-overbooking colour example
+was removed from Help; EN/CZ/DE explain the automatic reduction rule. Regression
+definitions passed in the November 20 full run above.
+
+### Premium-work guides (2026-11-19; committed November 20)
+
+The combined guide has a dedicated Premium Work tab. Availability explains dated
+work entry and retained weekday-holiday occupancy; spending explains site factors,
+external rates, payment delays and unused premium hours. Project staffing separates
+required effort from premium coverage. Main Help links the workflow and explains
+premium Summary metrics and external pricing. New sections use one English-defined
+layout and matching CZ/DE slots, formula styles and static element cues. Older
+holiday-capacity restoration text was corrected. Guide regressions passed in the November 20 full run above.
+
+### Premium work pricing (2026-11-19; committed November 20)
+
+Assigned engineering/management premiums now price actual dated hours using site
+factors. Internal hours use site hourly rates; external hours use contracted monthly
+salary / (20 × 8 × contracted FTE). Full/half days are 8/4 hours and partial assigned
+hours are prorated. Workpackage/project badges, team draft costs, spending graphs,
+Summary and Expenses Planning use the same calculation. External premiums remain
+Non-FTE and follow the existing payment delay. Unassigned logged external premium
+hours within the portfolio date range are paid outside project costs and appear in
+unused capacity. Cross-team unused days use the highest-FTE source record (ties by
+team, then ID), without aggregating its contracted FTE. No workspace schema change.
+Regression definitions passed in the November 20 full run above. Earlier inactive-factor
+and pending-pricing notes below are historical.
+
+
+### Management support premiums (2026-11-19; committed November 20)
+
+Management/both-role members can now assign dated premium work to Management
+Support in the combined team timeline. Drag/drop, manual edit/reset, dropdown
+deallocation and auto-allocation share the engineering premium rules and one
+cross-team dated-hour budget. Management member cells include premiums in their
+FTE/% labels and orange styling; Personal Staffing keeps normal occupancy separate.
+Projects store optional `mgmtMemberPremiumAssignments[tool][memberId]`, preserving
+schema-1 imports. Save/Discard, Undo/Redo, calendar/role reconciliation, project
+duplication cleanup and selective-import member remapping are integrated.
+Regression cases and premium costing passed the November 20 full validation.
+The user removed the corresponding follow-up backlog items after validation.
 
 ### Board staffing badges and project peaks (2026-11-09)
 

@@ -1,10 +1,76 @@
 # Test coverage
 
+## Latest validation (2026-11-20)
+
+All **949 application tests passed in one uninterrupted run** (5.0 minutes),
+including all 10 current visual checks, with reference updates disabled.
+TypeScript, the production Pages build and all **7 production Pages checks**
+also passed. App and production browser batches ran sequentially. This validation
+supersedes the earlier test deferrals for premiums, shifts, FTE reductions, guides
+and timeline display preferences. No tests were skipped; frozen JSON fixtures and
+historical images were preserved. No push or hosted deployment was performed.
+
+
+`timeline-expansion-toggle.spec.ts` also defines close/reopen and reload coverage
+for remembered manual-adjust, section and track expansion controls in staffing,
+spending, combined and team/global availability. Preferences remain local display
+state, excluded from workspace files and planning history.
+
+`timeline-allocation-reconciliation.spec.ts` defines regressions for keeping
+calendar-month bookings after schedule shifts, inactive-month cleanup, partial
+premium releases before normal reductions, legacy scalar materialization,
+management/premium-only overheads, inactive premium drop targets and atomic
+Undo/Redo.
+
+`member-fte-reduction.spec.ts` covers proportional reductions across overlapping
+projects/management, leave-adjusted limits, old scalar weights, unchanged premiums
+and sibling records, increases/no-op edits and atomic Undo/Redo. Browser coverage
+adds member-edit Cancel/Save and history, and selective import now expects matched
+FTE reductions to cap retained allocations.
+
+Premium-work guide coverage includes the combined timeline's Premium Work tab,
+calendar entry/capacity, spending costs, project demand and the main guide's
+workflow, external pricing and Summary sections. EN defines the section/list
+structure for CZ/DE; formula cues are checked for parity.
+
+`premium-costs.spec.ts` covers assigned internal/external premium pricing, site
+factors and defaults, full/half/partial days, Cairo weekends, contracted-FTE salary
+normalization, management attribution, deferred cash payments, split assignments,
+unused external premium capacity and missing rates. Management UI regressions also
+check draft and saved cost badges.
+
+`management-premiums.spec.ts` covers management premium workspace validation,
+role eligibility, shared engineering/management dated-hour limits, coverage,
+calendar reconciliation, Undo/Redo and regular-first automatic allocation.
+`availability-integration.spec.ts` adds management/both-role drag, manual edit,
+deallocation and save scenarios.
+
 `automatic-premium-allocation.spec.ts` covers regular-capacity-first automatic
 allocation, then weekend/public-holiday, public-holiday and weekend premiums.
 Cases include partial days, cross-team reservations, selected-project priorities,
 fixed foreign bookings, calendar alignment and engineering/maintenance eligibility.
-These new cases have not yet been run; test execution remains deferred.
+
+
+## Premium and allocation integration coverage (2026-11-20)
+
+`premium-cross-view.spec.ts` combines real browser flows with fixed-value
+calculation checks. It verifies schedule changes and FTE reductions across
+engineering and management, partial premium releases, calendar-month alignment,
+inactive drop rejection, project/tool spending, Summary coverage and externalisation,
+external salary normalization, deferred cash and unused premium costs. Cost totals
+must agree across member/workpackage/tool/project and portfolio breakdowns. Browser
+checks save through App, read the exported source state, and verify atomic Undo/Redo.
+
+`premiumIntegrationWorkspace.ts` supplies an explicit short main/maintenance
+window and engineering/management bookings. `premium-drop-target-harness.tsx`
+checks the rendered shared grid's inactive, zero-demand and negated drop guards.
+Existing allocation tests now expect automatic proportional FTE reductions before
+opening the assignment dialog, rather than a manual capacity-repair prompt.
+
+Current visual coverage includes the approved >100% premium member-staffing legend.
+Only its combined-team reference changed; historical images and frozen JSON fixtures
+remain unchanged. Production Pages coverage verifies prefix-safe SVG guide images,
+loaded image dimensions, removed captions and the retained tool-specific graph.
 
 ## Timeline expansion toggles (2026-11-02)
 

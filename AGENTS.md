@@ -4,6 +4,43 @@ Read this file before changing the application. It describes the current product
 
 ## Start here: current handoff
 
+November 20 validation: all 949 application tests passed in one uninterrupted run,
+including all 10 current visual checks with reference updates disabled. TypeScript,
+the production Pages build and all seven production checks passed. This covers the
+premium allocation/costing, schedule-shift cleanup, member FTE reductions, Summary
+and remembered-control changes. It supersedes previous test deferrals, not pending
+backlog scope. Only the approved combined-team premium legend reference changed;
+frozen JSON fixtures and historical images were preserved. No commit/push/deployment
+was performed during validation itself. The user subsequently authorized contextual
+commits and pushing all unpublished commits to remote master; see HANDOFF.md and
+Git for the publication state. A push does not confirm deployment completion.
+
+November 19 schedule shifts: `reconcileProjectTimelineAllocations` freezes legacy
+normal assignments against the old monthly demand, keeps bookings in their existing
+months, and caps them to revised demand. Release excess premium hours first, then
+reduce normal member shares proportionally. Apply the same rule to management
+overheads, including premium-only tools. Save both normal and premium maps in the
+same history action. Premium drops require positive remaining demand in that month;
+inactive months must never become drop targets.
+
+November 19 FTE reductions: `reconcileMemberFteReductions` proportionally caps only
+over-capacity normal member/calendar-month allocations across engineering,
+management and overlapping projects. Member edits apply this with the lower FTE
+in one history transaction; selective imports also include the reductions in their
+preview. Resolve scalar weights using the previous FTE, then apply the new
+leave-adjusted capacity. Preserve premium hours and unrelated members. Increases
+do not restore trimmed allocations. Full historical workspace imports remain
+compatible; do not silently normalize them on load or Undo/Redo.
+
+November 19 management premiums: projects optionally store
+`mgmtMemberPremiumAssignments[tool][memberId]`, with the same dated string/partial
+hour entries as engineering premiums. Only management/both roles may use them.
+`reconcilePremiumState` shares one dated-hour budget across engineering and
+management, projects and cross-team records; keep both source updates inside one
+history transaction. The combined timeline supports drag, manual edits, dropdown
+removal and regular-first auto-allocation for both roles. Premium costing is active; assigned internal hours use the site hourly rate and
+pay factor, and external hours use salary / (20 × 8 × contracted FTE) and the factor. See JSON_COMPATIBILITY.md and tests/management-premiums.spec.ts.
+
 November 17 holiday premium clarification. A public holiday on a site working day
 always occupies the full day of normal capacity, including when the member logs
 full-day or half-day work. The Public holidays breakdown retains that full day.
@@ -95,7 +132,7 @@ push confirms the hosted deployment has finished.
 
 The app is hosted at https://kovarovickarel.github.io/SCAN_allocation_tool/. `vite.config.mjs` uses `/SCAN_allocation_tool/` only in `pages` mode and `/` for local development. Header images use `import.meta.env.BASE_URL`. Preserve prefix-safe asset paths. The Pages workflow deploys `master`; it runs `pnpm test:pages` before uploading the site. Hosting adds no shared persistence: users transfer planning data through JSON export/import.
 
-Weekend work factors are editable in Defaults configuration / Weekend work next to FTE costs. `weekendWork.ts` defines defaults 1.5/1.5/2; optional `weekendWorkFactors` is validated and transferred in workspace JSON/shared selective settings. They are intentionally inert: do not consume them in costing or capacity until the weekend-work feature is authorized. Preserve omitted factors when an older workspace is saved with unchanged effective defaults, so no-op saves do not create history or discard redo.
+Weekend work factors are editable in Defaults configuration / Weekend work next to FTE costs. `weekendWork.ts` defines defaults 1.5/1.5/2; optional `weekendWorkFactors` is validated and transferred in workspace JSON/shared selective settings. They price assigned engineering and management premium hours, without multiplying capacity. External premiums follow the member payment delay; unassigned logged external premium hours are tracked outside projects in unused paid capacity. Preserve omitted factors when an older workspace is saved with unchanged effective defaults, so no-op saves do not create history or discard redo.
 
 ## Product overview
 
