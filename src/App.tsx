@@ -2,7 +2,7 @@ import { DEFAULT_WEEKEND_WORK_FACTORS } from "./utils/weekendWork";
 import { MemberAvailabilityModal } from "./components/features/MemberAvailabilityModal";
 import { applyMemberAbsenceEdits, membersWithHolidays } from "./utils/memberAvailability";
 import { workpackagePremiumHours } from "./utils/premiumAssignments";
-import { reconcileAvailability } from "./utils/availabilityAllocations";
+import { reconcileAvailability, reconcileMemberFteReductions } from "./utils/availabilityAllocations";
 import { useWorkspaceHistory, useWorkspaceAction } from "./hooks/useWorkspaceHistory";
 import { samePlanningValue, type PlanningState } from "./utils/workspaceHistory";
 import { ResizableSwimlane } from "./components/ui/ResizableSwimlane";
@@ -212,9 +212,13 @@ export default function App() {
   }, []);
 
   const handleUpdateMember = useWorkspaceAction(history, "Edit team member", (updatedMember) => {
-    setTeamMembers((prev) =>
-      prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
-    );
+    const current = history.present;
+    const next = reconcileMemberFteReductions({ ...current,
+      teamMembers: current.teamMembers.map(member => member.id === updatedMember.id ? updatedMember : member),
+    }, current.teamMembers);
+    setTeamMembers(next.teamMembers);
+    if (next.workpackages !== current.workpackages) setFunctions(next.workpackages);
+    if (next.projects !== current.projects) setProjects(next.projects);
   }, []);
 
   const handleDeleteMember = useWorkspaceAction(history, "Delete team member", (memberId) => {
@@ -493,7 +497,8 @@ export default function App() {
       functions, editedCards, teamMembers, config);
     setProjects((prev) =>
       prev.map((p) => (p.id === projectId ? { ...p, customMgmtMonthlyFTE, systemReleases,
-        mgmtMemberMonthlyAssignments: reconciled.project.mgmtMemberMonthlyAssignments } : p))
+        mgmtMemberMonthlyAssignments: reconciled.project.mgmtMemberMonthlyAssignments,
+        mgmtMemberPremiumAssignments: reconciled.project.mgmtMemberPremiumAssignments } : p))
     );
     setFunctions((prev) =>
       prev.map((f) => {
@@ -508,6 +513,7 @@ export default function App() {
           customMeetingsFTE: updated.customMeetingsFTE,
         customSupportingActivityFTE: updated.customSupportingActivityFTE,
           memberMonthlyAssignments: updated.memberMonthlyAssignments,
+          memberPremiumAssignments: updated.memberPremiumAssignments,
         };
       })
     );
@@ -582,20 +588,13 @@ export default function App() {
       ? { otherStartMonth: startMonth, otherFinishMilestone: finishMilestone || null }
       : { startMonth, finishMilestone: finishMilestone || null };
     if (workpackageFinishViolation({ ...card, ...schedule, projectId: project.id }, project, config.fteRates, config.toolFteRates)) return;
-    setFunctions((prev) =>
-      prev.map((f) =>
-        f.id === card.id
-          ? {
-              ...f,
-              projectId: project.id,
-              ...schedule,
-              systemRelease,
-            }
-          : f
-      )
-    );
+    const edited = functions.map(f => f.id === card.id
+      ? { ...f, projectId: project.id, ...schedule, systemRelease } : f);
+    const reconciled = reconcileProjectTimelineAllocations(project, project, functions, edited, teamMembers, config);
+    setFunctions(reconciled.cards);
+    setProjects(current => current.map(item => item.id === project.id ? reconciled.project : item));
     setPendingOtherAssignment(null);
-  }, [pendingOtherAssignment, projects, config.fteRates, config.toolFteRates]);
+  }, [pendingOtherAssignment, projects, functions, teamMembers, config]);
 
   const handleCancelOtherAssignment = useCallback(() => {
     setPendingOtherAssignment(null);
@@ -621,8 +620,7 @@ export default function App() {
       }
       return;
     }
-    setFunctions((prev) =>
-      prev.map((f) => {
+    const edited = functions.map((f) => {
         if (f.id !== cardId) return f;
         if (startEditing) return { ...f, _editing: true };
         if (draft) {
@@ -635,9 +633,14 @@ export default function App() {
           };
         }
         return { ...f, _editing: false };
-      })
-    );
-  }, [functions, projects]);
+      });
+    const project = projects.find(item => item.id === card?.projectId);
+    if (!startEditing && draft && project) {
+      const reconciled = reconcileProjectTimelineAllocations(project, project, functions, edited, teamMembers, config);
+      setFunctions(reconciled.cards);
+      setProjects(current => current.map(item => item.id === project.id ? reconciled.project : item));
+    } else setFunctions(edited);
+  }, [functions, projects, teamMembers, config]);
 
   const handleApplyProjectReusability = useWorkspaceAction(history, "Apply global reusability", (projectId: string, cardIds: string[], updates: Pick<WorkpackageCard, "reusability" | "customReusabilityFactor">) => {
     const selected = new Set(cardIds);

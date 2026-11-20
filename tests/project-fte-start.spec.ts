@@ -132,6 +132,8 @@ test("manual schedules re-open for deadline correction instead of automatic warn
 });
 
 test("basic mode always schedules manually, hides the toggle and preserves extended preferences", async ({ page }) => {
+  // Keep the pool and project drop targets in the viewport throughout repeated drags.
+  await page.setViewportSize({ width: 2000, height: 1000 });
   await page.goto("/");
   await page.getByTitle("KPI Team View", { exact: true }).click();
   const automatic = page.getByRole("button", { name: "Automatically start FTE workpackages at project start: MBAG", exact: true });

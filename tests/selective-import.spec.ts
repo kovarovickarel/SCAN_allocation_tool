@@ -246,9 +246,11 @@ test("unchanged historical overallocations warn rather than blocking unrelated c
   s.plan.cards["team-card"].action = "keep";
   const result = previewSelectiveImport(s.current, s.incoming, s.plan); expect(result.errors).toEqual([]); expect(result.notes.join(" ")).toMatch(/Existing allocation warning retained/);
 });
-test("reducing capacity of a matched member validates their retained allocations", () => {
+test("reducing capacity of a matched member proportionally caps their retained allocations", () => {
   const s = scenario(); s.current.workpackages[0].memberMonthlyAssignments = { "pm-member": { 0: 0.8 } }; s.plan.cards["team-card"].action = "keep";
-  s.incoming.teamMembers[0].fte = 0.5; blocked(s, /capacity/);
+  s.incoming.teamMembers[0].fte = 0.5;
+  const after = valid(s);
+  expect(after.workpackages.find(card => card.id === "pm-card")!.memberMonthlyAssignments!["pm-member"][0]).toBeCloseTo(0.5, 8);
 });
 for (const subject of ["workpackage", "member", "project settings", "management"] as const) test(`multiple incoming ${subject} sources cannot overwrite one current target`, () => {
   const s = scenario();

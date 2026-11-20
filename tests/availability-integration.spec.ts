@@ -551,6 +551,33 @@ for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`global and tea
   await capacity(page, 'KPI', [{ month: 2, occupied: .6, cap: .6, unavailable: .18, available: .42, days: 6, working: 20 }]);
 });
 
+test('reducing member FTE caps overlapping allocations atomically and retains premiums', async ({ page }) => {
+  await load(page, 'vibrant', data => {
+    data.teamMembers[0].absences = { '2026-01-03': 'working' };
+    data.workpackages.find(card => card.id === 'p-Data Factory')!.memberPremiumAssignments = { member: ['2026-01-03'] };
+  });
+  const edit = () => page.getByTitle('Edit Shared Person', { exact: true }).click();
+  await edit();
+  const form = page.getByRole('dialog');
+  await form.locator('input[step="0.05"]').fill('0.2');
+  await form.getByRole('button', { name: 'Cancel', exact: true }).click();
+  expect((await savedWorkspace(page)).teamMembers.find(member => member.id === 'member')!.fte).toBe(0.4);
+  await edit();
+  await form.locator('input[step="0.05"]').fill('0.2');
+  await form.getByRole('button', { name: 'Save Changes', exact: true }).click();
+  const saved = await savedWorkspace(page);
+  expect(saved.teamMembers.find(member => member.id === 'member')!.fte).toBe(0.2);
+  expect(saved.workpackages.find(card => card.id === 'p-Data Factory')!.memberMonthlyAssignments!.member[1]).toBeCloseTo(0.1, 7);
+  expect(saved.workpackages.find(card => card.id === 'p2-Data Factory')!.memberMonthlyAssignments!.member[0]).toBeCloseTo(0.1, 7);
+  expect(saved.workpackages.find(card => card.id === 'p-Data Factory')!.memberPremiumAssignments).toEqual({ member: ['2026-01-03'] });
+  await page.getByRole('button', { name: 'Undo', exact: true }).click();
+  const undone = await savedWorkspace(page);
+  expect(undone.teamMembers.find(member => member.id === 'member')!.fte).toBe(0.4);
+  expect(undone.workpackages.find(card => card.id === 'p2-Data Factory')!.memberMonthlyAssignments!.member[0]).toBe(0.2);
+  await page.getByRole('button', { name: 'Redo', exact: true }).click();
+  expect((await savedWorkspace(page)).teamMembers.find(member => member.id === 'member')!.fte).toBe(0.2);
+});
+
 test('combined timeline exposes real imported overbooking and leave reconciliation clears it precisely', async ({ page }) => {
   await load(page, 'vibrant', data => {
     data.workpackages.find(w => w.id === 'p-Data Factory')!.memberMonthlyAssignments!.member[1] = .35;

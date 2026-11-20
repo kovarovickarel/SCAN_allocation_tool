@@ -4,6 +4,7 @@ import { createWorkspaceFile, parseWorkspaceFile, type WorkspaceData } from "./w
 import { calculateProjectEffort, calculateWorkpackageMonthlyFTE, calcCardFTE, getManagementMonthlyFTE } from "./helpers";
 import { resolveMonthlyMemberAllocations } from "./memberAllocations";
 import { workpackageRateKey } from "./workpackageTypes";
+import { reconcileMemberFteReductions } from "./availabilityAllocations";
 
 export type RecordChoice = { action: "new" | "update" | "keep" | "skip"; targetId?: string; confirmed: boolean; allocations?: boolean };
 export type ProjectChoice = { target: string; confirmed: boolean; settings: boolean };
@@ -265,7 +266,10 @@ export function previewSelectiveImport(current: WorkspaceData, incoming: Workspa
     }
   }
   try {
-    const validated = parseWorkspaceFile(JSON.stringify(createWorkspaceFile(result))).data;
+    const parsed = parseWorkspaceFile(JSON.stringify(createWorkspaceFile(result))).data;
+    const validated = reconcileMemberFteReductions(parsed, current.teamMembers);
+    if (validated.workpackages !== parsed.workpackages || validated.projects !== parsed.projects)
+      changes.push("Reduce normal allocations proportionally to match lowered member FTE capacity; premium assignments are retained.");
     const before = allocationConflicts(current), after = allocationConflicts(validated);
     for (const [key, issue] of after) {
       if (issue.excess > (before.get(key)?.excess ?? 0) + 0.00001) errors.push(issue.message);

@@ -1,44 +1,63 @@
-import { supportingPhaseRates } from "./supportingPhases";
-import { workpackageRateKey } from "./workpackageTypes";
-import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_MGMT_SETTINGS, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, round2 } from "../constants";
-import type { AllocationProject, MonthlyNumericMap, NumericMap, TeamMemberRecord, WorkpackageCard } from "../types";
-import { calcCardFTE, calculateProjectEffort, getManagementMonthlyFTE, computeWorkpackageLifecycleTimeline, getSupportReusabilityFactor } from "./helpers";
+import { DEFAULT_FTE_RATES, DEFAULT_TOOL_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, WORKING_HOURS_PER_MONTH } from "../constants";
+import type { AllocationProject, TeamMemberRecord, WorkpackageCard } from "../types";
+import { calculateProjectEffort, calculateWorkpackageMonthlyFTE, getManagementMonthlyFTE } from "./helpers";
+import { resolveMonthlyMemberAllocations } from "./memberAllocations";
+import { absoluteMonth, memberPremiumWorkOnDate, membersWithHolidays } from "./memberAvailability";
+import { makePremiumAssignment, managementPremiumCard, premiumAssignmentDate, premiumAssignmentHours } from "./premiumAssignments";
 
 type TimelineAllocationConfig = {
   fteRates: typeof DEFAULT_FTE_RATES;
   toolFteRates: typeof DEFAULT_TOOL_FTE_RATES;
-  management: typeof DEFAULT_MGMT_SETTINGS;
+  management: { threshold: number; ftePerCard: number };
   reusabilityFactors: typeof DEFAULT_REUSABILITY_FACTORS;
   stabilityFactors: typeof DEFAULT_STABILITY_FACTORS;
+  sitePublicHolidays?: Record<string, string[]>;
 };
+const floorAllocation = (value: number) => Math.floor(Math.max(0, value) * 1e8 + 1e-9) / 1e8;
 
-// Preserve member shares when demand falls, and never increase an existing commitment.
-// Write explicit zeros so a legacy assignment cannot refill a cleared month.
-function reconcileMonthlyAllocations(
-  assignments: NumericMap,
-  monthly: MonthlyNumericMap,
-  oldEffort: readonly number[],
-  newEffort: readonly number[],
-  getDefaultAllocation: (memberId: string, month: number) => number
-): MonthlyNumericMap {
-  const memberIds = [...new Set([...Object.keys(assignments), ...Object.keys(monthly)])];
-  if (memberIds.length === 0) return monthly;
-  const result = Object.fromEntries(Object.entries(monthly).map(([id, months]) => [id, { ...months }]));
-  for (let month = 0; month < newEffort.length; month++) {
-    if (Math.abs(newEffort[month] - oldEffort[month]) <= 0.000001) continue;
-    const contributions = memberIds.map((id) => Math.max(0,
-      parseFloat(monthly[id]?.[month] ?? getDefaultAllocation(id, month)) || 0));
-    const total = contributions.reduce((sum, value) => sum + value, 0);
-    const denominator = Math.max(oldEffort[month], total);
-    const factor = denominator > 0 ? Math.min(1, Math.max(0, newEffort[month]) / denominator) : 0;
-    let remaining = round2(Math.min(newEffort[month], total * factor));
-    memberIds.forEach((id, index) => {
-      const value = Math.max(0, Math.min(contributions[index], remaining, round2(contributions[index] * factor)));
-      result[id] = { ...result[id], [month]: value };
-      remaining = round2(remaining - value);
-    });
+/** Keep bookings in their calendar months. Never move them with a phase or grow
+ * scalar defaults into newly active months. Release premiums before normal effort. */
+function reconcileDemand(
+  oldCard: WorkpackageCard, card: WorkpackageCard,
+  project: AllocationProject, updatedProject: AllocationProject,
+  oldEffort: readonly number[], newEffort: readonly number[], members: readonly TeamMemberRecord[],
+): WorkpackageCard {
+  if (oldCard.startMonth === card.startMonth && oldCard.otherStartMonth === card.otherStartMonth &&
+      oldEffort.length === newEffort.length && oldEffort.every((value, month) => Math.abs(value - newEffort[month]) < 1e-9)) return card;
+  const oldMonthly = resolveMonthlyMemberAllocations(oldCard, project.duration, oldEffort, members);
+  const monthly = Object.fromEntries(Object.entries(oldMonthly).map(([id, months]) => [id, { ...months }]));
+  const start = absoluteMonth(updatedProject.startDate);
+  const premium = Object.fromEntries(Object.entries(card.memberPremiumAssignments ?? {}).map(([id, dates]) => [id, dates.flatMap(assignment => {
+    const member = members.find(item => item.id === id);
+    const date = premiumAssignmentDate(assignment);
+    const day = member && memberPremiumWorkOnDate(member, date);
+    const month = absoluteMonth(date) - start;
+    return day && month >= 0 && month < newEffort.length
+      ? [{ assignment, day, month, hours: premiumAssignmentHours(assignment, day) }] : [];
+  })]));
+  const months = Math.max(project.duration, updatedProject.duration,
+    ...Object.values(monthly).flatMap(values => Object.keys(values).map(key => Number(key) + 1)));
+  for (let month = 0; month < months; month++) {
+    const demand = Math.max(0, newEffort[month] ?? 0);
+    const regular = Object.values(monthly).reduce((sum, values) => sum + Math.max(0, Number(values[month]) || 0), 0);
+    const bookings = Object.values(premium).flat().filter(item => item.month === month);
+    const premiumHours = bookings.reduce((sum, item) => sum + item.hours, 0);
+    const allowedPremium = Math.max(0, demand - regular) * WORKING_HOURS_PER_MONTH;
+    if (premiumHours > allowedPremium + 1e-9) {
+      for (const booking of bookings) booking.hours = floorAllocation(booking.hours * allowedPremium / premiumHours);
+    }
+    if (regular > demand + 1e-9) {
+      for (const values of Object.values(monthly)) values[month] = floorAllocation((Number(values[month]) || 0) * demand / regular);
+    }
   }
-  return result;
+  const memberPremiumAssignments = Object.fromEntries(Object.entries(premium).flatMap(([id, bookings]) => {
+    const dates = bookings.filter(item => item.hours > 1e-8).map(item =>
+      Math.abs(item.hours - premiumAssignmentHours(item.assignment, item.day)) < 1e-9
+        ? item.assignment : makePremiumAssignment(item.day, item.hours));
+    return dates.length ? [[id, dates]] : [];
+  }));
+  return { ...card, memberMonthlyAssignments: monthly,
+    memberPremiumAssignments: Object.keys(memberPremiumAssignments).length ? memberPremiumAssignments : undefined };
 }
 
 export function reconcileProjectTimelineAllocations(
@@ -47,65 +66,38 @@ export function reconcileProjectTimelineAllocations(
   cards: readonly WorkpackageCard[],
   updatedCards: readonly WorkpackageCard[],
   members: readonly TeamMemberRecord[],
-  config: TimelineAllocationConfig
+  config: TimelineAllocationConfig,
 ): { cards: WorkpackageCard[]; project: AllocationProject } {
-  const duration = Math.max(1, project.duration || 12);
-  const summarize = (card: WorkpackageCard, owner: AllocationProject) => {
-    const isNegated = (owner.hiddenTools || []).includes(card.tool) ||
-      Boolean(card.subcategory && (owner.hiddenSubcategories || []).includes(card.subcategory));
-    const complexityKey = workpackageRateKey(card, config.toolFteRates);
-    const rates = config.toolFteRates?.[card.tool]?.[complexityKey] ?? config.fteRates?.[complexityKey] ??
-      DEFAULT_FTE_RATES[complexityKey] ?? DEFAULT_FTE_RATES["Point Cloud"];
-    const core = computeWorkpackageLifecycleTimeline(card, owner, rates,
-      config.reusabilityFactors, config.stabilityFactors, isNegated, duration);
-    const stability = config.stabilityFactors[owner.stability] ?? 1;
-    const supportMultiplier = getSupportReusabilityFactor(card, config.reusabilityFactors, rates);
-    const supportRates = core.map(month => supportingPhaseRates(card, rates, month, config.reusabilityFactors, stability, isNegated));
-    const effort = core.map((month, index) => isNegated || ((card.tool !== "Other" || card.complexity) && month.phaseName === "Inactive") ? 0 : round2(
-      (card.customCoreFTE?.[index] ?? month.totalFTE) +
-      round2(((card.customDevSupportFTE?.[index] ?? supportRates[index].dev) + (card.customMeetingsFTE?.[index] ?? supportRates[index].meetings)) * supportMultiplier)));
-    const isAltered = core.some((month, index) =>
-      (card.customCoreFTE?.[index] !== undefined && Math.abs(card.customCoreFTE[index] - month.totalFTE) > 0.001) ||
-      (supportMultiplier !== 0 && (card.tool !== "Other" || card.complexity) && card.customDevSupportFTE?.[index] !== undefined && Math.abs(card.customDevSupportFTE[index] - supportRates[index].dev) > 0.001) ||
-      (supportMultiplier !== 0 && (card.tool !== "Other" || card.complexity) && card.customMeetingsFTE?.[index] !== undefined && Math.abs(card.customMeetingsFTE[index] - supportRates[index].meetings) > 0.001));
-    const fte = isNegated ? 0 : isAltered ? round2(effort.reduce((sum, value) => sum + value, 0) / duration) :
-      calcCardFTE(card, owner, config.fteRates, config.reusabilityFactors, config.stabilityFactors, config.toolFteRates);
-    return { effort, card: { ...card, _fte: fte } };
-  };
-  const oldSummaries = new Map(cards.filter((card) => card.projectId === project.id && card.kind !== "non-fte")
-    .map((card) => [card.id, summarize(card, project)]));
-  const newSummaries = new Map(updatedCards.filter((card) => card.projectId === project.id && card.kind !== "non-fte")
-    .map((card) => [card.id, summarize(card, updatedProject)]));
-
-  const reconciledCards = updatedCards.map((card) => {
-    const old = oldSummaries.get(card.id);
-    const updated = newSummaries.get(card.id);
-    if (!old || !updated) return card;
-    const assignments = card.memberAssignments || {};
-    const total = Object.values(assignments).reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
-    const wpDuration = card.tool === "Other" && !card.complexity ? Math.max(1, parseInt(card.otherDuration, 10) || 6) : duration;
-    const monthly = reconcileMonthlyAllocations(assignments, card.memberMonthlyAssignments || {},
-      old.effort, updated.effort, (id, month) => {
-        const assigned = parseFloat(assignments[id]) || 0;
-        const cap = parseFloat(members.find((member) => member.id === id)?.fte) || 1;
-        const limit = Math.min(cap, Math.max(assigned, assigned * duration / wpDuration));
-        return round2(Math.min(limit, old.effort[month] * (total > 0 ? assigned / total : 0)));
-      });
-    return { ...card, memberMonthlyAssignments: monthly };
+  const allocationMembers = config.sitePublicHolidays ? membersWithHolidays(members, config.sitePublicHolidays) : members;
+  const oldCards = cards.filter(card => card.projectId === project.id && card.kind !== "non-fte");
+  const newCards = updatedCards.filter(card => card.projectId === updatedProject.id && card.kind !== "non-fte");
+  const oldById = new Map(oldCards.map(card => [card.id, card]));
+  const reconciledCards = updatedCards.map(card => {
+    const old = oldById.get(card.id);
+    if (!old || card.projectId !== updatedProject.id || card.kind === "non-fte") return card;
+    return reconcileDemand(old, card, project, updatedProject,
+      calculateWorkpackageMonthlyFTE(old, project, config), calculateWorkpackageMonthlyFTE(card, updatedProject, config), allocationMembers);
   });
-
-  const oldOverheads = calculateProjectEffort([...oldSummaries.values()].map((item) => item.card), config.management, project, config).overheads;
-  const newOverheads = calculateProjectEffort([...newSummaries.values()].map((item) => item.card), config.management, updatedProject, config).overheads;
-  const mgmtMonthly = { ...project.mgmtMemberMonthlyAssignments };
-  const tools = new Set([...Object.keys(project.mgmtMemberAssignments || {}), ...Object.keys(mgmtMonthly)]);
+  const oldOverheads = calculateProjectEffort(oldCards, config.management, project, config).overheads;
+  const newOverheads = calculateProjectEffort(newCards, config.management, updatedProject, config).overheads;
+  const mgmtMonthly = { ...updatedProject.mgmtMemberMonthlyAssignments };
+  const mgmtPremium = { ...updatedProject.mgmtMemberPremiumAssignments };
+  const tools = new Set([...Object.keys(project.mgmtMemberAssignments ?? {}), ...Object.keys(mgmtMonthly),
+    ...Object.keys(project.mgmtMemberPremiumAssignments ?? {}), ...Object.keys(mgmtPremium)]);
+  let managementChanged = false;
   for (const tool of tools) {
-    const oldEffort = getManagementMonthlyFTE(oldOverheads.find(overhead => overhead.tool === tool), project);
-    const newEffort = getManagementMonthlyFTE(newOverheads.find(overhead => overhead.tool === tool), updatedProject);
-    const assignments = project.mgmtMemberAssignments?.[tool] || {};
-    const total = Object.values(assignments).reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
-    mgmtMonthly[tool] = reconcileMonthlyAllocations(assignments, mgmtMonthly[tool] || {}, oldEffort, newEffort,
-      (id, month) => round2(Math.min(parseFloat(assignments[id]) || 0,
-        oldEffort[month] * (total > 0 ? (parseFloat(assignments[id]) || 0) / total : 0))));
+    const old = managementPremiumCard(project, tool);
+    const updated = managementPremiumCard(updatedProject, tool);
+    const reconciled = reconcileDemand(old, updated, project, updatedProject,
+      getManagementMonthlyFTE(oldOverheads.find(overhead => overhead.tool === tool), project),
+      getManagementMonthlyFTE(newOverheads.find(overhead => overhead.tool === tool), updatedProject), allocationMembers);
+    if (reconciled === updated) continue;
+    managementChanged = true;
+    mgmtMonthly[tool] = reconciled.memberMonthlyAssignments;
+    if (reconciled.memberPremiumAssignments) mgmtPremium[tool] = reconciled.memberPremiumAssignments;
+    else delete mgmtPremium[tool];
   }
-  return { cards: reconciledCards, project: { ...updatedProject, mgmtMemberMonthlyAssignments: mgmtMonthly } };
+  return { cards: reconciledCards, project: managementChanged ? { ...updatedProject,
+    mgmtMemberMonthlyAssignments: mgmtMonthly,
+    mgmtMemberPremiumAssignments: Object.keys(mgmtPremium).length ? mgmtPremium : undefined } : updatedProject };
 }

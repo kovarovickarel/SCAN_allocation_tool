@@ -248,8 +248,8 @@ test("removing the capacity detail text keeps member controls functional", async
   expect((await allocationValues(timeline, "Object Distance KPI", "tm_2")).some((value) => value > 0)).toBe(true);
 });
 
-for (const repair of ["Cap", "Auto-Cap All"]) {
-  test(`${repair} repairs allocations after personal capacity is reduced`, async ({ page }) => {
+for (const close of ["Save Allocations", "Cancel"]) {
+  test(`FTE reduction automatically caps existing allocations before the assignment dialog (${close})`, async ({ page }) => {
     let timeline = await setup(page);
     await drop(timeline, "Alex Novak", "Lane Detection KPI");
     await timeline.getByRole("button", { name: "Save & Close", exact: true }).click();
@@ -260,10 +260,10 @@ for (const repair of ["Cap", "Auto-Cap All"]) {
     await page.getByRole("button", { name: "Open KPI Combined Team Timeline" }).click();
     timeline = page.getByRole("dialog").first();
     const dialog = await assignDialog(page, timeline, "Lane Detection KPI");
-    await expect(dialog.getByRole("button", { name: "Capacity Exceeded", exact: true })).toBeDisabled();
-    const control = repair === "Cap" ? member(dialog, "Alex Novak") : dialog;
-    await control.getByRole("button", { name: repair, exact: true }).click();
-    await dialog.getByRole("button", { name: "Save Allocations", exact: true }).click();
+    await expect(dialog.getByRole("button", { name: "Save Allocations", exact: true })).toBeEnabled();
+    await expect(dialog.getByRole("button", { name: "Capacity Exceeded", exact: true })).toHaveCount(0);
+    await expect(dialog.getByRole("button", { name: "Auto-Cap All", exact: true })).toHaveCount(0);
+    await dialog.getByRole("button", { name: close, exact: true }).click();
     const values = await allocationValues(timeline, "Lane Detection KPI", "tm_1");
     expect(values.length).toBe(18);
     expect(Math.max(...values)).toBe(0.25);

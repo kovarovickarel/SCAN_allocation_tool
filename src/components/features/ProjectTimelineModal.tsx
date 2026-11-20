@@ -1498,9 +1498,9 @@ export function ProjectTimelineModal({
                                               </span>
                                             )}
 
-                                            <span className={`text-[10px] font-mono font-black leading-none ${mData.phaseSpan > 1 ? "mt-0.5" : ""}`}>
+                                            {displayFTE > 0 && <span className={`text-[10px] font-mono font-black leading-none ${mData.phaseSpan > 1 ? "mt-0.5" : ""}`}>
                                               {displayFTE.toFixed(2)}
-                                            </span>
+                                            </span>}
 
                                             {displayFTE > 0 && mData.shortPhase && (
                                               <span className="text-[7px] font-bold uppercase tracking-wider opacity-90 leading-none mt-0.5">
@@ -1509,6 +1509,12 @@ export function ProjectTimelineModal({
                                               </span>
                                             )}
                                           </div>
+                                        )}
+                                        {!isEditingThisCell && displayFTE <= 0 && (
+                                          <span className="absolute inset-0 flex items-center justify-center pointer-events-none text-[10px] font-mono font-black leading-none"
+                                            style={{ color: cellStyle.color }}>
+                                            {displayFTE.toFixed(2)}
+                                          </span>
                                         )}
                                       </div>
                                     );

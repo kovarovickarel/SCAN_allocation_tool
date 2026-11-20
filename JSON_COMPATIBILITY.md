@@ -1,14 +1,35 @@
 # Workspace JSON compatibility
 
+## Workpackage schedule shifts
+
+Explicit timeline and workpackage schedule edits retain existing calendar-month
+bookings up to the revised demand. Excess premium hours are released before normal
+allocations; management support follows the same rule. Legacy scalar allocations
+are resolved against the old schedule and stored as explicit monthly values so
+newly active months cannot refill implicitly. The shift and both kinds of booking
+changes share one Undo/Redo action. No schema changes or migrations are required;
+historical full workspace imports remain unchanged.
+
+## Member FTE reductions
+
+Editing a member to a lower contracted FTE, including a matched-member update in
+selective import, proportionally reduces normal allocations only in calendar months
+that exceed the new effective capacity. Engineering and management share the cap;
+premium assignments remain separate. Reductions use existing monthly assignment
+fields and need no migration. Full historical workspace imports retain their saved
+plans, and Undo/Redo restores the original FTE and assignments together.
+
 ## Dated premium work assignments
 
 FTE workpackages may include optional `memberPremiumAssignments`, keyed by member ID with arrays of distinct dates. A `YYYY-MM-DD` string assigns all of the logged premium hours for that date. A `{ date, hours }` entry assigns part of a day, with a positive hour count up to eight. Full transfers retain the field and selective transfers remap member IDs through the allocation options. Planning reconciliation removes dates that are no longer eligible and limits combined assignments across projects and teams to the logged hours for each person and date. Workspaces with date strings or with the field omitted require no migration.
 
 Engineering premium assignments follow the regular staffing role rules. If an older workspace contains an engineering premium assignment for a management-only member, reconciliation releases the assignment and retains the logged premium day.
 
+Projects may also include optional `mgmtMemberPremiumAssignments`, keyed first by tool, then member ID, using the same dated string/partial-hour arrays. Omitted fields mean no management premiums; schema 1 and historical fixtures remain unchanged. Full workspace transfer retains them and selective management-plan import remaps their member IDs. Only management/both roles are eligible. Engineering and management share one dated premium-hour budget across projects and cross-team records. Calendar or role changes reconcile both sources in the same Undo/Redo transaction. Duplicating a project clears its management premiums with its normal staffing assignments.
+
 ## Weekend work factors (November 1)
 
-Optional `configuration.weekendWorkFactors` accepts either the original shared set of rates or a map keyed by site code (for example, `PRA`). Each set has finite non-negative numbers `weekend`, `publicHoliday`, and `weekendPublicHoliday`. Legacy shared rates apply to every site. Omitted settings or sites use 1.5, 1.5 and 2. Saving an unchanged configuration preserves its source representation. Reset to Defaults restores the rates across all sites. The factors currently have no effect on costing, capacity or planning XLSX reports. JSON transfer and history retain explicit values. Selective import applies them only through the existing Shared settings choice. Frozen compatibility fixtures and schema version remain unchanged.
+Optional `configuration.weekendWorkFactors` accepts either the original shared set of rates or a map keyed by site code (for example, `PRA`). Each set has finite non-negative numbers `weekend`, `publicHoliday`, and `weekendPublicHoliday`. Legacy shared rates apply to every site. Omitted settings or sites use 1.5, 1.5 and 2. Saving an unchanged configuration preserves its source representation. Reset to Defaults restores the rates across all sites. Factors now price assigned dated premium hours in engineering and management; they never multiply capacity. Internal premiums use site hourly rates, and external premiums use monthly salary / (20 × 8 × contracted FTE). Costs are derived, including dated external premium charge metadata, and introduce no persisted fields or schema change. External premium cash payments follow the existing delay; unused logged external premium capacity stays outside project costs. JSON transfer and history retain explicit values. Selective import applies them only through the existing Shared settings choice. Frozen compatibility fixtures and schema version remain unchanged.
 
 ## Member availability (October 31)
 
