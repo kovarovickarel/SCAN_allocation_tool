@@ -5,6 +5,8 @@ import { HelpGuideButton } from "../ui/HelpGuideButton";
 import { HelpGuideLayout } from "../ui/HelpGuideLayout";
 import { helpWindowText, type HelpLanguage } from "../ui/helpGuideLanguage";
 import { GuideTranslationContext } from "./GuideTranslation";
+import { premiumGuideCopy } from "./PremiumGuideSection";
+import { screenshotGuideCopy } from "./GuideScreenshot";
 import { timelineHelpTranslations } from "./timelineHelpTranslations";
 
 import { timelineHelpContent } from "./timelineHelpContent";
@@ -47,14 +49,14 @@ export function TimelineHelpGuide({ view, timelineTitle }: { view: keyof typeof 
               subtitle={translation?.subtitle ?? subtitle}
               closeLabel="Close timeline help"
               onClose={closeGuide}
-              tabs={tabs.map(tab => ({ ...tab, label: translation?.tabs[tab.id] ?? tab.label }))}
+              tabs={tabs.map(tab => ({ ...tab, label: (tab.id === "premiums" && language !== "en" ? language === "cs" ? "Práce s příplatkem" : "Zuschlagsarbeit" : translation?.tabs[tab.id]) ?? tab.label }))}
               activeTab={activeTab}
               onSelectTab={setActiveTab}
               language={language}
               onSelectLanguage={setLanguage}
               closeButtonRef={closeButtonRef}
             >
-              <GuideTranslationContext.Provider value={translation?.sections}>
+              <GuideTranslationContext.Provider value={{ ...translation?.sections, ...premiumGuideCopy[language], ...screenshotGuideCopy[language] }}>
                 <div key={currentTab.id} className="space-y-4">{currentTab.render(isRetro)}</div>
               </GuideTranslationContext.Provider>
             </HelpGuideLayout>

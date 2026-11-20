@@ -4,6 +4,32 @@ import { parseWorkspaceFile, serializeWorkspace } from "../../src/utils/workspac
 import { unzipSync, strFromU8 } from "fflate";
 import { historyWorkspace } from "../fixtures/historyWorkspace";
 
+test("built guides load crisp illustrations under the Pages prefix and omit removed graph images", async ({ page }) => {
+  const failures: string[] = [];
+  page.on("response", response => { if (response.status() >= 400 && response.url().includes("/help/")) failures.push(response.url()); });
+  await page.goto("./");
+  await page.getByRole("button", { name: "Help & Guide", exact: true }).click();
+  await page.getByRole("button", { name: "Workpackage & Staffing Indicators", exact: true }).click();
+  const card = page.getByTestId("help-guide-screenshot").locator("img");
+  await expect(card).toHaveAttribute("src", "/SCAN_allocation_tool/help/workpackage-card.svg");
+  await expect.poll(() => card.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  await expect(page.locator("figcaption")).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: /^Project cost:/ }).first().click();
+  await page.getByRole("dialog").getByRole("button", { name: "Help & Guide", exact: true }).click();
+  const guide = page.getByRole("dialog", { name: /Help & Guide/ });
+  await guide.getByRole("button", { name: "Graph View", exact: true }).click();
+  const images = guide.getByTestId("help-guide-screenshot").locator("img");
+  await expect(images).toHaveCount(2);
+  for (const image of await images.all()) {
+    await image.scrollIntoViewIfNeeded();
+    await expect(image).toHaveAttribute("src", /^\/SCAN_allocation_tool\/help\/.*\.svg$/);
+    await expect.poll(() => image.evaluate(node => (node as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+  }
+  await expect(guide.locator('img[src*="spending-overall-graph"]')).toHaveCount(0);
+  expect(failures).toEqual([]);
+});
+
 test("built availability XLSX export loads its lazy module under the Pages prefix", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));

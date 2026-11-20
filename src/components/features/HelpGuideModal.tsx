@@ -13,7 +13,9 @@ import { GuideHeading } from "./GuideHeading";
 import { GuideText, GuideTranslationContext } from "./GuideTranslation";
 import { GuideExample } from "./GuideInlineText";
 import { GuideInlineVisual, GuideVisualCue } from "./GuideVisualCue";
+import { PremiumGuideSection, premiumGuideCopy } from "./PremiumGuideSection";
 import { mainHelpTranslations } from "./mainHelpTranslations";
+import { GuideScreenshot, screenshotGuideCopy } from "./GuideScreenshot";
 
 const importReviewCues = {
   reviewImport: <GuideInlineVisual example="reviewImport" className="my-0.5" />,
@@ -72,7 +74,7 @@ export function HelpGuideModal({
         language={language}
         onSelectLanguage={setLanguage}
       >
-        <GuideTranslationContext.Provider value={translation?.sections}>
+        <GuideTranslationContext.Provider value={{ ...translation?.sections, ...premiumGuideCopy[language], ...screenshotGuideCopy[language] }}>
           {activeTab === "overview" && <div className="space-y-4">
             <section className={`p-4 ${isRetro ? "bg-white border-2 border-black" : "bg-white border border-slate-200 rounded-xl"}`}>
               <h3 className="font-bold text-slate-900 text-sm mb-2"><GuideText section="main-overview-purpose">What the app is for</GuideText></h3>
@@ -259,9 +261,8 @@ export function HelpGuideModal({
             <section className="p-4 bg-white border border-slate-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2"><GuideText section="main-export-workbook">Calendar, colours and grouped columns</GuideText></h3>
               <p><GuideText section="main-export-workbook" part={1}>Export all starts with the earliest project start month. Each project has its own milestone timeline, with coincident milestones listed in the same month. Months outside the project&apos;s duration and unused timeline rows stay grey. Extra project rows are inserted when needed, moving the totals and headers down.</GuideText></p>
-              <p className="mt-2"><GuideText section="main-export-workbook" part={2}>The first three projects use light purple, peach and light blue; later projects use distinct colours. A project&apos;s timeline and project/charged-project cells match in both sheets. Individual exports use the same colour as that project&apos;s position in Export all. Reordering projects changes those colour positions.</GuideText></p>
               <p className="mt-2"><GuideText section="main-export-workbook" part={3}>Use the sheet&apos;s outline controls to expand grouped columns or collapse the timeplan rows. Header text wraps and its row expands to keep it readable. The blue mandatory-input note remains below the project labels, with only overlapping rows removed.</GuideText></p>
-              <p className="mt-2"><GuideText section="main-export-workbook" part={4}>Open the XLSX in Excel or import it into a new Google spreadsheet. Dropdowns use the normal XLSX presentation; Google Sheets&apos; native coloured dropdown chips are not carried by this format. No SCAN importer installation is required. Keep a separate workspace JSON backup to continue editing the plan in this app; changes made in the workbook do not update the app.</GuideText></p>
+              <p className="mt-2"><GuideText section="main-export-workbook" part={4}>Open the XLSX in Excel or import it into a new Google spreadsheet.</GuideText></p>
             </section>
           </div>}
           {activeTab === "purchases" && <div className="space-y-4">
@@ -299,6 +300,7 @@ export function HelpGuideModal({
             <section className="p-4 bg-white border border-amber-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2"><GuideText section="main-summary-unused">Unused paid external capacity</GuideText></h3>
               <p><GuideText section="main-summary-unused" part={1}>The external paid-capacity table always covers <strong>all projects</strong>, regardless of dashboard filters or project selection. It shows salary, paid capacity, allocated effort and cost, and unused effort and salary by member and work month. Deferred payment due months are shown separately. This unused salary is a portfolio cost and is not added to any project’s total price.</GuideText></p>
+              <p className="mt-2"><GuideText section="main-summary-unused" part={2}>This also includes logged external premium hours that have not been assigned to a project or workpackage. They are paid using the member’s site premium factor and appear here outside project totals. For partly assigned days, only the remaining hours are unused; assigned hours are not counted twice. Unused internal premium hours incur no project cost.</GuideText></p>
             </section>
           </div>}
           {activeTab === "externals" && <div className="space-y-4">
@@ -310,8 +312,8 @@ export function HelpGuideModal({
             </section>
             <section className="p-4 bg-white border border-slate-200 rounded-xl">
               <h3 className="font-bold text-slate-900 text-sm mb-2"><GuideText section="main-external-cost">Allocated salary versus unused salary</GuideText></h3>
-              <p><GuideText section="main-external-cost" part={1}>External costs use <GuideExample variant="formula">monthly salary × allocated FTE ÷ member FTE capacity</GuideExample>, rather than the location hourly rate. For a 1.00 FTE member allocated at 0.25 FTE, <GuideExample variant="formula">€1,000 × 0.25 ÷ 1.00 = €250</GuideExample> is charged to the workpackage and project as Non-FTE spending.</GuideText></p>
-              <p className="mt-2"><GuideText section="main-external-cost" part={2}>Allocations across workpackages and projects charge their own proportional shares. A month with any allocation activates the full monthly salary once across the portfolio; any unused portion is shown in Summary dashboard, outside project totals. In the example, if there are no other allocations that month, 0.75 FTE and €750 are unused. Months with no allocation incur no salary in the current model.</GuideText></p>
+              <p><GuideText section="main-external-cost" part={1}>Regular external staffing costs use <GuideExample variant="formula">monthly salary × allocated FTE ÷ member FTE capacity</GuideExample>, rather than the location hourly rate. For a 1.00 FTE member allocated at 0.25 FTE, <GuideExample variant="formula">€1,000 × 0.25 ÷ 1.00 = €250</GuideExample> is charged to the workpackage and project as Non-FTE spending.</GuideText></p>
+              <p className="mt-2"><GuideText section="main-external-cost" part={2}>Allocations across workpackages and projects charge their own proportional shares. A month with a normal allocation activates the full normal monthly salary once across the portfolio; any unused portion is shown in Summary dashboard, outside project totals. In the example, if there are no other allocations that month, 0.75 FTE and €750 are unused. Months with no normal allocation incur no normal salary in the current model. Logged external premium work is paid separately, including unused premium hours. Absences reduce normal paid capacity and salary; working a holiday does not restore that normal capacity.</GuideText></p>
               <p className="mt-2"><GuideText section="main-external-cost" part={3}>The Magic Wand still uses location hourly rates when choosing between equally covered staffing plans; it does not optimise external monthly salaries. Review external staffing and the unused-capacity table after automatic allocation.</GuideText></p>
             </section>
             <section className="p-4 bg-white border border-slate-200 rounded-xl">
@@ -320,12 +322,14 @@ export function HelpGuideModal({
               <p><GuideText section="main-external-deferral" part={1}>For an external member, enable <strong>Deferred payment</strong> and choose a delay in whole months, from 1 to 120. The default is <strong>12 months</strong>. Staffing stays in the month when the work is performed; allocated salary appears in spending in the payment month after the delay.</GuideText></p>
               <p className="mt-2"><GuideText section="main-external-deferral" part={2}>Payments may fall after project end. The spending timeline and charts extend to show them without extending the project’s staffing requirement. Deferral changes payment timing, not the project’s total allocated salary cost. External salaries are calculated from allocations and cannot be edited with Non-FTE Adjust.</GuideText></p>
             </section>
+            <PremiumGuideSection topic="premium-pricing" isRetro={isRetro} />
           </div>}
           {/* Tab 2: Visual Cues & Project Reordering */}
           {activeTab === "indicators" && (
             <div className="space-y-4">
               <section className="p-4 bg-white border border-slate-200 rounded-xl">
                 <GuideHeading icon={<StaffingIcon />} className="mb-2"><GuideText section="main-indicator-staffing">Staffing and duration badges</GuideText></GuideHeading>
+                <GuideScreenshot example="card" />
                 <p><GuideText section="main-indicator-staffing" part={1} lead="Staffing and duration:" inline={{ effortBadge }}>A badge such as {effortBadge} shows the average required capacity over six months of main execution. For tools and subtools, the window spans the first through last main phase, including any months in between. Hover to see the peak month and effort outside that window. Project headers show Avg FTE for the whole project and Peak FTE for the busiest month. Management badges average months with demand. The overall badge combines demand month by month so overlapping months count once. Hover for peak demand.</GuideText></p>
               </section>
               <div className={`p-4 shadow-2xs ${
@@ -403,7 +407,7 @@ export function HelpGuideModal({
                 <GuideVisualCue example="milestones" />
                 <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                   <li><GuideText section="main-milestone-order" part={1} lead="Strict Chronological Sequence:">
-                    Milestones always maintain chronological ordering: <GuideExample variant="formula">REQF &le; FFV &le; EFV &le; AFV &le; SSSR &le; Duration</GuideExample>. REQF (Requirements freeze) defaults to one quarter of the project duration, rounded down. Enter or leave a milestone field to apply its month and update linked milestones.
+                    Milestones always maintain chronological ordering: <GuideExample variant="formula">REQF &le; FFV &le; EFV &le; AFV &le; SSSR</GuideExample>. REQF (Requirements freeze) defaults to one quarter of the project duration, rounded down. Enter or leave a milestone field to apply its month and update linked milestones.
                   </GuideText></li>
                   <li><GuideText section="main-milestone-order" part={2} lead="Max 2 Milestones Per Month:">
                     No more than two milestones may occupy the same month.
@@ -420,6 +424,7 @@ export function HelpGuideModal({
               <section className="p-4 bg-white border border-slate-200 rounded-xl">
                 <GuideHeading icon={<SystemReleaseIcon />} className="mb-2"><GuideText section="main-milestone-releases">System releases</GuideText></GuideHeading>
                 <GuideVisualCue example="releases" />
+                <GuideScreenshot example="releases" />
                 <p className="mb-2"><GuideText section="main-milestone-releases" part={1}>In <strong>Workpackages configuration</strong>, add or edit an FTE basic type and enable <strong>System release mandatory</strong> to require a release when creating or editing its workpackages. Saving the configuration assigns R100 to existing instances of that type that have no release; existing selections are kept. Fresh SYS.4 and SYS.5 types have this enabled by default, and other tools do not. Imported older definitions keep their previous optional behavior. When allocating a workpackage with a release, that release must exist in the destination project.</GuideText></p>
                 <p className="mb-2"><GuideText section="main-milestone-releases" part={2}>FTE and non-FTE workpackages can optionally reference a system release. Enter its three-digit number beside Finish Target or Payment Deadline when creating or editing the workpackage; Enter or clicking away rounds it upwards to a valid number. Leave it blank to clear the label. An upright release tag appears on the left of FTE and non-FTE cards. Multiple workpackages may share a release. If an assigned workpackage references a release missing from its project, its release tag glows red; hover over it to see the project and missing release. Restoring the release clears the warning. Project staffing and spending timelines show the release vertically beside the workpackage name. The combined team staffing timeline shows it horizontally below the coverage percentage. When allocating a workpackage, its release must exist in the destination project. Change it in the allocation window, or cancel and add the missing release in the project staffing timeline before trying again. Automatic-start allocations also enforce this rule. Existing imported plans remain available; release labels do not change effort, costs, dates or milestone deadlines.</GuideText></p>
                 <p className="mb-2"><GuideText section="main-milestone-releases" part={3}>When adding a project, <strong>Include default system releases (6 weeks cadence)</strong> is checked by default below the milestone settings. Uncheck it to start without releases; you can still add them later in the project staffing timeline.</GuideText></p>
@@ -510,7 +515,8 @@ export function HelpGuideModal({
               <section className="p-4 bg-white border border-slate-200 rounded-xl">
                 <h3 className="font-bold text-slate-900 text-sm mb-2"><GuideText section="main-calculation-weekend">Weekend Work Factors</GuideText></h3>
                 <p className="text-slate-600 leading-relaxed"><GuideText section="main-calculation-weekend" part={1}>In Defaults configuration, select <strong>Weekend Work Factors</strong> beside <strong>FTE Costs</strong>. Select a site, then set <strong>Weekend Work</strong> (default 1.5), <strong>Public Holiday Work</strong> (1.5), and <strong>Weekend &amp; Public Holiday Work</strong> (2). The combined factor is a separate value, not the product of the other two.</GuideText></p>
-                <p className="text-slate-600 leading-relaxed mt-2"><GuideText section="main-calculation-weekend" part={2}>Enter non-negative numbers and use Save Configuration to apply them; Cancel discards edits and Reset to Defaults restores 1.5, 1.5 and 2 at every site. These settings support Undo/Redo and workspace JSON transfer; selective import applies them only when chosen in Shared settings. They currently store future pay multipliers and do not affect costs, allocations or capacity. Working on public holidays in the calendar currently restores availability without a pay premium.</GuideText></p>
+                <p className="text-slate-600 leading-relaxed mt-2"><GuideText section="main-calculation-weekend" part={2}>Enter non-negative numbers and use Save Configuration to apply them; Cancel discards edits and Reset to Defaults restores 1.5, 1.5 and 2 at every site. These settings support Undo/Redo and workspace JSON transfer; selective import applies them only when chosen in Shared settings.</GuideText></p>
+                <p className="text-slate-600 leading-relaxed mt-2"><GuideText section="main-calculation-weekend" part={3} inline={{ premiumFormula: <GuideExample variant="formula">hours × hourly rate × site factor</GuideExample>, externalRate: <GuideExample variant="formula">monthly salary ÷ (20 × 8 × contracted FTE)</GuideExample> }}>Assigned premium work costs <GuideExample variant="formula">hours × hourly rate × site factor</GuideExample>. A full/half day provides 8/4 hours. Internal members use their site hourly rate; external members use <GuideExample variant="formula">monthly salary ÷ (20 × 8 × contracted FTE)</GuideExample>. Engineering and management costs go to the assigned project and workpackage. External premiums follow the member’s payment delay. Unused internal hours incur no project cost; unused logged external premium hours appear in Unused paid external capacity. Weekday public holidays still occupy normal capacity; logged holiday work supplies separate premium hours.</GuideText></p>
               </section>
             </div>
           )}

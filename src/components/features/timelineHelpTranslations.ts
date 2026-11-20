@@ -96,13 +96,18 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
         ],
         "spending-graphs": [
           "Měsíční a kumulativní výdaje",
-          "**Graph View** zobrazuje žluté sloupce měsíčních nákladů, růžovou čáru součtu a milníky. Najeďte na měsíc nebo ho vyberte klávesnicí.",
+          "**Graph View** zobrazuje žluté sloupce měsíčních nákladů a růžovou čáru průběžného součtu na stejné stupnici v EUR, se značkami milníků nad grafem. Oba grafy sdílejí vybraný měsíc: najeďte na něj nebo ho vyberte klávesnicí a aktualizujte přehled hodnot. Měsíční sloupce zůstávají žluté v celkovém pohledu i v pohledu konkrétního týmu.",
           "Pomocí {{returnToSpendingGrid}} se vrátíte do tabulky se stejnými rozbalenými řádky jako předtím.",
         ],
+        "spending-graph-scope": [
+          "Grafy celého projektu a konkrétního týmu",
+          ["Celý projekt", "Otevřete náklady projektu z **Default Global Overview** a porovnejte všechny jeho kategorie. Přehled vybraného měsíce spojuje interní technické a manažerské náklady do jedné žluté částky **FTEs**. Spodní graf skládá celkové výdaje podle kategorií v jejich barvách, včetně řízení, nákupů a externích mezd příslušné kategorie. Tento pohled ukazuje, které týmy nejvíce přispívají k výdajům projektu."],
+          ["Konkrétní tým", "Vyberte tým v horní liště a poté otevřete náklady projektu pro rozsah jeho kategorie. Přehled odděluje **Engineering** v barvě týmu a **Management support** ve fialové. Spodní graf odděluje technickou práci, řízení, nákupy **Non-FTE** a **External salaries**; poslední dvě položky se zobrazí, pokud jsou přítomné. Nákupy jsou světle červené a externí mzdy sytěji červené. Tento pohled vysvětluje složení nákladů vybraného týmu."],
+        ],
         "spending-breakdown": [
-          "Měsíční rozpis podle druhu nákladů",
-          "Spodní graf má vlastní měsíční stupnici. V celkovém pohledu seskupuje náklady podle kategorií včetně jejich řízení. V pohledu jedné kategorie odděluje technickou práci, řízení, **Non-FTE** nákupy a **External salaries**.",
-          "Nákupy a externí mzdy mají různé červené odstíny. Podržením ukazatele zobrazíte typ nákladu. Kliknutím na legendu nebo část sloupce přesunete vybranou položku na spodek sloupců a ztlumíte ostatní. Dalším kliknutím obnovíte zobrazení.",
+          "Prozkoumejte měsíční rozpis",
+          "Spodní graf má vlastní měsíční stupnici v EUR, takže vedle kumulativního grafu zůstávají patrné i menší měsíční rozdíly. V obou rozsazích přehled zobrazuje také součty **Monthly** a **Cumulative**; **Non-FTEs** se objeví při platbách za nákupy nebo externí mzdy a spojuje tyto platby.",
+          "Najeďte na část sloupce pro její identifikaci. Kliknutím na položku legendy nebo část sloupce ji přesunete na spodek všech sloupců a ztlumíte ostatní: v celkovém pohledu celou kategorii, v týmovém pohledu druh nákladu. Dalším kliknutím obnovíte celý rozpis. Mění se pouze zobrazení; součty výdajů zůstávají stejné.",
         ],
         "spending-editing": [
           "Úpravy plateb za nákupy",
@@ -149,7 +154,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
           "Ruční přidělení kapacity",
           "Kliknutím na název balíčku otevřete **Assign Members**. Číslo FTE nastavuje měsíční strop. **100%** nebo **Fill** vyplní zbývající potřebu každého měsíce z dostupné kapacity člena.",
           "**Split Evenly** rozdělí práci mezi vhodné členy v rámci jejich měsíčních limitů. **Clear** odebere přidělení tohoto balíčku.",
-          "Pokud se kapacita člena snížila, **Cap** nebo **Auto-Cap All** upraví překročené hodnoty.",
+          "Uložení nižšího FTE automaticky poměrně sníží běžná technická i řídicí přidělení napříč projekty v měsících nad novou dostupnou kapacitou. Příplatkové hodiny zůstávají oddělené. **Cap** a **Auto-Cap All** zůstávají pro opravu starších přidělení. Zvýšení FTE odebranou práci neobnoví.",
           "Plně pokrytou buňku nelze dále obsadit ani s volnou kapacitou.",
           "Limity zahrnují řízení, souběžné projekty a balíčky Other, pokud je zapnuté **Include \"Other\" WPs**. Desetinná čísla pište s tečkou, například **0.25**.",
         ],
@@ -186,7 +191,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
         ],
         "combined-project-wand": [
           "Jeden projekt",
-          "Kouzelná hůlka vedle štítku FTE/yr na řádku projektu přerozdělí členy týmu na jeho aktivní práci a řízení.",
+          "Kouzelná hůlka vedle štítku FTE na řádku projektu přerozdělí členy týmu na jeho aktivní práci a řízení.",
           "Přidělení v ostatních projektech zůstanou zachovaná a snižují volnou kapacitu.",
           "Hůlka respektuje role, měsíční kapacitu, přidělení ostatních týmů a uložené výjimky z údržby. Balíčky Other zahrne jen při zapnutém **Include \"Other\" WPs**.",
           "Nejprve maximalizuje pokrytí a pak minimalizuje náklady podle hodinových sazeb. Člen s chybějící sazbou se může využít pro pokrytí, ale nepovažuje se za bezplatného. Externí měsíční mzdy do optimalizace nevstupují.",
@@ -235,7 +240,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
       tabs: {
         calendar: "Kalendář a nepřítomnost",
         capacity: "Součty a kapacita",
-        holidays: "Svátky",
+        holidays: "Svátky a víkendová práce",
         export: "Uložení a export",
       },
       sections: {
@@ -264,7 +269,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
         ],
         "calendar-holiday-work": [
           "Práce ve svátek",
-          "Na svátek, který připadá na běžný pracovní den, Working day obnoví celou nebo polovinu denní kapacity a zobrazí **W**. Značka W je tmavě zelená, u půldne s bílým pravým dolním trojúhelníkem. Opakování stejné délky obnoví svátek, jiná délka upraví výjimku. Přidání svátku na víkend změní stávající víkendovou práci na zelenou. Odebráním svátku se vrátí šedá barva. Vyznačení půldne zůstane.",
+          "Working day ve svátek zaznamená 8 samostatných příplatkových hodin, nebo 4 s Half-day, a zobrazí **W**. Svátek v běžný pracovní den stále zabírá celý běžný den i při práci. Víkendový svátek běžnou kapacitu nezabírá. Značka W je tmavě zelená, u půldne s bílým pravým dolním trojúhelníkem. Opakování stejné délky obnoví svátek, jiná délka upraví výjimku. Přidání svátku na víkend změní stávající víkendovou práci na zelenou. Odebráním svátku se vrátí šedá barva. Vyznačení půldne zůstane.",
         ],
         "calendar-capacity": [
           "Roční součty nepřítomnosti",
@@ -276,7 +281,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
         ],
         "calendar-external-capacity": [
           "Mzdy externistů a placená kapacita",
-          "Dovolená, nemoc, Other leave a svátky externistům snižují placenou kapacitu i splatnou mzdu včetně půldnů. Tyto absence se nepočítají jako nevyužitá placená externí kapacita. Práce ve svátek obnoví příslušnou část. Interní nepřítomnost se projektu neúčtuje.",
+          "Dovolená, nemoc, Other leave a svátky externistům snižují placenou kapacitu i splatnou mzdu včetně půldnů. Tyto absence se nepočítají jako nevyužitá placená externí kapacita. Vykázaná práce ve svátek poskytuje samostatné příplatkové hodiny a neobnovuje běžnou kapacitu. Přidělené externí hodiny se účtují s faktorem pracoviště; nevyužité vykázané externí hodiny patří do Unused paid external capacity. Interní nepřítomnost se projektu neúčtuje.",
         ],
         "calendar-holidays": [
           "Nastavení svátků",
@@ -390,13 +395,18 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
         ],
         "spending-graphs": [
           "Monatliche und kumulierte Ausgaben",
-          "**Graph View** zeigt gelbe Balken für Monatskosten, eine rosa Linie für die laufende Summe und die Meilensteine. Zeigen Sie auf einen Monat oder wählen Sie ihn per Tastatur aus.",
+          "**Graph View** zeigt gelbe Balken für Monatskosten und eine rosa Linie für die laufende Summe auf derselben EUR-Skala, mit Meilensteinmarken darüber. Beide Diagramme teilen den ausgewählten Monat: Zeigen Sie darauf oder wählen Sie ihn per Tastatur aus, um die Werteanzeige zu aktualisieren. Die Monatsbalken bleiben sowohl in der Gesamtansicht als auch in der Teamansicht gelb.",
           "Mit {{returnToSpendingGrid}} kehren Sie zur Tabelle zurück. Die zuvor geöffneten Zeilen bleiben ausgeklappt.",
         ],
+        "spending-graph-scope": [
+          "Diagramme für das Gesamtprojekt und einzelne Teams",
+          ["Gesamtprojekt", "Öffnen Sie die Projektkosten aus **Default Global Overview**, um alle Kategorien des Projekts zu vergleichen. Die Anzeige des ausgewählten Monats fasst interne Engineering- und Managementkosten zu einem gelben Betrag **FTEs** zusammen. Das untere Diagramm stapelt die Gesamtausgaben nach Kategorie in deren Farbe, einschließlich Management, Einkäufen und externen Gehältern der jeweiligen Kategorie. Diese Ansicht zeigt, welche Teams die Projektausgaben bestimmen."],
+          ["Teamansicht", "Wählen Sie ein Team in der oberen Leiste und öffnen Sie dann die Projektkosten für dessen Kategorieumfang. Die Werteanzeige trennt **Engineering** in der Teamfarbe und **Management support** in Violett. Das untere Diagramm trennt Engineering, Management, **Non-FTE**-Einkäufe und **External salaries**; die letzten beiden erscheinen, wenn sie vorhanden sind. Einkäufe sind hellrot, externe Gehälter kräftiger rot. Diese Ansicht erklärt die Zusammensetzung der Kosten innerhalb des gewählten Teams."],
+        ],
         "spending-breakdown": [
-          "Monatliche Aufschlüsselung nach Kostenart",
-          "Das untere Diagramm hat eine eigene Monatsskala. Die Gesamtansicht gruppiert Kosten nach Kategorie samt Managementaufwand. Die Kategorieansicht trennt technische Arbeit, Management, **Non-FTE**-Einkäufe und **External salaries**.",
-          "Einkäufe und externe Gehälter haben unterschiedliche Rottöne. Zeigen Sie auf den Balkenabschnitt für die Kostenart. Ein Klick auf einen Legendeneintrag oder Balkenabschnitt setzt den gewählten Anteil an die Basis und blendet die anderen ab. Ein zweiter Klick stellt die Darstellung wieder her.",
+          "Die monatliche Aufschlüsselung erkunden",
+          "Das untere Diagramm verwendet eine eigene monatliche EUR-Skala, damit kleinere monatliche Unterschiede neben dem kumulierten Diagramm sichtbar bleiben. In beiden Ansichten zeigt die Werteanzeige auch die Summen **Monthly** und **Cumulative**; **Non-FTEs** erscheint bei Zahlungen für Einkäufe oder externe Gehälter und fasst diese Zahlungen zusammen.",
+          "Zeigen Sie auf einen Stapelabschnitt, um ihn zu identifizieren. Wählen Sie einen Legendeneintrag oder Balkenabschnitt, um ihn an die Basis aller Stapel zu verschieben und die anderen abzublenden: eine ganze Kategorie in der Gesamtansicht oder eine Kostenart in der Teamansicht. Erneutes Auswählen stellt die vollständige Aufschlüsselung wieder her. Nur die Darstellung ändert sich; die Ausgabensummen bleiben gleich.",
         ],
         "spending-editing": [
           "Einkaufszahlungen ändern",
@@ -443,7 +453,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
           "Kapazität manuell zuteilen",
           "Klicken Sie auf den Namen des Arbeitspakets, um **Assign Members** zu öffnen. Der FTE-Wert setzt eine Monatsobergrenze. **100%** und **Fill** füllen den verbleibenden Bedarf jedes Monats mit verfügbarer Kapazität der Person.",
           "**Split Evenly** verteilt den Bedarf auf geeignete Personen innerhalb ihrer Monatsgrenzen. **Clear** entfernt Zuteilungen dieses Pakets.",
-          "Wenn die Kapazität gesunken ist, begrenzen **Cap** und **Auto-Cap All** zu hohe Zuteilungen.",
+          "Das Speichern niedrigerer FTE senkt normale Engineering- und Managementzuteilungen in Monaten oberhalb der neuen verfügbaren Kapazität automatisch projektübergreifend proportional. Zuschlagsstunden bleiben getrennt. **Cap** und **Auto-Cap All** bleiben zur Korrektur älterer Zuteilungen verfügbar. Höhere FTE stellen entfernte Arbeit nicht wieder her.",
           "Voll besetzte Zellen nehmen auch bei freier Personalkapazität keine weiteren Zuteilungen an.",
           "Die Prüfung berücksichtigt Management, überlappende Projekte und Other-Arbeitspakete bei aktiviertem **Include \"Other\" WPs**. Dezimalzahlen nutzen einen Punkt, etwa **0.25**.",
         ],
@@ -480,7 +490,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
         ],
         "combined-project-wand": [
           "Ein Projekt",
-          "Der Zauberstab neben FTE/yr in der Projektzeile verteilt das Team auf aktive Arbeitspakete und Management.",
+          "Der Zauberstab neben dem FTE-Kennzeichen in der Projektzeile verteilt das Team auf aktive Arbeitspakete und Management.",
           "Zuteilungen anderer Projekte bleiben bestehen und verringern freie Kapazität.",
           "Der Zauberstab berücksichtigt Rollen, Monatskapazität, Zuteilungen anderer Teams und gespeicherte Wartungsausschlüsse. Other ist nur bei aktivem **Include \"Other\" WPs** einbezogen.",
           "Er maximiert erst die Deckung und minimiert anschließend Kosten nach Standort-Stundensatz. Personen mit fehlenden Sätzen stehen für die Deckung zur Verfügung, gelten aber nicht als kostenlos. Externe Monatsgehälter fließen nicht in die Optimierung ein.",
@@ -529,7 +539,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
       tabs: {
         calendar: "Kalender und Abwesenheit",
         capacity: "Summen und Kapazität",
-        holidays: "Feiertage",
+        holidays: "Feiertage & Wochenendarbeit",
         export: "Speichern und Exportieren",
       },
       sections: {
@@ -558,7 +568,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
         ],
         "calendar-holiday-work": [
           "An einem Feiertag arbeiten",
-          "An Feiertagen, die auf reguläre Arbeitstage fallen, stellt Working day die volle oder halbe Tageskapazität wieder her und zeigt **W**. Das W ist dunkelgrün, bei halben Tagen mit weißem Dreieck unten rechts. Wiederholen mit gleicher Dauer stellt den Feiertag wieder her. Eine andere Dauer ändert die Ausnahme. Wird für ein Wochenende ein Feiertag gesetzt, erscheint vorhandene Wochenendarbeit grün. Nach dem Entfernen wird die Markierung wieder grau. Die Schattierung für halbe Tage bleibt erhalten.",
+          "Working day an Feiertagen erfasst 8 separate Zuschlagsstunden, mit Half-day 4, und zeigt **W**. Ein Feiertag an einem Werktag belegt weiterhin den ganzen normalen Tag, auch bei Arbeit. Ein Wochenendfeiertag belegt keine normale Kapazität. Das W ist dunkelgrün, bei halben Tagen mit weißem Dreieck unten rechts. Wiederholen mit gleicher Dauer stellt den Feiertag wieder her. Eine andere Dauer ändert die Ausnahme. Wird für ein Wochenende ein Feiertag gesetzt, erscheint vorhandene Wochenendarbeit grün. Nach dem Entfernen wird die Markierung wieder grau. Die Schattierung für halbe Tage bleibt erhalten.",
         ],
         "calendar-capacity": [
           "Jahressummen für Abwesenheiten",
@@ -570,7 +580,7 @@ export const timelineHelpTranslations: Record<TranslatedHelpLanguage, Record<"st
         ],
         "calendar-external-capacity": [
           "Externe Gehälter und bezahlte Kapazität",
-          "Urlaub, Krankheit, Other leave und Feiertage reduzieren bei Externen Kapazität und zahlbares Gehalt, auch bei halben Tagen. Diese Abwesenheiten zählen nicht als ungenutzte bezahlte externe Kapazität. Feiertagsarbeit stellt den entsprechenden Anteil wieder her. Interne Abwesenheit wird dem Projekt nicht belastet.",
+          "Urlaub, Krankheit, Other leave und Feiertage reduzieren bei Externen Kapazität und zahlbares Gehalt, auch bei halben Tagen. Diese Abwesenheiten zählen nicht als ungenutzte bezahlte externe Kapazität. Erfasste Feiertagsarbeit liefert separate Zuschlagsstunden und stellt normale Kapazität nicht wieder her. Zugewiesene externe Stunden werden mit dem Standortfaktor berechnet; ungenutzte erfasste externe Stunden stehen in Unused paid external capacity. Interne Abwesenheit wird dem Projekt nicht belastet.",
         ],
         "calendar-holidays": [
           "Feiertage setzen",

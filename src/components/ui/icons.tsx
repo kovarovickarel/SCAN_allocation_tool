@@ -56,6 +56,15 @@ export const StaffingIcon = memo(({ size = 14, className = "" }: SvgIconProps) =
   </svg>
 ));
 
+export const CoinsIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
+    <ellipse cx="9" cy="6" rx="6" ry="3" />
+    <path d="M3 6v5c0 1.7 2.7 3 6 3M3 11v5c0 1.7 2.7 3 6 3" />
+    <ellipse cx="15" cy="13" rx="6" ry="3" />
+    <path d="M9 13v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5M15 6v4" />
+  </svg>
+));
+
 export const ReceiptIcon = memo(({ size = 14, className = "" }: SvgIconProps) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} aria-hidden="true">
     <path d="M5 3l2 1 2-1 3 1 3-1 2 1 2-1v18l-2-1-2 1-3-1-3 1-2-1-2 1zM9 8h6M9 12h6M9 16h4" />

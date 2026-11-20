@@ -1,6 +1,8 @@
+import { PremiumGuideSection } from "./PremiumGuideSection";
+import { GuideScreenshot } from "./GuideScreenshot";
 import type { ReactNode } from "react";
 import {
-  BeachUmbrellaIcon, CalendarGanttIcon, ChevronDownIcon, FileArrowIcon, GlobeIcon, GripHorizontalIcon,
+  BeachUmbrellaIcon, CalendarGanttIcon, ChevronDownIcon, FileArrowIcon, GripHorizontalIcon,
   MagicWandIcon, ManagementIcon, PencilIcon, ReceiptIcon, SpendingGraphIcon, SpreadsheetIcon,
   StaffingIcon, SystemReleaseIcon, TrashIcon,
 } from "../ui/icons";
@@ -55,6 +57,7 @@ export const timelineHelpContent = {
           <>
             <GuideSection title={<GuideText section="staffing-demand">Read monthly demand</GuideText>} icon={<StaffingIcon />} iconColor="text-emerald-700" isRetro={isRetro}>
               <GuideVisualCue example="staffing" />
+              <GuideScreenshot example="phases" />
               <ul className="list-disc pl-5 space-y-1.5">
                 <li><GuideText section="staffing-demand" part={1}><strong>Month columns</strong> pair calendar dates with project-relative months, such as M3. <strong>Total Monthly Staffing</strong> sums required FTE for workpackages and management in the selected tool scope.</GuideText></li>
                 <li><GuideText section="staffing-demand" part={2}>Expand a category or workpackage to see its phases. Hover over a cell to see its phase, required FTE and any override. The footer heatmap runs from 0 to 3.0+ FTE.</GuideText></li>
@@ -74,6 +77,7 @@ export const timelineHelpContent = {
                 Toggle between <strong>Itemized &amp; Separated</strong> (showing separate sub-tracks for Functions Dev Support and Weekly Meetings Attendance) and <strong>Collapsed into Core</strong> (where support rates are added directly into the core phase cells).
               </GuideText></p>
             </div>
+            <PremiumGuideSection topic="premium-demand" isRetro={isRetro} />
           </>
         ),
       },
@@ -163,6 +167,7 @@ export const timelineHelpContent = {
           <>
             <GuideSection title={<GuideText section="staffing-release-rows">Milestone and release rows</GuideText>} icon={<CalendarGanttIcon />} isRetro={isRetro}>
               <GuideVisualCue example="releases" />
+              <GuideScreenshot example="releases" />
               <ul className="list-disc pl-5 space-y-1.5">
                 <li><GuideText section="staffing-release-rows" part={1}><strong>Project Milestones</strong> marks each milestone in its scheduled month. Hover for the full milestone name. The diamond beside a workpackage identifies its finish target.</GuideText></li>
                 <li><GuideText section="staffing-release-rows" part={2}>Select <strong>Project Milestones</strong> to show or hide <strong>System Releases</strong>. Project Staffing and Project Spending share that visibility choice for each project.</GuideText></li>
@@ -201,6 +206,7 @@ export const timelineHelpContent = {
 
             <GuideSection title={<GuideText section="spending-totals">Read the rows and totals</GuideText>} isRetro={isRetro}>
               <GuideVisualCue example="spending" />
+              <GuideScreenshot example="spending" />
               <ul className="list-disc pl-5 space-y-1.5">
                 <li><GuideText section="spending-totals" part={1}><strong>Cumulative Spending</strong> is the running total. <strong>Monthly Spending</strong> shows the amount due that month. The header shows total, average monthly and peak spending. The monthly average is <GuideExample variant="formula">total spending ÷ months in the payment timeline</GuideExample>.</GuideText></li>
                 <li><GuideText section="spending-totals" part={2}><strong>Spending Tracks</strong> controls member breakdowns. The separate <strong>Expand / Collapse</strong> button controls tool sections. Use a tool header or member expansion control for individual rows.</GuideText></li>
@@ -218,13 +224,23 @@ export const timelineHelpContent = {
           <>
             <GuideSection title={<GuideText section="spending-graphs">Monthly and cumulative spending</GuideText>} icon={<SpendingGraphIcon />} iconColor="text-violet-700" isRetro={isRetro}>
               <GuideVisualCue example="spendingGraphs" />
-              <p><GuideText section="spending-graphs" part={1}><strong>Graph View</strong> combines yellow monthly spending bars with a pink cumulative-spending line and milestone markers. Hover or focus a month to see its values.</GuideText></p>
+              <p><GuideText section="spending-graphs" part={1}><strong>Graph View</strong> combines yellow monthly spending bars with a pink cumulative-spending line on the same EUR scale, with milestone markers above. Both graphs share the selected month: hover or focus a month to update the readout. Monthly bars stay yellow in both the overall and team-specific views.</GuideText></p>
               <p className="mt-2"><GuideText section="spending-graphs" part={2} inline={{ returnToSpendingGrid }}>Choose {returnToSpendingGrid} to return to the grid with its previous expansion settings.</GuideText></p>
+              <GuideScreenshot example="graph" />
             </GuideSection>
 
-            <GuideSection title={<GuideText section="spending-breakdown">Monthly breakdown by cost type</GuideText>} isRetro={isRetro}>
-              <p><GuideText section="spending-breakdown" part={1}>The lower graph has its own monthly scale. The overall view groups costs by tool, including each tool&apos;s management support. Tool-specific views separate engineering, management support, <strong>Non-FTE</strong> purchases and <strong>External salaries</strong>.</GuideText></p>
-              <p className="mt-2"><GuideText section="spending-breakdown" part={2}>Purchases and external salaries use different red tints. Hover to identify the cost type. Select a legend category or bar segment to move it to the bottom of the stack and fade the others. Select it again to restore the full breakdown.</GuideText></p>
+            <GuideSection title={<GuideText section="spending-graph-scope">Overall project vs. team-specific graphs</GuideText>} icon={<SpendingGraphIcon />} iconColor="text-violet-700" isRetro={isRetro}>
+              <ul className="list-disc pl-5 space-y-2">
+                <li><GuideText section="spending-graph-scope" part={1} lead="Overall project:">Open the project cost from <strong>Default Global Overview</strong> to compare all tools in the project. The selected-month readout combines internal engineering and management costs in one yellow <strong>FTEs</strong> amount. The lower graph stacks total spending by tool in each tool&apos;s colour, including its management support, purchases and external salaries. Use this view to see which teams drive the project&apos;s spending.</GuideText></li>
+                <li><GuideText section="spending-graph-scope" part={2} lead="Team-specific view:">Select a team in the top bar, then open that project&apos;s cost to focus on its tool scope. The readout separates <strong>Engineering</strong> in the team colour and <strong>Management support</strong> in purple. The lower graph separates engineering, management support, <strong>Non-FTE</strong> purchases and <strong>External salaries</strong>, with the last two shown when present. Purchases are light red and external salaries a stronger red. Use this view to understand the cost mix within the selected team.</GuideText></li>
+              </ul>
+              <div className="flex flex-wrap gap-x-4">
+                <GuideScreenshot example="teamGraph" />
+              </div>
+            </GuideSection>
+            <GuideSection title={<GuideText section="spending-breakdown">Explore the monthly breakdown</GuideText>} isRetro={isRetro}>
+              <p><GuideText section="spending-breakdown" part={1}>The lower graph uses its own monthly EUR scale, so smaller monthly differences remain visible beside the cumulative graph. In both scopes, the readout also shows <strong>Monthly</strong> and <strong>Cumulative</strong> totals; <strong>Non-FTEs</strong> appears when purchases or external salary payments are present and combines those payments.</GuideText></p>
+              <p className="mt-2"><GuideText section="spending-breakdown" part={2}>Hover to identify a stack segment. Select a legend entry or bar segment to move it to the bottom of every stack and fade the others: an entire tool in the overall view, or a cost type in the team-specific view. Select it again to restore the full breakdown. This changes the presentation only; spending totals stay the same.</GuideText></p>
             </GuideSection>
           </>
         ),
@@ -272,10 +288,28 @@ export const timelineHelpContent = {
               </ul>
             </div>
 
+            <PremiumGuideSection topic="wp-coverage" isRetro={isRetro} />
+
+            <div className={`p-4 shadow-2xs ${
+              isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
+            }`}>
+              <h3 className="font-bold text-slate-900 text-sm mb-1.5"><GuideText section="combined-coverage">Workpackage Coverage Indicators</GuideText></h3>
+              <p className="text-slate-600 leading-relaxed mb-2.5"><GuideText section="combined-coverage" part={1}>Coverage indicators appear on assigned project cards, team timeline workpackages, and management support rows. Coverage is <GuideExample variant="formula">allocated effort ÷ required effort</GuideExample>, expressed as a percentage over the workpackage&apos;s lifecycle.</GuideText></p>
+              <ul className="space-y-2 text-slate-600">
+                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={25} /><span><GuideText section="combined-coverage" part={2} lead="0–50%:">Pulsating red circle with a white cross.</GuideText></span></li>
+                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={70} /><span><GuideText section="combined-coverage" part={3} lead="51–89%:">Half-filled yellow circle.</GuideText></span></li>
+                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={95} /><span><GuideText section="combined-coverage" part={4} lead="90–99%:">Three-quarter-filled green circle.</GuideText></span></li>
+                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={100} /><span><GuideText section="combined-coverage" part={5} lead="100%:">White check mark in a green circle.</GuideText></span></li>
+                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={85} isMaintenanceOnlyUncovered /><span><GuideText section="combined-coverage" part={6} lead="Only maintenance incomplete:">White check mark in a blue circle; all non-maintenance activities are fully covered.</GuideText></span></li>
+              </ul>
+              <p className="text-slate-600 leading-relaxed mt-2.5"><GuideText section="combined-coverage" part={7}>Hover over an icon for details. In Extended mode, expanded project cards show member silhouettes and initials beside the workpackage tags. Compact cards show the coverage icon without a percentage; management support keeps both. Basic mode hides these silhouettes, initials and coverage icons in workpackage cards and management summaries.</GuideText></p>
+            </div>
+
             <div className={`p-4 shadow-2xs ${
               isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
             }`}>
               <GuideHeading icon={<StaffingIcon />} iconColor="text-purple-700"><GuideText section="combined-heatmap">Personal Staffing Heatmap</GuideText></GuideHeading>
+              <GuideScreenshot example="leave" />
               <GuideVisualCue example="combined" />
               <p className="text-slate-600 leading-relaxed mb-2.5"><GuideText section="combined-heatmap" part={1}>
                 Placed directly below all projects in the combined timeline, this section provides an individual month-by-month workload audit for every member in the team:
@@ -292,9 +326,9 @@ export const timelineHelpContent = {
                   />
                   <span className="font-mono font-bold text-purple-900 text-xs"><GuideText section="combined-heatmap" part={4}>100% (Dark Purple)</GuideText></span>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-rose-700 font-bold ml-auto">
-                  <span className="w-2.5 h-2.5 rounded-xs bg-rose-600 inline-block" />
-                  <span><GuideText section="combined-heatmap" part={5}>&gt;100% Over-allocated (Rose Red)</GuideText></span>
+                <div className="flex items-center gap-1.5 text-xs font-bold">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-xs bg-[#2e104b]" />
+                  <span className="text-purple-950"><GuideText section="premium-heatmap-label">&gt;100% with premiums (Very Dark Purple)</GuideText></span>
                 </div>
               </div>
               <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
@@ -328,7 +362,7 @@ export const timelineHelpContent = {
               <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                 <li><GuideText section="combined-assignment" part={1}>Click a workpackage name to open <strong>Assign Members</strong>. An FTE input sets a monthly allocation ceiling; <strong>100%</strong> and <strong>Fill</strong> use that member&apos;s available capacity to fill each month&apos;s remaining effort.</GuideText></li>
                 <li><GuideText section="combined-assignment" part={2}><strong>Split Evenly</strong> shares the effort among eligible members within their monthly limits. <strong>Clear</strong> removes the allocations for this workpackage.</GuideText></li>
-                <li><GuideText section="combined-assignment" part={3}>If a reduced member capacity leaves an existing allocation too high, use <strong>Cap</strong> or <strong>Auto-Cap All</strong> in this dialog to bring the allocations within the current limits.</GuideText></li>
+                <li><GuideText section="combined-assignment" part={3}>Saving a lower member FTE automatically reduces normal engineering and management allocations proportionally across projects in months that exceed the new available capacity. Premium hours remain separate. <strong>Cap</strong> and <strong>Auto-Cap All</strong> remain available for correcting older allocations. Increasing FTE does not restore removed work.</GuideText></li>
                 <li><GuideText section="combined-assignment" part={4}>Allocation cannot exceed a member&apos;s remaining monthly capacity or the workpackage cell&apos;s remaining demand. A fully covered cell cannot gain additional allocation, even if a member has spare capacity.</GuideText></li>
                 <li><GuideText section="combined-assignment" part={5}>Capacity checks include management support, overlapping projects, and Other workpackages when <strong>Include &quot;Other&quot; WPs</strong> is enabled. Decimal values use a dot, for example <strong>0.25</strong>.</GuideText></li>
               </ul>
@@ -396,6 +430,17 @@ export const timelineHelpContent = {
         ),
       },
       {
+        id: "premiums",
+        label: "Premium Work",
+        render: (isRetro: boolean) => <>
+          <PremiumGuideSection topic="premium-strip" isRetro={isRetro} />
+          <PremiumGuideSection topic="premium-allocate" isRetro={isRetro} />
+          <PremiumGuideSection topic="premium-readout" isRetro={isRetro} />
+          <PremiumGuideSection topic="premium-auto" isRetro={isRetro} />
+          <PremiumGuideSection topic="premium-pricing" isRetro={isRetro} />
+        </>,
+      },
+      {
         id: "automatic",
         label: "Automatic Allocation",
         render: (isRetro: boolean) => (
@@ -405,7 +450,7 @@ export const timelineHelpContent = {
             }`}>
               <GuideHeading icon={<MagicWandIcon />} iconColor="text-violet-600"><GuideText section="combined-project-wand">Magic Wand for One Project</GuideText></GuideHeading>
               <p className="text-slate-600 leading-relaxed mb-2"><GuideText section="combined-project-wand" part={1}>
-                In the Team Combined Timeline, click the wand beside a project&apos;s FTE/yr badge. It rebalances this team&apos;s allocations across that project&apos;s active workpackages and management support to cover as much required effort as possible.
+                In the Team Combined Timeline, click the wand beside a project&apos;s FTE badge. It rebalances this team&apos;s allocations across that project&apos;s active workpackages and management support to cover as much required effort as possible.
               </GuideText></p>
               <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
                 <li><GuideText section="combined-project-wand" part={2}>Other projects retain their allocations, and their commitments reduce the capacity available to the selected project.</GuideText></li>
@@ -471,20 +516,7 @@ export const timelineHelpContent = {
               </ul>
             </div>
 
-            <div className={`p-4 shadow-2xs ${
-              isRetro ? "bg-[#ffffec] border-2 border-black font-mono shadow-[2px_2px_0px_#000]" : "bg-white border border-slate-200 rounded-xl"
-            }`}>
-              <h3 className="font-bold text-slate-900 text-sm mb-1.5"><GuideText section="combined-coverage">Workpackage Coverage Indicators</GuideText></h3>
-              <p className="text-slate-600 leading-relaxed mb-2.5"><GuideText section="combined-coverage" part={1}>Coverage indicators appear on assigned project cards, team timeline workpackages, and management support rows. Coverage is <GuideExample variant="formula">allocated effort ÷ required effort</GuideExample>, expressed as a percentage over the workpackage&apos;s lifecycle.</GuideText></p>
-              <ul className="space-y-2 text-slate-600">
-                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={25} /><span><GuideText section="combined-coverage" part={2} lead="0–50%:">Pulsating red circle with a white cross.</GuideText></span></li>
-                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={70} /><span><GuideText section="combined-coverage" part={3} lead="51–89%:">Half-filled yellow circle.</GuideText></span></li>
-                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={95} /><span><GuideText section="combined-coverage" part={4} lead="90–99%:">Three-quarter-filled green circle.</GuideText></span></li>
-                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={100} /><span><GuideText section="combined-coverage" part={5} lead="100%:">White check mark in a green circle.</GuideText></span></li>
-                <li className="flex items-center gap-2"><WorkpackageCoverageBadge coveragePct={85} isMaintenanceOnlyUncovered /><span><GuideText section="combined-coverage" part={6} lead="Only maintenance incomplete:">White check mark in a blue circle; all non-maintenance activities are fully covered.</GuideText></span></li>
-              </ul>
-              <p className="text-slate-600 leading-relaxed mt-2.5"><GuideText section="combined-coverage" part={7}>Hover over an icon for details. In Extended mode, expanded project cards show member silhouettes and initials beside the workpackage tags. Compact cards show the coverage icon without a percentage; management support keeps both. Basic mode hides these silhouettes, initials and coverage icons in workpackage cards and management summaries.</GuideText></p>
-            </div>
+
           </>
         ),
       },
@@ -522,9 +554,11 @@ export const timelineHelpContent = {
 
             <GuideSection title={<GuideText section="calendar-half-days">Mark half-day leave</GuideText>} isRetro={isRetro}>
               <GuideVisualCue example="availabilityHalfDay" />
+              <GuideScreenshot example="calendar" />
               <p><GuideText section="calendar-half-days" part={1}><strong>Half-day</strong> is unchecked when the calendar opens. Enable it to mark half a day of Vacation, Sick leave or Other leave. The upper-left triangle is coloured and the lower-right remains white; half that day&apos;s capacity stays available.</GuideText></p>
               <p className="mt-2"><GuideText section="calendar-half-days" part={2}>With Half-day selected, <strong>Working day</strong> changes a full-day individual leave to half-day; applying it to an existing half-day leave clears it. Site and header public holidays always remain full-day.</GuideText></p>
             </GuideSection>
+            <PremiumGuideSection topic="premium-log" isRetro={isRetro} />
           </>
         ),
       },
@@ -543,29 +577,19 @@ export const timelineHelpContent = {
             </GuideSection>
 
             <GuideSection title={<GuideText section="calendar-external-capacity">External salary and paid capacity</GuideText>} icon={<ReceiptIcon />} iconColor="text-amber-700" isRetro={isRetro}>
-              <p><GuideText section="calendar-external-capacity" part={1}>External vacation, sickness, Other leave and public holidays reduce payable salary and paid capacity, including half-days; these absences are not unused paid external capacity. Working on a holiday restores the corresponding paid capacity. Internal leave is not charged to a project.</GuideText></p>
+              <p><GuideText section="calendar-external-capacity" part={1}>External vacation, sickness, Other leave and public holidays reduce payable salary and paid capacity, including half-days; these absences are not unused paid external capacity. Logged holiday work supplies separate premium hours; it does not restore normal holiday capacity. Assigned external premium hours are charged using the site factor; unused logged external premium hours appear in Unused paid external capacity. Internal leave is not charged to a project.</GuideText></p>
             </GuideSection>
           </>
         ),
       },
       {
         id: "holidays",
-        label: "Public Holidays",
+        label: "Public Holidays & Weekend Work",
         render: (isRetro: boolean) => (
           <>
-            <GuideSection title={<GuideText section="calendar-holidays">Set public holidays</GuideText>} icon={<GlobeIcon />} iconColor="text-emerald-700" isRetro={isRetro}>
-              <GuideVisualCue example="holidays" />
-              <ul className="list-disc pl-5 space-y-1.5">
-                <li><GuideText section="calendar-holidays" part={1}>Click or drag across <strong>site rows</strong> for full-day holidays at that site. Use the <strong>day numbers</strong> for all shown sites, including collapsed sites. The header highlights when every shown site has the holiday.</GuideText></li>
-                <li><GuideText section="calendar-holidays" part={2}>Start on a holiday to remove holidays during that gesture. Right-click or right-drag on site rows or day numbers to remove holidays even when the gesture starts on an empty date. Removing a holiday clears holiday-work entries on regular working days. On a weekend, the work entry keeps its duration and returns to the grey weekend shade. Site and header holidays are always full-day.</GuideText></li>
-                <li><GuideText section="calendar-holidays" part={3}>In global team grouping, existing holidays remain visible. Switch to <strong>Group by site</strong> to edit them. Site rows and day numbers work with any leave tool selected.</GuideText></li>
-              </ul>
-            </GuideSection>
-
-            <GuideSection title={<GuideText section="calendar-holiday-work">Work on a public holiday</GuideText>} isRetro={isRetro}>
-              <GuideVisualCue example="holidayWork" />
-              <p><GuideText section="calendar-holiday-work" part={1}>Working day on a public holiday that falls on a regular working day restores full-day capacity, or half-day capacity when Half-day is checked. Holiday work shows a dark-green <strong>W</strong>; half-day holiday work also has a white lower-right triangle. Applying the same working duration again restores the holiday; switching duration changes the override. Adding a site holiday to a weekend changes existing weekend work to green. Removing it returns the mark to grey. Half-day shading is preserved.</GuideText></p>
-            </GuideSection>
+            <PremiumGuideSection topic="premium-site-holidays" isRetro={isRetro} />
+            <PremiumGuideSection topic="premium-holiday-work" isRetro={isRetro} />
+            <PremiumGuideSection topic="premium-weekend" isRetro={isRetro} />
           </>
         ),
       },

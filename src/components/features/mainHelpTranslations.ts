@@ -158,7 +158,7 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
         "Export všech projektů začíná nejdřívějším startem. Časová osa jednotlivých projektů zobrazuje souběžné milníky společně a měsíce mimo jeho trvání i nepoužité řádky šedě. Pokud je potřeba více řádků, součty a záhlaví se posunou dolů.",
         "První tři projekty mají světle fialovou, broskvovou a světle modrou barvu. Další mají odlišné barvy. Časová osa a buňky projektu i účtovaného projektu mají v obou listech stejnou barvu. Samostatný export používá barvu podle pozice projektu v Export all. Změnou pořadí se mění i pozice barev.",
         "Ovládáním seskupení lze rozbalit sloupce nebo skrýt časové osy. Text záhlaví se zalamuje a řádek se zvětší. Modrá poznámka k povinným vstupům zůstává pod názvy projektů. Odstraní se jen překrývající se řádky.",
-        "XLSX otevřete v Excelu nebo importujte do nového sešitu Google Sheets. Výběrová pole mají standardní vzhled XLSX. Nativní barevné štítky Google Sheets se tímto formátem nepřenášejí. Instalace importéru SCAN není potřeba. Změny v sešitu se promítají jen do souboru. Pro pokračování v aplikaci si uložte JSON.",
+        "XLSX otevřete v Excelu nebo importujte do nového sešitu Google Sheets.",
       ],
       "main-purchase-create": [
         "Přidání a zobrazení nákupu",
@@ -188,6 +188,7 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
       "main-summary-unused": [
         "Nevyužitá placená kapacita",
         "Tabulka Unused paid external capacity zobrazuje placenou, přidělenou a nevyužitou kapacitu i mzdu podle člena a měsíce práce __v celém portfoliu__ bez ohledu na filtry nebo výběr projektů. Nevyužitá mzda patří k nákladům portfolia a do ceny jednotlivých projektů se nezapočítává. U odložených plateb se uvádí měsíc úhrady.",
+        "Patří sem i vykázané externí příplatkové hodiny, které nejsou přidělené projektu nebo balíčku. Platí se s příplatkovým faktorem pracoviště člena a zobrazují se zde mimo součty projektů. U částečně přidělených dnů zůstávají nevyužité jen zbývající hodiny; přidělené hodiny se nepočítají dvakrát. Nevyužité interní příplatkové hodiny projekt nic nestojí.",
       ],
       "main-external-member": [
         "Nastavení externího člena",
@@ -196,8 +197,8 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
       ],
       "main-external-cost": [
         "Přidělený a nevyužitý podíl",
-        "Projektu se účtuje `formula|měsíční mzda × přidělené FTE ÷ kapacita člena`. Nepoužívá se hodinová sazba pracoviště. U člena s kapacitou 1,00 FTE a přidělením 0,25 FTE se balíčku a projektu účtuje `formula|1 000 EUR × 0,25 ÷ 1,00 = 250 EUR` jako Non-FTE.",
-        "Přidělení napříč balíčky účtují poměrné podíly. Jakékoli přidělení v měsíci aktivuje měsíční mzdu jednou za celé portfolio. Bez dalších přidělení zůstává 0,75 FTE a 750 EUR jako nevyužitý podíl v Summary dashboard, mimo náklady projektu. Kapacita bez přidělení v daném měsíci nevytváří mzdový náklad. Nepřítomnost snižuje placenou kapacitu i mzdu, práce ve svátek příslušný podíl obnoví.",
+        "Za běžné externí obsazení se projektu účtuje `formula|měsíční mzda × přidělené FTE ÷ kapacita člena`. Nepoužívá se hodinová sazba pracoviště. U člena s kapacitou 1,00 FTE a přidělením 0,25 FTE se balíčku a projektu účtuje `formula|1 000 EUR × 0,25 ÷ 1,00 = 250 EUR` jako Non-FTE.",
+        "Přidělení napříč balíčky účtují poměrné podíly. Běžné přidělení v měsíci aktivuje běžnou měsíční mzdu jednou za celé portfolio. Bez dalších přidělení zůstává 0,75 FTE a 750 EUR jako nevyužitý podíl v Summary dashboard, mimo náklady projektu. Měsíc bez běžného přidělení nevytváří běžný mzdový náklad. Vykázaná externí práce s příplatkem se platí samostatně, včetně nevyužitých hodin. Nepřítomnost snižuje běžnou placenou kapacitu i mzdu; práce ve svátek tuto běžnou kapacitu neobnovuje.",
         "Magic Wand při stejné míře pokrytí porovnává hodinové sazby pracovišť, nikoli externí měsíční mzdy. Po automatickém přidělení zkontrolujte externí obsazení a tabulku nevyužité kapacity.",
       ],
       "main-external-deferral": [
@@ -236,7 +237,7 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
       ],
       "main-milestone-order": [
         "Pořadí milníků a začátek práce",
-        ["Chronologické pořadí", "Milníky dodržují pořadí `formula|REQF ≤ FFV ≤ EFV ≤ AFV ≤ SSSR ≤ délka projektu`. Výchozí REQF (zmrazení požadavků) je čtvrtina délky projektu zaokrouhlená dolů. Po změně měsíce potvrďte Enter nebo opusťte pole. Aplikace upraví související milníky."],
+        ["Chronologické pořadí", "Milníky dodržují pořadí `formula|REQF ≤ FFV ≤ EFV ≤ AFV ≤ SSSR`. Výchozí REQF (zmrazení požadavků) je čtvrtina délky projektu zaokrouhlená dolů. Po změně měsíce potvrďte Enter nebo opusťte pole. Aplikace upraví související milníky."],
         ["Nejvýše dva milníky za měsíc", "Ve stejném měsíci mohou být nejvýše dva milníky."],
         ["Cíle dokončení balíčků", "Finish Target / Boundary nebo Project End se vybírá při vytváření nebo úpravě balíčku FTE. Požadavky, implementace, ověření a integrace musí skončit nejpozději v cílovém měsíci. Údržba může pokračovat po milníku. U nových projektů je automatický start vypnutý. V Extended jej zapnete ikonou hned vlevo od nastavení projektu. Nový standardní FTE balíček pak začne v M1. Ikona je při zapnutí jantarová. V Basic je automatický start vždy vypnutý. Vypnutí mění jen nová přiřazení, nikoli stávající harmonogramy. Po vypnutí vyberte při přiřazení počáteční měsíc a cíl pomocí náhledu. Pokud se fáze při automatickém startu nevejdou, aplikace upozorní a vrátí balíček do fondu. Při ručním plánování upravte neproveditelný termín před potvrzením."],
         ["Kontrola časových hranic", "Úpravy milníků respektují jejich pořadí a nejdřívější povolenou hranici pro naplánované balíčky Other. Změny projektu, balíčku nebo délky fází znovu ověří i standardní FTE. Neproveditelné automatické plány se vrátí s chybou do fondu, ruční znovu otevřou dialog. Návrat do fondu ponechá cíl a vymaže přidělení i ruční úpravy náročnosti. Platby nákupů přesuňte před zkrácením projektu nebo posunutím splatnosti na dřívější termín."],
@@ -295,7 +296,8 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
       "main-calculation-weekend": [
         "Faktory práce o víkendech",
         "V nastavení výchozích hodnot vedle **FTE Costs** otevřete **Weekend Work Factors**, vyberte pracoviště a nastavte **Weekend Work**, **Public Holiday Work** a **Weekend & Public Holiday Work**. Výchozí hodnoty jsou 1,5, 1,5 a 2. Poslední faktor je samostatný.",
-        "Save Configuration uloží nezáporné hodnoty pro JSON, historii a selektivní Shared settings. Cancel zahodí změny a Reset to Defaults obnoví 1,5, 1,5 a 2 na všech pracovištích. Selektivní import je převezme jen při výběru v Shared settings. Faktory jsou zatím připravené pro budoucí výpočet příplatků a nemění náklady, přidělení ani kapacitu. Práce ve svátek v kalendáři obnoví dostupnost bez příplatku.",
+        "Save Configuration uloží nezáporné hodnoty pro JSON, historii a selektivní Shared settings. Cancel zahodí změny a Reset to Defaults obnoví 1,5, 1,5 a 2 na všech pracovištích. Selektivní import je převezme jen při výběru v Shared settings.",
+        "Přidělená práce s příplatkem stojí {{premiumFormula}}. Celý den/půlden představuje 8/4 hodiny. Interní členové používají hodinovou sazbu pracoviště; externí členové používají {{externalRate}}. Náklady na technickou práci i řízení patří přidělenému projektu a pracovnímu balíčku. Externí příplatky respektují odklad platby člena. Nevyužité interní hodiny projekt nic nestojí; nevyužité vykázané externí hodiny s příplatkem jsou v Unused paid external capacity. Svátek v pracovní den nadále zabírá běžnou kapacitu; vykázaná práce ve svátek poskytuje samostatné hodiny s příplatkem.",
       ],
       "main-modes-teams": [
         "Týmové pohledy",
@@ -474,7 +476,7 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
         "Der Gesamtexport beginnt mit dem frühesten Projektstart. Gleichzeitige Meilensteine teilen sich einen Monat. Jedes Projekt hat seine eigene Meilensteinleiste. Monate außerhalb der Projektdauer und unbenutzte Zeilen bleiben grau. Zusätzliche Projektzeilen verschieben Summen und Überschriften nach unten.",
         "Die ersten drei Projekte sind hellviolett, pfirsichfarben und hellblau. Weitere Projekte erhalten andere Farben. Zeitleiste, Projektzellen und Zellen des belasteten Projekts stimmen in beiden Blättern farblich überein. Einzelexporte verwenden die Farbe der Position in Export all. Eine neue Projektreihenfolge ändert die Farbzuordnung.",
         "Über die Gliederung lassen sich Spalten aufklappen und Kalenderzeilen einklappen. Kopfzeilentext wird umgebrochen und die Zeile wächst mit. Der blaue Hinweis zu Pflichtangaben bleibt unter den Projektbezeichnungen. Nur überlappende Zeilen werden entfernt.",
-        "Öffnen Sie die XLSX-Datei in Excel oder importieren Sie sie in eine neue Google-Tabelle. Auswahlfelder verwenden die normale XLSX-Darstellung. Die farbigen Dropdown-Chips von Google Tabellen werden im Format nicht übertragen. Ein SCAN-Importer muss nicht installiert werden. Änderungen in Excel betreffen die Arbeitsmappe. Für die Weiterarbeit in der App speichern Sie zusätzlich JSON.",
+        "Öffnen Sie die XLSX-Datei in Excel oder importieren Sie sie in eine neue Google-Tabelle.",
       ],
       "main-purchase-create": [
         "Einkäufe anlegen und anzeigen",
@@ -504,6 +506,7 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
       "main-summary-unused": [
         "Unbenutzte bezahlte Kapazität",
         "Unused paid external capacity zeigt bezahlte, zugeteilte und ungenutzte Kapazität und Kosten nach Person und Arbeitsmonat __im gesamten Portfolio__, unabhängig von Filtern und Projektauswahl. Ungenutztes Gehalt gehört zu den Portfoliokosten, aber nicht zur Summe eines einzelnen Projekts. Bei Aufschub erscheint der Zahlungsmonat.",
+        "Dazu gehören auch erfasste externe Zuschlagsstunden ohne Zuweisung zu einem Projekt oder Arbeitspaket. Sie werden mit dem Standortfaktor des Mitglieds bezahlt und hier außerhalb der Projektsummen angezeigt. Bei teilweise zugewiesenen Tagen gelten nur die verbleibenden Stunden als ungenutzt; zugewiesene Stunden werden nicht doppelt gezählt. Ungenutzte interne Zuschlagsstunden verursachen keine Projektkosten.",
       ],
       "main-external-member": [
         "Externes Teammitglied einrichten",
@@ -512,8 +515,8 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
       ],
       "main-external-cost": [
         "Zugeteilter und ungenutzter Anteil",
-        "Das Projekt trägt `formula|Monatsgehalt × zugeteilte FTE ÷ Kapazität der Person`. Der Standort-Stundensatz wird nicht verwendet. Bei 1,00 FTE Kapazität und 0,25 FTE Zuteilung werden dem Arbeitspaket und Projekt `formula|1.000 EUR × 0,25 ÷ 1,00 = 250 EUR` als Non-FTE berechnet.",
-        "Zuteilungen über mehrere Pakete oder Projekte belasten ihre jeweiligen Anteile. Bei einer Zuteilung wird das Monatsgehalt einmal für das Portfolio aktiviert. Ohne weitere Zuteilung bleiben 0,75 FTE und 750 EUR ungenutzt. Diese stehen in Summary dashboard, außerhalb der Projektkosten. Monate ohne Zuteilung erzeugen keine Gehaltskosten. Abwesenheiten reduzieren Gehalt und bezahlte Kapazität. Feiertagsarbeit stellt den jeweiligen Anteil wieder her.",
+        "Für normale externe Besetzung trägt das Projekt `formula|Monatsgehalt × zugeteilte FTE ÷ Kapazität der Person`. Der Standort-Stundensatz wird nicht verwendet. Bei 1,00 FTE Kapazität und 0,25 FTE Zuteilung werden dem Arbeitspaket und Projekt `formula|1.000 EUR × 0,25 ÷ 1,00 = 250 EUR` als Non-FTE berechnet.",
+        "Zuteilungen über mehrere Pakete oder Projekte belasten ihre jeweiligen Anteile. Bei einer normalen Zuteilung wird das normale Monatsgehalt einmal für das Portfolio aktiviert. Ohne weitere Zuteilung bleiben 0,75 FTE und 750 EUR ungenutzt. Diese stehen in Summary dashboard, außerhalb der Projektkosten. Monate ohne normale Zuteilung erzeugen keine normalen Gehaltskosten. Erfasste externe Zuschlagsarbeit wird separat bezahlt, einschließlich ungenutzter Stunden. Abwesenheiten reduzieren normales Gehalt und bezahlte Kapazität; Feiertagsarbeit stellt diese normale Kapazität nicht wieder her.",
         "Magic Wand vergleicht bei gleicher Deckung die Standort-Stundensätze und optimiert keine externen Monatsgehälter. Prüfen Sie nach der automatischen Zuteilung die externe Besetzung und die Tabelle ungenutzter Kapazität.",
       ],
       "main-external-deferral": [
@@ -552,7 +555,7 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
       ],
       "main-milestone-order": [
         "Meilensteinreihenfolge und Arbeitsbeginn",
-        ["Chronologische Reihenfolge", "Für die Meilensteine gilt `formula|REQF ≤ FFV ≤ EFV ≤ AFV ≤ SSSR ≤ Projektdauer`. REQF (Anforderungsstopp) liegt standardmäßig bei einem Viertel der Projektdauer, abgerundet. Bestätigen Sie eine Änderung mit Enter oder durch Verlassen des Feldes. Abhängige Meilensteine werden aktualisiert."],
+        ["Chronologische Reihenfolge", "Für die Meilensteine gilt `formula|REQF ≤ FFV ≤ EFV ≤ AFV ≤ SSSR`. REQF (Anforderungsstopp) liegt standardmäßig bei einem Viertel der Projektdauer, abgerundet. Bestätigen Sie eine Änderung mit Enter oder durch Verlassen des Feldes. Abhängige Meilensteine werden aktualisiert."],
         ["Höchstens zwei Meilensteine je Monat", "In einem Monat dürfen höchstens zwei Meilensteine liegen."],
         ["Endtermine für Arbeitspakete", "Finish Target / Boundary oder Project End wählen Sie beim Anlegen oder Bearbeiten eines FTE-Arbeitspakets. Anforderungen, Implementierung, Validierung und Integration müssen bis einschließlich des Zielmonats abgeschlossen sein. Wartung kann später weiterlaufen. Neue Projekte haben den automatischen Start ausgeschaltet. In Extended können Sie ihn über das Symbol direkt links neben der Projektkonfiguration einschalten. Ein neues Standard-FTE-Paket beginnt dann in M1. Das Symbol ist im aktiven Zustand bernsteinfarben. In Basic bleibt der automatische Start ausgeschaltet. Ausschalten betrifft nur neue Zuweisungen und lässt bestehende Pläne bestehen. Bei ausgeschaltetem Start wählen Sie Start und Endtermin in der Vorschau. Passen die Phasen bei automatischem Start nicht, warnt die App und gibt das Paket in den Pool zurück. Korrigieren Sie bei manueller Planung den Endtermin vor dem Bestätigen."],
         ["Prüfung der Zeitgrenzen", "Beim Bearbeiten von Meilensteinen bleiben Reihenfolge und früheste zulässige Grenze bereits geplanter Other-Pakete gewahrt. Änderungen an Projekt, Arbeitspaket oder Phasendauer prüfen auch Standard-FTE-Pakete erneut. Unmögliche automatische Pläne gehen mit Fehlermeldung in den Pool zurück, manuelle öffnen erneut den Planungsdialog. Die Rückgabe bewahrt den Endtermin und löscht Zuteilungen und manuelle Aufwandswerte. Verschieben Sie betroffene Zahlungen, bevor Sie das Projekt verkürzen oder die Zahlungsfrist vorziehen."],
@@ -611,7 +614,8 @@ export const mainHelpTranslations: Record<TranslatedHelpLanguage, MainHelpTransl
       "main-calculation-weekend": [
         "Faktoren für Wochenend- und Feiertagsarbeit",
         "Öffnen Sie in den Standardeinstellungen neben **FTE Costs** die **Weekend Work Factors**. Wählen Sie einen Standort und legen Sie die Werte für **Weekend Work**, **Public Holiday Work** und **Weekend & Public Holiday Work** fest. Standard sind 1,5, 1,5 und 2. Der kombinierte Wert ist eigenständig.",
-        "Save Configuration übernimmt nichtnegative Faktoren für Verlauf, JSON und Shared settings. Cancel verwirft Änderungen und Reset to Defaults stellt 1,5, 1,5 und 2 an allen Standorten wieder her. Der selektive Import übernimmt sie nur bei Auswahl in Shared settings. Die Werte sind für spätere Zuschläge vorgesehen und ändern derzeit weder Kosten, Zuteilungen noch Kapazität. Feiertagsarbeit im Kalender stellt die Verfügbarkeit ohne Zuschlag wieder her.",
+        "Save Configuration übernimmt nichtnegative Faktoren für Verlauf, JSON und Shared settings. Cancel verwirft Änderungen und Reset to Defaults stellt 1,5, 1,5 und 2 an allen Standorten wieder her. Der selektive Import übernimmt sie nur bei Auswahl in Shared settings.",
+        "Zugewiesene Zuschlagsarbeit kostet {{premiumFormula}}. Ein ganzer/halber Tag umfasst 8/4 Stunden. Interne Mitglieder verwenden den Stundensatz ihres Standorts; externe Mitglieder verwenden {{externalRate}}. Kosten für Engineering und Management werden dem zugewiesenen Projekt und Arbeitspaket zugerechnet. Externe Zuschläge folgen dem Zahlungsaufschub des Mitglieds. Ungenutzte interne Stunden verursachen keine Projektkosten; ungenutzte erfasste externe Zuschlagsstunden erscheinen unter Unused paid external capacity. Feiertage an Werktagen belegen weiterhin normale Kapazität; erfasste Feiertagsarbeit liefert separate Zuschlagsstunden.",
       ],
       "main-modes-teams": [
         "Teamansichten",

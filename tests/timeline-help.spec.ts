@@ -1,11 +1,40 @@
 import { expect, test, type Locator } from "@playwright/test";
+import { premiumGuideCopy } from "../src/components/features/PremiumGuideSection";
+import { screenshotGuideCopy } from "../src/components/features/GuideScreenshot";
+
+test("app screenshot captions cover the same examples in every guide language", () => {
+  for (const language of ["cs", "de"] as const) {
+    expect(Object.keys(screenshotGuideCopy[language])).toEqual(Object.keys(screenshotGuideCopy.en));
+    for (const key of Object.keys(screenshotGuideCopy.en)) {
+      expect(screenshotGuideCopy[language][key]).toHaveLength(1);
+      expect(screenshotGuideCopy[language][key][0]).not.toBe(screenshotGuideCopy.en[key][0]);
+      expect(screenshotGuideCopy[language][key][0]).not.toBe("");
+    }
+  }
+});
+
+test("premium guide languages share English sections, list structure and formula cues", () => {
+  for (const language of ['cs', 'de'] as const) {
+    expect(Object.keys(premiumGuideCopy[language])).toEqual(Object.keys(premiumGuideCopy.en));
+    for (const key of Object.keys(premiumGuideCopy.en) as (keyof typeof premiumGuideCopy.en)[]) {
+      const english = premiumGuideCopy.en[key];
+      const translated = premiumGuideCopy[language][key];
+      expect(translated).toHaveLength(english.length);
+      for (let index = 1; index < english.length; index++) {
+        expect(Array.isArray(translated[index])).toBe(true);
+        expect(translated[index][0]).not.toBe('');
+        expect(translated[index][1].match(/`[^`]+`/g) ?? []).toEqual(english[index][1].match(/`[^`]+`/g) ?? []);
+      }
+    }
+  }
+});
 
 async function expectMatchingGuideLayouts(guide: Locator) {
   const topics = guide.getByTestId("help-guide-topics").getByRole("button");
   const content = guide.getByTestId("help-guide-content");
-  const textBlocks = content.locator("h3, h4, p, li");
+  const textBlocks = content.locator("h3, h4, p, li, figcaption");
   const getLayout = () => content.evaluate(body => {
-    const elements = body.querySelectorAll("section, div, h3, h4, p, ul, ol, li, span, strong, em, svg, code, kbd");
+    const elements = body.querySelectorAll("section, div, h3, h4, p, ul, ol, li, span, strong, em, svg, code, kbd, figure, figcaption, img");
     return Array.from(elements, element => {
       const classes = element.getAttribute("class");
       const label = element.matches("strong, span") ? element.textContent.trim().match(/[.:]$/)?.[0] : undefined;
@@ -57,16 +86,18 @@ const views = [
     restoredDetail: ["Úpravy a uložení", "Bearbeiten und speichern", /Před exportem pracovního prostoru|vor dem Export des Arbeitsbereichs/] },
   { title: "Team Combined Timeline", opener: "Open KPI Combined Team Timeline", team: true, topics: [
     ["Overview", "Personal Staffing Heatmap"], ["Editing & Saving", "3-Level Drag-and-Drop Staffing Allocations"],
-    ["Automatic Allocation", "Auto-allocate Team & Project Priorities"], ["Management Support", "Workpackage Coverage Indicators"],
+    ["Premium Work", "Assign, adjust and remove premium work"],
+    ["Overview", "Workpackage Coverage Indicators"],
+    ["Automatic Allocation", "Auto-allocate Team & Project Priorities"], ["Management Support", "Management Support Overhead: Coverage & Strict Role Enforcement"],
   ], localized: ["Společný kalendář projektů", "Projekte im gemeinsamen Kalender", "Personal Staffing"],
     restoredDetail: ["Přidělení a uložení", "Zuteilen und speichern", "M{n} ONLY"] },
   { title: "Team Availability Timeline", opener: "Open KPI member availability", team: true, topics: [
     ["Calendar & Leave", "Mark half-day leave"], ["Totals & Capacity", "Monthly capacity and allocations"],
-    ["Public Holidays", "Work on a public holiday"], ["Saving & Export", "Export the availability calendar to Excel"],
+    ["Public Holidays & Weekend Work", "Work on a public holiday"], ["Public Holidays & Weekend Work", "Work on a weekend"], ["Saving & Export", "Export the availability calendar to Excel"],
   ], localized: ["Týmový a globální kalendář", "Teamkalender und Gesamtansicht", "Group by site"],
     restoredDetail: ["Uložení a export", "Speichern und Exportieren", /W\/2.*(?:plnou barvu|volle Farbe)/] },
   { title: "Team Availability Timeline", opener: "Open Global Team Availability", topics: [
-    ["Calendar & Leave", "Team and global availability"], ["Public Holidays", "Set public holidays"],
+    ["Calendar & Leave", "Team and global availability"], ["Public Holidays & Weekend Work", "Set public holidays"],
   ], localized: ["Týmový a globální kalendář", "Teamkalender und Gesamtansicht", "Group by site"],
     restoredDetail: ["Součty a kapacita", "Summen und Kapazität", /0,75 FTE.*Personal Staffing/] },
 ] as const;
@@ -212,7 +243,7 @@ test("localized main guides include the workbook mapping and salary examples", a
   }
 });
 
-test("Calendar & Leave has four sections and keeps the individual leave list in all languages", async ({ page }) => {
+test("Calendar & Leave keeps its five sections and individual leave list in all languages", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("button", { name: "Open Global Team Availability", exact: true }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Help & Guide", exact: true }).click();
@@ -225,10 +256,10 @@ test("Calendar & Leave has four sections and keeps the individual leave list in 
   ]) {
     await guide.getByRole("button", { name: language, exact: true }).click();
     const headings = content.getByRole("heading", { level: 3 });
-    await expect(headings).toHaveCount(4);
+    await expect(headings).toHaveCount(5);
     await expect(headings.nth(2)).toHaveText(leave);
     await expect(headings.nth(3)).toHaveText(halfDays);
-    await expect(content.getByRole("listitem")).toHaveCount(3);
+    await expect(headings.nth(2).locator("..").getByRole("listitem")).toHaveCount(3);
   }
 });
 
