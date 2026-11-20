@@ -2,7 +2,7 @@ import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
 import { useTimelineViewPreference } from "../../hooks/useTimelineViewPreference";
 import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { absoluteMonth, memberMonthAvailability, memberMonthPremiumWork, memberPremiumWorkOnDate, type PremiumWorkDay } from "../../utils/memberAvailability";
-import { editPremiumAllocation, makePremiumAssignment, premiumAssignmentDate, premiumAssignmentHours, premiumAssignmentKey, workpackagePremiumHours } from "../../utils/premiumAssignments";
+import { editPremiumAllocation, managementPremiumCard, managementPremiumCards, makePremiumAssignment, premiumAssignmentDate, premiumAssignmentHours, premiumAssignmentKey, workpackagePremiumHours } from "../../utils/premiumAssignments";
 import { PremiumWorkDays, type PremiumWorkBooking } from "./PremiumWorkDays";
 import { allocateTeamWithPremiums } from "../../utils/automaticPremiumAllocation";
 import { PersonalStaffingLeaveRows } from "./PersonalStaffingLeaveRows";
@@ -39,15 +39,7 @@ import { AdjustMemberAllocationModal } from "./AdjustMemberAllocationModal";
 import { TeamAllocationPriorityModal } from "./TeamAllocationPriorityModal";
 import { calculatePortfolioSalaryTotals } from "../../utils/projectSpending";
 import { applySalaryTotals } from "../../utils/externalSalaries";
-
-function premiumStaffingText(regularFTE: number, capacity: number, isRetro: boolean) {
-  const usage = regularFTE / (capacity || 1);
-  if (isRetro && usage > 1.0001) return { color: "#682800" };
-  if (usage <= 0.2) return { color: "#a84600" };
-  if (usage <= 0.5) return { color: "#682800" };
-  if (usage <= 0.7) return { color: "#3f1800" };
-  return { color: "#ffbd73" };
-}
+import { premiumStaffingTextStyle } from "../../utils/memberStaffingColors";
 
 export function TeamTimelineModal({
   toolName,
@@ -70,6 +62,7 @@ export function TeamTimelineModal({
   onSaveAssignments: persistAssignments,
   onSaveMonthlyAssignments: persistMonthlyAssignments,
   onSavePremiumAssignments: persistPremiumAssignments,
+  onSaveMgmtPremiumAssignments: persistMgmtPremiumAssignments,
   onSaveMgmtAssignments: persistMgmtAssignments,
   onSaveMgmtMonthlyAssignments: persistMgmtMonthlyAssignments,
   onCommit,
@@ -157,6 +150,12 @@ export function TeamTimelineModal({
       const releases = releasePlanForSave(project, releaseDrafts[project.id]);
       if (JSON.stringify(releases) !== JSON.stringify(original?.systemReleases)) persistSystemReleases?.(project.id, releases === undefined ? undefined : deepClone(releases));
       const assignments = project.mgmtMemberAssignments?.[toolName] || {};
+      for (const premiumTool of new Set([...Object.keys(project.mgmtMemberPremiumAssignments ?? {}), ...Object.keys(original?.mgmtMemberPremiumAssignments ?? {})])) {
+        const premium = project.mgmtMemberPremiumAssignments?.[premiumTool];
+        if (JSON.stringify(premium || {}) !== JSON.stringify(original?.mgmtMemberPremiumAssignments?.[premiumTool] || {})) {
+          persistMgmtPremiumAssignments?.(project.id, premiumTool, premium ? deepClone(premium) : undefined);
+        }
+      }
       const monthly = project.mgmtMemberMonthlyAssignments?.[toolName] || {};
       const maintenancePreferences = project.mgmtMemberMaintenancePreferences?.[toolName] || {};
       if (JSON.stringify(assignments) !== JSON.stringify(original?.mgmtMemberAssignments?.[toolName] || {})) {
@@ -171,7 +170,7 @@ export function TeamTimelineModal({
     onClose();
     };
     if (onCommit) onCommit(commit); else commit();
-  }, [releaseDrafts, cards, projects, sourceCards, sourceProjects, toolName, persistAssignments, persistMonthlyAssignments, persistPremiumAssignments,
+  }, [releaseDrafts, cards, projects, sourceCards, sourceProjects, toolName, persistAssignments, persistMonthlyAssignments, persistPremiumAssignments, persistMgmtPremiumAssignments,
     persistMgmtAssignments, persistMgmtMonthlyAssignments, persistSystemReleases, persistOtherWPs, showOtherWPs, excludedOtherWPIds, onClose, onCommit]);
 
   const [collapsedProjects, setCollapsedProjects] = useTimelineViewPreference<Record<string, boolean>>("combined", "collapsed-projects", {});
@@ -233,8 +232,8 @@ export function TeamTimelineModal({
   }, [projects]);
 
   const salaryAllocationTotals = useMemo(() => calculatePortfolioSalaryTotals({ projects, cards, members: allMembers,
-    fteCosts, fteRates, toolFteRates, mgmtSettings, reusabilityFactors, stabilityFactors }),
-    [projects, cards, allMembers, fteCosts, fteRates, toolFteRates, mgmtSettings, reusabilityFactors, stabilityFactors]);
+    fteCosts, weekendWorkFactors, fteRates, toolFteRates, mgmtSettings, reusabilityFactors, stabilityFactors }),
+    [projects, cards, allMembers, fteCosts, weekendWorkFactors, fteRates, toolFteRates, mgmtSettings, reusabilityFactors, stabilityFactors]);
   const projectRows = useMemo(() => {
     return projects.map((p) => {
       const parts = (p.startDate || "2026-01").split("-");
@@ -302,7 +301,7 @@ export function TeamTimelineModal({
         const activeCardFTE = isNegated ? 0 : round2(totalEffortSum / pDur);
 
         const allocationCost = applySalaryTotals(calculateWorkpackageAllocationCost(card, pDur,
-          mergedMonthsInProject.map((month) => month.totalWPMonthlyFTE), allMembers, fteCosts, isNegated, p.startDate), salaryAllocationTotals);
+          mergedMonthsInProject.map((month) => month.totalWPMonthlyFTE), allMembers, fteCosts, isNegated, p.startDate, weekendWorkFactors), salaryAllocationTotals);
         return { card, isNegated, activeCardFTE, coveragePct, isMaintenanceOnlyUncovered, alignedTimelineCells, mergedMonthsInProject, allocationCost, premiumHours };
       });
 
@@ -328,8 +327,9 @@ export function TeamTimelineModal({
 
           const mgmtAssignments = p.mgmtMemberAssignments?.[toolName] || {};
           const mgmtMonthly = p.mgmtMemberMonthlyAssignments?.[toolName] || {};
+          const premiumHours = workpackagePremiumHours(managementPremiumCard(p, toolName), allMembers, p.startDate, pDur);
           const { coveragePct: mgmtCoveragePct, monthlyCoverage: mgmtMonthlyCoverage } =
-            calculateManagementCoverage(mgmtAssignments, mgmtMonthly, monthEffort.map((month) => month.totalFTE));
+            calculateManagementCoverage(mgmtAssignments, mgmtMonthly, monthEffort.map((month) => month.totalFTE), premiumHours.totals);
 
           const alignedMgmtCells = Array.from({ length: totalMonths }, (_, gIdx): AlignedTimelineGanttCell => {
             const pRelIdx = gIdx - pOffset;
@@ -350,16 +350,19 @@ export function TeamTimelineModal({
           });
 
           mgmtRow = {
+            premiumHours,
             toolName,
             allocationCost: applySalaryTotals(calculateWorkpackageAllocationCost({
               id: `${p.id}_mgmt_${toolName}`, name: "Management Support", tool: toolName,
               _isMgmt: true, memberAssignments: mgmtAssignments, memberMonthlyAssignments: mgmtMonthly,
-            }, pDur, monthEffort.map((month) => month.totalFTE), allMembers, fteCosts, false, p.startDate), salaryAllocationTotals),
+              memberPremiumAssignments: p.mgmtMemberPremiumAssignments?.[toolName],
+            }, pDur, monthEffort.map((month) => month.totalFTE), allMembers, fteCosts, false, p.startDate, weekendWorkFactors), salaryAllocationTotals),
             fte: toolOverhead.fte,
             coveragePct: mgmtCoveragePct,
             monthEffort,
             alignedMgmtCells,
             syntheticCard: {
+              ...managementPremiumCard(p, toolName),
               id: `${p.id}_mgmt_${toolName}`,
               name: "Management Support",
               tool: toolName,
@@ -396,7 +399,7 @@ export function TeamTimelineModal({
         excludedOtherWorkpackages: workpackages.filter((wp) => !isCardInTeamScope(wp.card)),
         mgmtRow, totalProjectTeamMonthlyFTE, totalProjectTeamFTE };
     });
-  }, [projects, cards, toolName, showOtherWPs, isCardInTeamScope, minStartAbs, totalMonths, toolFteRates, fteRates, reusabilityFactors, stabilityFactors, mgmtSettings, members, allMembers, fteCosts, salaryAllocationTotals]);
+  }, [projects, cards, toolName, showOtherWPs, isCardInTeamScope, minStartAbs, totalMonths, toolFteRates, fteRates, reusabilityFactors, stabilityFactors, mgmtSettings, members, allMembers, fteCosts, weekendWorkFactors, salaryAllocationTotals]);
 
   // Excluded Other workpackages are outside this team's scope. Release only its members,
   // materializing legacy monthly values first so other teams keep their allocations.
@@ -509,10 +512,28 @@ export function TeamTimelineModal({
       coveragePct: isFullyCovered ? 100 : Math.min(99, Math.round(covered / required * 100)) }];
   }), [projectRows]);
 
+  const premiumCards = useMemo(() => [...cards, ...managementPremiumCards(projects)], [cards, projects]);
+  const updatePremiumCard = useCallback((id: string, update: (card: WorkpackageCard) => WorkpackageCard) => {
+    if (cards.some(card => card.id === id)) {
+      setLocalCards(current => current.map(card => card.id === id ? update(card) : card));
+    } else {
+      setLocalProjects(current => current.map(project => {
+        const targetTool = [...new Set([toolName, ...Object.keys(project.mgmtMemberPremiumAssignments ?? {})])]
+          .find(tool => managementPremiumCard(project, tool).id === id);
+        if (!targetTool) return project;
+        const card = managementPremiumCard(project, targetTool);
+        const updated = update(card);
+        return { ...project,
+          mgmtMemberMonthlyAssignments: { ...project.mgmtMemberMonthlyAssignments, [targetTool]: updated.memberMonthlyAssignments || {} },
+          mgmtMemberPremiumAssignments: { ...project.mgmtMemberPremiumAssignments, [targetTool]: updated.memberPremiumAssignments || {} } };
+      }));
+    }
+  }, [cards, toolName]);
+
   const premiumAssignments = useMemo(() => {
     const membersById = new Map(allMembers.map(member => [member.id, member]));
     const assignments = new Map<string, { memberId: string; cardId: string; cardName: string; hours: number }[]>();
-    for (const card of cards) {
+    for (const card of premiumCards) {
       for (const [id, dates] of Object.entries(card.memberPremiumAssignments ?? {})) {
         const member = membersById.get(id);
         if (!member) continue;
@@ -522,13 +543,15 @@ export function TeamTimelineModal({
           if (!day) continue;
           const key = premiumAssignmentKey(member, date);
           const bookings = assignments.get(key) ?? [];
-          bookings.push({ memberId: id, cardId: card.id, cardName: card.name, hours: premiumAssignmentHours(assignment, day) });
+          bookings.push({ memberId: id, cardId: card.id,
+            cardName: card._isMgmt ? `${projects.find(project => project.id === card.projectId)?.name ?? "Project"} ${card.tool} Management Support` : card.name,
+            hours: premiumAssignmentHours(assignment, day) });
           assignments.set(key, bookings);
         }
       }
     }
     return assignments;
-  }, [cards, allMembers]);
+  }, [premiumCards, allMembers, projects]);
   const premiumDragMonth = draggedPremium ? absoluteMonth(draggedPremium.day.date) - minStartAbs : null;
 
   function startPremiumDrag(event: React.DragEvent<HTMLElement>, member: TeamMemberRecord, day: PremiumWorkDay) {
@@ -546,12 +569,14 @@ export function TeamTimelineModal({
     const { member, day } = draggedPremium;
     setDraggedPremium(null);
     setDragOverCellKey(null);
-    if (member.role === "management") return;
+    if (card._isMgmt ? member.role === "engineering" : member.role === "management") return;
+    const target = premiumTargetRemainingHours(card, absoluteMonth(day.date) - minStartAbs);
+    if (target <= 1e-8) return;
     const bookings = premiumAssignments.get(premiumAssignmentKey(member, day.date)) ?? [];
-    const freeHours = day.hours - bookings.reduce((sum, item) => sum + item.hours, 0);
+    const freeHours = Math.min(target, day.hours - bookings.reduce((sum, item) => sum + item.hours, 0));
     if (freeHours <= 1e-8) return;
     const currentHours = bookings.find(item => item.cardId === card.id && item.memberId === member.id)?.hours ?? 0;
-    setLocalCards(current => current.map(item => item.id === card.id ? {
+    updatePremiumCard(card.id, item => ({
       ...item,
       memberPremiumAssignments: {
         ...item.memberPremiumAssignments,
@@ -560,20 +585,35 @@ export function TeamTimelineModal({
           makePremiumAssignment(day, currentHours + freeHours),
         ],
       },
-    } : item));
-    setExpandedWPMembers(current => ({ ...current, [card.id]: true }));
+    }));
+    setExpandedWPMembers(current => ({ ...current, [card._isMgmt ? `mgmt_${card.projectId}` : card.id]: true }));
     setIsDirty(true);
   }
 
+  function premiumTargetRemainingHours(card: WorkpackageCard, globalMonth: number) {
+    const row = projectRows.find(item => item.project.id === card.projectId);
+    if (!row) return 0;
+    const month = globalMonth - row.pOffset;
+    if (month < 0 || month >= row.pDur) return 0;
+    const wp = row.workpackages.find(item => item.card.id === card.id);
+    if (card._isMgmt ? !row.mgmtRow : !wp || wp.isNegated || !isCardInTeamScope(card)) return 0;
+    const demand = card._isMgmt ? row.mgmtRow.monthEffort.map(item => item.totalFTE)
+      : wp.mergedMonthsInProject.map(item => item.totalWPMonthlyFTE);
+    if (!(demand[month] > 0)) return 0;
+    const allocations = resolveMonthlyMemberAllocations(card, row.pDur, demand, allMembers);
+    const regular = Object.values(allocations).reduce((sum, values) => sum + (Number(values[month]) || 0), 0);
+    const premium = card._isMgmt ? row.mgmtRow.premiumHours : wp.premiumHours;
+    return Math.max(0, (demand[month] - regular) * WORKING_HOURS_PER_MONTH - (premium.totals[month] ?? 0));
+  }
+
   function releasePremiumWork(date: string, booking: PremiumWorkBooking) {
-    setLocalCards(current => current.map(card => {
-      if (card.id !== booking.cardId) return card;
+    updatePremiumCard(booking.cardId, card => {
       const assignments = { ...card.memberPremiumAssignments };
       const remaining = (assignments[booking.memberId] ?? []).filter(entry => premiumAssignmentDate(entry) !== date);
       if (remaining.length) assignments[booking.memberId] = remaining;
       else delete assignments[booking.memberId];
       return { ...card, memberPremiumAssignments: Object.keys(assignments).length ? assignments : undefined };
-    }));
+    });
     setIsDirty(true);
   }
 
@@ -583,7 +623,8 @@ export function TeamTimelineModal({
     return cards.some((card) => isCardInTeamScope(card)
       && (hasMember(card.memberAssignments) || hasMember(card.memberMonthlyAssignments) || hasMember(card.memberPremiumAssignments)))
       || projects.some((project) => hasMember(project.mgmtMemberAssignments?.[toolName])
-        || hasMember(project.mgmtMemberMonthlyAssignments?.[toolName]));
+        || hasMember(project.mgmtMemberMonthlyAssignments?.[toolName])
+        || hasMember(project.mgmtMemberPremiumAssignments?.[toolName]));
   }, [cards, projects, members, toolName, isCardInTeamScope]);
 
   const handleClearAllocation = useCallback(() => {
@@ -603,6 +644,8 @@ export function TeamTimelineModal({
         [toolName]: withoutTeamMembers(project.mgmtMemberAssignments?.[toolName]) },
       mgmtMemberMonthlyAssignments: { ...project.mgmtMemberMonthlyAssignments,
         [toolName]: withoutTeamMembers(project.mgmtMemberMonthlyAssignments?.[toolName]) },
+      mgmtMemberPremiumAssignments: { ...project.mgmtMemberPremiumAssignments,
+        [toolName]: withoutTeamMembers(project.mgmtMemberPremiumAssignments?.[toolName]) },
     })));
     setRangeSelection(null);
     setDragOverCellKey(null);
@@ -613,7 +656,7 @@ export function TeamTimelineModal({
     premiumAllocations?: Map<string, NonNullable<WorkpackageCard["memberPremiumAssignments"]>>;
   }) => {
     const updates = new Map<string, Partial<WorkpackageCard>>();
-    const projectUpdates = new Map<string, { assignments: NumericMap; monthly: MonthlyNumericMap }>();
+    const projectUpdates = new Map<string, { assignments: NumericMap; monthly: MonthlyNumericMap; premium?: WorkpackageCard["memberPremiumAssignments"] }>();
     for (const selected of autoAllocationProjects) {
       const summarize = (previous: NumericMap, monthly: MonthlyNumericMap): NumericMap => {
         const assignments = { ...previous };
@@ -639,9 +682,11 @@ export function TeamTimelineModal({
       const mgmtMonthly = selected.row.mgmtRow && result.allocations.get(selected.row.mgmtRow.syntheticCard.id);
       if (mgmtMonthly) {
         const assignments = summarize(selected.row.project.mgmtMemberAssignments?.[toolName] || {}, mgmtMonthly);
+        const premium = result.premiumAllocations?.get(selected.row.mgmtRow.syntheticCard.id);
         if (JSON.stringify(mgmtMonthly) !== JSON.stringify(selected.row.project.mgmtMemberMonthlyAssignments?.[toolName] || {})
-          || JSON.stringify(assignments) !== JSON.stringify(selected.row.project.mgmtMemberAssignments?.[toolName] || {})) {
-          projectUpdates.set(selected.row.project.id, { assignments, monthly: mgmtMonthly });
+          || JSON.stringify(assignments) !== JSON.stringify(selected.row.project.mgmtMemberAssignments?.[toolName] || {})
+          || (premium && JSON.stringify(premium) !== JSON.stringify(selected.row.project.mgmtMemberPremiumAssignments?.[toolName] || {}))) {
+          projectUpdates.set(selected.row.project.id, { assignments, monthly: mgmtMonthly, premium });
         }
       }
     }
@@ -653,6 +698,7 @@ export function TeamTimelineModal({
           ...project,
           mgmtMemberAssignments: { ...project.mgmtMemberAssignments, [toolName]: update.assignments },
           mgmtMemberMonthlyAssignments: { ...project.mgmtMemberMonthlyAssignments, [toolName]: update.monthly },
+          ...(update.premium ? { mgmtMemberPremiumAssignments: { ...project.mgmtMemberPremiumAssignments, [toolName]: update.premium } } : {}),
         } : project;
       }));
     }
@@ -667,11 +713,11 @@ export function TeamTimelineModal({
     }));
     const result = persistPremiumAssignments
       ? allocateTeamWithPremiums(allocationProjects, members, totalMonths, priorities, fteCosts, minStartAbs,
-        cards, allMembers, weekendWorkFactors)
+        [...cards, ...projects.map(project => managementPremiumCard(project, toolName)), ...managementPremiumCards(projects).filter(card => card.tool !== toolName)], allMembers, weekendWorkFactors)
       : allocateTeamByProjectPriority(allocationProjects, members, totalMonths, priorities, fteCosts, minStartAbs);
     applyAutoAllocation(result);
   }, [autoAllocationProjects, members, totalMonths, applyAutoAllocation, fteCosts, minStartAbs,
-    persistPremiumAssignments, cards, allMembers, weekendWorkFactors]);
+    persistPremiumAssignments, cards, projects, toolName, allMembers, weekendWorkFactors]);
 
   const handleAutoAllocateProject = useCallback((projectId: string) => {
     const project = projects.find((item) => item.id === projectId);
@@ -800,9 +846,10 @@ export function TeamTimelineModal({
     otherMemberIds.delete(memberId);
 
     // The edited member's existing contribution can be replaced; everyone else's is reserved.
-    let otherCoverage = (workpackage?.premiumHours.totals[monthIdx] ?? 0) / WORKING_HOURS_PER_MONTH;
-    if (editablePremiumHours !== undefined && workpackage) {
-      otherCoverage -= (workpackage.premiumHours.byMember.get(memberId)?.[monthIdx] ?? 0) / WORKING_HOURS_PER_MONTH;
+    const premiumHours = isMgmt ? projectRow.mgmtRow.premiumHours : workpackage.premiumHours;
+    let otherCoverage = (premiumHours.totals[monthIdx] ?? 0) / WORKING_HOURS_PER_MONTH;
+    if (editablePremiumHours !== undefined) {
+      otherCoverage -= (premiumHours.byMember.get(memberId)?.[monthIdx] ?? 0) / WORKING_HOURS_PER_MONTH;
     }
     for (const otherMemberId of otherMemberIds) {
       const monthlyValue = monthly[otherMemberId]?.[monthIdx];
@@ -913,14 +960,15 @@ export function TeamTimelineModal({
 
   const premiumDaysForEdit = useCallback((memberId: string, monthIndex: number, cardId: string) => {
     const member = members.find(item => item.id === memberId);
-    if (!member || member.role === "management" || !persistPremiumAssignments) return [];
+    const target = premiumCards.find(card => card.id === cardId) || projects.map(project => managementPremiumCard(project, toolName)).find(card => card.id === cardId);
+    if (!member || !target || (target._isMgmt ? member.role === "engineering" || !persistMgmtPremiumAssignments : member.role === "management" || !persistPremiumAssignments)) return [];
     return memberMonthPremiumWork(member, minStartAbs + monthIndex, weekendWorkFactors).flatMap(day => {
       const bookings = premiumAssignments.get(premiumAssignmentKey(member, day.date)) ?? [];
       const assigned = bookings.find(item => item.cardId === cardId && item.memberId === memberId)?.hours ?? 0;
       const available = Math.max(0, day.hours - bookings.reduce((sum, item) => sum + item.hours, 0));
       return assigned > 0 || available > 1e-8 ? [{ day, assigned, available }] : [];
     });
-  }, [members, persistPremiumAssignments, minStartAbs, weekendWorkFactors, premiumAssignments]);
+  }, [members, persistPremiumAssignments, persistMgmtPremiumAssignments, premiumCards, projects, toolName, minStartAbs, weekendWorkFactors, premiumAssignments]);
 
   const currentMaxAllowed = useMemo(() => {
     if (!rangeSelection || selectedMonthIndices.length === 0) return 1.0;
@@ -928,19 +976,23 @@ export function TeamTimelineModal({
     const excludeId = type === "mgmtMember" ? projectId : cardId;
     let minAvail = Infinity;
     for (const gIdx of selectedMonthIndices) {
-      const days = type === "wpMember" ? premiumDaysForEdit(memberId, gIdx, cardId) : [];
+      const days = premiumDaysForEdit(memberId, gIdx, type === "mgmtMember" ? `${projectId}_mgmt_${toolName}` : cardId);
       const hours = days.length ? days.reduce((sum, day) => sum + day.assigned + day.available, 0) : undefined;
       const capacity = getMemberCellMaxAllowedInMonth(memberId, gIdx, type, excludeId, hours);
       const avail = days.some(day => day.assigned > 0) ? Math.max(capacity, rangeSelection.getMonthData?.(gIdx)?.currentVal ?? 0) : capacity;
       if (avail < minAvail) minAvail = avail;
     }
     return minAvail === Infinity ? 1.0 : minAvail;
-  }, [rangeSelection, selectedMonthIndices, getMemberCellMaxAllowedInMonth, premiumDaysForEdit]);
+  }, [rangeSelection, selectedMonthIndices, getMemberCellMaxAllowedInMonth, premiumDaysForEdit, toolName]);
 
   const saveWorkpackageRange = useCallback((requested: number | null) => {
     if (!rangeSelection) return;
-    const { cardId, memberId, pOffset, pDur } = rangeSelection;
-    const card = cards.find(item => item.id === cardId);
+    const { memberId, pOffset, pDur, type, projectId } = rangeSelection;
+    const isMgmt = type === "mgmtMember";
+    const cardId = isMgmt ? `${projectId}_mgmt_${toolName}` : rangeSelection.cardId;
+    const excludeId = isMgmt ? projectId : cardId;
+    const targetProject = projects.find(project => project.id === projectId);
+    const card = isMgmt ? targetProject && managementPremiumCard(targetProject, toolName) : cards.find(item => item.id === cardId);
     if (!card) return;
     const assignments = { ...card.memberMonthlyAssignments };
     const memberMonths = { ...assignments[memberId] };
@@ -954,15 +1006,15 @@ export function TeamTimelineModal({
       if (requested === null) {
         resetMemberMonth(memberMonths, pRelIdx, month, days.some(day => day.assigned > 0));
       } else if (!days.length) {
-        memberMonths[pRelIdx] = Math.min(round2(requested), getMemberCellMaxAllowedInMonth(memberId, month, "wpMember", cardId));
+        memberMonths[pRelIdx] = Math.min(round2(requested), getMemberCellMaxAllowedInMonth(memberId, month, type, excludeId));
       } else {
         const current = rangeSelection.getMonthData?.(month);
         const currentFTE = current?.currentVal ?? 0;
         if (Math.abs(requested - currentFTE) < 1e-9) continue;
         const allocatedHours = days.reduce((sum, day) => sum + day.assigned, 0);
         const eligibleHours = allocatedHours + days.reduce((sum, day) => sum + day.available, 0);
-        const regularLimit = getMemberMaxAllowedInMonth(memberId, month, "wpMember", cardId);
-        const limit = getMemberCellMaxAllowedInMonth(memberId, month, "wpMember", cardId, eligibleHours);
+        const regularLimit = getMemberMaxAllowedInMonth(memberId, month, type, excludeId);
+        const limit = getMemberCellMaxAllowedInMonth(memberId, month, type, excludeId, eligibleHours);
         const combinedLimit = allocatedHours > 0 ? Math.max(limit, currentFTE) : limit;
         const edit = editPremiumAllocation(Math.max(0, currentFTE - allocatedHours / WORKING_HOURS_PER_MONTH),
           Math.min(requested, combinedLimit), regularLimit, days);
@@ -976,14 +1028,14 @@ export function TeamTimelineModal({
     else delete assignments[memberId];
     if (dates.length) premium[memberId] = dates;
     else delete premium[memberId];
-    setLocalCards(current => current.map(item => item.id === cardId ? {
+    updatePremiumCard(cardId, item => ({
       ...item,
       memberMonthlyAssignments: assignments,
       memberPremiumAssignments: Object.keys(premium).length ? premium : undefined,
-    } : item));
+    }));
     setIsDirty(true);
   }, [rangeSelection, selectedMonthIndices, cards, premiumDaysForEdit, resetMemberMonth,
-    getMemberCellMaxAllowedInMonth, getMemberMaxAllowedInMonth, minStartAbs]);
+    getMemberCellMaxAllowedInMonth, getMemberMaxAllowedInMonth, minStartAbs, projects, toolName, updatePremiumCard]);
 
   const parsedCurrentInput = parseFloat(cellInputValue);
   const isInputOverMax = !isNaN(parsedCurrentInput) && parsedCurrentInput > currentMaxAllowed + 0.0001;
@@ -996,38 +1048,7 @@ export function TeamTimelineModal({
 
     const parsed = parseFloat(cellInputValue);
     const isClear = isNaN(parsed) || cellInputValue.trim() === "";
-    const targetVal = isClear ? null : Math.max(0, round2(parsed));
-
-    const { type, cardId, projectId, memberId, pOffset, pDur } = rangeSelection;
-    const excludeId = type === "mgmtMember" ? projectId : cardId;
-
-    if (type === "mgmtMember") {
-      const targetProject = projects.find((p) => p.id === projectId);
-      const currentMonthly = deepClone(targetProject?.mgmtMemberMonthlyAssignments?.[toolName] || {});
-      const memberMonths = { ...(currentMonthly[memberId] || {}) };
-
-      for (const gIdx of selectedMonthIndices) {
-        const pRelIdx = gIdx - pOffset;
-        if (pRelIdx >= 0 && pRelIdx < pDur) {
-          if (targetVal === null) {
-            resetMemberMonth(memberMonths, pRelIdx, gIdx);
-          } else {
-            const maxAllowedForMonth = getMemberCellMaxAllowedInMonth(memberId, gIdx, type, excludeId);
-            memberMonths[pRelIdx] = Math.min(targetVal, maxAllowedForMonth);
-          }
-        }
-      }
-
-      if (Object.keys(memberMonths).length === 0) {
-        delete currentMonthly[memberId];
-      } else {
-        currentMonthly[memberId] = memberMonths;
-      }
-
-      onSaveMgmtMonthlyAssignments?.(projectId, toolName, currentMonthly);
-    } else {
-      saveWorkpackageRange(isClear ? null : Math.max(0, parsed));
-    }
+    saveWorkpackageRange(isClear ? null : Math.max(0, parsed));
 
     setRangeSelection(null);
     setCellInputValue("");
@@ -1035,30 +1056,7 @@ export function TeamTimelineModal({
 
   const handleResetRange = useCallback(() => {
     if (!rangeSelection || selectedMonthIndices.length === 0) return;
-    const { type, projectId, memberId, pOffset, pDur } = rangeSelection;
-
-    if (type === "mgmtMember") {
-      const targetProject = projects.find((p) => p.id === projectId);
-      const currentMonthly = deepClone(targetProject?.mgmtMemberMonthlyAssignments?.[toolName] || {});
-      const memberMonths = { ...(currentMonthly[memberId] || {}) };
-
-      for (const gIdx of selectedMonthIndices) {
-        const pRelIdx = gIdx - pOffset;
-        if (pRelIdx >= 0 && pRelIdx < pDur) {
-          resetMemberMonth(memberMonths, pRelIdx, gIdx);
-        }
-      }
-
-      if (Object.keys(memberMonths).length === 0) {
-        delete currentMonthly[memberId];
-      } else {
-        currentMonthly[memberId] = memberMonths;
-      }
-
-      onSaveMgmtMonthlyAssignments?.(projectId, toolName, currentMonthly);
-    } else {
-      saveWorkpackageRange(null);
-    }
+    saveWorkpackageRange(null);
 
     setRangeSelection(null);
     setCellInputValue("");
@@ -1146,6 +1144,10 @@ export function TeamTimelineModal({
         }
 
         if (pRow.mgmtRow) {
+          pRow.mgmtRow.premiumHours.byMember.get(member.id)?.forEach((hours, month) => {
+            monthlyAllocations[pRow.pOffset + month].premiumHours += hours;
+          });
+
           const mgmtAssignments = pRow.project.mgmtMemberAssignments?.[toolName] || {};
           const mgmtMonthly = pRow.project.mgmtMemberMonthlyAssignments?.[toolName]?.[member.id] || {};
           const assignedFTE = parseFloat(mgmtAssignments[member.id]) || 0;
@@ -1645,6 +1647,7 @@ export function TeamTimelineModal({
                           const mgmtMemberIds = new Set([
                             ...Object.keys(mgmtAssignments),
                             ...Object.keys(mgmtMonthly),
+                            ...mgmtRow.premiumHours.byMember.keys(),
                           ]);
                           const assignedList = Array.from(mgmtMemberIds)
                             .map((mId) => {
@@ -1653,8 +1656,9 @@ export function TeamTimelineModal({
                               const monthlyMap = mgmtMonthly[mId] || {};
                               const monthVals = Object.values(monthlyMap).map(Number).filter((v) => v > 0);
                               const avgMonthly = monthVals.length > 0 ? monthVals.reduce((a, b) => a + b, 0) / pDur : 0;
-                              const fte = lifecycleFTE > 0 ? lifecycleFTE : round2(avgMonthly);
-                              return { member, fte, hasAllocations: lifecycleFTE > 0 || monthVals.length > 0 };
+                              const premiumHours = mgmtRow.premiumHours.byMember.get(mId);
+                              const fte = (lifecycleFTE > 0 ? lifecycleFTE : round2(avgMonthly)) + (premiumHours?.reduce((sum, hours) => sum + hours, 0) ?? 0) / WORKING_HOURS_PER_MONTH / pDur;
+                              return { member, fte, premiumHours, hasAllocations: lifecycleFTE > 0 || monthVals.length > 0 || Boolean(premiumHours) };
                             })
                             .filter((x) => x.member && x.hasAllocations);
 
@@ -1746,6 +1750,10 @@ export function TeamTimelineModal({
                                 <TimelineGanttGrid
                                   rowId={rowId}
                                   isPremiumDragging={Boolean(draggedPremium)}
+                                  premiumDrop={premiumDragMonth !== null && draggedPremium?.member.role !== "engineering" && persistMgmtPremiumAssignments && premiumTargetRemainingHours(mgmtRow.syntheticCard, premiumDragMonth) > 1e-8
+                                    ? { monthIndex: premiumDragMonth, projectStartIndex: pOffset,
+                                      onHover: (key, isOver) => setDragOverCellKey(current => isOver ? key : current === key ? null : current),
+                                      onDrop: event => dropPremiumWork(event, mgmtRow.syntheticCard) } : undefined}
                                   totalMonths={totalMonths}
                                   alignedCells={mgmtRow.alignedMgmtCells}
                                   dragOverCellKey={dragOverCellKey}
@@ -1784,7 +1792,7 @@ export function TeamTimelineModal({
                               {/* Expanded Member Rows for Management Support */}
                               {isMgmtExpanded && (
                                 <div className="divide-y divide-purple-150/70 bg-purple-50/40">
-                                  {assignedList.map(({ member }) => {
+                                  {assignedList.map(({ member, premiumHours }) => {
                                     const memberRowKey = `mgmt_member_${project.id}_${member.id}`;
                                     const cap = parseFloat(member.fte) || 1.0;
                                     const assignedFTE = parseFloat(mgmtAssignments[member.id]) || 0;
@@ -1800,17 +1808,18 @@ export function TeamTimelineModal({
                                         return { isInside: false, fte: 0, isOverridden: false, defaultFTE: 0 };
                                       }
                                       const mgmtMonthFTE = mgmtRow.monthEffort[pRelIdx]?.totalFTE || 0;
-                                      if (mgmtMonthFTE <= 0) {
+                                      const monthPremiumHours = premiumHours?.[pRelIdx] ?? 0;
+                                      if (mgmtMonthFTE <= 0 && !monthPremiumHours) {
                                         return { isInside: false, fte: 0, isOverridden: false, defaultFTE: 0 };
                                       }
                                       const baseContrib = assignedFTE > 0 ? round2(Math.min(assignedFTE, mgmtMonthFTE * memberShare)) : 0;
                                       const isOverridden = memberMonthlyMap[pRelIdx] !== undefined;
                                       const val = isOverridden ? (parseFloat(memberMonthlyMap[pRelIdx]) || 0) : baseContrib;
-                                      if (val > 0) {
-                                        memberMonthlySum += val;
+                                      if (val > 0 || monthPremiumHours > 0) {
+                                        memberMonthlySum += val + monthPremiumHours / WORKING_HOURS_PER_MONTH;
                                         memberActiveMonths++;
                                       }
-                                      return { isInside: true, fte: val, isOverridden, defaultFTE: baseContrib, pRelIdx };
+                                      return { isInside: true, fte: val, premiumHours: monthPremiumHours, isOverridden, defaultFTE: baseContrib, pRelIdx };
                                     });
 
                                     const memberMgmtAvg = memberActiveMonths > 0 ? round2(memberMonthlySum / memberActiveMonths) : 0;
@@ -1890,8 +1899,10 @@ export function TeamTimelineModal({
                                             }
 
                                             const val = cell.fte;
-                                            const pct = cap > 0 ? Math.round((val / cap) * 100) : 0;
-                                            const cellStyle = getMemberAllocationGradientStyle(val, cap, isRetro);
+                                            const totalFTE = val + (cell.premiumHours ?? 0) / WORKING_HOURS_PER_MONTH;
+                                            const pct = cap > 0 ? Math.round((totalFTE / cap) * 100) : 0;
+                                            const regularStyle = getMemberAllocationGradientStyle(totalFTE, cap, isRetro, cell.premiumHours > 0);
+                                            const cellStyle = cell.premiumHours > 0 ? { ...regularStyle, ...premiumStaffingTextStyle(regularStyle.backgroundColor) } : regularStyle;
                                             const pRelIdx = cell.pRelIdx;
 
                                             const isRowSelected = rangeSelection && rangeSelection.rowKey === memberRowKey;
@@ -1913,7 +1924,7 @@ export function TeamTimelineModal({
                                                       if (pR < 0 || pR >= pDur) return null;
                                                       const cData = monthlyContrib[idx];
                                                       return {
-                                                        currentVal: cData?.fte ?? 0,
+                                                        currentVal: (cData?.fte ?? 0) + (cData?.premiumHours ?? 0) / WORKING_HOURS_PER_MONTH,
                                                         defaultVal: cData?.defaultFTE ?? 0,
                                                         isOverridden: Boolean(cData?.isOverridden),
                                                       };
@@ -2007,7 +2018,7 @@ export function TeamTimelineModal({
                                                     className={`w-full h-8 ${isRetro ? "rounded-none font-mono" : "rounded-md"} border flex flex-col items-center justify-center select-none shadow-2xs transition-transform hover:scale-105 hover:z-20 relative ${
                                                       isCellSelected ? "brightness-105" : ""
                                                     }`}
-                                                    title={`${member.firstName} ${member.lastName} (${member.footprint || "PRA"})\nMonth ${pRelIdx + 1} (${monthLabels[gIdx]?.label}): ${val.toFixed(2)} FTE to Management (${pct}% of capacity)\n${formatMemberMonthlyAllocationCost(val, member, fteCosts)}\nClick or drag across months to adjust.`}
+                                                    title={`${member.firstName} ${member.lastName} (${member.footprint || "PRA"})\nMonth ${pRelIdx + 1} (${monthLabels[gIdx]?.label}): ${totalFTE.toFixed(2)} FTE to Management (${pct}% of capacity)${cell.premiumHours ? `\nPremium work: ${cell.premiumHours} h` : ""}\n${formatMemberMonthlyAllocationCost(val, member, fteCosts)}\nClick or drag across months to adjust.`}
                                                   >
                                                     {isCellSelected && (
                                                       <div className="absolute inset-0 z-20 pointer-events-none rounded bg-cyan-400/50 ring-2 ring-inset ring-cyan-300 shadow-[inset_0_0_8px_rgba(6,182,212,0.8)] flex items-end justify-end p-0.5">
@@ -2018,9 +2029,9 @@ export function TeamTimelineModal({
                                                     )}
 
                                                     <span className="text-[10px] font-mono leading-none font-black">
-                                                      {val > 0 ? val.toFixed(2) : "-"}
+                                                      {totalFTE > 0 ? totalFTE.toFixed(2) : "-"}
                                                     </span>
-                                                    {val > 0 && (
+                                                    {totalFTE > 0 && (
                                                       <span className="text-[7.5px] font-mono font-bold leading-none mt-0.5 opacity-80">
                                                         {pct}%
                                                       </span>
@@ -2194,7 +2205,7 @@ export function TeamTimelineModal({
                                 <TimelineGanttGrid
                                   rowId={card.id}
                                   isPremiumDragging={Boolean(draggedPremium)}
-                                  premiumDrop={premiumDragMonth !== null && draggedPremium?.member.role !== "management" && !isNegated && premiumDragMonth >= pOffset && premiumDragMonth < pOffset + pDur
+                                  premiumDrop={premiumDragMonth !== null && draggedPremium?.member.role !== "management" && !isNegated && premiumTargetRemainingHours(card, premiumDragMonth) > 1e-8
                                     ? {
                                       monthIndex: premiumDragMonth,
                                       projectStartIndex: pOffset,
@@ -2353,9 +2364,9 @@ export function TeamTimelineModal({
                                             const val = cell.fte;
                                             const totalFTE = val + cell.premiumHours / WORKING_HOURS_PER_MONTH;
                                             const pct = cap > 0 ? Math.round((totalFTE / cap) * 100) : 0;
-                                            const regularStyle = getMemberAllocationGradientStyle(val, cap, isRetro);
+                                            const regularStyle = getMemberAllocationGradientStyle(totalFTE, cap, isRetro, cell.premiumHours > 0);
                                             const cellStyle = cell.premiumHours > 0
-                                              ? { ...regularStyle, ...premiumStaffingText(val, cap, isRetro) }
+                                              ? { ...regularStyle, ...premiumStaffingTextStyle(regularStyle.backgroundColor) }
                                               : regularStyle;
                                             const pRelIdx = cell.pRelIdx;
 
@@ -2759,11 +2770,14 @@ export function TeamTimelineModal({
               <div className="w-28 h-3 rounded-full border border-slate-300 shadow-inner" style={{ background: "linear-gradient(to right, rgb(239, 68, 68), rgb(234, 200, 24) 50%, rgb(34, 197, 94))" }} />
               <span className="text-[11px] font-mono font-bold text-emerald-700">100%</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-baseline gap-2">
               <span className="font-bold text-slate-700 uppercase text-[10px]">Member Staffing:</span>
               <span className="text-[11px] font-mono font-bold text-slate-600">0%</span>
-              <div className="w-28 h-3 rounded-full border border-slate-300 shadow-inner" style={{ background: "linear-gradient(to right, rgb(255, 255, 255), rgb(172, 142, 195) 50%, rgb(88, 28, 135))" }} />
+              <div className="self-center w-28 h-3 rounded-full border border-slate-300 shadow-inner" style={{ background: "linear-gradient(to right, rgb(255, 255, 255), rgb(172, 142, 195) 50%, rgb(88, 28, 135))" }} />
               <span className="text-[11px] font-mono font-bold text-purple-900">100%</span>
+              <span className="self-center ml-1 inline-block h-3 w-4 rounded-sm border" style={{ backgroundColor: "rgb(46, 16, 75)", borderColor: "rgb(30, 8, 52)" }} aria-hidden="true" />
+              <span className="text-[11px] font-mono font-bold text-purple-950" title="Allocation above normal capacity including premium work">&gt;100%</span>
+              <span className="text-[10px] text-slate-600">- Possible if weekend work is utilized</span>
             </div>
             {showAllocationSummary && (
               <div role="status" aria-live="polite" className="basis-full flex flex-wrap gap-x-3 gap-y-1 text-[10px] leading-tight font-semibold text-violet-700">

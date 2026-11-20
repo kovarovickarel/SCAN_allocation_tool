@@ -26,6 +26,42 @@ test("summary reconciles project prices, staffing, management and delivery group
   expect(summary.externalisation).toBe(0);
 });
 
+test("premium-only engineering and management count toward staffing and external delivery", () => {
+  const premiumProject = { ...project, mgmtMemberAssignments: {}, mgmtMemberMonthlyAssignments: {},
+    mgmtMemberPremiumAssignments: { KPI: { manager: [{ date: '2026-01-04', hours: 4 }] } } };
+  const premiumOptions = { ...options, projects: [premiumProject],
+    cards: options.cards.map(card => ({ ...card, memberAssignments: {}, memberMonthlyAssignments: {},
+      memberPremiumAssignments: card.id === 'kpi' ? { prague: ['2026-01-03'] } : {} })),
+    members: options.members.map(member => ({ ...member,
+      absences: { [member.id === 'manager' ? '2026-01-04' : '2026-01-03']: 'working' as const },
+      ...(member.id === 'manager' ? { isExternal: true, supplierId: 'luxoft' } : {}) })) };
+  const summary = calculateSummaryDashboard(premiumOptions);
+  expect(summary.staffed).toBeCloseTo(0.075);
+  expect(summary.external).toBeCloseTo(0.025);
+  expect(summary.coverage).toBeCloseTo(0.075 / summary.required);
+  expect(summary.rows[0].coverage).toBeCloseTo(summary.coverage!);
+  expect(summary.externalisation).toBeCloseTo(1 / 3);
+  expect(summary.byDelivery['location:PRA']).toBeCloseTo(0.05 / 6);
+  expect(summary.byDelivery['supplier:luxoft']).toBeCloseTo(0.025 / 6);
+  expect(summary.bySupplier.luxoft).toBeCloseTo(0.025 / 6);
+  expect(summary.unstaffedFTE).toBeCloseTo((summary.required - 0.075) / 6);
+  expect(Object.values(summary.byDelivery).reduce((sum, value) => sum + value, 0)).toBeCloseTo(summary.totalFTE);
+  expect(calculateSummaryDashboard(premiumOptions, 'rfq').staffed).toBe(0);
+  expect(calculateSummaryDashboard(premiumOptions, 'all', []).coverage).toBeNull();
+});
+
+test("normal plus premium coverage is capped to demand with proportional delivery shares", () => {
+  const summary = calculateSummaryDashboard({ ...options,
+    cards: options.cards.map(card => card.id === 'kpi' ? { ...card, memberPremiumAssignments: { premium: [{ date: '2026-01-03', hours: 4 }] } } : card),
+    members: [...options.members, { id: 'premium', firstName: 'Premium', lastName: 'External', tool: 'KPI', role: 'engineering',
+      fte: 1, footprint: 'PRA', isExternal: true, supplierId: 'premium-vendor', absences: { '2026-01-03': 'working' } }] });
+  const baseline = calculateSummaryDashboard(options);
+  expect(summary.staffed).toBeCloseTo(baseline.staffed);
+  expect(summary.external).toBeCloseTo(0.025 * 0.5 / 0.525);
+  expect(summary.bySupplier['premium-vendor']).toBeCloseTo(summary.external / 6);
+  expect(Object.values(summary.byDelivery).reduce((sum, value) => sum + value, 0)).toBeCloseTo(summary.totalFTE);
+});
+
 test("RFQ filtering preserves proportional external salary costs and Non-FTE categories", () => {
   const rfq = { ...project, id: "rfq", name: "RFQ Test", isRFQ: true };
   const summaryOptions = { ...options, projects: [project, rfq],

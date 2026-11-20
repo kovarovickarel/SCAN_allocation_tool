@@ -2,7 +2,7 @@ import type { WorkspaceData } from "./workspaceFile";
 import { ensureOtherSupplier } from "./nonFteWorkpackages";
 import { ensureMandatoryWorkpackageReleases, normalizeToolBasicTypes } from "./workpackageTypes";
 import { workpackageFinishViolation } from "./workpackageFinishTargets";
-import { reconcilePremiumAssignments } from "./premiumAssignments";
+import { reconcilePremiumState } from "./premiumAssignments";
 
 export type PlanningState = Omit<WorkspaceData, "view">;
 export type InvalidSchedule = { card: PlanningState["workpackages"][number]; project: PlanningState["projects"][number]; reason: string };
@@ -82,9 +82,11 @@ export function preparePlanningState(state: PlanningState): { state: PlanningSta
       memberAssignments: {}, memberMonthlyAssignments: {}, memberMaintenancePreferences: {},
       customCoreFTE: {}, customDevSupportFTE: {}, customMeetingsFTE: {}, customSupportingActivityFTE: {} };
   });
-  const workpackages = reconcilePremiumAssignments(invalid.length ? scheduledCards : releaseCards,
+  const premiumState = reconcilePremiumState(invalid.length ? scheduledCards : releaseCards,
     normalizedProjects, state.teamMembers, configuration.sitePublicHolidays);
-  return { state: configuration !== config || workpackages !== state.workpackages || projectClassesChanged ? { ...state, configuration, projects: projectClassesChanged ? normalizedProjects : state.projects,
+  const { workpackages } = premiumState;
+  return { state: configuration !== config || workpackages !== state.workpackages || projectClassesChanged || premiumState.projects !== normalizedProjects ? { ...state, configuration,
+    projects: projectClassesChanged || premiumState.projects !== normalizedProjects ? premiumState.projects : state.projects,
     workpackages } : state, invalid };
 }
 

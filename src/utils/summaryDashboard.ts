@@ -3,12 +3,16 @@ import { calculateProjectEffort } from "./helpers";
 import { calculatePortfolioSalaryTotals, calculateProjectSpending } from "./projectSpending";
 import { sumWorkpackageAllocationCosts } from "./allocationCosts";
 import { withoutSalary, externalSalaryUtilization } from "./externalSalaries";
+import { resolveMonthlyMemberAllocations } from "./memberAllocations";
+import { managementPremiumCard, workpackagePremiumHours } from "./premiumAssignments";
+import { withUnusedExternalPremiums } from "./unusedPremiumCosts";
 
 export type SummaryDashboardOptions = Parameters<typeof calculatePortfolioSalaryTotals>[0];
 export type ProjectStatusFilter = "all" | "nominated" | "rfq";
 
 export function calculateSummaryDashboard(options: SummaryDashboardOptions, filter: ProjectStatusFilter = "all", selectedProjectIds: readonly string[] | null = null) {
   const salaryAllocationTotals = calculatePortfolioSalaryTotals(options);
+  const membersById = new Map(options.members.map(member => [member.id, member]));
   const allRows = options.projects.map(project => {
     const cards = options.cards.filter(card => card.projectId === project.id);
     const effort = calculateProjectEffort(cards, options.mgmtSettings, project, options);
@@ -20,15 +24,25 @@ export function calculateSummaryDashboard(options: SummaryDashboardOptions, filt
     for (const tool of spending.tools) for (const track of tool.tracks) {
       if (track.isNonFte) continue;
       const demand = track.requiredEffort || [];
+      const source = track.isManagement ? managementPremiumCard(project, tool.tool) : cards.find(card => card.id === track.id);
+      const normal = source ? resolveMonthlyMemberAllocations(source, project.duration, demand, options.members) : {};
+      const premium = source ? workpackagePremiumHours(source, options.members, project.startDate, project.duration).byMember : new Map<string, number[]>();
+      const memberIds = new Set([...Object.keys(normal), ...premium.keys()]);
       byTeam[tool.tool] = (byTeam[tool.tool] || 0) + demand.reduce((sum, value) => sum + value, 0) / project.duration;
       demand.forEach((needed, month) => {
         required += needed;
-        const allocated = track.monthlyCosts[month].allocatedHours / WORKING_HOURS_PER_MONTH;
+        // Staffing measures delivered effort independently of premium pay/costing.
+        const byMember = [...memberIds].map(id => {
+          const regular = Number(normal[id]?.[month]);
+          return { member: membersById.get(id),
+            fte: needed > 0 ? (Number.isFinite(regular) ? Math.max(0, regular) : 0) + (premium.get(id)?.[month] ?? 0) / WORKING_HOURS_PER_MONTH : 0 };
+        });
+        const allocated = byMember.reduce((sum, person) => sum + person.fte, 0);
         const covered = Math.min(needed, allocated);
         const scale = allocated > 0 ? covered / allocated : 0;
         staffed += covered;
-        for (const person of track.members) {
-          const fte = person.monthlyCosts[month].allocatedHours / WORKING_HOURS_PER_MONTH * scale;
+        for (const person of byMember) {
+          const fte = person.fte * scale;
           if (person.member?.isExternal) {
             external += fte;
             const supplier = person.member.supplierId || "unknown";
@@ -50,7 +64,8 @@ export function calculateSummaryDashboard(options: SummaryDashboardOptions, filt
   const rows = allRows.filter(row => (selectedIds === null || selectedIds.has(row.project.id)) &&
     (filter === "all" || (filter === "rfq" ? row.project.isRFQ : !row.project.isRFQ)));
   const currency = options.fteCosts.currency;
-  const portfolioCost = sumWorkpackageAllocationCosts(allRows.map(row => row.spending.totalCost), currency);
+  const portfolioCost = withUnusedExternalPremiums(sumWorkpackageAllocationCosts(allRows.map(row => row.spending.totalCost), currency),
+    options.projects, options.members, options.weekendWorkFactors);
   const calendarMonths = Object.keys(portfolioCost.externalSalaryCharges || {}).map(key => Number(key.slice(key.lastIndexOf(":") + 1)));
   const firstMonth = Math.min(...calendarMonths);
   const lastMonth = Math.max(...calendarMonths);

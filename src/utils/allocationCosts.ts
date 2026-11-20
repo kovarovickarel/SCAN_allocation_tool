@@ -1,8 +1,53 @@
-import { absoluteMonth } from "./memberAvailability";
+import { absoluteMonth, memberPremiumWorkOnDate } from "./memberAvailability";
 import { WORKING_HOURS_PER_MONTH, round2 } from "../constants";
 import type { WorkpackageCard, TeamMemberRecord, NumericInput, FteCostSettings, WorkpackageAllocationCost } from "../types";
 import { resolveMonthlyMemberAllocations } from "./memberAllocations";
-import { externalSalaryCharge } from "./externalSalaries";
+import { externalSalaryCharge, externalPaymentDelay } from "./externalSalaries";
+import { premiumAssignmentDate, premiumAssignmentHours } from "./premiumAssignments";
+import type { WeekendWorkSettings } from "./weekendWork";
+
+export function externalPremiumHourlyRate(member: TeamMemberRecord) {
+  const salary = member.monthlySalaryCost;
+  const fte = Number(member.fte);
+  return typeof salary === "number" && Number.isFinite(salary) && salary >= 0 && Number.isFinite(fte) && fte > 0
+    ? salary / (20 * 8 * fte) : null;
+}
+
+/** Price regular capacity and separately dated premium hours in the earned month. */
+export function calculateMemberWorkpackageMonthlyCost(
+  card: WorkpackageCard, member: TeamMemberRecord | undefined, memberId: string,
+  regularFTE: number, calendarMonth: number, settings: FteCostSettings, factors?: WeekendWorkSettings,
+): WorkpackageAllocationCost {
+  const normal = calculateMemberMonthlyAllocationCost(regularFTE, member, settings);
+  const result: WorkpackageAllocationCost = { currency: settings.currency, totalCost: normal.totalCost ?? 0,
+    allocatedHours: normal.hours, unpricedHours: normal.totalCost === null ? normal.hours : 0,
+    missingLocations: normal.totalCost === null && normal.hours > 0 ? [member?.isExternal ? `Salary: ${member.firstName} ${member.lastName}` : normal.location] : [] };
+  const salary = member && externalSalaryCharge(member, regularFTE, settings.currency, calendarMonth);
+  if (salary) result.externalSalaryCharges = { [`${memberId}:${calendarMonth}`]: salary };
+  if (!member || (card._isMgmt ? member.role === "engineering" : member.role === "management")) return result;
+  for (const entry of card.memberPremiumAssignments?.[memberId] ?? []) {
+    const date = premiumAssignmentDate(entry);
+    if (absoluteMonth(date) !== calendarMonth) continue;
+    const day = memberPremiumWorkOnDate(member, date, factors);
+    if (!day) continue;
+    const hours = premiumAssignmentHours(entry, day);
+    const rate = day.multiplier === 0 ? 0 : member.isExternal ? externalPremiumHourlyRate(member) : normal.hourlyRate;
+    result.allocatedHours += hours;
+    if (rate === null) {
+      result.unpricedHours += hours;
+      result.missingLocations.push(member.isExternal ? `Salary: ${member.firstName} ${member.lastName}` : normal.location);
+    } else if (member.isExternal) {
+      (result.externalSalaryCharges ??= {})[`premium:${member.id}:${date}:${calendarMonth}`] = {
+        premium: { date, memberId: member.id }, currency: member.monthlySalaryCurrency || settings.currency,
+        salary: day.hours * rate * day.multiplier, capacityFTE: day.hours / WORKING_HOURS_PER_MONTH,
+        allocatedFTE: hours / WORKING_HOURS_PER_MONTH,
+        ...(externalPaymentDelay(member) > 0 ? { paymentDelayMonths: externalPaymentDelay(member) } : {}),
+      };
+    } else result.totalCost += hours * rate * day.multiplier;
+  }
+  result.missingLocations = [...new Set(result.missingLocations)];
+  return result;
+}
 
 // Blank means unconfigured; undefined marks an invalid rate.
 export function parseFteHourlyRate(value: NumericInput | null | undefined): number | null | undefined {
@@ -52,7 +97,8 @@ export function calculateWorkpackageAllocationCost(
   members: readonly TeamMemberRecord[],
   settings: FteCostSettings,
   isNegated = false,
-  startDate = "2026-01"
+  startDate = "2026-01",
+  factors?: WeekendWorkSettings,
 ): WorkpackageAllocationCost {
   const result: WorkpackageAllocationCost = {
     currency: settings.currency, totalCost: 0, allocatedHours: 0, unpricedHours: 0, missingLocations: [],
@@ -61,25 +107,18 @@ export function calculateWorkpackageAllocationCost(
   const memberIndex = new Map(members.map((member) => [member.id, member]));
   const allocations = resolveMonthlyMemberAllocations(card, projectDuration, requiredEffort, members);
   const missingLocations = new Set<string>();
-  for (const [memberId, months] of Object.entries(allocations)) {
+  for (const memberId of new Set([...Object.keys(allocations), ...Object.keys(card.memberPremiumAssignments ?? {})])) {
+    const months = allocations[memberId] ?? {};
     const member = memberIndex.get(memberId);
     for (let month = 0; month < projectDuration; month++) {
-      // No staffing is used outside the workpackage's active months.
-      if (!(requiredEffort[month] > 0)) continue;
       const fte = Number(months[month]);
-      if (!Number.isFinite(fte) || fte <= 0) continue;
-      const { hours, totalCost, location } = calculateMemberMonthlyAllocationCost(fte, member, settings);
-      result.allocatedHours += hours;
-      const charge = member && externalSalaryCharge(member, fte, settings.currency, absoluteMonth(startDate, month));
-      if (charge) {
-        const [year, start] = startDate.split("-").map(Number);
-        (result.externalSalaryCharges ??= {})[`${memberId}:${year * 12 + start - 1 + month}`] = charge;
-      }
-      if (totalCost !== null) result.totalCost += totalCost;
-      else {
-        result.unpricedHours += hours;
-        missingLocations.add(member?.isExternal ? `Salary: ${member.firstName} ${member.lastName}` : location);
-      }
+      const cost = calculateMemberWorkpackageMonthlyCost(card, member, memberId,
+        requiredEffort[month] > 0 && Number.isFinite(fte) && fte > 0 ? fte : 0, absoluteMonth(startDate, month), settings, factors);
+      result.allocatedHours += cost.allocatedHours;
+      result.totalCost += cost.totalCost;
+      result.unpricedHours += cost.unpricedHours;
+      if (cost.externalSalaryCharges) Object.assign(result.externalSalaryCharges ??= {}, cost.externalSalaryCharges);
+      cost.missingLocations.forEach(location => missingLocations.add(location));
     }
   }
   result.totalCost = round2(result.totalCost);

@@ -102,7 +102,8 @@ export const TimelineGanttGrid = memo(function TimelineGanttGrid({
       style={{ gridTemplateColumns: `repeat(${totalMonths}, minmax(52px, 1fr))` }}
     >
       {alignedCells.map((cell, gIdx) => {
-        const isPremiumTarget = premiumDrop?.monthIndex === gIdx;
+        const isPremiumTarget = !isNegated && cell.isInside &&
+          (cell.displayFTE ?? cell.coreM.coreFTE ?? 0) > 0 && premiumDrop?.monthIndex === gIdx;
         const pRelIdx = cell.isInside ? cell.pMonthIdx - 1 : gIdx - (premiumDrop?.projectStartIndex ?? 0);
         const cellKey = `${rowId}_m${pRelIdx}`;
         const isCellDragOver = dragOverCellKey === cellKey;

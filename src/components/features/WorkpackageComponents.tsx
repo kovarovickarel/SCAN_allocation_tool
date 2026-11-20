@@ -27,6 +27,7 @@ import { WorkpackageCostLabel } from "../ui/WorkpackageCostLabel";
 import { combineEffortProfiles, effortBadge, managementEffortBadge } from "../../utils/effortDisplay";
 import { workpackageFinishTarget } from "../../utils/workpackageFinishTargets";
 import { ResponsiveToolTagLabel } from "../ui/ResponsiveToolTagLabel";
+import { managementPremiumCard, workpackagePremiumHours } from "../../utils/premiumAssignments";
 
 export function EditCardContent({ card, onEdit, projectDuration, projectMilestones, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS, fteRates, toolFteRates }: EditCardContentProps) {
   const { isBasic, isRetro } = React.useContext(ThemeContext);
@@ -439,7 +440,8 @@ export const FunctionCard = memo(function FunctionCard({
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(teamMembers), [teamMembers]);
   const allocatedMembers = isAssigned && !isCompact ? teamMembers.filter((member) =>
     Number(card.memberAssignments?.[member.id]) > 0 ||
-    Object.values(card.memberMonthlyAssignments?.[member.id] || {}).some((value) => Number(value) > 0)
+    Object.values(card.memberMonthlyAssignments?.[member.id] || {}).some((value) => Number(value) > 0) ||
+    (card.memberPremiumAssignments?.[member.id]?.length ?? 0) > 0
   ) : [];
   const fte = isAssigned ? (card._fte ?? 0) : null;
   const nominalFTE = card._nominalFte ?? 0.35;
@@ -868,11 +870,13 @@ export const ManagementOverheads = memo(function ManagementOverheads({ overheads
           const assignments = project.mgmtMemberAssignments?.[o.tool] || {};
           const monthlyAssignments = project.mgmtMemberMonthlyAssignments?.[o.tool] || {};
           const effort = managementEffortBadge(monthlyEffort);
-          const { coveragePct } = calculateManagementCoverage(assignments, monthlyAssignments, monthlyEffort);
+          const premiumHours = workpackagePremiumHours(managementPremiumCard(project, o.tool), teamMembers, project.startDate, project.duration);
+          const { coveragePct } = calculateManagementCoverage(assignments, monthlyAssignments, monthlyEffort, premiumHours.totals);
           const allocationCost = allocationCosts.get(o.tool);
           const allocatedMembers = !isCompact ? teamMembers.filter((member) =>
             Number(assignments[member.id]) > 0 ||
-            Object.values(monthlyAssignments[member.id] || {}).some((value) => Number(value) > 0)
+            Object.values(monthlyAssignments[member.id] || {}).some((value) => Number(value) > 0) ||
+            (project.mgmtMemberPremiumAssignments?.[o.tool]?.[member.id]?.length ?? 0) > 0
           ) : [];
           return (
             <div key={o.tool} className={`flex flex-col text-xs bg-white/70 px-2 py-1 rounded border ${rowBorder}`}>

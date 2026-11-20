@@ -238,6 +238,7 @@ export interface AdjustMemberAllocationModalProps {
 export interface TeamTimelineModalProps {
   onSaveSystemReleases?: (projectId: string, releases: AllocationProject["systemReleases"]) => void;
   onSavePremiumAssignments?: (cardId: string, assignments: WorkpackageCard["memberPremiumAssignments"]) => void;
+  onSaveMgmtPremiumAssignments?: (projectId: string, tool: string, assignments: WorkpackageCard["memberPremiumAssignments"]) => void;
   weekendWorkFactors?: import("../../utils/weekendWork").WeekendWorkSettings;
   onCommit?: (save: () => void) => void;
   suppliers?: readonly SupplierRecord[];
@@ -280,6 +281,7 @@ export interface TeamAllocationPriorityModalProps {
 }
 
 export interface ProjectBasketProps {
+  weekendWorkFactors?: import("../../utils/weekendWork").WeekendWorkSettings;
   salaryAllocationTotals?: Record<string, number>;
   suppliers?: readonly SupplierRecord[];
   fteCosts?: FteCostSettings;

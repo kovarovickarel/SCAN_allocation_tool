@@ -97,7 +97,8 @@ export function calculateWorkpackageCoverage(
 export function calculateManagementCoverage(
   assignments: NumericMap,
   monthlyAssignments: MonthlyNumericMap,
-  monthlyEffort: readonly number[]
+  monthlyEffort: readonly number[],
+  premiumHours: readonly number[] = []
 ) {
   const totalStaffed = Object.values(assignments).reduce((sum, value) => sum + (parseFloat(value) || 0), 0);
   const monthlyCoverage = monthlyEffort.map((displayFTE, monthIdx) => {
@@ -114,7 +115,7 @@ export function calculateManagementCoverage(
           coveredFTE += parseFloat(memberMonths[monthIdx]) || 0;
         }
       }
-      coveredFTE = Math.min(displayFTE, coveredFTE);
+      coveredFTE = Math.min(displayFTE, coveredFTE + (premiumHours[monthIdx] ?? 0) / WORKING_HOURS_PER_MONTH);
     }
     return { displayFTE, coveredFTE, leftFTE: Math.max(0, displayFTE - coveredFTE) };
   });

@@ -47,6 +47,16 @@ export function externalSalaryUtilization(cost: WorkpackageAllocationCost) {
   let paidFTE = 0, allocatedFTE = 0, unusedFTE = 0;
   const unusedCharges: NonNullable<WorkpackageAllocationCost["externalSalaryCharges"]> = {};
   for (const [key, charge] of Object.entries(cost.externalSalaryCharges || {})) {
+    if (charge.premium) {
+      // Allocated premium charges pay only their actual hours. A separate zero-
+      // allocation entry represents logged premium work still outside projects.
+      const unused = charge.allocatedFTE === 0 ? charge.capacityFTE : 0;
+      paidFTE += charge.allocatedFTE + unused;
+      allocatedFTE += charge.allocatedFTE;
+      unusedFTE += unused;
+      unusedCharges[key] = { ...charge, allocatedFTE: unused };
+      continue;
+    }
     const total = charge.totalAllocatedFTE || charge.allocatedFTE;
     const share = charge.allocatedFTE / total;
     paidFTE += charge.capacityFTE * share;

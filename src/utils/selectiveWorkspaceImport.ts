@@ -61,7 +61,7 @@ export function allocationDependencies(current: WorkspaceData, incoming: Workspa
     if (choice.action !== "skip" && choice.action !== "keep" && plan.allocations && choice.allocations !== false) referencedMembers(card).forEach(id => ids.add(id));
   }
   if (plan.managementAllocations) for (const project of incoming.projects) if (plan.projects[project.id]?.target !== "skip") {
-    for (const tool of plan.tools) for (const key of ["mgmtMemberAssignments", "mgmtMemberMonthlyAssignments", "mgmtMemberMaintenancePreferences"] as const) Object.keys(project[key]?.[tool] ?? {}).forEach(id => ids.add(id));
+    for (const tool of plan.tools) for (const key of ["mgmtMemberAssignments", "mgmtMemberMonthlyAssignments", "mgmtMemberMaintenancePreferences", "mgmtMemberPremiumAssignments"] as const) Object.keys(project[key]?.[tool] ?? {}).forEach(id => ids.add(id));
   }
   return ids;
 }
@@ -90,7 +90,7 @@ export function previewSelectiveImport(current: WorkspaceData, incoming: Workspa
     if (choice.target === "new") {
       const id = freshId(project.id, usedProjects);
       projectMap.set(project.id, id);
-      result.projects.push({ ...copy(project), id, customMgmtMonthlyFTE: {}, mgmtMemberAssignments: {}, mgmtMemberMonthlyAssignments: {}, mgmtMemberMaintenancePreferences: {} });
+      result.projects.push({ ...copy(project), id, customMgmtMonthlyFTE: {}, mgmtMemberAssignments: {}, mgmtMemberMonthlyAssignments: {}, mgmtMemberMaintenancePreferences: {}, mgmtMemberPremiumAssignments: {} });
       changes.push(`Add project ${project.name}`);
     } else {
       const existing = result.projects.find(value => value.id === mappedProjectId(choice));
@@ -259,7 +259,7 @@ export function previewSelectiveImport(current: WorkspaceData, incoming: Workspa
     if (managementTargets.has(target.id)) errors.push(`Several incoming projects replace the management plan for ${target.name}; map them to distinct projects or skip duplicates.`);
     managementTargets.add(target.id);
     for (const tool of plan.tools) {
-      for (const key of ["mgmtMemberAssignments", "mgmtMemberMonthlyAssignments", "mgmtMemberMaintenancePreferences"] as const) target[key] = { ...target[key], [tool]: remap<any>(project[key]?.[tool]) } as any;
+      for (const key of ["mgmtMemberAssignments", "mgmtMemberMonthlyAssignments", "mgmtMemberMaintenancePreferences", "mgmtMemberPremiumAssignments"] as const) target[key] = { ...target[key], [tool]: remap<any>(project[key]?.[tool]) } as any;
       target.customMgmtMonthlyFTE = { ...target.customMgmtMonthlyFTE, [tool]: copy(project.customMgmtMonthlyFTE?.[tool] ?? {}) };
       changes.push(`Update ${tool} management plan for ${target.name}`);
     }

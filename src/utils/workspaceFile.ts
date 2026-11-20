@@ -109,6 +109,20 @@ function numericMap(value: any, path: string, depth = 1, booleanValues = false) 
     else number(item, `${path}.${key}`);
   }
 }
+function premiumMap(value: unknown) {
+      for (const entries of Object.values(object(value, "Premium work allocations"))) {
+        if (!Array.isArray(entries)) fail("Premium work allocations", "expected a list.");
+        const dates = new Set<string>();
+        for (const entry of entries) {
+          const date = typeof entry === "string" ? entry : object(entry, "Premium work allocation").date;
+          if (typeof date !== "string" || !validCalendarDate(date) || dates.has(date))
+            fail("Premium work allocations", "expected distinct dates in YYYY-MM-DD format.");
+          if (typeof entry !== "string" && (typeof entry.hours !== "number" || !(entry.hours > 0 && entry.hours <= 8)))
+            fail("Premium work allocations", "expected more than zero and at most eight hours.");
+          dates.add(date);
+        }
+      }
+}
 function entities(value: any, path: string): any[] {
   if (!Array.isArray(value)) fail(path, "expected a list.");
   const ids = new Set();
@@ -250,6 +264,7 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     project.autoStartFte ??= true;
     for (const key of ["hiddenTools", "hiddenSubcategories", "subSet", "toolSet"]) if (project[key] !== undefined) strings(project[key], key);
     for (const key of ["customMgmtMonthlyFTE", "mgmtMemberAssignments"]) if (project[key] !== undefined) numericMap(project[key], key, 2);
+    if (project.mgmtMemberPremiumAssignments !== undefined) for (const value of Object.values(object(project.mgmtMemberPremiumAssignments, "Management premium work allocations"))) premiumMap(value);
     if (project.mgmtMemberMonthlyAssignments !== undefined) numericMap(project.mgmtMemberMonthlyAssignments, "Management monthly allocations", 3);
     if (project.mgmtMemberMaintenancePreferences !== undefined) numericMap(project.mgmtMemberMaintenancePreferences, "Management maintenance preferences", 2, true);
   }));
@@ -299,20 +314,7 @@ export function parseWorkspaceFile(contents: string): WorkspaceFile {
     for (const key of ["memberAssignments", "customCoreFTE", "customDevSupportFTE", "customMeetingsFTE", "purchasePaymentOverrides", "purchasePaymentShares"]) if (card[key] !== undefined) numericMap(card[key], key);
     if (card.customSupportingActivityFTE !== undefined) for (const months of Object.values(object(card.customSupportingActivityFTE, "Supporting activity overrides"))) numericMap(months, "Supporting activity monthly overrides");
     if (card.memberMonthlyAssignments !== undefined) numericMap(card.memberMonthlyAssignments, "Monthly allocations", 2);
-    if (card.memberPremiumAssignments !== undefined) {
-      for (const entries of Object.values(object(card.memberPremiumAssignments, "Premium work allocations"))) {
-        if (!Array.isArray(entries)) fail("Premium work allocations", "expected a list.");
-        const dates = new Set<string>();
-        for (const entry of entries) {
-          const date = typeof entry === "string" ? entry : object(entry, "Premium work allocation").date;
-          if (typeof date !== "string" || !validCalendarDate(date) || dates.has(date))
-            fail("Premium work allocations", "expected distinct dates in YYYY-MM-DD format.");
-          if (typeof entry !== "string" && (typeof entry.hours !== "number" || !(entry.hours > 0 && entry.hours <= 8)))
-            fail("Premium work allocations", "expected more than zero and at most eight hours.");
-          dates.add(date);
-        }
-      }
-    }
+    if (card.memberPremiumAssignments !== undefined) premiumMap(card.memberPremiumAssignments);
     if (card.memberMaintenancePreferences !== undefined) numericMap(card.memberMaintenancePreferences, "Maintenance preferences", 1, true);
     if (card.kind === "non-fte") {
       choice(card.purchaseType, config.nonFteTypes.map(type => type.name), "Purchase type"); number(card.purchasePriceEUR, "Purchase price");

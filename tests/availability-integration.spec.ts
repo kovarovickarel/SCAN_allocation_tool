@@ -4,7 +4,23 @@ import { test, expect, type Page } from '@playwright/test';
 
 import { installWorkspaceSaveCapture, savedWorkspace } from './fixtures/workspaceSaveCapture';
 import { parseWorkspaceFile, serializeWorkspace } from '../src/utils/workspaceFile';
-import { formatRemainingFTE } from '../src/utils/helpers';
+import { formatRemainingFTE, getMemberAllocationGradientStyle } from '../src/utils/helpers';
+import { premiumStaffingTextStyle } from '../src/utils/memberStaffingColors';
+
+test('premium pink adapts to pale, medium and deep-purple heatmap backgrounds without an outline', () => {
+  expect(premiumStaffingTextStyle('rgb(238, 232, 243)')).toEqual({ color: '#be185d' });
+  expect(premiumStaffingTextStyle('rgb(151, 113, 180)')).toEqual({ color: '#fff1f8' });
+  expect(premiumStaffingTextStyle('rgb(88, 28, 135)')).toEqual({ color: '#f9a8d4' });
+  expect(premiumStaffingTextStyle('rgb(46, 16, 75)')).toEqual({ color: '#f9a8d4' });
+});
+
+test('premium heatmap overflow is deeper purple while normal overbooking remains red', () => {
+  for (const retro of [false, true]) {
+    expect(getMemberAllocationGradientStyle(1.05, 1, retro, true).backgroundColor).toBe('rgb(46, 16, 75)');
+    expect(getMemberAllocationGradientStyle(1, 1, retro, true).backgroundColor).toBe('rgb(88, 28, 135)');
+    expect(getMemberAllocationGradientStyle(1.05, 1, retro).backgroundColor).toBe(retro ? '#ff8080' : 'rgb(225, 29, 72)');
+  }
+});
 
 test('remaining FTE labels round up to at most two decimal places', () => {
   expect(formatRemainingFTE(0.105)).toBe('0.11');
@@ -248,6 +264,7 @@ test('premium work drags from the staffing row and dropdown into the matching wo
   });
   await load(page, 'vibrant', data => {
     data.teamMembers[0].role = 'both';
+    data.workpackages.filter(card => card.tool === 'Data Factory').forEach(card => { card.subcategory = 'Trace Checker'; });
     data.teamMembers[0].absences = { '2026-01-03': 'working' };
     data.teamMembers[1].absences = { '2026-01-03': 'working' };
     data.teamMembers[2].absences = {
@@ -285,7 +302,8 @@ test('premium work drags from the staffing row and dropdown into the matching wo
   const regularAndPremiumRow = dialog.locator('[data-timeline-row="wp_member_p-Data Factory_member"]');
   const premiumCell = regularAndPremiumRow.getByTitle(/Premium work: 8 h/);
   await expect(premiumCell).toHaveText('0.2563%');
-  await expect(premiumCell).toHaveCSS('color', 'rgb(104, 40, 0)');
+  await expect(premiumCell).toHaveCSS('color', 'rgb(255, 241, 248)');
+  await expect(premiumCell).toHaveCSS('background-color', 'rgb(151, 113, 180)');
   await expect(premiumCell).toHaveCSS('text-shadow', 'none');
   const personalJanuary = dialog.locator('[title^="Shared Person ("][title*="Month 1 ("][title*="Leave / public holidays:"]');
   await expect(personalJanuary).toHaveAttribute('title', /0\.20 \/ 0\.40 FTE occupied \(50%\)/);
@@ -314,9 +332,8 @@ test('premium work drags from the staffing row and dropdown into the matching wo
   const premiumOnlyRow = dialog.locator('[data-timeline-row="wp_member_p2-Data Factory_idle"]');
   const premiumOnlyCell = premiumOnlyRow.getByTitle(/Premium work: 4 h/);
   await expect(premiumOnlyCell).toHaveText('0.035%');
-  await expect(premiumOnlyCell).toHaveCSS('color', 'rgb(168, 70, 0)');
+  await expect(premiumOnlyCell).toHaveCSS('color', 'rgb(190, 24, 93)');
   await expect(offsetMonths.nth(1)).toContainText('23%');
-  await arrow.click();
   const assignedFeb = freeFebruary.getByRole('button', { name: /2026-02-08 · 4 h.*Allocated to Offset project Data Factory/ });
   await expect(freeFebruary).toHaveAttribute('title', /0\.00 \/ 0\.50 FTE occupied \(0%\)/);
   await expect(assignedFeb).toHaveAttribute('draggable', 'false');
@@ -329,6 +346,8 @@ test('premium work drags from the staffing row and dropdown into the matching wo
   expect(saved.workpackages.find(card => card.id === 'p-Data Factory')!.memberPremiumAssignments).toEqual({ member: ['2026-01-03'] });
   expect(saved.workpackages.find(card => card.id === 'p2-Data Factory')!.memberPremiumAssignments).toEqual({ idle: ['2026-02-08'] });
   expect(saved.workpackages.find(card => card.id === 'p2-Data Factory')!.memberMonthlyAssignments).not.toHaveProperty('idle');
+  const premiumOnlyCard = page.locator('[draggable="true"]').filter({ has: page.getByText('Offset project Data Factory', { exact: true }) });
+  await expect(premiumOnlyCard.getByTitle('Free Member', { exact: true })).toBeVisible();
   await openTimeline();
   await expect(assignedJan).toHaveAttribute('draggable', 'false');
   await dialog.getByRole('button', { name: 'Close', exact: true }).last().click();
@@ -374,6 +393,53 @@ test('management-only premium work cannot be assigned to engineering by drag or 
   expect(saved.teamMembers[0].absences).toEqual({ '2026-01-03': 'working', '2026-02-07': 'working' });
 });
 
+for (const role of ['management', 'both'] as const) test(`management premium drag, edit, removal and save for ${role} members`, async ({ page }) => {
+  await load(page, 'vibrant', data => {
+    Object.assign(data.configuration.management, { threshold: 1, ftePerCard: 0.2 });
+    data.configuration.fteCosts.hourlyRates.BIE = 50;
+    data.teamMembers[2].role = role;
+    data.workpackages.forEach(card => { card.memberAssignments = {}; card.memberMonthlyAssignments = {}; });
+    data.teamMembers[2].absences = { '2026-01-03': 'working' };
+  });
+  await page.getByRole('button', { name: 'Open Data Factory Combined Team Timeline', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  const badge = dialog.getByTitle(/^2026-01-03 · 8 h · Weekend Work · 1.5×/);
+  const target = dialog.locator('[data-gantt-row="mgmt_p"] > div').first();
+  const transfer = await page.evaluateHandle(() => new DataTransfer());
+  await badge.dispatchEvent('dragstart', { dataTransfer: transfer });
+  await expect(target).toHaveAttribute('data-premium-drop-target', 'mgmt_p');
+  await expect(dialog.locator('[data-gantt-row="mgmt_p"] > div').nth(1)).not.toHaveAttribute('data-premium-drop-target');
+  if (role === 'management') await expect(dialog.locator('[data-gantt-row="p-Data Factory"] > div').first()).not.toHaveAttribute('data-premium-drop-target');
+  await target.dispatchEvent('drop', { dataTransfer: transfer });
+  await badge.dispatchEvent('dragend', { dataTransfer: transfer });
+  const january = dialog.locator('[data-timeline-row="mgmt_member_p_idle"] > div').first();
+  await expect(january).toHaveText('0.0510%');
+  await expect(january.getByTitle(/Premium work: 8 h/)).toBeVisible();
+  await expect(target.locator('../..').getByTitle(/^600\.00 EUR over the project:/)).toBeVisible();
+  await expect(january.getByTitle(/Premium work: 8 h/)).toHaveCSS('background-color', 'rgb(238, 232, 243)');
+  await january.click();
+  await january.getByRole('textbox').fill('0.02');
+  await january.getByRole('textbox').press('Enter');
+  await expect(january.getByTitle(/Premium work: 3.2 h/)).toBeVisible();
+  await expect(target.locator('../..').getByTitle(/^240\.00 EUR over the project:/)).toBeVisible();
+  const personal = dialog.locator('[title^="Free Member ("][title*="Month 1 ("][title*="Leave / public holidays:"]');
+  await personal.getByRole('button', { name: 'Choose premium work day' }).click();
+  await personal.getByRole('button', { name: /Remove premium work on 2026-01-03 from .*Management Support/ }).click();
+  await personal.getByRole('button', { name: 'Choose premium work day' }).press('Escape');
+  await expect(january.getByTitle(/Premium work:/)).toHaveCount(0);
+  await badge.dragTo(target);
+  await expect(january.getByTitle(/Premium work: 8 h/)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Save & Close', exact: true }).click();
+  const saved = await savedWorkspace(page);
+  expect(saved.projects.find(project => project.id === 'p')!.mgmtMemberPremiumAssignments?.['Data Factory']).toEqual({ idle: ['2026-01-03'] });
+  expect(saved.workpackages.every(card => !card.memberPremiumAssignments?.idle)).toBe(true);
+  await expect(page.getByTitle('Overall management support coverage: 1%', { exact: true })).toBeVisible();
+  await expect(page.getByTitle('Overall management support coverage: 1%', { exact: true }).locator('..').getByTitle(/^600\.00 EUR over the project:/)).toBeVisible();
+  await page.getByRole('button', { name: 'Summary dashboard', exact: true }).click();
+  const dashboard = page.getByRole('region', { name: 'Summary dashboard', exact: true });
+  await expect(dashboard.getByText('Staffed', { exact: true }).locator('..').getByText('<1%', { exact: true })).toBeVisible();
+});
+
 test('manual staffing uses premium work by priority and releases it before regular hours', async ({ page }) => {
   await load(page, 'vibrant', data => {
     const member = data.teamMembers[2];
@@ -388,7 +454,10 @@ test('manual staffing uses premium work by priority and releases it before regul
   const dialog = page.getByRole('dialog');
   const workpackage = dialog.locator('[data-gantt-row="p-Data Factory"]').locator('../..');
   const january = workpackage.locator('[data-timeline-row="wp_member_p-Data Factory_idle"] > div').first();
-  const expand = () => workpackage.getByRole('button', { name: /^Expand .* allocated team member row/ }).click();
+  const expand = async () => {
+    const button = workpackage.getByRole('button', { name: /^Expand .* allocated team member row/ });
+    if (await button.count()) await button.click();
+  };
   const edit = async (value: string) => {
     await january.click();
     const input = january.getByRole('textbox');
@@ -402,14 +471,17 @@ test('manual staffing uses premium work by priority and releases it before regul
   await expect(january.getByTitle(/Premium work:/)).toHaveCount(0);
   await edit('1.07');
   await expect(january).toHaveText('1.07107%');
-  await expect(january.getByTitle(/Premium work: 19.2 h/)).toHaveCSS('color', 'rgb(255, 189, 115)');
+  await expect(january.getByTitle(/Premium work: 19.2 h/)).toHaveCSS('color', 'rgb(249, 168, 212)');
+  await expect(january.getByTitle(/Premium work: 19.2 h/)).toHaveCSS('background-color', 'rgb(46, 16, 75)');
+  await expect(dialog.getByText('>100%', { exact: true })).toBeVisible();
   const personalJanuary = dialog.locator('[title^="Free Member ("][title*="Month 1 ("][title*="Leave / public holidays:"]');
   await expect(personalJanuary).toHaveAttribute('title', /1\.00 \/ 1\.00 FTE occupied \(100%\)/);
   await expect(personalJanuary).not.toHaveAttribute('title', /OVERALLOCATED!/);
   await expect(dialog.getByRole('button', { name: 'Choose premium work day' })).toHaveCount(1);
   await dialog.getByRole('button', { name: 'Choose premium work day' }).click();
   await expect(dialog.getByRole('button', { name: /2026-01-05.*Allocated to/ })).toBeVisible();
-  await expect(dialog.getByRole('button', { name: /2026-01-10.*Allocated to/ })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: /2026-01-10.*Allocated to/ })).toBeVisible();
+  await expect(personalJanuary.getByRole('button', { name: 'Remove premium work on 2026-01-10 from History project Data Factory' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Choose premium work day' }).press('Escape');
 
   await edit('1.02');

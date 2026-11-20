@@ -586,7 +586,7 @@ export function getCoverageGradientStyle(coveredFTE, requiredFTE, isNegated = fa
   };
 }
 
-export function getMemberAllocationGradientStyle(allocatedFTE, capFTE, isRetro = false) {
+export function getMemberAllocationGradientStyle(allocatedFTE, capFTE, isRetro = false, includesPremium = false) {
   if (allocatedFTE <= 0.0001) {
     return {
       backgroundColor: "#ffffff",
@@ -599,6 +599,9 @@ export function getMemberAllocationGradientStyle(allocatedFTE, capFTE, isRetro =
   const ratio = allocatedFTE / cap;
 
   if (ratio > 1.0001) {
+    if (includesPremium) {
+      return { backgroundColor: "rgb(46, 16, 75)", color: "#ffffff", borderColor: isRetro ? "#000000" : "rgb(30, 8, 52)" };
+    }
     return {
       backgroundColor: isRetro ? "#ff8080" : "rgb(225, 29, 72)",
       color: isRetro ? "#000000" : "#ffffff",

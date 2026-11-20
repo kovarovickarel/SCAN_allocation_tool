@@ -77,6 +77,8 @@ export interface WorkpackageAllocationCost {
 }
 
 export interface ExternalSalaryCharge {
+  /** Dated premium payment, separate from the member's normal monthly salary. */
+  premium?: { date: string; memberId: string };
   currency: string;
   salary: number;
   allocatedFTE: number;
@@ -213,6 +215,7 @@ export interface AllocationProject {
   customMgmtMonthlyFTE?: Record<string, NumericMap>;
   mgmtMemberAssignments?: Record<string, NumericMap>;
   mgmtMemberMonthlyAssignments?: Record<string, MonthlyNumericMap>;
+  mgmtMemberPremiumAssignments?: Record<string, Record<string, PremiumAssignment[]>>;
   mgmtMemberMaintenancePreferences?: Record<string, MemberMaintenancePreferences>;
   subSet?: string[];
   toolSet?: string[];

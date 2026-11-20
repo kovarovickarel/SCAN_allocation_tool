@@ -26,6 +26,7 @@ import { ProjectSpendingCharts } from "../ui/ProjectSpendingCharts";
 import { SpendingCellAmount } from "../ui/SpendingCellAmount";
 
 interface ProjectSpendingModalProps {
+  weekendWorkFactors?: import("../../utils/weekendWork").WeekendWorkSettings;
   salaryAllocationTotals?: Record<string, number>;
   project: AllocationProject;
   cards: WorkpackageCard[];
@@ -58,7 +59,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
     return () => previousFocus?.focus();
   }, []);
   const spending = useMemo(() => calculateProjectSpending({ ...options, purchasePaymentDrafts: paymentDrafts }), [options.project, options.cards, options.members,
-    options.overheads, options.fteCosts, options.fteRates, options.toolFteRates, options.reusabilityFactors, options.stabilityFactors, options.activeToolView, options.salaryAllocationTotals, paymentDrafts]);
+    options.overheads, options.weekendWorkFactors, options.fteCosts, options.fteRates, options.toolFteRates, options.reusabilityFactors, options.stabilityFactors, options.activeToolView, options.salaryAllocationTotals, paymentDrafts]);
   const { rate, salaryRates, conversionFailed } = useEuroCostConversion(spending.totalCost.currency, spending.totalCost.totalCost, spending.totalCost);
   const [collapsedTools, setCollapsedTools] = useTimelineViewPreference("spending", "collapsed-tools", new Set<string>());
   const [expandedTracks, setExpandedTracks] = useTimelineViewPreference("spending", "expanded-tracks", new Set<string>());
@@ -134,7 +135,7 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   };
   const tooltip = (cost: WorkpackageAllocationCost) => [
     cost.purchaseCostEUR !== undefined ? "Non-FTE purchases: scheduled payments in EUR." : "",
-    cost.externalSalaryCharges ? "External salaries: monthly salary × allocated FTE ÷ member FTE capacity. Unused salary is excluded." : "",
+    cost.externalSalaryCharges ? "External salaries: monthly salary × allocated FTE ÷ member FTE capacity. Premium work: assigned hours × [monthly salary ÷ (20 × 8 × contracted FTE)] × site pay factor. Unused salary is excluded." : "",
     ...[...new Set(Object.values(cost.externalSalaryCharges || {}).filter(charge => (charge.paymentDelayMonths ?? 0) > 0).map(charge => `Salary payment delayed by ${charge.paymentDelayMonths} months from the work month.`))],
     cost.allocatedHours > 0 || cost.externalSalaryCharges || cost.purchaseCostEUR === undefined
       ? `${(cost.allocatedHours || Object.values(cost.externalSalaryCharges || {}).reduce((sum, charge) => sum + charge.allocatedFTE * WORKING_HOURS_PER_MONTH, 0)).toLocaleString("en-US", { maximumFractionDigits: 2 })} allocated hours.` : "",

@@ -547,6 +547,7 @@ export const ProjectBasket = memo(function ProjectBasket({
   toolFteRates,
   fteRates,
   fteCosts = DEFAULT_FTE_COSTS,
+  weekendWorkFactors,
   activeToolView = "all",
 }: ProjectBasketProps) {
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
@@ -620,14 +621,15 @@ export const ProjectBasket = memo(function ProjectBasket({
       id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support", tool: overhead.tool,
       _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
       memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {},
-    }, project.duration, monthlyEffort, teamMembers, fteCosts, false, project.startDate), salaryAllocationTotals || {})] as const;
-  })), [overheads, project, teamMembers, fteCosts, salaryAllocationTotals]);
+      memberPremiumAssignments: project.mgmtMemberPremiumAssignments?.[overhead.tool],
+    }, project.duration, monthlyEffort, teamMembers, fteCosts, false, project.startDate, weekendWorkFactors), salaryAllocationTotals || {})] as const;
+  })), [overheads, project, teamMembers, fteCosts, salaryAllocationTotals, weekendWorkFactors]);
 
   const projectCost = useMemo(() => calculateProjectSpending({
     project, cards: projectCards, members: teamMembers, overheads,
-    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView, salaryAllocationTotals,
+    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView, salaryAllocationTotals, weekendWorkFactors,
   }).totalCost, [project, projectCards, teamMembers, overheads,
-    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView, salaryAllocationTotals]);
+    fteCosts, fteRates, toolFteRates, reusabilityFactors, stabilityFactors, activeToolView, salaryAllocationTotals, weekendWorkFactors]);
 
   const hiddenTools = project.hiddenTools || [];
   const hiddenSubs = project.hiddenSubcategories || [];
@@ -1389,6 +1391,7 @@ export const ProjectBasket = memo(function ProjectBasket({
           members={teamMembers}
           overheads={overheads}
           fteCosts={fteCosts}
+          weekendWorkFactors={weekendWorkFactors}
           fteRates={fteRates}
           toolFteRates={toolFteRates}
           reusabilityFactors={reusabilityFactors}

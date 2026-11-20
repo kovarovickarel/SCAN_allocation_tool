@@ -443,13 +443,13 @@ export default function App() {
         _coveragePct: coverage.coveragePct,
         _isMaintenanceOnlyUncovered: coverage.isMaintenanceOnlyUncovered,
         _allocationCost: calculateWorkpackageAllocationCost(f, project.duration,
-          monthlyFTE, teamMembers, config.fteCosts, false, project.startDate),
+          monthlyFTE, teamMembers, config.fteCosts, false, project.startDate, config.weekendWorkFactors),
       };
     });
   }, [functions, projectIndex, config, teamMembers]);
 
   const salaryAllocationTotals = useMemo(() => calculatePortfolioSalaryTotals({ projects, cards: baseFunctionsWithFTE,
-    members: teamMembers, fteCosts: config.fteCosts, mgmtSettings: config.management, fteRates: config.fteRates,
+    members: teamMembers, fteCosts: config.fteCosts, weekendWorkFactors: config.weekendWorkFactors, mgmtSettings: config.management, fteRates: config.fteRates,
     toolFteRates: config.toolFteRates, reusabilityFactors: config.reusabilityFactors, stabilityFactors: config.stabilityFactors }),
     [projects, baseFunctionsWithFTE, teamMembers, config]);
   const [showSummaryDashboard, setShowSummaryDashboard] = useState(false);
@@ -461,7 +461,7 @@ export default function App() {
     [baseFunctionsWithFTE, salaryAllocationTotals]);
 
   const summaryOptions = useMemo(() => ({ projects, cards: functionsWithFTE, members: teamMembers,
-    fteCosts: config.fteCosts, mgmtSettings: config.management, fteRates: config.fteRates,
+    fteCosts: config.fteCosts, weekendWorkFactors: config.weekendWorkFactors, mgmtSettings: config.management, fteRates: config.fteRates,
     toolFteRates: config.toolFteRates, reusabilityFactors: config.reusabilityFactors, stabilityFactors: config.stabilityFactors }),
     [projects, functionsWithFTE, teamMembers, config]);
 
@@ -711,6 +711,7 @@ export default function App() {
     copy.name = `Copy of ${source.name}`;
     delete copy.mgmtMemberAssignments;
     delete copy.mgmtMemberMonthlyAssignments;
+    delete copy.mgmtMemberPremiumAssignments;
     delete copy.mgmtMemberMaintenancePreferences;
     const copiedCards = content === "none" ? [] : functions
       .filter(card => card.projectId === projectId && (content === "both" || (card.kind === "non-fte" ? content === "non-fte" : content === "fte")))
@@ -756,6 +757,18 @@ export default function App() {
     cardId: string, assignments: WorkpackageCard["memberPremiumAssignments"],
   ) => {
     setFunctions(prev => prev.map(card => card.id === cardId ? { ...card, memberPremiumAssignments: assignments } : card));
+  }, []);
+
+  const handleUpdateMgmtPremiumAssignments = useWorkspaceAction(history, "Save management premium allocations", (
+    projectId: string, tool: string, assignments: WorkpackageCard["memberPremiumAssignments"],
+  ) => {
+    setProjects(prev => prev.map(project => {
+      if (project.id !== projectId) return project;
+      const byTool = { ...project.mgmtMemberPremiumAssignments };
+      if (assignments && Object.keys(assignments).length) byTool[tool] = assignments;
+      else delete byTool[tool];
+      return { ...project, mgmtMemberPremiumAssignments: Object.keys(byTool).length ? byTool : undefined };
+    }));
   }, []);
 
   const handleUpdateProjectMgmtAssignments = useWorkspaceAction(history, "Save management allocations", (projectId, tName, newAssignments) => {
@@ -1217,6 +1230,7 @@ export default function App() {
                       toolFteRates={config.toolFteRates}
                       fteRates={config.fteRates}
                       fteCosts={config.fteCosts}
+                      weekendWorkFactors={config.weekendWorkFactors}
                       activeToolView={activeToolView}
                     />
                   </div>
@@ -1367,6 +1381,7 @@ export default function App() {
             onSaveAssignments={handleUpdateCardAssignments}
             onSaveMonthlyAssignments={handleUpdateCardMonthlyAssignments}
             onSavePremiumAssignments={handleUpdateCardPremiumAssignments}
+            onSaveMgmtPremiumAssignments={handleUpdateMgmtPremiumAssignments}
             onSaveMgmtAssignments={handleUpdateProjectMgmtAssignments}
             onSaveMgmtMonthlyAssignments={handleUpdateProjectMgmtMonthlyAssignments}
           />

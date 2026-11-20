@@ -9,6 +9,7 @@ import { ProjectClassBadge } from "../ui/ProjectClassBadge";
 import { ProjectRFQBadge } from "../ui/ProjectRFQBadge";
 import { ProjectSpendingModal } from "./ProjectSpendingModal";
 import { UnusedExternalCapacityModal } from "./UnusedExternalCapacityModal";
+import { sumWorkpackageAllocationCosts } from "../../utils/allocationCosts";
 
 export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilter, onFilterChange, savedSelectedProjectIds, onSelectionChange }: {
   options: SummaryDashboardOptions; suppliers: readonly SupplierRecord[];
@@ -30,9 +31,10 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
   const allSummary = useMemo(() => calculateSummaryDashboard(options), [options]);
   const summary = useMemo(() => filter === "all" ? allSummary : calculateSummaryDashboard(options, filter === "selected" ? "all" : filter, filter === "selected" ? selectedProjectIds : null), [options, filter, selectedProjectIds, allSummary]);
   const tableRows = filter === "selected" ? allSummary.rows : summary.rows;
-  const { rate, salaryRates, conversionFailed } = useEuroCostConversion(summary.portfolioCost.currency, summary.portfolioCost.totalCost, summary.portfolioCost);
+  const conversionCost = useMemo(() => sumWorkpackageAllocationCosts([summary.portfolioCost, summary.unused.unusedCost], summary.portfolioCost.currency), [summary]);
+  const { rate, salaryRates, conversionFailed } = useEuroCostConversion(summary.portfolioCost.currency, summary.portfolioCost.totalCost, conversionCost);
   const number = (value: number) => value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const percent = (value: number | null) => value === null ? "—" : `${Math.round(value * 100)}%`;
+  const percent = (value: number | null) => value === null ? "—" : value > 0 && value < 0.01 ? "<1%" : `${Math.round(value * 100)}%`;
   const coverageColor = (value: number | null) => value === null ? undefined : getCoverageGradientStyle(value, 1).backgroundColor;
   const amount = (cost: WorkpackageAllocationCost) => {
     const value = costInEUR(cost, rate, salaryRates);
@@ -127,7 +129,7 @@ export function SummaryDashboard({ options, suppliers, onSavePayments, savedFilt
     </div>
     {showUnusedCapacity && <UnusedExternalCapacityModal monthlyCosts={allSummary.capacityMonthlyCosts} monthLabels={allSummary.capacityMonthLabels} members={[...options.members]} formatAmount={amount} onClose={() => setShowUnusedCapacity(false)} />}
     {selectedRow && <ProjectSpendingModal project={selectedRow.project} cards={[...options.cards]} members={[...options.members]} overheads={selectedRow.effort.overheads}
-      fteCosts={options.fteCosts} fteRates={options.fteRates} toolFteRates={options.toolFteRates} reusabilityFactors={options.reusabilityFactors} stabilityFactors={options.stabilityFactors}
+      weekendWorkFactors={options.weekendWorkFactors} fteCosts={options.fteCosts} fteRates={options.fteRates} toolFteRates={options.toolFteRates} reusabilityFactors={options.reusabilityFactors} stabilityFactors={options.stabilityFactors}
       salaryAllocationTotals={Object.fromEntries(Object.entries(summary.totalCost.externalSalaryCharges || {}).map(([key, charge]) => [key, charge.totalAllocatedFTE || charge.allocatedFTE]))}
       onClose={() => setSpendingProject(null)} onSavePayments={onSavePayments ? drafts => onSavePayments(selectedRow.project.id, drafts) : undefined} />}
   </section>;

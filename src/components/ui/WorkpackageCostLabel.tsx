@@ -28,7 +28,7 @@ export function WorkpackageCostLabel({ cost, className = "", compact = false, si
   const divisor = unit === "M" ? 1_000_000 : unit === "k" ? 1_000 : 1;
   const shortAmount = (pricedAmount / divisor)
     .toLocaleString("en-US", { maximumFractionDigits: !unit ? 0 : compact ? unit === "M" ? 1 : 0 : 2 });
-  const tooltip = `${amount} ${currency}${isPartial ? " (partial)" : ""} over the project: monthly allocated FTE × ${WORKING_HOURS_PER_MONTH} hours × location hourly rate. ${cost.allocatedHours.toFixed(2)} allocated hours.${isPartial ? ` Missing rates: ${missing} (${cost.unpricedHours.toFixed(2)} unpriced hours). The amount shown includes priced allocations only.` : ""}`;
+  const tooltip = `${amount} ${currency}${isPartial ? " (partial)" : ""} over the project: monthly allocated FTE × ${WORKING_HOURS_PER_MONTH} hours × location hourly rate; premium hours × hourly rate × site pay factor. ${cost.allocatedHours.toFixed(2)} allocated hours.${isPartial ? ` Missing rates: ${missing} (${cost.unpricedHours.toFixed(2)} unpriced hours). The amount shown includes priced allocations only.` : ""}`;
   const colorClasses = tone === "receipt"
     ? isRetro
       ? "bg-white text-black border-black rounded-none shadow-[1px_1px_0px_#000]"
@@ -42,7 +42,7 @@ export function WorkpackageCostLabel({ cost, className = "", compact = false, si
     <span
       className={`inline-flex items-center shrink-0 whitespace-nowrap normal-case ${size === "subcategory" ? "px-1.5 py-0.5" : "px-1 py-0.2"} border font-mono ${tone === "receipt" ? "font-normal" : "font-bold"} ${size === "subcategory" ? "text-[9px]" : compact ? "text-[8px]" : "text-[10px]"} ${colorClasses} ${className}`}
       style={tone === "receipt" ? { fontFamily: '"Courier New", Courier, monospace' } : undefined}
-      title={title ?? (includesPurchase ? `Project tool cost: ${amount} EUR, including non-FTE purchases or external salary × allocated FTE ÷ member FTE.${isPartial ? " Partial cost; some resource rates are missing." : ""}` : tooltip)}
+      title={title ?? (includesPurchase ? `Project tool cost: ${amount} EUR, including non-FTE purchases, allocated external salary and premium hours × [monthly salary ÷ (20 × 8 × contracted FTE)] × site pay factor.${isPartial ? " Partial cost; some resource rates are missing." : ""}` : tooltip)}
     >
       {pending ? conversion.conversionFailed ? "N/A" : "…" : `${shortAmount}${unit}${compact ? "" : ` ${currency}`}${isPartial ? " (partial)" : ""}`}
     </span>

@@ -7,6 +7,17 @@ export function premiumAssignmentKey(member: TeamMemberRecord, date: string) {
   return JSON.stringify([crossTeamMemberKey(member), date]);
 }
 
+export function managementPremiumCard(project: AllocationProject, tool: string): WorkpackageCard {
+  return { id: `${project.id}_mgmt_${tool}`, projectId: project.id, tool, name: "Management Support",
+    _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[tool],
+    memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[tool],
+    memberPremiumAssignments: project.mgmtMemberPremiumAssignments?.[tool] };
+}
+
+export function managementPremiumCards(projects: readonly AllocationProject[]) {
+  return projects.flatMap(project => Object.keys(project.mgmtMemberPremiumAssignments ?? {}).map(tool => managementPremiumCard(project, tool)));
+}
+
 export function premiumAssignmentDate(assignment: PremiumAssignment) {
   return typeof assignment === "string" ? assignment : assignment.date;
 }
@@ -89,7 +100,7 @@ export function reconcilePremiumAssignments(cards: WorkpackageCard[], projects: 
     const entries: NonNullable<WorkpackageCard["memberPremiumAssignments"]> = {};
     for (const [id, dates] of Object.entries(card.memberPremiumAssignments)) {
       const member = membersById.get(id);
-      if (!member || member.role === "management" || !project || card.kind === "non-fte") continue;
+      if (!member || (card._isMgmt ? member.role === "engineering" : member.role === "management") || !project || card.kind === "non-fte") continue;
       const validDates = dates.flatMap(assignment => {
         const date = premiumAssignmentDate(assignment);
         const month = absoluteMonth(date.slice(0, 7));
@@ -116,4 +127,26 @@ export function reconcilePremiumAssignments(cards: WorkpackageCard[], projects: 
     return updated;
   });
   return changed ? result : cards;
+}
+
+export function reconcilePremiumState(cards: WorkpackageCard[], projects: AllocationProject[], members: TeamMemberRecord[], holidays?: Record<string, string[]>) {
+  const management = managementPremiumCards(projects);
+  const combined = [...cards, ...management];
+  const reconciled = reconcilePremiumAssignments(combined, projects, members, holidays);
+  if (reconciled === combined) return { workpackages: cards, projects };
+  const workpackages = reconciled.slice(0, cards.length);
+  const nextProjects = projects.map(project => {
+    let changed = false;
+    const byTool = { ...project.mgmtMemberPremiumAssignments };
+    management.forEach((card, index) => {
+      if (card.projectId !== project.id || card === reconciled[cards.length + index]) return;
+      changed = true;
+      const assignments = reconciled[cards.length + index].memberPremiumAssignments;
+      if (assignments) byTool[card.tool] = assignments;
+      else delete byTool[card.tool];
+    });
+    return changed ? { ...project, mgmtMemberPremiumAssignments: Object.keys(byTool).length ? byTool : undefined } : project;
+  });
+  return { workpackages: workpackages.every((card, index) => card === cards[index]) ? cards : workpackages,
+    projects: nextProjects.every((project, index) => project === projects[index]) ? projects : nextProjects };
 }

@@ -3,10 +3,12 @@ import { purchaseMonthlyCosts as scheduledPurchaseCosts, purchaseCostSummary, pu
 import { DEFAULT_FTE_RATES, DEFAULT_REUSABILITY_FACTORS, DEFAULT_STABILITY_FACTORS, TOOLS } from "../constants";
 import type { AllocationProject, FactorMap, FteCostSettings, ManagementOverhead, ProjectSpendingTrack,
   ProjectSpendingTool, PurchasePaymentDrafts, TeamMemberRecord, WorkpackageAllocationCost, WorkpackageCard } from "../types";
-import { calculateMemberMonthlyAllocationCost, calculateWorkpackageAllocationCost, sumWorkpackageAllocationCosts } from "./allocationCosts";
+import { calculateMemberWorkpackageMonthlyCost, calculateWorkpackageAllocationCost, sumWorkpackageAllocationCosts } from "./allocationCosts";
 import { resolveMonthlyMemberAllocations } from "./memberAllocations";
 import { calculateProjectEffort, getManagementMonthlyFTE, calculateWorkpackageMonthlyFTE } from "./helpers";
-import { externalSalaryCharge, salaryMonthKey, applySalaryTotals, withoutSalary, externalPaymentDelay } from "./externalSalaries";
+import { applySalaryTotals, withoutSalary, externalPaymentDelay } from "./externalSalaries";
+import { managementPremiumCard } from "./premiumAssignments";
+import type { WeekendWorkSettings } from "./weekendWork";
 
 interface ProjectSpendingOptions {
   project: AllocationProject;
@@ -14,6 +16,7 @@ interface ProjectSpendingOptions {
   members: readonly TeamMemberRecord[];
   overheads: readonly ManagementOverhead[];
   fteCosts: FteCostSettings;
+  weekendWorkFactors?: WeekendWorkSettings;
   fteRates?: typeof DEFAULT_FTE_RATES;
   toolFteRates?: Record<string, typeof DEFAULT_FTE_RATES>;
   reusabilityFactors?: FactorMap;
@@ -32,31 +35,27 @@ function combineMonthlyCosts(costs: readonly WorkpackageAllocationCost[], curren
 }
 
 function buildTrack(card: WorkpackageCard, requiredEffort: number[], project: AllocationProject,
-  members: readonly TeamMemberRecord[], settings: FteCostSettings): ProjectSpendingTrack {
+  members: readonly TeamMemberRecord[], settings: FteCostSettings, factors?: WeekendWorkSettings): ProjectSpendingTrack {
   const allocations = resolveMonthlyMemberAllocations(card, project.duration, requiredEffort, members);
   const memberIndex = new Map(members.map((member) => [member.id, member]));
-  const memberTracks = Object.entries(allocations).map(([id, months]) => {
+  const memberTracks = [...new Set([...Object.keys(allocations), ...Object.keys(card.memberPremiumAssignments ?? {})])].map(id => {
+    const months = allocations[id] ?? {};
     const member = memberIndex.get(id);
     const monthlyCosts = requiredEffort.map((effort, month): WorkpackageAllocationCost => {
       const value = Number(months[month]);
       const fte = effort > 0 && Number.isFinite(value) && value > 0 ? value : 0;
-      const priced = calculateMemberMonthlyAllocationCost(fte, member, settings);
-      const charge = member && externalSalaryCharge(member, fte, settings.currency, absoluteMonth(project.startDate, month));
-      return { currency: settings.currency, totalCost: priced.totalCost ?? 0, allocatedHours: priced.hours,
-        ...(charge ? { externalSalaryCharges: { [salaryMonthKey(id, project.startDate, month)]: charge } } : {}),
-        unpricedHours: priced.totalCost === null ? priced.hours : 0,
-        missingLocations: priced.totalCost === null && priced.hours > 0 ? [member?.isExternal ? `Salary: ${member.firstName} ${member.lastName}` : priced.location] : [] };
+      return calculateMemberWorkpackageMonthlyCost(card, member, id, fte, absoluteMonth(project.startDate, month), settings, factors);
     });
     return { id, member, monthlyCosts, totalCost: sumWorkpackageAllocationCosts(monthlyCosts, settings.currency) };
   }).filter((track) => track.totalCost.allocatedHours > 0);
   return {
     id: card.id, name: card.name, tool: card.tool, isManagement: Boolean(card._isMgmt), members: memberTracks, requiredEffort,
     monthlyCosts: requiredEffort.map((_, month) => combineMonthlyCosts(memberTracks.map((member) => member.monthlyCosts[month]), settings.currency)),
-    totalCost: calculateWorkpackageAllocationCost(card, project.duration, requiredEffort, members, settings, false, project.startDate),
+    totalCost: calculateWorkpackageAllocationCost(card, project.duration, requiredEffort, members, settings, false, project.startDate, factors),
   };
 }
 
-export function calculateProjectSpending({ project, cards, members, overheads, fteCosts,
+export function calculateProjectSpending({ project, cards, members, overheads, fteCosts, weekendWorkFactors,
   fteRates = DEFAULT_FTE_RATES, toolFteRates, reusabilityFactors = DEFAULT_REUSABILITY_FACTORS,
   stabilityFactors = DEFAULT_STABILITY_FACTORS, activeToolView = "all", purchasePaymentDrafts, salaryAllocationTotals, deferExternalPayments = true }: ProjectSpendingOptions) {
   const scopedCards = cards.filter((card) => {
@@ -73,15 +72,13 @@ export function calculateProjectSpending({ project, cards, members, overheads, f
         members: [], monthlyCosts, totalCost: sumWorkpackageAllocationCosts(monthlyCosts, fteCosts.currency) };
     }
     const required = calculateWorkpackageMonthlyFTE(card, project, { fteRates, toolFteRates, reusabilityFactors, stabilityFactors });
-    return buildTrack(card, required, project, members, fteCosts);
+    return buildTrack(card, required, project, members, fteCosts, weekendWorkFactors);
   });
   // Member tracks contain only positive allocations during active workpackage months.
   // The parent supplies the same scoped overheads that feed its total cost badge.
   for (const overhead of overheads) {
     const required = getManagementMonthlyFTE(overhead, project);
-    tracks.push(buildTrack({ id: `${project.id}_mgmt_${overhead.tool}`, name: "Management Support", tool: overhead.tool,
-      projectId: project.id, _isMgmt: true, memberAssignments: project.mgmtMemberAssignments?.[overhead.tool] || {},
-      memberMonthlyAssignments: project.mgmtMemberMonthlyAssignments?.[overhead.tool] || {} }, required, project, members, fteCosts));
+    tracks.push(buildTrack(managementPremiumCard(project, overhead.tool), required, project, members, fteCosts, weekendWorkFactors));
   }
   const allCost = sumWorkpackageAllocationCosts(tracks.map(track => track.totalCost), fteCosts.currency);
   const allocationTotals = salaryAllocationTotals || Object.fromEntries(Object.entries(allCost.externalSalaryCharges || {})

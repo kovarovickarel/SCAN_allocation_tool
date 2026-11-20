@@ -44,7 +44,7 @@ export function allocateTeamWithPremiums(
         }
       }
     }
-    if (selectedTarget?.target.role === "engineering") premiumAllocations.set(card.id, { ...retained });
+    if (selectedTarget) premiumAllocations.set(card.id, { ...retained });
   }
   const normalProjects = projects.map(project => ({ ...project, targets: project.targets.map(target => ({
     ...target,
@@ -69,10 +69,9 @@ export function allocateTeamWithPremiums(
   // Each date is a separate flow source, shared by matching cross-team records.
   // This preserves role/maintenance restrictions without spending the same day twice.
   for (const kind of ["weekendPublicHoliday", "publicHoliday", "weekend"] as const) {
-    if (!remaining.some(target => target.role === "engineering" && target.months.some(month => month.requiredFTE > 1e-8))) break;
+    if (!remaining.some(target => target.months.some(month => month.requiredFTE > 1e-8))) break;
     const sources = new Map<string, { day: PremiumWorkDay; candidates: TeamMemberRecord[]; month: number }>();
     for (const member of members) {
-      if (member.role === "management") continue;
       for (let month = 0; month < totalMonths; month++) {
         for (const day of memberMonthPremiumWork(member, start + month, factors)) {
           if (day.kind !== kind) continue;
@@ -84,7 +83,7 @@ export function allocateTeamWithPremiums(
       }
     }
     if (sources.size === 0) continue;
-    const virtualMembers = [...sources].map(([id, source]) => ({ ...source.candidates[0], id, role: "engineering" as const }));
+    const virtualMembers = [...sources].map(([id, source]) => ({ ...source.candidates[0], id, role: "both" as const }));
     const available = Array.from({ length: totalMonths }, (_, month) => Object.fromEntries([...sources].map(([id, source]) =>
       [id, source.month === month ? Math.max(0, source.day.hours - (reserved.get(id) ?? 0)) / WORKING_HOURS_PER_MONTH : 0])));
     const owners = new Map<string, Map<string, TeamMemberRecord>>();
@@ -93,12 +92,13 @@ export function allocateTeamWithPremiums(
       owners.set(target.id, bySource);
       const maintenancePreferences: Record<string, boolean> = {};
       for (const [id, source] of sources) {
-        const owner = source.candidates.find(member => !target.months[source.month].isMaintenance
-          || target.maintenancePreferences?.[member.id] !== false);
+        const owner = source.candidates.find(member => (member.role === "both" || member.role === target.role)
+          && (!target.months[source.month].isMaintenance || target.maintenancePreferences?.[member.id] !== false));
         if (owner) bySource.set(id, owner);
         maintenancePreferences[id] = !!owner;
       }
-      return { ...target, maintenancePreferences };
+      // Gate every premium edge through its original member's role and preferences.
+      return { ...target, months: target.months.map(month => ({ ...month, isMaintenance: true })), maintenancePreferences };
     });
     const result = allocateProjectTeam(targets, virtualMembers, available, targetPriorities, fteCosts);
     for (const target of remaining) {

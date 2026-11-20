@@ -25,7 +25,7 @@ test('weekend factors retain schema-1 compatibility and validate all saved value
   expect(parseWeekendWorkFactor('1.75')).toBe(1.75); expect(parseWeekendWorkFactor('0')).toBe(0);
 });
 
-for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`weekend work factors save cancel reset undo and transfer without changing costs (${theme})`, async ({ page }) => {
+for (const theme of ['vibrant', 'basic', 'retro'] as const) test(`weekend work factors save cancel reset undo and transfer without changing costs when no premium work is allocated (${theme})`, async ({ page }) => {
   await page.addInitScript(() => {
     let saved = ''; Object.defineProperty(window, '__weekendSaved', { get: () => saved });
     Object.defineProperty(window, 'showSaveFilePicker', { configurable: true, value: async () => ({ createWritable: async () => ({ write: async (blob: Blob) => { saved = await blob.text(); }, close: async () => {}, abort: async () => {} }) }) });
