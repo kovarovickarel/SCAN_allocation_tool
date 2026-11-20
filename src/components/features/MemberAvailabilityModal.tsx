@@ -1,4 +1,5 @@
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
+import { useTimelineViewPreference } from "../../hooks/useTimelineViewPreference";
 import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { AvailabilityCells, AvailabilityCategoryBand, AvailabilityHeaderDays, AvailabilityMemberRow, DAY_SIZE, HOLIDAY_HEIGHT, LEAVE_COLORS, WEEKEND_COLOR, WEEKEND_WORK_COLOR, EMPTY_DATES, EMPTY_ABSENCES, EMPTY_TEAMS, labelClass, rowStyle, siteColors, type CalendarInteraction } from "./AvailabilityCalendarRows";
 import React, { useCallback, useMemo, useRef, useState } from "react";
@@ -27,7 +28,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
   const categoryView = global && grouping === "category";
   const categoryMembers = useMemo(() => global ? globalAvailabilityCategoryMembers(inputMembers, members) : [], [global, inputMembers, members]);
   const categoryGroups = useMemo(() => [...new Set(categoryMembers.map(member => member.tool))].sort(), [categoryMembers]);
-  const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+  const [collapsedCategories, setCollapsedCategories] = useTimelineViewPreference<Record<string, boolean>>("availability", "collapsed-categories", {});
   const { isRetro, isBasicMode } = React.useContext(ThemeContext);
   const tool = TOOL_MAP[toolName] || TOOLS[0];
   const crossTeamMemberIds = useMemo(() => getCrossTeamMemberIds(allMembers), [allMembers]);
@@ -100,7 +101,7 @@ export function MemberAvailabilityModal({ global = false, toolName, members: inp
       if (!controller.signal.aborted) setExportError(error instanceof Error ? error.message : "Availability could not be exported. Please try again.");
     } finally { exportPending.current = false; if (!controller.signal.aborted) setExporting(false); }
   }
-  const [collapsedSites, setCollapsedSites] = useState<Record<string, boolean>>({});
+  const [collapsedSites, setCollapsedSites] = useTimelineViewPreference<Record<string, boolean>>("availability", "collapsed-sites", {});
   const drag = useRef<{ row: string; site: boolean; allSites?: boolean; erase?: boolean; secondary?: boolean; halfDay?: boolean; clearWork?: boolean; start: number; leave: typeof leave; sites: typeof sites;
     tracking?: { gridLeft: number; scrollLeft: number; siteCode: string; pointerId: number; target: HTMLButtonElement; dayCount: number; lastEnd: number } } | null>(null);
   const applyRangeRef = useRef<(end: number, siteCode: string) => void>(() => {});

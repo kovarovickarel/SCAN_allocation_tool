@@ -1,4 +1,5 @@
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
+import { useTimelineViewPreference } from "../../hooks/useTimelineViewPreference";
 import { ProjectTimelineHeatmapScale } from "../ui/ProjectTimelineHeatmapScale";
 import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
@@ -58,9 +59,9 @@ export function ProjectTimelineModal({
   const duration = Math.max(1, localProject.duration || 12);
   const milestones = useMemo(() => normalizeMilestones(localProject.milestones, duration, null, localProject.legacyReqfCoincidence), [localProject.milestones, duration, localProject.legacyReqfCoincidence]);
 
-  const [isManualEditEnabled, setIsManualEditEnabled] = useState(false);
-  const [globalSupportCollapsed, setGlobalSupportCollapsed] = useState(true);
-  const [customCollapsedWPs, setCustomCollapsedWPs] = useState({});
+  const [isManualEditEnabled, setIsManualEditEnabled] = useTimelineViewPreference<boolean>("staffing", "manual-adjust", false);
+  const [globalSupportCollapsed, setGlobalSupportCollapsed] = useTimelineViewPreference<boolean>("staffing", "support-collapsed", true);
+  const [customCollapsedWPs, setCustomCollapsedWPs] = useTimelineViewPreference<Record<string, boolean>>("staffing", "workpackage-expansion", {});
 
   const {
     rangeSelection,
@@ -211,7 +212,7 @@ export function ProjectTimelineModal({
   const hiddenTools = useMemo(() => new Set(localProject.hiddenTools || []), [localProject.hiddenTools]);
   const hiddenSubs = useMemo(() => new Set(localProject.hiddenSubcategories || []), [localProject.hiddenSubcategories]);
 
-  const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [collapsedCategories, setCollapsedCategories] = useTimelineViewPreference<Record<string, boolean>>("staffing", "collapsed-categories", {});
 
   const toggleCategoryCollapse = useCallback((categoryKey) => {
     setCollapsedCategories((prev) => ({

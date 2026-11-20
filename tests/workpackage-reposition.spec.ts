@@ -88,7 +88,7 @@ for (const close of ["Escape", "header", "backdrop"]) test(`repositioning is dis
   const saved = JSON.parse(await page.getByTestId("saved-workpackages").innerText());
   expect(saved.find((item: WorkpackageCard) => item.id === "simulation").startMonth).toBe(1);
   await page.getByRole("button", { name: "Reopen timeline" }).click();
-  await dialog.getByRole("button", { name: "Manual Adjust: Disabled" }).click();
+  await expect(dialog.getByRole("button", { name: "Manual Adjust: Enabled" })).toBeVisible();
   await expect(dialog.locator('[data-timeline-row="core_simulation"]').locator(":scope > div").nth(0).getByTitle("Drag to reposition activity timeline")).toBeVisible();
 });
 
@@ -168,11 +168,11 @@ for (const theme of ["vibrant", "basic", "retro"]) test(`standard workpackage dr
   await expect(cells.nth(8)).toContainText("Int");
   await dialog.getByRole("button", { name: "Save & Close" }).click();
   await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).first().click();
-  await dialog.getByRole("button", { name: "Manual Adjust: Disabled" }).click();
+  await expect(dialog.getByRole("button", { name: "Manual Adjust: Enabled" })).toBeVisible();
   await expect(cells.nth(2).getByTitle("Drag to reposition activity timeline")).toBeVisible();
   await dragToMonth(1);
   await dialog.getByRole("button", { name: "Discard & Close" }).click();
   await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).first().click();
-  await dialog.getByRole("button", { name: "Manual Adjust: Disabled" }).click();
+  await expect(dialog.getByRole("button", { name: "Manual Adjust: Enabled" })).toBeVisible();
   await expect(dialog.locator(`[data-timeline-row="${rowKey}"]`).locator(":scope > div").nth(2).getByTitle("Drag to reposition activity timeline")).toBeVisible();
 });

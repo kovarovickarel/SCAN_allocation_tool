@@ -147,6 +147,7 @@ test("each configured supporting activity has an independent editable track with
   expect(saved.customSupportingActivityFTE.bab[0]).toBe(0.3);
   expect(saved.customDevSupportFTE[0]).toBe(0.7);
   await page.getByRole("button", { name: "Open timeline", exact: true }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Expand support tracks", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("button", { name: "Collapse support tracks", exact: true })).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("dialog").getByRole("button", { name: "Manual Adjust: Enabled", exact: true })).toBeVisible();
   await expect(page.locator('[data-timeline-row="supporting_custom_0"]').locator(':scope > div').nth(0)).toContainText("0.30");
 });

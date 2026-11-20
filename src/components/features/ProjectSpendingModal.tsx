@@ -1,4 +1,5 @@
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
+import { useTimelineViewPreference } from "../../hooks/useTimelineViewPreference";
 import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { SystemReleaseBadge } from "../ui/SystemReleaseField";
 import { useProjectReleaseVisibility } from "../../hooks/useProjectReleaseVisibility";
@@ -43,7 +44,7 @@ interface ProjectSpendingModalProps {
 export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: ProjectSpendingModalProps) {
   const { isRetro, isBasic } = useContext(ThemeContext);
   const { project, members, activeToolView = "all" } = options;
-  const [manualAdjust, setManualAdjust] = useState(false);
+  const [manualAdjust, setManualAdjust] = useTimelineViewPreference<boolean>("spending", "manual-adjust", false);
   const [showReleases, setShowReleases] = useProjectReleaseVisibility(project.id);
   const [paymentDrafts, setPaymentDrafts] = useState<PurchasePaymentDrafts>({});
   const [paymentInputs, setPaymentInputs] = useState<Record<string, Record<number, string>>>({});
@@ -59,8 +60,8 @@ export function ProjectSpendingModal({ onClose, onSavePayments, ...options }: Pr
   const spending = useMemo(() => calculateProjectSpending({ ...options, purchasePaymentDrafts: paymentDrafts }), [options.project, options.cards, options.members,
     options.overheads, options.fteCosts, options.fteRates, options.toolFteRates, options.reusabilityFactors, options.stabilityFactors, options.activeToolView, options.salaryAllocationTotals, paymentDrafts]);
   const { rate, salaryRates, conversionFailed } = useEuroCostConversion(spending.totalCost.currency, spending.totalCost.totalCost, spending.totalCost);
-  const [collapsedTools, setCollapsedTools] = useState<Set<string>>(new Set());
-  const [expandedTracks, setExpandedTracks] = useState<Set<string>>(new Set());
+  const [collapsedTools, setCollapsedTools] = useTimelineViewPreference("spending", "collapsed-tools", new Set<string>());
+  const [expandedTracks, setExpandedTracks] = useTimelineViewPreference("spending", "expanded-tracks", new Set<string>());
   const [graphView, setGraphView] = useState(false);
   const memberTracks = spending.tools.flatMap((tool) => tool.tracks.filter((track) => track.members.length > 0));
   const allSpendingExpanded = memberTracks.length > 0 && memberTracks.every((track) => expandedTracks.has(track.id));

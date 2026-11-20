@@ -1,4 +1,5 @@
 import { TimelineExpansionButton } from "../ui/TimelineExpansionButton";
+import { useTimelineViewPreference } from "../../hooks/useTimelineViewPreference";
 import { TimelineHelpGuide } from "./TimelineHelpGuide";
 import { absoluteMonth, memberMonthAvailability, memberMonthPremiumWork, memberPremiumWorkOnDate, type PremiumWorkDay } from "../../utils/memberAvailability";
 import { editPremiumAllocation, makePremiumAssignment, premiumAssignmentDate, premiumAssignmentHours, premiumAssignmentKey, workpackagePremiumHours } from "../../utils/premiumAssignments";
@@ -82,7 +83,7 @@ export function TeamTimelineModal({
   const [projects, setLocalProjects] = useState<AllocationProject[]>(() => deepClone(sourceProjects));
   const [cards, setLocalCards] = useState<WorkpackageCard[]>(() => deepClone(sourceCards.filter(card => card.kind !== "non-fte")));
   const [isDirty, setIsDirty] = useState(false);
-  const [expandedReleases, setExpandedReleases] = useState<Record<string, boolean>>({});
+  const [expandedReleases, setExpandedReleases] = useTimelineViewPreference<Record<string, boolean>>("combined", "expanded-releases", {});
   const [releaseDrafts, setReleaseDrafts] = useState<Record<string, SystemReleaseDraft[]>>({});
   const [releaseSaveError, setReleaseSaveError] = useState<string | null>(null);
   const [showAllocationSummary, setShowAllocationSummary] = useState(false);
@@ -173,21 +174,21 @@ export function TeamTimelineModal({
   }, [releaseDrafts, cards, projects, sourceCards, sourceProjects, toolName, persistAssignments, persistMonthlyAssignments, persistPremiumAssignments,
     persistMgmtAssignments, persistMgmtMonthlyAssignments, persistSystemReleases, persistOtherWPs, showOtherWPs, excludedOtherWPIds, onClose, onCommit]);
 
-  const [collapsedProjects, setCollapsedProjects] = useState({});
-  const [collapsedPersonalCapacity, setCollapsedPersonalCapacity] = useState(false);
-  const [expandedPersonalMembers, setExpandedPersonalMembers] = useState<Record<string, boolean>>({});
+  const [collapsedProjects, setCollapsedProjects] = useTimelineViewPreference<Record<string, boolean>>("combined", "collapsed-projects", {});
+  const [collapsedPersonalCapacity, setCollapsedPersonalCapacity] = useTimelineViewPreference<boolean>("combined", "personal-collapsed", false);
+  const [expandedPersonalMembers, setExpandedPersonalMembers] = useTimelineViewPreference<Record<string, boolean>>("combined", "expanded-leave", {});
   const [selectedWPForAssign, setSelectedWPForAssign] = useState(null);
   const [selectedAdjustMember, setSelectedAdjustMember] = useState(null);
   const [draggedMember, setDraggedMember] = useState(null);
   const [draggedPremium, setDraggedPremium] = useState<{ member: TeamMemberRecord; day: PremiumWorkDay } | null>(null);
   const [dragOverCellKey, setDragOverCellKey] = useState(null);
-  const [expandedWPMembers, setExpandedWPMembers] = useState({});
-  const [allMemberTracksExpanded, setAllMemberTracksExpanded] = useState(false);
+  const [expandedWPMembers, setExpandedWPMembers] = useTimelineViewPreference<Record<string, boolean>>("combined", "expanded-members", {});
+  const [allMemberTracksExpanded, setAllMemberTracksExpanded] = useTimelineViewPreference<boolean>("combined", "all-members-expanded", false);
   const [roleWarning, setRoleWarning] = useState(null);
   useEscapeKey(onClose, !selectedWPForAssign && !selectedAdjustMember && !roleWarning && !showAllocationPriorities && !releaseSaveError);
 
   // Direct In-Chart Selection & Editing state for team member cells
-  const [isManualEditEnabled, setIsManualEditEnabled] = useState(true);
+  const [isManualEditEnabled, setIsManualEditEnabled] = useTimelineViewPreference<boolean>("combined", "manual-adjust", true);
   const toggleWPMembers = useCallback((rowKey) => {
     setExpandedWPMembers((prev) => ({
       ...prev,

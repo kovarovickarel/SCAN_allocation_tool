@@ -49,7 +49,9 @@ for (const kind of ["fte", "non-fte"] as const) test(`release removal/addition u
     await page.getByTitle("View Project Timeline (Gantt Chart)", { exact: true }).click();
     const timeline = page.getByRole("dialog");
     if (await timeline.getByRole("button", { name: "Toggle system releases for Apollo", exact: true }).getAttribute("aria-expanded") === "false") await timeline.getByRole("button", { name: "Toggle system releases for Apollo", exact: true }).click();
-    await timeline.getByRole("button", { name: "Manual Adjust: Disabled", exact: true }).click();
+    const enableManual = timeline.getByRole("button", { name: "Manual Adjust: Disabled", exact: true });
+    if (await enableManual.isVisible()) await enableManual.click();
+    await expect(timeline.getByRole("button", { name: "Manual Adjust: Enabled", exact: true })).toBeVisible();
     return timeline;
   };
   let timeline = await open();
